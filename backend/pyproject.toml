@@ -1,0 +1,10 @@
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+# E는 코드 스타일, F는 미사용 import/변수 등 오류, I는 정렬
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
