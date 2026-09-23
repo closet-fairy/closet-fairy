@@ -1,6 +1,10 @@
+<<<<<<< HEAD
 from decimal import Decimal
 from functools import lru_cache
 
+=======
+from functools import lru_cache
+>>>>>>> main
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -14,6 +18,7 @@ class Settings(BaseSettings):
     ANTHROPIC_API_KEY: str = ""
     KMA_SERVICE_KEY: str = ""
 
+<<<<<<< HEAD
     PREFERENCE_SCORE_EMA_ALPHA: Decimal = Decimal("0.95")
     PREFERENCE_SCORE_PRIOR_WEIGHT: Decimal = Decimal("5")
 
@@ -38,6 +43,8 @@ class Settings(BaseSettings):
 
     MAX_RETRY_PER_VALIDATION_STAGE: int = 2
 
+=======
+>>>>>>> main
 
 @lru_cache
 def get_settings() -> Settings:
