@@ -15,7 +15,6 @@ class Settings(BaseSettings):
     ANTHROPIC_API_KEY: str = ""
     KMA_SERVICE_KEY: str = ""
 
-<<<<<<< HEAD
     PREFERENCE_SCORE_EMA_ALPHA: Decimal = Decimal("0.95")
     PREFERENCE_SCORE_PRIOR_WEIGHT: Decimal = Decimal("5")
 
@@ -39,9 +38,6 @@ class Settings(BaseSettings):
     SUMMER_AVG_TEMPERATURE_THRESHOLD: Decimal = Decimal("20.0")
 
     MAX_RETRY_PER_VALIDATION_STAGE: int = 2
-
-=======
->>>>>>> main
 
 @lru_cache
 def get_settings() -> Settings:
