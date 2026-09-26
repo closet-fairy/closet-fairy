@@ -4,6 +4,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { queryClient } from '@/apis/queryClient';
 import { routeTree } from './routeTree.gen';
+import 'wanted-sans/fonts/webfonts/variable/split/WantedSansVariable.css';
 
 const router = createRouter({
   routeTree,
