@@ -20,8 +20,8 @@ frontend/src/
 ├─ apis/          HTTP 클라이언트와 요청 설정
 ├─ generated/     orval 생성물
 ├─ mocks/         MSW 핸들러
-├─ styles/        디자인 토큰, 전역 스타일, 폰트 선언
-├─ assets/        icons/, images/, fonts/
+├─ styles/        디자인 토큰, 전역 스타일, 스타일 헬퍼
+├─ assets/        icons/, images/
 ├─ constants/     두 화면 이상에서 쓰는 상수
 ├─ types/         두 화면 이상에서 쓰는 타입
 └─ utils/         도메인과 무관한 범용 함수
@@ -101,6 +101,12 @@ ClothCard/
 - inline `style`은 렌더링 중 계산되는 값에만 쓴다.
   - ✅ ``style={{ transform: `rotate(${angle}deg)` }}``
   - ❌ `style={{ padding: 16 }}`
+- 스타일에만 쓰는 props는 `$` 접두사를 붙인다. (`$isActive`, `$size`)
+- 컴포넌트를 `styled()`로 감쌀 때는 `$` props가 DOM으로 넘어가지 않도록 `styles/transientOptions.ts`의 옵션을 넘긴다.
+  HTML 태그(`styled.div` 등)를 감쌀 때는 넘기지 않아도 된다.
+  - ✅ `styled(Dialog.Content, transientOptions)<{ $size: Size }>`
+- 전역 스타일은 `styles/globalStyles.ts`에만 둔다. 컴포넌트에서 전역 선택자(`body`, `#root` 등)를 스타일링하지 않는다.
+- 폰트는 `wanted-sans` 패키지에서 불러온다. 글꼴은 `styles/globalStyles.ts`의 `body`에서만 지정한다.
 
 ### 토큰
 
