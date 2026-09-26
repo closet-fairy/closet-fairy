@@ -17,16 +17,47 @@ declare module '@tanstack/react-router' {
   }
 }
 
+const enableMocking = async () => {
+  if (!import.meta.env.DEV || import.meta.env.VITE_ENABLE_MOCK !== 'true') {
+    return;
+  }
+
+  const { worker } = await import('@/mocks/browser');
+  await worker.start({
+    onUnhandledRequest: (request, print) => {
+      if (new URL(request.url).pathname.startsWith('/api/')) {
+        print.warning();
+      }
+    },
+  });
+};
+
+const showDevErrorOverlay = (error: unknown) => {
+  const ErrorOverlay = customElements.get('vite-error-overlay');
+
+  if (ErrorOverlay !== undefined) {
+    document.body.appendChild(new ErrorOverlay(error));
+  }
+};
+
 const rootElement = document.getElementById('root');
 
 if (rootElement === null) {
   throw new Error('#root 요소를 찾을 수 없습니다.');
 }
 
-createRoot(rootElement).render(
-  <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>
-  </StrictMode>,
+void enableMocking().then(
+  () => {
+    createRoot(rootElement).render(
+      <StrictMode>
+        <QueryClientProvider client={queryClient}>
+          <RouterProvider router={router} />
+        </QueryClientProvider>
+      </StrictMode>,
+    );
+  },
+  (error: unknown) => {
+    showDevErrorOverlay(error);
+    console.error(error);
+  },
 );
