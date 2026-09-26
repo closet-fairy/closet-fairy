@@ -197,11 +197,23 @@ ClothCard/
 
 ### 스토리
 
-- 모든 컴포넌트에 스토리를 작성한다. 단, 화면 컴포넌트(`pages/<화면>/<화면>Page.tsx`)의 스토리는 선택이다.
+- 모든 컴포넌트에 스토리를 작성한다. 단, 화면 컴포넌트(`pages/<화면>/<화면>Page.tsx`)와
+  레이아웃 컴포넌트(`RootLayout` 등 라우트 자리와 전역 요소만 배치하는 컴포넌트)의 스토리는 선택이다.
 - 스토리 `title`은 지정하지 않는다. 파일 경로에서 자동으로 정해지게 둔다.
+- 스토리 타입(`Meta`, `StoryObj`)은 `@storybook/react-vite`에서 import한다.
 - 기본 상태와 함께, 컴포넌트가 가질 수 있는 주요 상태를 각각 스토리로 만든다.
   - 예: 비활성, 로딩, 에러, 빈 상태, 긴 텍스트
 - 스토리에서 쓰는 API 데이터는 MSW 핸들러로 제공한다.
+  - `mocks/handlers`의 핸들러는 모든 스토리에 기본으로 적용된다.
+  - 스토리마다 다른 응답이 필요하면 스토리의 `beforeEach`에서 `msw.use()`로 덮어쓴다.
+  - ✅ `beforeEach: ({ msw }) => { msw.use(http.get('/api/clothes', () => HttpResponse.json([]))); }`
+  - 스토리마다 API 응답을 다르게 주는 컴포넌트는 meta에 `parameters.docs.story`의 `inline: false`와 `height`를 준다.
+    문서 페이지는 여러 스토리를 한 화면에 함께 그려서, 이 설정이 없으면 모든 스토리가 마지막 스토리의 응답으로 보인다.
+  - ✅ `parameters: { docs: { story: { inline: false, height: '400px' } } }`
+- 모든 스토리는 전역 스타일, 스토리마다 새로 만드는 QueryClient(재시도 없음, `apis/queryClient.ts`의 인스턴스와 별개), 메모리 라우터 안에서 렌더링된다.
+  스토리에서 이 Provider들을 다시 감싸지 않는다.
+  - 라우터는 `.storybook/StoryRouterProvider.tsx`의 메모리 라우터(주소 `/`)가 제공한다. 라우트 매칭 없이 context만 제공하므로 `Link`, `useNavigate`, `useLocation`은 쓸 수 있고, 라우트 파라미터나 loader에 의존하는 훅은 쓸 수 없다.
+- 문서 페이지(autodocs)는 모든 컴포넌트에 자동으로 생성된다.
 
 ### 테스트
 

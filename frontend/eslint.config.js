@@ -4,6 +4,7 @@ import pluginRouter from '@tanstack/eslint-plugin-router';
 import eslintConfigPrettier from 'eslint-config-prettier/flat';
 import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
+import storybook from 'eslint-plugin-storybook';
 import testingLibrary from 'eslint-plugin-testing-library';
 import { defineConfig, globalIgnores } from 'eslint/config';
 import globals from 'globals';
@@ -26,6 +27,7 @@ const HEADLESS_RESTRICTION = {
 export default defineConfig([
   globalIgnores([
     'dist',
+    'storybook-static',
     'src/routeTree.gen.ts',
     'public/mockServiceWorker.js',
   ]),
@@ -96,6 +98,11 @@ export default defineConfig([
   {
     files: ['src/**/*.test.{ts,tsx}'],
     extends: [testingLibrary.configs['flat/react']],
+  },
+  ...storybook.configs['flat/recommended'],
+  {
+    files: ['**/*.stories.tsx'],
+    rules: { 'storybook/no-title-property-in-meta': 'error' },
   },
   eslintConfigPrettier,
 ]);
