@@ -8,9 +8,12 @@
   },
   "scripts": {
     "dev": "vite",
+    "dev:mock": "vite --mode mock",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -b",
+    "test": "vitest",
+    "test:run": "vitest run",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier . --write",
@@ -37,6 +40,10 @@
     "@tanstack/eslint-plugin-query": "^5.104.0",
     "@tanstack/eslint-plugin-router": "^1.162.0",
     "@tanstack/router-plugin": "^1.168.40",
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.7",
     "@types/babel__core": "^7.20.5",
     "@types/node": "^24.19.0",
     "@types/react": "^19.3.0",
@@ -46,10 +53,19 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.7",
+    "eslint-plugin-testing-library": "^7.16.2",
     "globals": "^17.12.0",
+    "jsdom": "^29.1.1",
+    "msw": "^2.15.0",
     "prettier": "^3.9.9",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.70.1",
-    "vite": "^8.3.1"
+    "vite": "^8.3.1",
+    "vitest": "^4.1.11"
+  },
+  "msw": {
+    "workerDirectory": [
+      "public"
+    ]
   }
 }

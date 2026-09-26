@@ -184,6 +184,10 @@ ClothCard/
 ### 모킹
 
 - 새 API를 쓰기 시작하면 `mocks/`에 MSW 핸들러를 함께 추가한다.
+- 핸들러는 도메인별로 `mocks/handlers/<도메인>.ts`에 두고, `mocks/handlers/index.ts`의 `handlers`에 모은다.
+  브라우저(`mocks/browser.ts`)와 테스트(`mocks/node.ts`)는 같은 `handlers`를 쓴다.
+- 개발 서버에서 모킹은 `npm run dev:mock`으로 켠다. `npm run dev`는 실제 BE로 요청한다.
+  - `dev:mock`에서도 핸들러가 없는 `/api` 요청은 실제 BE로 나가며, 콘솔에 경고가 남는다.
 
 ## 테스트와 스토리
 
@@ -207,6 +211,7 @@ ClothCard/
 - `describe`에는 시나리오 묶음을 한국어 명사형 제목으로 쓴다. 온점을 붙이지 않는다.
   - ✅ `describe('업로드 파일 형식 검증', ...)`
 - 개별 테스트는 `it`이 아니라 `test`로 쓴다.
+- `test`, `describe`, `expect` 등은 `vitest`에서 import한다. 전역으로 쓰지 않는다.
 - 테스트 설명은 한국어 평서문으로, "~해야 한다." 형태로 쓰고 온점으로 끝낸다.
   - ✅ `test('버튼이 비활성화된 상태에서는 클릭하더라도 API 요청이 나가지 않아야 한다.', ...)`
   - ❌ `test('비활성 버튼 클릭 테스트', ...)`
@@ -215,6 +220,8 @@ ClothCard/
   - ✅ `getByRole('button', { name: '옷 등록' })`
   - ❌ `container.querySelector('.css-1x2y3z')`
 - 네트워크가 필요한 테스트는 MSW로 응답을 제공한다. `apis/`나 axios를 직접 모킹하지 않는다.
+  - 테스트에서 핸들러가 없는 요청이 생기면 그 테스트가 실패한다. 테스트마다 다른 응답이 필요하면 `server.use()`로 덮어쓴다.
+- 테스트 공통 설정(jest-dom 매처, 정리, MSW 서버)은 `src/vitest.setup.ts`에 둔다. 테스트 시간대는 `Asia/Seoul`로 고정되어 있다.
 
 ## 주석
 

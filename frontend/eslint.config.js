@@ -4,6 +4,7 @@ import pluginRouter from '@tanstack/eslint-plugin-router';
 import eslintConfigPrettier from 'eslint-config-prettier/flat';
 import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
+import testingLibrary from 'eslint-plugin-testing-library';
 import { defineConfig, globalIgnores } from 'eslint/config';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
@@ -23,7 +24,11 @@ const HEADLESS_RESTRICTION = {
 };
 
 export default defineConfig([
-  globalIgnores(['dist', 'src/routeTree.gen.ts']),
+  globalIgnores([
+    'dist',
+    'src/routeTree.gen.ts',
+    'public/mockServiceWorker.js',
+  ]),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [
@@ -87,6 +92,10 @@ export default defineConfig([
     rules: {
       'no-restricted-imports': ['error', { paths: [AXIOS_RESTRICTION] }],
     },
+  },
+  {
+    files: ['src/**/*.test.{ts,tsx}'],
+    extends: [testingLibrary.configs['flat/react']],
   },
   eslintConfigPrettier,
 ]);
