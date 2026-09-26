@@ -1,0 +1,15 @@
+INSERT INTO color (color_cd, color_nm, hex_code, display_seq) VALUES
+  ('black',    '블랙',       '#000000',  1),
+  ('white',    '화이트',     '#FFFFFF',  2),
+  ('gray',     '그레이',     '#808080',  3),
+  ('beige',    '베이지',     '#E8D9C0',  4),
+  ('brown',    '브라운',     '#7B4B2A',  5),
+  ('navy',     '네이비',     '#1B2A4A',  6),
+  ('blue',     '블루',       '#2563C9',  7),
+  ('sky_blue', '스카이블루', '#87CEEB',  8),
+  ('green',    '그린',       '#2E7D46',  9),
+  ('khaki',    '카키',       '#78805A', 10),
+  ('yellow',   '옐로우',     '#F2C230', 11),
+  ('orange',   '오렌지',     '#E8762C', 12),
+  ('red',      '레드',       '#C62828', 13),
+  ('pink',     '핑크',       '#F0A6B8', 14);
