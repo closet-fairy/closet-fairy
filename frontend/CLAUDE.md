@@ -96,7 +96,7 @@ ClothCard/
 - 스타일은 Emotion `styled`로 `X.styled.ts`에 작성한다.
 - `css` prop은 지양한다. `X.styled.ts` 안에서 스타일 조각을 재사용하거나 조건부로 합칠 때는 `css` 헬퍼를 쓴다.
 - inline `style`은 렌더링 중 계산되는 값에만 쓴다.
-  - ✅ `` style={{ transform: `rotate(${angle}deg)` }} ``
+  - ✅ ``style={{ transform: `rotate(${angle}deg)` }}``
   - ❌ `style={{ padding: 16 }}`
 
 ### 토큰
