@@ -4,7 +4,7 @@ sqlalchemy[asyncio]
 aiomysql
 cryptography
 pydantic-settings
-anthropic
+anthropic>=1.8,<2
 httpx
 python-multipart
 pillow

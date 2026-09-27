@@ -4,6 +4,7 @@
 1차/2차 검증 실패율, 재생성 횟수 같은 발표용 지표를 뽑을 때
 문자열을 코드 여기저기서 다르게 쓰는 걸 막기 위함이다.
 """
+
 from __future__ import annotations
 
 import json
@@ -21,9 +22,17 @@ _request_id_ctx: ContextVar[str] = ContextVar("request_id", default="-")
 # logging.LogRecord가 기본으로 갖는 속성 이름. 이것만 걸러내면
 # extra={...}로 넘긴 값만 정확히 남는다. (LogRecord.__dict__로는
 # 클래스 속성이 아니라 인스턴스 속성이라 걸러지지 않는다)
-_STANDARD_LOG_RECORD_KEYS = frozenset(logging.LogRecord(
-    "", 0, "", 0, "", (), None,
-).__dict__.keys()) | {"message", "asctime"}
+_STANDARD_LOG_RECORD_KEYS = frozenset(
+    logging.LogRecord(
+        "",
+        0,
+        "",
+        0,
+        "",
+        (),
+        None,
+    ).__dict__.keys()
+) | {"message", "asctime"}
 
 
 class JsonFormatter(logging.Formatter):
@@ -90,9 +99,15 @@ class RequestIdMiddleware:
         finally:
             elapsed_ms = round((time.perf_counter() - start) * 1000, 1)
             logging.getLogger("app.request").info(
-                "%s %s -> %s", scope["method"], scope["path"], status_code,
-                extra={"event": "http.request", "elapsed_ms": elapsed_ms,
-                       "status_code": status_code},
+                "%s %s -> %s",
+                scope["method"],
+                scope["path"],
+                status_code,
+                extra={
+                    "event": "http.request",
+                    "elapsed_ms": elapsed_ms,
+                    "status_code": status_code,
+                },
             )
             _request_id_ctx.reset(token)
 
@@ -106,3 +121,4 @@ class Event:
     RECOMMEND_FALLBACK = "recommend.fallback"
     PREFERENCE_SETTLED = "preference.settled"
     UCB_EXPLORE_PICK = "ucb.explore_pick"
+    LLM_CALL = "llm.call"
