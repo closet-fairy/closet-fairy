@@ -38,6 +38,7 @@ frontend/src/
 - 두 화면 이상에서 쓰게 되면 `components/`, `hooks/`, `constants/`, `types/`로 옮긴다.
 - `components/common/`에는 옷장요정의 도메인을 모르는 컴포넌트만 둔다.
   도메인 데이터를 props로 받거나 도메인 용어가 들어가면 `components/` 바로 아래에 둔다.
+  디자인 시스템 컴포넌트와 헤드리스 라이브러리를 감싼 컴포넌트는 사용처 수와 관계없이 처음부터 `components/common/`에 둔다.
   - ✅ `components/common/Button`, `components/StatusBadge`
   - ❌ `components/common/ClothCard`
 - 요구사항에서 온 비즈니스 규칙은 쓰는 곳이 한 곳이어도 `domains/`에 둔다.
