@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+#시드 적재+커버리지 검증. backend/ 에서 실행 : bash scripts/seed.sh
+
 set -euo pipefail
 
 MYSQL_SERVICE="${MYSQL_SERVICE:-mysql}"
@@ -18,7 +20,7 @@ run_sql() {
     --default-character-set=utf8mb4 "$@"
 }
 
-echo "=== 시드 적재 ==="
+echo " 시드 적재 "
 for file in db/seeds/*.sql; do
   case "$file" in
     *004_dev_member.sql)
