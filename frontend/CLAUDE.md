@@ -14,7 +14,7 @@ frontend/src/
 ├─ routes/        TanStack Router 파일 기반 라우트
 ├─ pages/         화면
 ├─ components/    두 화면 이상에서 쓰는 컴포넌트
-│  └─ common/     디자인 시스템 컴포넌트
+│  └─ common/     디자인 시스템 컴포넌트 (사용처 수와 무관)
 ├─ hooks/         두 화면 이상에서 쓰는 훅
 ├─ domains/       React와 무관한 비즈니스 규칙
 ├─ apis/          HTTP 클라이언트와 요청 설정
@@ -89,6 +89,8 @@ ClothCard/
 - 화면 컴포넌트: `<화면>Page` (`pages/Closet/ClosetPage.tsx`)
 - 훅: `use`로 시작하는 camelCase (`useClothPolling.ts`)
 - 함수: 동사로 시작하는 camelCase (`validateUploadFile.ts`)
+- 라우트 파일: 이름이 URL 경로가 되므로 TanStack Router 파일 기반 라우팅 규칙을 따른다 (`routes/closet.tsx`)
+- 그 밖의 파일: camelCase (`types/cloth.ts`, `constants/clothCategory.ts`)
 
 ## 스타일링
 
