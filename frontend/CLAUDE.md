@@ -30,6 +30,9 @@ frontend/src/
 ### 배치 규칙
 
 - `routes/`에는 라우트 정의와 페이지 연결만 둔다. 화면 구현은 `pages/`에 둔다.
+  - 라우트 파일은 `Route`만 export하고, 화면 컴포넌트는 `pages/`에서 가져와 연결한다.
+  - ✅ `export const Route = createFileRoute('/')({ component: HomePage });`
+- `src/routeTree.gen.ts`는 TanStack Router가 자동 생성하는 파일이다. 직접 수정하지 않는다.
 - 한 파일에서만 쓰는 상수, 타입, 헬퍼는 그 파일 안에 export 없이 둔다.
   파일이 길어지면 같은 폴더에 `X.constants.ts`, `X.types.ts`처럼 분리한다.
 - 한 화면에서만 쓰는 컴포넌트는 사용처가 한 곳이어도 `pages/<화면>/components/`에 폴더로 둔다.
@@ -158,7 +161,9 @@ ClothCard/
 ### API 요청
 
 - API 요청은 orval이 생성한 훅과 함수를 쓴다. 요청 함수, 응답 타입, Query 키를 직접 만들지 않는다.
-- axios는 `apis/`의 공용 인스턴스만 쓴다. 다른 곳에서 axios를 직접 import하지 않는다.
+- axios 요청은 `apis/httpClient.ts`의 공용 인스턴스로만 보낸다.
+  axios를 직접 import하는 파일은 `apis/httpClient.ts`와 `apis/apiError.ts`뿐이다.
+- `QueryClient`는 `apis/queryClient.ts`의 인스턴스 하나만 쓴다.
 - API 스펙이 나오기 전 임시로 작성한 요청 코드는 `apis/`에 두고, 스펙이 나오면 생성물로 교체한다.
 
 ### 응답 검증
@@ -168,7 +173,7 @@ ClothCard/
 
 ### 에러
 
-- 서버 에러 응답(`{ code, message }`)은 `apis/`에서 공통 에러 형태로 바꾼다. 화면은 이 공통 형태만 다룬다.
+- 서버 에러 응답(`{ code, message }`)은 `apis/httpClient.ts`의 인터셉터가 `ApiError`(`apis/apiError.ts`)로 바꾼다. 화면은 `ApiError`만 다룬다.
 
 ### 모킹
 
