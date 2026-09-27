@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 
 from app.api import health
+from app.api import recommendation_session
 from app.core.errors import register_exception_handlers
 from app.core.logging import RequestIdMiddleware, setup_logging
 
@@ -12,3 +13,4 @@ app.add_middleware(RequestIdMiddleware)
 register_exception_handlers(app)
 
 app.include_router(health.router)
+app.include_router(recommendation_session.router)

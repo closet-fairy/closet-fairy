@@ -1,0 +1,189 @@
+[
+  {
+    "sido_nm": "서울특별시",
+    "sigungu_nm": null,
+    "ref_point": "서울특별시청",
+    "lat": 37.5665,
+    "lon": 126.978,
+    "grid_nx": 60,
+    "grid_ny": 127,
+    "asos_station_cd": "108",
+    "asos_station_nm": "서울"
+  },
+  {
+    "sido_nm": "부산광역시",
+    "sigungu_nm": null,
+    "ref_point": "부산광역시청",
+    "lat": 35.1796,
+    "lon": 129.0756,
+    "grid_nx": 98,
+    "grid_ny": 76,
+    "asos_station_cd": "159",
+    "asos_station_nm": "부산"
+  },
+  {
+    "sido_nm": "대구광역시",
+    "sigungu_nm": null,
+    "ref_point": "대구광역시청",
+    "lat": 35.8714,
+    "lon": 128.6014,
+    "grid_nx": 89,
+    "grid_ny": 91,
+    "asos_station_cd": "143",
+    "asos_station_nm": "대구"
+  },
+  {
+    "sido_nm": "인천광역시",
+    "sigungu_nm": null,
+    "ref_point": "인천광역시청",
+    "lat": 37.4563,
+    "lon": 126.7052,
+    "grid_nx": 55,
+    "grid_ny": 124,
+    "asos_station_cd": "112",
+    "asos_station_nm": "인천"
+  },
+  {
+    "sido_nm": "광주광역시",
+    "sigungu_nm": null,
+    "ref_point": "광주광역시청",
+    "lat": 35.1595,
+    "lon": 126.8526,
+    "grid_nx": 58,
+    "grid_ny": 74,
+    "asos_station_cd": "156",
+    "asos_station_nm": "광주"
+  },
+  {
+    "sido_nm": "대전광역시",
+    "sigungu_nm": null,
+    "ref_point": "대전광역시청",
+    "lat": 36.3504,
+    "lon": 127.3845,
+    "grid_nx": 67,
+    "grid_ny": 100,
+    "asos_station_cd": "133",
+    "asos_station_nm": "대전"
+  },
+  {
+    "sido_nm": "울산광역시",
+    "sigungu_nm": null,
+    "ref_point": "울산광역시청",
+    "lat": 35.5384,
+    "lon": 129.3114,
+    "grid_nx": 102,
+    "grid_ny": 84,
+    "asos_station_cd": "152",
+    "asos_station_nm": "울산"
+  },
+  {
+    "sido_nm": "세종특별자치시",
+    "sigungu_nm": null,
+    "ref_point": "세종특별자치시청",
+    "lat": 36.48,
+    "lon": 127.289,
+    "grid_nx": 66,
+    "grid_ny": 103,
+    "asos_station_cd": "239",
+    "asos_station_nm": "세종"
+  },
+  {
+    "sido_nm": "경기도",
+    "sigungu_nm": null,
+    "ref_point": "경기도청(수원)",
+    "lat": 37.2636,
+    "lon": 127.0286,
+    "grid_nx": 61,
+    "grid_ny": 120,
+    "asos_station_cd": "119",
+    "asos_station_nm": "수원"
+  },
+  {
+    "sido_nm": "강원특별자치도",
+    "sigungu_nm": null,
+    "ref_point": "강원도청(춘천)",
+    "lat": 37.8813,
+    "lon": 127.73,
+    "grid_nx": 73,
+    "grid_ny": 134,
+    "asos_station_cd": "101",
+    "asos_station_nm": "춘천"
+  },
+  {
+    "sido_nm": "충청북도",
+    "sigungu_nm": null,
+    "ref_point": "충청북도청(청주)",
+    "lat": 36.6357,
+    "lon": 127.4917,
+    "grid_nx": 69,
+    "grid_ny": 107,
+    "asos_station_cd": "131",
+    "asos_station_nm": "청주"
+  },
+  {
+    "sido_nm": "충청남도",
+    "sigungu_nm": null,
+    "ref_point": "충청남도청(홍성)",
+    "lat": 36.6588,
+    "lon": 126.6728,
+    "grid_nx": 55,
+    "grid_ny": 107,
+    "asos_station_cd": "129",
+    "asos_station_nm": "서산"
+  },
+  {
+    "sido_nm": "전북특별자치도",
+    "sigungu_nm": null,
+    "ref_point": "전북도청(전주)",
+    "lat": 35.8242,
+    "lon": 127.148,
+    "grid_nx": 63,
+    "grid_ny": 89,
+    "asos_station_cd": "146",
+    "asos_station_nm": "전주"
+  },
+  {
+    "sido_nm": "전라남도",
+    "sigungu_nm": null,
+    "ref_point": "전라남도청(무안)",
+    "lat": 34.8161,
+    "lon": 126.463,
+    "grid_nx": 51,
+    "grid_ny": 67,
+    "asos_station_cd": "165",
+    "asos_station_nm": "목포"
+  },
+  {
+    "sido_nm": "경상북도",
+    "sigungu_nm": null,
+    "ref_point": "경상북도청(안동)",
+    "lat": 36.5684,
+    "lon": 128.7294,
+    "grid_nx": 91,
+    "grid_ny": 106,
+    "asos_station_cd": "136",
+    "asos_station_nm": "안동"
+  },
+  {
+    "sido_nm": "경상남도",
+    "sigungu_nm": null,
+    "ref_point": "경상남도청(창원)",
+    "lat": 35.2383,
+    "lon": 128.6924,
+    "grid_nx": 91,
+    "grid_ny": 77,
+    "asos_station_cd": "155",
+    "asos_station_nm": "창원"
+  },
+  {
+    "sido_nm": "제주특별자치도",
+    "sigungu_nm": null,
+    "ref_point": "제주도청(제주)",
+    "lat": 33.489,
+    "lon": 126.4983,
+    "grid_nx": 52,
+    "grid_ny": 38,
+    "asos_station_cd": "184",
+    "asos_station_nm": "제주"
+  }
+]
