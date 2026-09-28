@@ -1,6 +1,6 @@
 # closet-fairy backend
 
-FastAPI + MySQL 8.0 (최소 8.0.16). Python 3.12.
+FastAPI + MySQL 8.0 (최소 8.0.19). Python 3.12.
 
 ## 실행 순서
 
