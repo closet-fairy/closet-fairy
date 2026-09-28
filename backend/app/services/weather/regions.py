@@ -3,6 +3,7 @@
 지금 파일에는 시/도 대표 지점 17개만 있다. 시/군/구 행이 추가되면
 시/군/구 일치를 먼저 찾고, 없으면 시/도 대표값을 쓴다.
 """
+
 import json
 from dataclasses import dataclass
 from functools import lru_cache

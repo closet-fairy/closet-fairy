@@ -1,4 +1,5 @@
 """기상청 단기예보 API 클라이언트 (초단기실황 + 단기예보)."""
+
 from datetime import datetime
 
 import httpx
@@ -28,19 +29,19 @@ class KmaClient:
 
     async def get_ultra_srt_ncst(self, nx: int, ny: int, now: datetime) -> list[dict]:
         """초단기실황 = 지금 관측값.
-        
+
         category: T1H 기온, RN1 강수, WSD 풍속, PTY 강수형태, REH 습도
         """
         base_date, base_time = ultra_srt_ncst_base(now)
         return await self._call(
             "getUltraSrtNcst",
             {
-             "pageNo": 1,
-             "numOfRows": 100,
-             "base_date": base_date,
-             "base_time": base_time,
-             "nx": nx,
-             "ny": ny
+                "pageNo": 1,
+                "numOfRows": 100,
+                "base_date": base_date,
+                "base_time": base_time,
+                "nx": nx,
+                "ny": ny,
             },
         )
 
@@ -54,11 +55,11 @@ class KmaClient:
         return await self._call(
             "getVilageFcst",
             {
-             "pageNo": 1,
-             "numOfRows": 1000,
-             "base_date": base_date,
-             "base_time": base_time,
-             "nx": nx,
-             "ny": ny
+                "pageNo": 1,
+                "numOfRows": 1000,
+                "base_date": base_date,
+                "base_time": base_time,
+                "nx": nx,
+                "ny": ny,
             },
         )
