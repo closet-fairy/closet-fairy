@@ -44,7 +44,7 @@ class LLMCallConfig:
     call_name: str
     prompt_version: str
     model: str | None = None
-    max_tokens: int = 16384
+    max_tokens: int = 4096
     # None이면 요청에서 생략한다. claude-sonnet-5 등 최신 모델은 기본값이 아닌
     # temperature를 400으로 거절하므로, 받는 모델을 쓰는 호출에서만 값을 넣는다.
     temperature: float | None = None
