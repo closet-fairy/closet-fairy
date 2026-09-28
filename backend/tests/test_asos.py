@@ -31,7 +31,11 @@ def test_fetch_parses_and_skips_missing():
 
     rows = asyncio.run(
         fetch_daily_avg_temperatures(
-            "108", date(2026, 9, 24), date(2026, 9, 26), "key", transport=httpx.MockTransport(handler)
+            "108",
+            date(2026, 9, 24),
+            date(2026, 9, 26),
+            "key",
+            transport=httpx.MockTransport(handler),
         )
     )
     assert rows == [(date(2026, 9, 24), Decimal("21.3")), (date(2026, 9, 26), Decimal("19.8"))]
@@ -39,11 +43,17 @@ def test_fetch_parses_and_skips_missing():
 
 def test_fetch_no_data_is_empty():
     def handler(request):
-        return httpx.Response(200, json={"response": {"header": {"resultCode": "03", "resultMsg": "NO_DATA"}}})
+        return httpx.Response(
+            200,
+            json={"response": {"header": {"resultCode": "03", "resultMsg": "NO_DATA"}}}
+        )
 
     rows = asyncio.run(
         fetch_daily_avg_temperatures(
-            "108", date(2026, 9, 24), date(2026, 9, 26), "key", transport=httpx.MockTransport(handler)
+            "108",
+            date(2026, 9, 24),
+            date(2026, 9, 26),
+            "key", transport=httpx.MockTransport(handler),
         )
     )
     assert rows == []

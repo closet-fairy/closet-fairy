@@ -51,7 +51,10 @@ class WeatherResult:
 # ---------- 값 해석 ----------
 
 def parse_precipitation(value: object) -> float:
-    """'강수없음' → 0, '1mm 미만' → 0.5, '1.0mm' → 1.0, '30.0~50.0mm' → 30.0, '50.0mm 이상' → 50.0"""
+    """'강수없음' → 0, '1mm 미만' → 0.5, '1.0mm' → 1.0,
+     
+    '30.0~50.0mm' → 30.0, '50.0mm 이상' → 50.0
+    """
     text = str(value).strip()
     if text in ("", "-", "강수없음"):
         return 0.0
@@ -118,7 +121,7 @@ def combine(
     # 외출 시간대: 시작 시각이 속한 정시부터 종료 시각까지
     window_start = going_out_start.replace(minute=0, second=0, microsecond=0)
     in_window = [h.feels_like_temperature for h in hourly if window_start <= h.at <= going_out_end]
-    min_feels = min(in_window + [current_feels]) if in_window else current_feels
+    min_feels = min(in_window) if in_window else current_feels
 
     return WeatherResult(
         temperature=temp,

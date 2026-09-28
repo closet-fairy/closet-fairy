@@ -1,6 +1,6 @@
-"""ASOS 일자료 API — 지점별 일평균 기온. 계절 판정(daily_weather)용."""
+"""ASOS 일자료 API 클라이언트. 일별 평균기온(daily_weather)용."""
 from datetime import date
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 import httpx
 
@@ -18,7 +18,7 @@ async def fetch_daily_avg_temperatures(
     timeout: float = 10.0,
     transport: httpx.AsyncBaseTransport | None = None,
 ) -> list[tuple[date, Decimal]]:
-    """[(날짜, 일평균기온)] — end_dt는 어제까지만 가능 (ASOS는 전날 자료까지 제공)."""
+    """[(날짜, 평균기온)] 목록. 결측치는 건너뛴다."""
     rows: list[tuple[date, Decimal]] = []
     page = 1
     while True:
@@ -38,10 +38,13 @@ async def fetch_daily_avg_temperatures(
             transport,
         )
         for item in items:
-            avg = item.get("avgTa")
-            if avg in (None, ""):  # 결측일은 건너뛴다
+            avg_str = str(item.get("avgTa", "")).strip()
+            if not avg_str or avg_str == "-":
                 continue
-            rows.append((date.fromisoformat(item["tm"]), Decimal(str(avg))))
+            try:
+                rows.append((date.fromisoformat(item["tm"]), Decimal(avg_str)))
+            except InvalidOperation:
+                continue
         if page * PAGE_SIZE >= total:
             break
         page += 1

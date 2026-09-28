@@ -28,7 +28,9 @@ def vilage_fcst_base(now: datetime) -> tuple[str, str]:
     """단기예보 base_date, base_time. 예) 14:09 → 11:00, 14:10 → 14:00, 02:05 → 전날 23:00"""
     now = now.astimezone(KST)
     for hour in reversed(VILAGE_BASE_HOURS):
-        available_at = now.replace(hour=hour, minute=VILAGE_AVAILABLE_MINUTE, second=0, microsecond=0)
+        available_at = now.replace(
+            hour=hour, minute=VILAGE_AVAILABLE_MINUTE, second=0, microsecond=0
+        )
         if now >= available_at:
             return now.strftime("%Y%m%d"), f"{hour:02d}00"
     yesterday = now - timedelta(days=1)

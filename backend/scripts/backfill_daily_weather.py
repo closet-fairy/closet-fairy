@@ -21,4 +21,5 @@ async def main() -> None:
         print(f"  지점 {station_cd}: {'실패' if count < 0 else f'{count}건'}")
 
 
-asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(main())
