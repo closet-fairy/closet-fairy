@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.core.config import get_settings  # noqa: E402
 from app.core.logging import setup_logging  # noqa: E402
-from app.llm import LLMCallConfig, create_llm_client  # noqa: E402
+from app.services.llm import LLMCallConfig, create_llm_client  # noqa: E402
 
 
 class SmokeAnswer(BaseModel):

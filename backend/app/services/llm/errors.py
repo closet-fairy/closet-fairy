@@ -1,15 +1,7 @@
-"""LLM 래퍼 예외 계층.
-
-SDK 예외는 래퍼 밖으로 내보내지 않고 여기 정의된 예외로 바꿔 던진다.
-원인 예외는 `raise ... from e`로 연결되어 있으니 디버깅은 __cause__로 한다.
-"""
-
 from __future__ import annotations
 
 
 class LLMError(Exception):
-    """LLM 호출 실패의 공통 부모."""
-
     # 래퍼가 채운다. 시도 횟수, SDK가 준 request-id
     attempts: int = 0
     llm_request_id: str | None = None
@@ -28,7 +20,7 @@ class LLMUnavailableError(LLMError):
 
 
 class LLMRequestError(LLMError):
-    """재시도하지 않는 4xx (잘못된 요청, 인증 실패, 모델 없음 등)."""
+    """재시도하지 않는 요청 오류 (4xx, 그리고 SDK가 요청 전에 거절한 경우)."""
 
 
 class LLMSchemaError(LLMError):

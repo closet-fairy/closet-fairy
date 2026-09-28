@@ -38,7 +38,6 @@ class Settings(BaseSettings):
 
     MAX_RETRY_PER_VALIDATION_STAGE: int = 2
 
-    # LLM 호출 래퍼 (app/llm). 모델명은 코드가 아니라 여기서만 정한다.
     LLM_DEFAULT_MODEL: str = "claude-sonnet-5"
     # 용도(call_name)별 모델 덮어쓰기. .env에 JSON으로 적는다.
     # 예: LLM_MODEL_OVERRIDES={"image_tagging": "claude-haiku-4-5"}

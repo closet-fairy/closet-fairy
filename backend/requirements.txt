@@ -5,6 +5,8 @@ aiomysql
 cryptography
 pydantic-settings
 anthropic>=1.8,<2
+httpx2
+pydantic>=2.12,<3
 httpx
 python-multipart
 pillow

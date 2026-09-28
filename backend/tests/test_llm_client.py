@@ -1,5 +1,3 @@
-"""LLM 래퍼 단위 테스트. SDK는 모킹하고 실제 API는 부르지 않는다."""
-
 from __future__ import annotations
 
 import json
@@ -15,7 +13,7 @@ from pydantic import BaseModel
 
 from app.core.config import Settings
 from app.core.logging import Event, JsonFormatter
-from app.llm import (
+from app.services.llm import (
     LLMCallConfig,
     LLMClient,
     LLMOutputTruncatedError,
@@ -139,9 +137,10 @@ async def test_sdk_client_error_is_wrapped(caplog):
 @pytest.mark.parametrize(
     "payload",
     [
-        {"answer": "a", "confidence": 0.5, "extra": "x"},  # 스키마에 없는 필드
-        {"answer": "a", "confidence": "high"},  # 타입 불일치
+        {"answer": "a", "confidence": 0.5, "extra": "x"},
+        {"answer": "a", "confidence": "high"},
     ],
+    ids=["extra_field", "type_mismatch"],
 )
 async def test_schema_mismatch_raises_schema_error_without_retry(payload):
     raw = json.dumps(payload)

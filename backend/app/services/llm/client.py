@@ -1,12 +1,5 @@
-"""LLM 호출 래퍼.
-
-추천·재추천·2차 검증·이미지 태깅이 공통으로 쓴다.
-
-- 재시도는 여기 한 곳에서만 한다 (SDK 재시도는 max_retries=0으로 끔).
-- 구조화 출력은 API의 output_config.format(json_schema)을 쓴다. SDK의 messages.parse()는
-  응답을 받자마자 검증해서 stop_reason 확인 전에 예외가 나고 원문도 잃기 때문에,
-  같은 요청을 messages.create()로 보내고 검증은 여기서 직접 한다.
-- 호출 1건당 로그 1줄. 프롬프트·응답 본문, member_id, 이미지 URL, API 키는 남기지 않는다.
+"""SDK의 messages.parse()는 응답을 받자마자 검증해서 stop_reason 확인 전에 예외가 나고
+원문도 잃는다. 그래서 같은 구조화 출력 요청을 messages.create()로 보내고 검증은 여기서 한다.
 """
 
 from __future__ import annotations
@@ -27,7 +20,7 @@ from anthropic.types import Message, MessageParam
 
 from app.core.config import Settings
 from app.core.logging import Event
-from app.llm.errors import (
+from app.services.llm.errors import (
     LLMError,
     LLMOutputTruncatedError,
     LLMRateLimitError,
@@ -37,7 +30,7 @@ from app.llm.errors import (
     LLMUnavailableError,
 )
 
-logger = logging.getLogger("app.llm")
+logger = logging.getLogger("app.services.llm")
 
 T = TypeVar("T", bound=pydantic.BaseModel)
 
@@ -48,11 +41,8 @@ _RETRYABLE_STATUS = frozenset({408, 409, 429})
 
 @dataclass(frozen=True)
 class LLMCallConfig:
-    """호출 1건의 설정. 모델명은 코드에 쓰지 않고 설정(.env)에서 고른다."""
-
     call_name: str
     prompt_version: str
-    # None이면 LLM_MODEL_OVERRIDES[call_name] → LLM_DEFAULT_MODEL 순으로 정한다
     model: str | None = None
     max_tokens: int = 4096
     # None이면 요청에서 생략한다. claude-sonnet-5 등 최신 모델은 기본값이 아닌
@@ -62,8 +52,6 @@ class LLMCallConfig:
 
 
 class LLMClient:
-    """앱 수명 동안 하나만 만들어 재사용한다 (app.llm.deps 참고)."""
-
     def __init__(
         self,
         client: AsyncAnthropic,
@@ -73,7 +61,7 @@ class LLMClient:
     ) -> None:
         self._client = client
         self._settings = settings
-        self._sleep = sleep  # 테스트에서 백오프 대기를 0으로 바꾸기 위한 주입점
+        self._sleep = sleep
 
     async def aclose(self) -> None:
         await self._client.close()
@@ -188,7 +176,6 @@ def _is_retryable(e: anthropic.APIError) -> bool:
 
 
 def _to_llm_error(e: anthropic.APIError) -> LLMError:
-    # 메시지에는 상태 코드·오류 종류만 넣는다. 원인은 __cause__로 따라간다.
     if isinstance(e, anthropic.APITimeoutError):
         return LLMTimeoutError("LLM request timed out")
     if isinstance(e, anthropic.APIConnectionError):
@@ -231,7 +218,6 @@ def _parse_output(response: Message, output_model: type[T]) -> T:
     except json.JSONDecodeError as e:
         raise LLMSchemaError("LLM output is not valid JSON", raw_output=raw) from e
     try:
-        # 스키마에 없는 필드도 실패로 본다
         return output_model.model_validate(data, extra="forbid")
     except pydantic.ValidationError as e:
         # ValidationError 문자열에는 입력값이 들어가므로 오류 개수만 남긴다

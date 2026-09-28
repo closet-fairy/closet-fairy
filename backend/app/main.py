@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from app.api import health
 from app.core.errors import register_exception_handlers
 from app.core.logging import RequestIdMiddleware, setup_logging
-from app.llm import llm_lifespan
+from app.services.llm import llm_lifespan
 
 setup_logging()
 

@@ -1,5 +1,3 @@
-"""LLMClient 수명 관리. main.py의 lifespan에서 한 번 만들고 종료 시 닫는다."""
-
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
@@ -9,7 +7,7 @@ from anthropic import AsyncAnthropic
 from fastapi import FastAPI, Request
 
 from app.core.config import Settings, get_settings
-from app.llm.client import LLMClient
+from app.services.llm.client import LLMClient
 
 
 def create_llm_client(settings: Settings) -> LLMClient:
@@ -32,5 +30,4 @@ async def llm_lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 def get_llm_client(request: Request) -> LLMClient:
-    """FastAPI 의존성: `llm: LLMClient = Depends(get_llm_client)`."""
     return request.app.state.llm_client
