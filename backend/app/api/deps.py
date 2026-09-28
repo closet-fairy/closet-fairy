@@ -1,4 +1,5 @@
 """라우터 공통 의존성. 테스트에서 app.dependency_overrides로 바꿔 끼울 수 있다."""
+
 from datetime import datetime
 
 from app.core.config import get_settings

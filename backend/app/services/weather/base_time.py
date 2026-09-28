@@ -3,6 +3,7 @@
 기상청은 정해진 시각에만 발표하고, 발표 직후에는 아직 조회가 안 된다.
 그래서 '지금 조회 가능한 가장 최근 발표 시각'을 계산해서 요청해야 한다.
 """
+
 from datetime import datetime, timedelta, timezone
 
 # 한국은 서머타임이 없어서 +9 고정으로 충분하다.
@@ -28,7 +29,9 @@ def vilage_fcst_base(now: datetime) -> tuple[str, str]:
     """단기예보 base_date, base_time. 예) 14:09 → 11:00, 14:10 → 14:00, 02:05 → 전날 23:00"""
     now = now.astimezone(KST)
     for hour in reversed(VILAGE_BASE_HOURS):
-        available_at = now.replace(hour=hour, minute=VILAGE_AVAILABLE_MINUTE, second=0, microsecond=0)
+        available_at = now.replace(
+            hour=hour, minute=VILAGE_AVAILABLE_MINUTE, second=0, microsecond=0
+        )
         if now >= available_at:
             return now.strftime("%Y%m%d"), f"{hour:02d}00"
     yesterday = now - timedelta(days=1)

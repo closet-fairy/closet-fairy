@@ -1,5 +1,6 @@
 """과거 1년치 일평균 기온 일괄 적재. 처음 한 번만 실행.
 실행: python -m scripts.backfill_daily_weather"""
+
 import asyncio
 from datetime import datetime, timedelta
 
@@ -21,4 +22,5 @@ async def main() -> None:
         print(f"  지점 {station_cd}: {'실패' if count < 0 else f'{count}건'}")
 
 
-asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(main())

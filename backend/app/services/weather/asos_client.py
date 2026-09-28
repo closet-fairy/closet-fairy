@@ -1,4 +1,5 @@
 """ASOS 일자료 API — 지점별 일평균 기온. 계절 판정(daily_weather)용."""
+
 from datetime import date
 from decimal import Decimal
 

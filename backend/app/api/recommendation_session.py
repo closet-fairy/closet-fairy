@@ -26,4 +26,6 @@ async def create_recommendation_session(
     """추천 요청. 세션만 만들고 바로 202를 돌려준다. 결과는 폴링으로 조회."""
     session_id = await session_service.create_session(db, member_id, body, now)
     background_tasks.add_task(run_recommendation_pipeline, session_id)
-    return RecommendationSessionCreated(recommendation_session_id=session_id, session_status_cd="active")
+    return RecommendationSessionCreated(
+        recommendation_session_id=session_id, session_status_cd="active"
+    )

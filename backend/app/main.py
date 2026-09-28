@@ -1,7 +1,6 @@
 from fastapi import FastAPI
 
-from app.api import health
-from app.api import recommendation_session
+from app.api import health, recommendation_session
 from app.core.errors import register_exception_handlers
 from app.core.logging import RequestIdMiddleware, setup_logging
 

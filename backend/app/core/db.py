@@ -4,9 +4,10 @@
 --default-time-zone=+00:00을 이미 걸어뒀지만, 클라이언트 세션
 기준으로도 한 번 더 강제해 이중으로 안전하게 만든다.
 """
+
 from collections.abc import AsyncGenerator
 
-from sqlalchemy import event, text
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
