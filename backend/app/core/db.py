@@ -4,6 +4,7 @@ timezone은 docker-compose.yml의 --default-time-zone=+00:00 설정에
 의존한다. 이 설정이 없는 MySQL(예: 관리형 DB)에 붙이면 서버 기본
 timezone을 따르므로, 그런 환경에서는 별도로 맞춰줘야 한다.
 """
+
 from collections.abc import AsyncGenerator
 
 from sqlalchemy import text
