@@ -18,7 +18,10 @@ async def main() -> None:
     print(f"외출 시간대 최저 체감: {r.min_feels_like_temperature}")
     print(f"시간대별 {len(r.hourly)}개, 앞 3개:")
     for h in r.hourly[:3]:
-        print(f"  {h.at:%m-%d %H:%M}  {h.temperature}℃  체감 {h.feels_like_temperature}  {h.weather_condition_cd}")
+        print(
+            f"  {h.at:%m-%d %H:%M}  {h.temperature}℃ " 
+            f"체감 {h.feels_like_temperature}  {h.weather_condition_cd}"
+        )
 
 
 asyncio.run(main())

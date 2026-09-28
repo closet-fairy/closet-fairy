@@ -124,7 +124,12 @@ def test_get_weather_fallback_on_timeout():
 def test_get_weather_fallback_on_key_error():
     # 키 오류는 JSON이 아니라 XML로 온다
     def xml(request):
-        return httpx.Response(200, text="<OpenAPI_ServiceResponse>SERVICE_KEY_IS_NOT_REGISTERED_ERROR</OpenAPI_ServiceResponse>")
+        body = (
+            "<OpenAPI_ServiceResponse>"
+            "SERVICE_KEY_IS_NOT_REGISTERED_ERROR"
+            "</OpenAPI_ServiceResponse>"
+        )
+        return httpx.Response(200, text=body)
 
     client = KmaClient("key", transport=httpx.MockTransport(xml))
     r = asyncio.run(get_weather("서울특별시", None, now=kst(2026, 9, 27, 14, 50), client=client))
