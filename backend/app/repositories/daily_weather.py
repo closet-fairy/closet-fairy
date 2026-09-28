@@ -4,12 +4,12 @@ from decimal import Decimal
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-# PK(region_cd, weather_dt)가 같으면 새로 넣지 않고 값만 갱신 → 두 번 돌려도 행 수가 그대로
+# PK(region_cd, weather_dt)가 같으면 새로 넣지 않고 값만 갱신. 몇 번 다시 돌려도 안전하게 그대로.
 UPSERT_SQL = text(
     """
     INSERT INTO daily_weather (region_cd, weather_dt, avg_temperature)
-    VALUES (:region_cd, :weather_dt, :avg_temperature) AS new
-    ON DUPLICATE KEY UPDATE avg_temperature = new.avg_temperature
+    VALUES (:region_cd, :weather_dt, :avg_temperature)
+    ON DUPLICATE KEY UPDATE avg_temperature = VALUES(avg_temperature)
     """
 )
 
