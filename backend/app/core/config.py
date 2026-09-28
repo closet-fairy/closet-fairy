@@ -39,6 +39,7 @@ class Settings(BaseSettings):
 
     MAX_RETRY_PER_VALIDATION_STAGE: int = 2
 
+
 @lru_cache
 def get_settings() -> Settings:
     return Settings()

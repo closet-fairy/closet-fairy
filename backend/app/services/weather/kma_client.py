@@ -1,4 +1,5 @@
 """기상청 단기예보 API 클라이언트 (초단기실황 + 단기예보)."""
+
 from datetime import datetime
 
 import httpx
@@ -28,7 +29,7 @@ class KmaClient:
 
     async def get_ultra_srt_ncst(self, nx: int, ny: int, now: datetime) -> list[dict]:
         """초단기실황 = 지금 관측값.
-         
+
         category: T1H 기온, RN1 강수, WSD 풍속, PTY 강수형태, REH 습도
         """
         base_date, base_time = ultra_srt_ncst_base(now)
@@ -40,13 +41,13 @@ class KmaClient:
                 "base_date": base_date,
                 "base_time": base_time,
                 "nx": nx,
-                "ny": ny
-                },
+                "ny": ny,
+            },
         )
 
     async def get_vilage_fcst(self, nx: int, ny: int, now: datetime) -> list[dict]:
         """단기예보 = 시간대별 예보.
-         
+
         category: TMP 기온, PCP 강수, WSD 풍속, SKY 하늘, PTY 강수형태, POP 강수확률
         1000행이면 오늘~내일(약 80시간) 분량이 충분히 들어온다.
         """
@@ -59,6 +60,6 @@ class KmaClient:
                 "base_date": base_date,
                 "base_time": base_time,
                 "nx": nx,
-                "ny": ny
-                },
+                "ny": ny,
+            },
         )

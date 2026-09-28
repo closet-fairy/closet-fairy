@@ -18,11 +18,13 @@ def test_fetch_parses_and_skips_missing():
             "response": {
                 "header": {"resultCode": "00", "resultMsg": "NORMAL_SERVICE"},
                 "body": {
-                    "items": {"item": [
-                        {"tm": "2026-09-24", "stnId": "108", "avgTa": "21.3"},
-                        {"tm": "2026-09-25", "stnId": "108", "avgTa": ""},  # 결측
-                        {"tm": "2026-09-26", "stnId": "108", "avgTa": "19.8"},
-                    ]},
+                    "items": {
+                        "item": [
+                            {"tm": "2026-09-24", "stnId": "108", "avgTa": "21.3"},
+                            {"tm": "2026-09-25", "stnId": "108", "avgTa": ""},  # 결측
+                            {"tm": "2026-09-26", "stnId": "108", "avgTa": "19.8"},
+                        ]
+                    },
                     "totalCount": 3,
                 },
             }
@@ -44,8 +46,7 @@ def test_fetch_parses_and_skips_missing():
 def test_fetch_no_data_is_empty():
     def handler(request):
         return httpx.Response(
-            200,
-            json={"response": {"header": {"resultCode": "03", "resultMsg": "NO_DATA"}}}
+            200, json={"response": {"header": {"resultCode": "03", "resultMsg": "NO_DATA"}}}
         )
 
     rows = asyncio.run(
@@ -53,7 +54,8 @@ def test_fetch_no_data_is_empty():
             "108",
             date(2026, 9, 24),
             date(2026, 9, 26),
-            "key", transport=httpx.MockTransport(handler),
+            "key",
+            transport=httpx.MockTransport(handler),
         )
     )
     assert rows == []

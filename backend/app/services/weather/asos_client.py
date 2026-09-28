@@ -1,4 +1,5 @@
 """ASOS 일자료 API 클라이언트. 일별 평균기온(daily_weather)용."""
+
 from datetime import date
 from decimal import Decimal, InvalidOperation
 

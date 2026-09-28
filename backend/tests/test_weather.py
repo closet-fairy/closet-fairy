@@ -17,6 +17,7 @@ def kst(y, mo, d, h, mi):
 
 # ---------- 순수 함수 ----------
 
+
 def test_grid_seoul_city_hall():
     assert to_grid(37.5665, 126.978) == (60, 127)
 
@@ -54,6 +55,7 @@ def test_parse_precipitation():
 
 
 # ---------- API 호출 (가짜 응답) ----------
+
 
 def _ok(items):
     return {
@@ -96,7 +98,8 @@ def test_get_weather_success():
     client = KmaClient("key", transport=httpx.MockTransport(_handler))
     r = asyncio.run(
         get_weather(
-            "서울특별시", "성동구",
+            "서울특별시",
+            "성동구",
             going_out_start=kst(2026, 9, 27, 15, 0),
             going_out_end=kst(2026, 9, 27, 18, 0),
             now=kst(2026, 9, 27, 14, 50),
@@ -125,9 +128,7 @@ def test_get_weather_fallback_on_key_error():
     # 키 오류는 JSON이 아니라 XML로 온다
     def xml(request):
         body = (
-            "<OpenAPI_ServiceResponse>"
-            "SERVICE_KEY_IS_NOT_REGISTERED_ERROR"
-            "</OpenAPI_ServiceResponse>"
+            "<OpenAPI_ServiceResponse>SERVICE_KEY_IS_NOT_REGISTERED_ERROR</OpenAPI_ServiceResponse>"
         )
         return httpx.Response(200, text=body)
 

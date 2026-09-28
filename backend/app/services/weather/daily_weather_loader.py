@@ -1,5 +1,6 @@
 """17개 지점의 일평균 기온을 기간 단위로 받아 daily_weather에 넣는다.
 백필 스크립트와 일 1회 배치가 같이 쓴다."""
+
 import logging
 from datetime import date
 

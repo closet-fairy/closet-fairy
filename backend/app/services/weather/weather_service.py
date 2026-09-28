@@ -3,6 +3,7 @@
 API가 죽어도 추천은 계속돼야 하므로, 어떤 오류든 예외를 밖으로 던지지 않고
 대체값(is_fallback=True)을 돌려준다. (지역 이름이 잘못된 경우만 예외)
 """
+
 import asyncio
 import logging
 import re
@@ -50,9 +51,10 @@ class WeatherResult:
 
 # ---------- 값 해석 ----------
 
+
 def parse_precipitation(value: object) -> float:
     """'강수없음' → 0, '1mm 미만' → 0.5, '1.0mm' → 1.0,
-     
+
     '30.0~50.0mm' → 30.0, '50.0mm 이상' → 50.0
     """
     text = str(value).strip()
@@ -148,6 +150,7 @@ def fallback_weather(now: datetime) -> WeatherResult:
 
 
 # ---------- 진입점 ----------
+
 
 async def get_weather(
     sido_nm: str,
