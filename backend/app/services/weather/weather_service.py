@@ -106,6 +106,7 @@ def combine(
     fcst_items: list[dict],
     going_out_start: datetime,
     going_out_end: datetime,
+    now: datetime,
 ) -> WeatherResult:
     now_values = {i["category"]: i["obsrValue"] for i in ncst_items}
     temp = float(now_values["T1H"])
@@ -123,7 +124,12 @@ def combine(
     # 외출 시간대: 시작 시각이 속한 정시부터 종료 시각까지
     window_start = going_out_start.replace(minute=0, second=0, microsecond=0)
     in_window = [h.feels_like_temperature for h in hourly if window_start <= h.at <= going_out_end]
-    min_feels = min(in_window) if in_window else current_feels
+
+    # 외출 시작이 지금과 같은 정시일 때만 현재 관측값을 후보에 섞는다.
+    # (아니면, 외출과 무관한 지금 기온이 미래 외출의 최저값으로 잘못 반영된다)
+    now_hour = now.replace(minute=0, second=0, microsecond=0)
+    candidates = in_window + [current_feels] if window_start == now_hour else in_window
+    min_feels = min(candidates) if candidates else current_feels
 
     return WeatherResult(
         temperature=temp,
@@ -173,7 +179,7 @@ async def get_weather(
             client.get_ultra_srt_ncst(region.grid_nx, region.grid_ny, now),
             client.get_vilage_fcst(region.grid_nx, region.grid_ny, now),
         )
-        return combine(ncst, fcst, going_out_start, going_out_end)
+        return combine(ncst, fcst, going_out_start, going_out_end, now)
     except Exception:  # noqa: BLE001 - 날씨 장애로 추천이 멈추면 안 된다
         logger.warning("weather.fallback", exc_info=True)
         return fallback_weather(now)

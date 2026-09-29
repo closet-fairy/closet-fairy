@@ -113,6 +113,35 @@ def test_get_weather_success():
     assert r.min_feels_like_temperature == feels_like(6.0, 3.0)
     assert r.hourly_json()[0]["at"].startswith("2026-09-27T15:00")
 
+NCST_COLD_NOW = [
+    {"category": "T1H", "obsrValue": "5.0"},
+    {"category": "RN1", "obsrValue": "0"},
+    {"category": "WSD", "obsrValue": "2.0"},
+    {"category": "PTY", "obsrValue": "0"},
+]
+
+
+def test_get_weather_excludes_current_when_outing_is_later():
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("getUltraSrtNcst"):
+            return httpx.Response(200, json=_ok(NCST_COLD_NOW))
+        return httpx.Response(200, json=_ok(FCST))
+
+    client = KmaClient("key", transport=httpx.MockTransport(handler))
+    r = asyncio.run(
+        get_weather(
+            "서울특별시",
+            "성동구",
+            going_out_start=kst(2026, 9, 27, 15, 0),
+            going_out_end=kst(2026, 9, 27, 18, 0),
+            now=kst(2026, 9, 27, 14, 50),
+            client=client,
+        )
+    )
+    # 현재(5도)가 외출 시간대(15~18시)보다 낮아도, 외출이 지금 정시(14시)가 아니므로 섞이지 않는다.
+    assert r.min_feels_like_temperature == feels_like(6.0, 3.0)
+    assert r.min_feels_like_temperature != feels_like(5.0, 2.0)
+
 
 def test_get_weather_fallback_on_timeout():
     def boom(request):
@@ -127,10 +156,10 @@ def test_get_weather_fallback_on_timeout():
 def test_get_weather_fallback_on_key_error():
     # 키 오류는 JSON이 아니라 XML로 온다
     def xml(request):
-        return httpx.Response(
-            200,
-            text="<OpenAPI_ServiceResponse>SERVICE_KEY_IS_NOT_REGISTERED_ERROR</OpenAPI_ServiceResponse>",
+        body = (
+            "<OpenAPI_ServiceResponse>SERVICE_KEY_IS_NOT_REGISTERED_ERROR</OpenAPI_ServiceResponse>"
         )
+        return httpx.Response(200, text=body)
 
     client = KmaClient("key", transport=httpx.MockTransport(xml))
     r = asyncio.run(get_weather("서울특별시", None, now=kst(2026, 9, 27, 14, 50), client=client))
