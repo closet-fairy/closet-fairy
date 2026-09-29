@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     ANTHROPIC_API_KEY: str = ""
     KMA_SERVICE_KEY: str = ""
     KMA_TIMEOUT_SECONDS: float = 5.0
+    DEV_MEMBER_ID: int = 1
 
     PREFERENCE_SCORE_EMA_ALPHA: Decimal = Decimal("0.95")
     PREFERENCE_SCORE_PRIOR_WEIGHT: Decimal = Decimal("5")
