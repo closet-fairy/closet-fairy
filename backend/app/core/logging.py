@@ -121,3 +121,4 @@ class Event:
     RECOMMEND_FALLBACK = "recommend.fallback"
     PREFERENCE_SETTLED = "preference.settled"
     UCB_EXPLORE_PICK = "ucb.explore_pick"
+    LLM_CALL = "llm.call"
