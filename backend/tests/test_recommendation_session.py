@@ -7,6 +7,7 @@ from app.api.deps import get_now
 from app.core.db import get_db
 from app.main import app
 from app.repositories import recommendation_session as session_repo
+from app.services import recommendation_session as rec_session_service
 from app.services.weather.base_time import KST
 
 FIXED_NOW = datetime(2026, 9, 27, 14, 10, tzinfo=KST)  # 일요일 오후 2시 10분
@@ -23,7 +24,13 @@ def client(monkeypatch):
     async def fake_db():
         yield None
 
+    async def fake_recent_avg_temperatures(db, region_cd, end_date, days):
+        return []
+
     monkeypatch.setattr(session_repo, "insert_session", fake_insert)
+    monkeypatch.setattr(
+        rec_session_service, "get_recent_avg_temperatures", fake_recent_avg_temperatures
+    )
     app.dependency_overrides[get_db] = fake_db
     app.dependency_overrides[get_now] = lambda: FIXED_NOW
     with TestClient(app) as c:

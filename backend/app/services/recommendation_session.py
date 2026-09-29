@@ -4,11 +4,14 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.core.errors import ValidationError
 from app.repositories import recommendation_session as session_repo
+from app.repositories.daily_weather import get_recent_avg_temperatures
 from app.schemas.recommendation_session import RecommendationSessionCreate
 from app.services.weather.base_time import KST
 from app.services.weather.regions import find_region
+from app.services.weather.season import determine_season
 
 
 class PastGoingOutTimeError(ValidationError):
@@ -39,23 +42,12 @@ def to_db_utc(dt: datetime) -> datetime:
     return dt.astimezone(timezone.utc).replace(tzinfo=None)
 
 
-def season_by_month(now: datetime) -> str:
-    """임시 계절 판정. #17(기온 추세 판정) 완료 후 교체한다."""
-    month = now.astimezone(KST).month
-    if month in (3, 4, 5):
-        return "spring"
-    if month in (6, 7, 8):
-        return "summer"
-    if month in (9, 10, 11):
-        return "fall"
-    return "winter"
-
-
 async def create_session(
     db: AsyncSession, member_id: int, req: RecommendationSessionCreate, now: datetime
 ) -> int:
-    find_region(req.sido_nm, req.sigungu_nm)  # 지원하지 않는 지역이면 404
+    region = find_region(req.sido_nm, req.sigungu_nm)  # 지원하지 않는 지역이면 404
     start, end = resolve_going_out_period(req, now)
+    season_cd = await determine_season_for_region(db, region.asos_station_cd, now)
     return await session_repo.insert_session(
         db,
         member_id=member_id,
@@ -67,5 +59,21 @@ async def create_session(
         tpo_input_type_cd=req.tpo_input_type_cd,
         going_out_start_at=to_db_utc(start),
         going_out_end_at=to_db_utc(end),
-        season_cd=season_by_month(now),
+        season_cd=season_cd,
+    )
+
+
+async def determine_season_for_region(db: AsyncSession, region_cd: str, now: datetime) -> str:
+    settings = get_settings()
+    kst_now = now.astimezone(KST)
+    yesterday = kst_now.date() - timedelta(days=1)
+    days_needed = settings.SEASON_MOVING_AVERAGE_WINDOW_DAYS + 1
+    rows = await get_recent_avg_temperatures(db, region_cd, yesterday, days_needed)
+    temps = [t for _, t in rows]
+    return determine_season(
+        temps,
+        kst_now.month,
+        settings.SUMMER_AVG_TEMPERATURE_THRESHOLD,
+        settings.WINTER_AVG_TEMPERATURE_THRESHOLD,
+        settings.SEASON_MOVING_AVERAGE_WINDOW_DAYS,
     )
