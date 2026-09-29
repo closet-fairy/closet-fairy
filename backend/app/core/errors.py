@@ -3,6 +3,7 @@
 서비스 코드는 여기 정의된 예외를 raise하기만 하면,
 전역 핸들러가 {code, message} 형태로 응답을 통일해서 반환한다.
 """
+
 from __future__ import annotations
 
 from fastapi import FastAPI, Request, status
