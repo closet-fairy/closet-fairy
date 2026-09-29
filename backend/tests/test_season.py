@@ -40,3 +40,9 @@ def test_fall_when_trend_is_falling():
 def test_falls_back_to_month_when_data_is_insufficient():
     season = determine_season([], 7, SUMMER_THRESHOLD, WINTER_THRESHOLD, WINDOW_DAYS)
     assert season == "summer"
+
+
+def test_falls_back_to_month_when_one_day_is_missing():
+    recent = temps(*([22.0] * WINDOW_DAYS))
+    season = determine_season(recent, 1, SUMMER_THRESHOLD, WINTER_THRESHOLD, WINDOW_DAYS)
+    assert season == "winter"
