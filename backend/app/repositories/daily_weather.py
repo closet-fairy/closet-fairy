@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
 from sqlalchemy import text
@@ -31,7 +31,8 @@ RECENT_AVG_TEMPERATURES_SQL = text(
     """
     SELECT weather_dt, avg_temperature
     FROM daily_weather
-    WHERE region_cd = :region_cd AND weather_dt <= :end_date
+    WHERE region_cd = :region_cd
+      AND weather_dt BETWEEN :start_date AND :end_date
     ORDER BY weather_dt DESC
     LIMIT :days
     """
@@ -41,10 +42,21 @@ RECENT_AVG_TEMPERATURES_SQL = text(
 async def get_recent_avg_temperatures(
     db: AsyncSession, region_cd: str, end_date: date, days: int
 ) -> list[tuple[date, Decimal]]:
-    """region_cd의 end_date 이전(포함) 최근 days일치 평균기온을, 날짜 오름차순으로 반환한다."""
+    """region_cd의 end_date 이전(포함) days일 구간 평균기온을, 날짜 오름차순으로 반환한다.
+
+    구간 하한(end_date - days + 1)을 걸어서, 중간에 빠진 날이 있어도 그만큼
+    더 오래된 날짜를 끌어와 개수를 채우지 않는다. 행이 모자라면 호출부가
+    데이터 부족으로 보고 월 기준 판정으로 대체한다.
+    """
+    start_date = end_date - timedelta(days=days - 1)
     result = await db.execute(
         RECENT_AVG_TEMPERATURES_SQL,
-        {"region_cd": region_cd, "end_date": end_date, "days": days},
+        {
+            "region_cd": region_cd,
+            "start_date": start_date,
+            "end_date": end_date,
+            "days": days,
+        },
     )
     rows = result.all()
     return [(row.weather_dt, row.avg_temperature) for row in reversed(rows)]
