@@ -17,7 +17,6 @@ AttributeType = Literal["style", "color"]
 
 PREFERENCE_QUANTUM = Decimal("0.0001")
 UCB_QUANTUM = Decimal("0.0001")
-PREFERRED_OUTFIT_COUNT = 3
 INFINITE_UCB = Decimal("Infinity")
 
 
@@ -141,9 +140,7 @@ def select_exploration_style(
     settings: Settings,
     rng: random.Random,
 ) -> str | None:
-    excluded = set(style_result.avoided)
-    if style_result.preference_injected:
-        excluded.update(style_result.preferred[:PREFERRED_OUTFIT_COUNT])
+    excluded = set(style_result.avoided) | set(style_result.preferred)
     candidates = [row for row in rows if row.attribute_value not in excluded]
 
     if not candidates:

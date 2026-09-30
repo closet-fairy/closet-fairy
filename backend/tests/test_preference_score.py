@@ -160,7 +160,7 @@ def pick(rows, n_sessions=5, seed=0):
     return select_exploration_style(result, rows, n_sessions, SETTINGS, random.Random(seed))
 
 
-def test_ucb_excludes_top3_preferred_and_avoided():
+def test_ucb_excludes_preferred_and_avoided():
     scores = {v: ("0", "50") for v in STYLES}
     scores.update({"minimal": ("3", "0"), "casual": ("2", "0"), "street": ("1", "0")})
     scores.update({"feminine": ("-0.1", "2.85"), "unique": ("-0.2", "2.85")})
@@ -173,6 +173,19 @@ def test_ucb_excludes_top3_preferred_and_avoided():
     allowed = set(STYLES) - {"minimal", "casual", "street", "feminine", "unique"}
     for seed in range(20):
         assert pick(rows, seed=seed) in allowed
+
+
+def test_ucb_picks_low_preferred_even_with_lower_ranked_preferred():
+    scores = {v: ("0", "50") for v in STYLES}
+    scores.update({"minimal": ("5", "0"), "casual": ("4", "0"), "street": ("3", "0"),
+                   "classic": ("2", "0"), "formal": ("1", "0")})
+    rows = make_rows(STYLES, scores)
+
+    result = classify("style", rows, SETTINGS)
+    assert result.preferred == ["minimal", "casual", "street", "classic", "formal"]
+
+    for seed in range(20):
+        assert pick(rows, seed=seed) in result.low_preferred
 
 
 def test_ucb_not_injected_excludes_only_avoided():
@@ -210,14 +223,15 @@ def test_ucb_uses_ln2_for_zero_or_one_session(caplog):
 
 
 def test_ucb_returns_none_without_candidates():
-    rows = make_rows(["minimal", "casual", "street", "classic"])
+    values = ["minimal", "casual", "street", "classic", "formal"]
+    rows = make_rows(values)
     result = ClassificationResult(
         attribute_type="style",
         preference_injected=True,
-        avoided=["classic"],
-        preferred=["minimal", "casual", "street"],
+        avoided=["formal"],
+        preferred=["minimal", "casual", "street", "classic"],
         low_preferred=[],
         neutral=[],
-        preference_by_value={v: Decimal("0") for v in ["minimal", "casual", "street", "classic"]},
+        preference_by_value={v: Decimal("0") for v in values},
     )
     assert select_exploration_style(result, rows, 3, SETTINGS, random.Random(0)) is None
