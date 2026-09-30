@@ -25,10 +25,10 @@ class Settings(BaseSettings):
     SCORE_DELTA_RATING_2: Decimal = Decimal("0.0")
     SCORE_DELTA_RATING_1: Decimal = Decimal("-1.0")
 
-    PREFERENCE_SCORE_MIN: Decimal = Decimal("-15.00")
-    # EMA 정상상태 상한은 최대 델타 / (1 - alpha) = 3.0 / 0.05 = 60이다. 30으로 두면
-    # 취향이 강한 속성들이 전부 30에 붙어 구분이 사라진다. 하한은 -0.5 / 0.05 = -10이라
-    # MIN -15는 여유가 있다.
+    # EMA 정상상태 범위는 델타 / (1 - alpha)이므로 상한은 3.0 / 0.05 = 60,
+    # 하한은 -1.0 / 0.05 = -20이다. 상한을 30으로 두면 취향이 강한 속성들이
+    # 전부 30에 붙어 구분이 사라진다.
+    PREFERENCE_SCORE_MIN: Decimal = Decimal("-20.00")
     PREFERENCE_SCORE_MAX: Decimal = Decimal("60.00")
     PREFERENCE_SCORE_DECIMAL_PLACES: int = 2
     PREFERENCE_SCORE_ZERO_EPSILON: Decimal = Decimal("0.05")

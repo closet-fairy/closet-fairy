@@ -1,7 +1,16 @@
+from decimal import Decimal
+from typing import NamedTuple
+
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.services.preference_score import PreferenceRow
+
+class PreferenceRow(NamedTuple):
+    attribute_value: str
+    score_sum: Decimal
+    exposure_count: Decimal
+    display_seq: int
+
 
 SELECT_SCORES_SQL = text(
     """
@@ -11,6 +20,7 @@ SELECT_SCORES_SQL = text(
     LEFT JOIN style s ON ps.attribute_type_cd = 'style' AND s.style_cd = ps.attribute_value
     LEFT JOIN color c ON ps.attribute_type_cd = 'color' AND c.color_cd = ps.attribute_value
     WHERE ps.member_id = :member_id
+      AND (s.style_id IS NOT NULL OR c.color_id IS NOT NULL)
     ORDER BY ps.attribute_type_cd, display_seq
     """
 )

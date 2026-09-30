@@ -6,10 +6,11 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal
 from itertools import groupby
-from typing import Literal, NamedTuple
+from typing import Literal
 
 from app.core.config import Settings
 from app.core.logging import Event
+from app.repositories.preference_score import PreferenceRow
 
 logger = logging.getLogger(__name__)
 
@@ -18,13 +19,6 @@ AttributeType = Literal["style", "color"]
 PREFERENCE_QUANTUM = Decimal("0.0001")
 UCB_QUANTUM = Decimal("0.0001")
 INFINITE_UCB = Decimal("Infinity")
-
-
-class PreferenceRow(NamedTuple):
-    attribute_value: str
-    score_sum: Decimal
-    exposure_count: Decimal
-    display_seq: int
 
 
 @dataclass(frozen=True)
@@ -127,7 +121,10 @@ def _pick_avoided(
     avoided: set[str] = set()
     for _, group in groupby(candidates, key=lambda v: preference[v]):
         tied = list(group)
-        if len(avoided) + len(tied) > limit:
+        # 가장 낮은 동점 묶음은 한도를 넘어도 통째로 기피에 넣는다. 스타일이 여러 개 태깅된
+        # 옷은 그 스타일들의 S·N이 똑같이 쌓여 최하위가 동점이 되기 쉬운데, 이때 멈추면
+        # 기피가 비어 버린다.
+        if avoided and len(avoided) + len(tied) > limit:
             break
         avoided.update(tied)
     return avoided

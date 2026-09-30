@@ -4,9 +4,9 @@ from decimal import Decimal
 
 from app.core.config import Settings
 from app.core.logging import Event
+from app.repositories.preference_score import PreferenceRow
 from app.services.preference_score import (
     ClassificationResult,
-    PreferenceRow,
     classify,
     select_exploration_style,
     update_ema,
@@ -55,7 +55,7 @@ def test_ema_clips_to_max():
 
 
 def test_ema_clips_to_min():
-    assert str(ema("-15.00", "20", "-2.0")[0]) == "-15.00"  # -16.25
+    assert str(ema("-20.00", "20", "-2.0")[0]) == "-20.00"  # -21.00
 
 
 def test_ema_small_score_snaps_to_zero():
@@ -116,6 +116,13 @@ def test_avoided_boundary_tie_group_excluded():
     scores = {"minimal": ("-3", "3"), "casual": ("-2", "3"), "street": ("-2", "3")}
     result = classify("style", make_rows(STYLES, scores), SETTINGS)
     assert result.avoided == ["minimal"]
+
+
+def test_avoided_includes_whole_lowest_tie_group_over_limit():
+    scores = {v: ("-15", "20") for v in ["minimal", "casual", "street"]}
+    scores["classic"] = ("-10", "20")
+    result = classify("style", make_rows(STYLES, scores), SETTINGS)
+    assert result.avoided == ["minimal", "casual", "street"]
 
 
 def test_preferred_boundary_tie_included():
