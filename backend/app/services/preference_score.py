@@ -45,9 +45,8 @@ def update_ema(
     if abs(new_score) < settings.PREFERENCE_SCORE_ZERO_EPSILON:
         new_score = Decimal(0)
     new_score = min(max(new_score, settings.PREFERENCE_SCORE_MIN), settings.PREFERENCE_SCORE_MAX)
-    new_count = max(new_count, Decimal(0))
 
-    return new_score.quantize(quantum), new_count.quantize(quantum)
+    return new_score.quantize(quantum, rounding=ROUND_HALF_UP), new_count
 
 
 def compute_preference(score_sum: Decimal, exposure_count: Decimal, settings: Settings) -> Decimal:
