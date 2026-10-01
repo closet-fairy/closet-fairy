@@ -21,9 +21,17 @@ class Settings(BaseSettings):
 
     SCORE_DELTA_AUTO_REJECTED: Decimal = Decimal("-0.1")
     SCORE_DELTA_REGENERATION_REQUESTED: Decimal = Decimal("-0.5")
+    SCORE_DELTA_RATING_5: Decimal = Decimal("3.0")
+    SCORE_DELTA_RATING_4: Decimal = Decimal("2.0")
+    SCORE_DELTA_RATING_3: Decimal = Decimal("1.0")
+    SCORE_DELTA_RATING_2: Decimal = Decimal("0.0")
+    SCORE_DELTA_RATING_1: Decimal = Decimal("-1.0")
 
-    PREFERENCE_SCORE_MIN: Decimal = Decimal("-15.00")
-    PREFERENCE_SCORE_MAX: Decimal = Decimal("30.00")
+    # EMA 정상상태 범위는 델타 / (1 - alpha)이므로 상한은 3.0 / 0.05 = 60,
+    # 하한은 -1.0 / 0.05 = -20이다. 상한을 30으로 두면 취향이 강한 속성들이
+    # 전부 30에 붙어 구분이 사라진다.
+    PREFERENCE_SCORE_MIN: Decimal = Decimal("-20.00")
+    PREFERENCE_SCORE_MAX: Decimal = Decimal("60.00")
     PREFERENCE_SCORE_DECIMAL_PLACES: int = 2
     PREFERENCE_SCORE_ZERO_EPSILON: Decimal = Decimal("0.05")
 
@@ -31,7 +39,9 @@ class Settings(BaseSettings):
 
     PREFERRED_TOP_RATIO: Decimal = Decimal("0.5")
     DISLIKE_BOTTOM_RATIO: Decimal = Decimal("0.2")
-    DISLIKE_MIN_FEEDBACK_COUNT: int = 3
+    # exposure_count는 정수가 아니라 EMA 값이다. 노출 3회면 1 → 1.95 → 2.85이므로,
+    # 3.0으로 두면 실제로는 4회 노출을 요구하게 된다.
+    DISLIKE_MIN_FEEDBACK_COUNT: Decimal = Decimal("2.85")
 
     EXPLORATION_UCB_COEFFICIENT: Decimal = Decimal("0.5")
 
