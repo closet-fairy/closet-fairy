@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from datetime import datetime
 
 from sqlalchemy import text
@@ -49,3 +50,46 @@ async def insert_session(
     )
     await db.commit()
     return int(result.lastrowid)
+
+
+@dataclass(frozen=True)
+class SessionRow:
+    member_id: int
+    sido_nm: str
+    sigungu_nm: str | None
+    going_out_start_at: datetime
+    going_out_end_at: datetime
+    season_cd: str
+    tpo_cd: str
+    tpo_text: str | None
+    tpo_input_type_cd: str
+
+
+SELECT_SESSION_SQL = text(
+    """
+    SELECT member_id, sido_nm, sigungu_nm, going_out_start_at, going_out_end_at,
+           season_cd, tpo_cd, tpo_text, tpo_input_type_cd
+    FROM recommendation_session
+    WHERE recommendation_session_id = :recommendation_session_id
+    """
+)
+
+
+async def get_session(db: AsyncSession, recommendation_session_id: int) -> SessionRow | None:
+    result = await db.execute(
+        SELECT_SESSION_SQL, {"recommendation_session_id": recommendation_session_id}
+    )
+    row = result.first()
+    if row is None:
+        return None
+    return SessionRow(
+        member_id=row.member_id,
+        sido_nm=row.sido_nm,
+        sigungu_nm=row.sigungu_nm,
+        going_out_start_at=row.going_out_start_at,
+        going_out_end_at=row.going_out_end_at,
+        season_cd=row.season_cd,
+        tpo_cd=row.tpo_cd,
+        tpo_text=row.tpo_text,
+        tpo_input_type_cd=row.tpo_input_type_cd,
+    )
