@@ -1,0 +1,56 @@
+## 날씨
+- 기온 17.5℃ (체감 16.2℃), 맑음
+- 강수 0.0mm, 풍속 2.1m/s
+- 외출 시간대 최저 체감온도 14.0℃
+
+## 외출 시간대 예보
+- 09:00 16.0℃ (체감 15.2℃), 맑음, 강수 0.0mm
+- 10:00 17.5℃ (체감 16.8℃), 구름많음, 강수 0.0mm
+- 11:00 18.0℃ (체감 17.1℃), 비, 강수 0.5mm
+
+## 외출 시간
+09:30~11:00
+
+## 계절
+가을 (fall)
+
+## TPO
+출근 (work)
+
+## 회원 정보
+- 체질: 추위를 많이 탐
+- 연령대: 20대
+- 성별: 선택 안 함
+
+## 아우터
+필수
+
+## 선호 스타일 (선호도 높은 순)
+classic, minimal, casual
+
+## 선호 색상 (선호도 높은 순)
+navy, black
+
+## 기피 스타일
+bohemian, street
+
+## 기피 색상
+orange, pink
+
+## 탐색 스타일
+chic
+
+## 후보 목록
+형식: id | 분류 | 이름 | 색상 | 스타일 | 두께 | 출처 | 최근 착용
+id:o1042 | outer | 네이비 블레이저 | navy | classic,minimal | medium | 보유 | -
+id:e7 | outer | 베이지 트렌치코트 | beige | classic | medium | 에센셜 | -
+id:o2002 | top | 그레이 니트 | gray | casual | medium | 보유 | -
+id:o2001 | top | 화이트 옥스퍼드 셔츠 | white | classic,preppy | thin | 보유 | 최근
+id:o3001 | bottom | 블랙 슬랙스 | black | minimal | medium | 보유 | -
+id:e12 | bottom | 데님 팬츠 | blue | casual | medium | 에센셜 | -
+id:o4001 | shoes | - | - | - | - | 보유 | -
+id:e21 | shoes | 블랙 로퍼 | black | classic | - | 에센셜 | -
+id:o5001 | accessories | 가죽 벨트 | brown | classic | - | 보유 | -
+
+## 생성 요청
+코디 세트 4벌을 만든다. preferred 3벌, exploratory 1벌.
