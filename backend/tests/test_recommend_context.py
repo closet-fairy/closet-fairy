@@ -83,6 +83,9 @@ async def test_context_filled_for_dev_member_without_setting(common_mocks, monke
     assert context.recommendation_session_id == 123
     assert context.member_id == 1
     assert context.season_cd == "fall"
+    assert context.tpo_cd == "daily"
+    assert context.tpo_text is None
+    assert context.tpo_input_type_cd == "preset"
     assert context.going_out_start_at.isoformat() == "2026-09-27T15:00:00+09:00"
     assert context.going_out_end_at.isoformat() == "2026-09-27T18:00:00+09:00"
     assert context.weather.temperature == 20.0
