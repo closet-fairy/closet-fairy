@@ -27,9 +27,15 @@ def client(monkeypatch):
     async def fake_recent_avg_temperatures(db, region_cd, end_date, days):
         return []
 
+    async def fake_latest_available_date(db, region_cd, end_date):
+        return None
+
     monkeypatch.setattr(session_repo, "insert_session", fake_insert)
     monkeypatch.setattr(
         rec_session_service, "get_recent_avg_temperatures", fake_recent_avg_temperatures
+    )
+    monkeypatch.setattr(
+        rec_session_service, "get_latest_available_date", fake_latest_available_date
     )
     app.dependency_overrides[get_db] = fake_db
     app.dependency_overrides[get_now] = lambda: FIXED_NOW

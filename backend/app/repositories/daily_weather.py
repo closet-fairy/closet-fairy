@@ -60,3 +60,27 @@ async def get_recent_avg_temperatures(
     )
     rows = result.all()
     return [(row.weather_dt, row.avg_temperature) for row in reversed(rows)]
+
+
+LATEST_WEATHER_DATE_SQL = text(
+    """
+    SELECT MAX(weather_dt) AS latest_date
+    FROM daily_weather
+    WHERE region_cd = :region_cd AND weather_dt <= :end_date
+    """
+)
+
+
+async def get_latest_available_date(
+    db: AsyncSession, region_cd: str, end_date: date
+) -> date | None:
+    """region_cd의 end_date 이전(포함) 데이터 중 실제로 존재하는 가장 최근 날짜.
+
+    배치가 아직 돌지 않아 "어제" 행이 없을 수 있으므로, 끝점을 고정하지 않고
+    실제 최신 적재일을 찾아 그 날짜를 기준으로 이동평균을 계산한다.
+    """
+    result = await db.execute(
+        LATEST_WEATHER_DATE_SQL, {"region_cd": region_cd, "end_date": end_date}
+    )
+    row = result.first()
+    return row.latest_date if row else None

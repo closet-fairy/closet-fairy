@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.core.errors import ValidationError
 from app.repositories import recommendation_session as session_repo
-from app.repositories.daily_weather import get_recent_avg_temperatures
+from app.repositories.daily_weather import get_latest_available_date, get_recent_avg_temperatures
 from app.schemas.recommendation_session import RecommendationSessionCreate
 from app.services.weather.base_time import KST
 from app.services.weather.regions import find_region
@@ -66,10 +66,13 @@ async def create_session(
 async def determine_season_for_region(db: AsyncSession, region_cd: str, now: datetime) -> str:
     settings = get_settings()
     kst_now = now.astimezone(KST)
-    yesterday = kst_now.date() - timedelta(days=1)
-    days_needed = settings.SEASON_MOVING_AVERAGE_WINDOW_DAYS + 1
-    rows = await get_recent_avg_temperatures(db, region_cd, yesterday, days_needed)
-    temps = [t for _, t in rows]
+    latest_date = await get_latest_available_date(db, region_cd, kst_now.date())
+    if latest_date is None:
+        temps = []
+    else:
+        days_needed = settings.SEASON_MOVING_AVERAGE_WINDOW_DAYS + 1
+        rows = await get_recent_avg_temperatures(db, region_cd, latest_date, days_needed)
+        temps = [t for _, t in rows]
     return determine_season(
         temps,
         kst_now.month,
