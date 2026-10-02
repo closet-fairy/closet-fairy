@@ -12,13 +12,14 @@ NOW = datetime(2026, 7, 15, 12, 0)
 
 def _clothing(
     clothing_id: int,
+    category_cd: str = "outer",
     thickness_cd: str | None = "medium",
     is_waterproof: bool | None = False,
     seasons: list[str] | None = None,
 ) -> ClothingCandidate:
     return ClothingCandidate(
         clothing_id=clothing_id,
-        category_cd="outer",
+        category_cd=category_cd,
         accessory_type_cd=None,
         item_name=f"item-{clothing_id}",
         color_cd="black",
@@ -53,12 +54,14 @@ def _context(
     season_cd: str = "summer",
     tpo_cd: str = "daily",
     tpo_input_type_cd: str = "preset",
+    going_out_start_at: datetime = NOW,
+    going_out_end_at: datetime = NOW,
 ) -> RecommendContext:
     return RecommendContext(
         recommendation_session_id=1,
         member_id=1,
-        going_out_start_at=NOW,
-        going_out_end_at=NOW,
+        going_out_start_at=going_out_start_at,
+        going_out_end_at=going_out_end_at,
         season_cd=season_cd,
         tpo_cd=tpo_cd,
         tpo_text=None,
@@ -73,8 +76,44 @@ def _context(
 
 
 def test_summer_padding_is_removed():
-    padding = _clothing(1, thickness_cd="thick", seasons=["summer"])
+    padding = _clothing(1, category_cd="outer", thickness_cd="thick", seasons=["summer"])
     context = _context([padding], _weather(min_feels_like_temperature=28.0))
+
+    result = filter_clothing(context)
+
+    assert result.candidates == []
+
+
+def test_season_mismatch_is_removed():
+    winter_only = _clothing(1, category_cd="top", thickness_cd="medium", seasons=["winter"])
+    context = _context([winter_only], _weather(min_feels_like_temperature=25.0), season_cd="summer")
+
+    result = filter_clothing(context)
+
+    assert result.candidates == []
+
+
+def test_untagged_season_passes_through():
+    untagged = _clothing(1, category_cd="top", thickness_cd="medium", seasons=[])
+    context = _context([untagged], _weather(min_feels_like_temperature=25.0), season_cd="summer")
+
+    result = filter_clothing(context)
+
+    assert [c.clothing_id for c in result.candidates] == [1]
+
+
+def test_thin_top_survives_winter_for_layering():
+    thin_top = _clothing(1, category_cd="top", thickness_cd="thin", seasons=["winter"])
+    context = _context([thin_top], _weather(min_feels_like_temperature=-5.0), season_cd="winter")
+
+    result = filter_clothing(context)
+
+    assert [c.clothing_id for c in result.candidates] == [1]
+
+
+def test_thin_outer_is_removed_in_winter():
+    thin_outer = _clothing(1, category_cd="outer", thickness_cd="thin", seasons=["winter"])
+    context = _context([thin_outer], _weather(min_feels_like_temperature=-5.0), season_cd="winter")
 
     result = filter_clothing(context)
 
@@ -109,11 +148,13 @@ def test_custom_tpo_skips_formal_rule():
     assert result.outer_requirement == "excluded"
 
 
-def test_rain_forecast_prioritizes_waterproof_items():
+def test_rain_in_going_out_window_prioritizes_waterproof_items():
     non_waterproof = _clothing(1, is_waterproof=False, seasons=["summer"])
     waterproof = _clothing(2, is_waterproof=True, seasons=["summer"])
+    going_out_start = datetime(2026, 7, 15, 12, 0)
+    going_out_end = datetime(2026, 7, 15, 14, 0)
     rainy_hour = HourlyWeather(
-        at=NOW,
+        at=datetime(2026, 7, 15, 13, 0),
         temperature=20.0,
         feels_like_temperature=20.0,
         precipitation=5.0,
@@ -123,9 +164,35 @@ def test_rain_forecast_prioritizes_waterproof_items():
     context = _context(
         [non_waterproof, waterproof],
         _weather(min_feels_like_temperature=20.0, hourly=[rainy_hour]),
+        going_out_start_at=going_out_start,
+        going_out_end_at=going_out_end,
     )
 
     result = filter_clothing(context)
 
     assert [c.clothing_id for c in result.candidates] == [2, 1]
-    assert result.rain_expected is True
+    assert result.precipitation_expected is True
+
+
+def test_rain_outside_going_out_window_is_ignored():
+    non_waterproof = _clothing(1, is_waterproof=False, seasons=["summer"])
+    going_out_start = datetime(2026, 7, 15, 12, 0)
+    going_out_end = datetime(2026, 7, 15, 14, 0)
+    rainy_tomorrow = HourlyWeather(
+        at=datetime(2026, 7, 16, 3, 0),
+        temperature=18.0,
+        feels_like_temperature=18.0,
+        precipitation=5.0,
+        wind_speed=1.0,
+        weather_condition_cd="rain",
+    )
+    context = _context(
+        [non_waterproof],
+        _weather(min_feels_like_temperature=20.0, hourly=[rainy_tomorrow]),
+        going_out_start_at=going_out_start,
+        going_out_end_at=going_out_end,
+    )
+
+    result = filter_clothing(context)
+
+    assert result.precipitation_expected is False

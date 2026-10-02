@@ -18,14 +18,14 @@ OuterRequirement = Literal["required", "optional", "excluded"]
 # 자유 입력(custom)은 1차 룰을 건너뛰고 2차 AI 리뷰어에 위임한다 (FR-REC-03-1).
 FORMAL_TPO_CODES = {"formal"}
 
-RAIN_CONDITION_CODES = {"rain", "sleet", "snow"}
+PRECIPITATION_CONDITION_CODES = {"rain", "sleet", "snow"}
 
 
 @dataclass
 class FilterResult:
     candidates: list[ClothingCandidate]
     outer_requirement: OuterRequirement
-    rain_expected: bool
+    precipitation_expected: bool
 
 
 def _season_matches(candidate: ClothingCandidate, season_cd: str) -> bool:
@@ -41,18 +41,27 @@ def _thickness_matches(candidate: ClothingCandidate, min_feels_like: float) -> b
         settings.THICK_CLOTHING_MAX_FEELS_LIKE_TEMPERATURE
     ):
         return False
-    if candidate.thickness_cd == "thin" and min_feels_like < float(
-        settings.THIN_CLOTHING_MIN_FEELS_LIKE_TEMPERATURE
+    # 얇은 옷은 아우터(단독 착용) 슬롯에서만 추위 기준으로 제외한다.
+    # 상의·하의는 코트/니트 안에 겹쳐 입는 정상적인 후보라 그대로 둔다.
+    if (
+        candidate.thickness_cd == "thin"
+        and candidate.category_cd == "outer"
+        and min_feels_like < float(settings.THIN_CLOTHING_MIN_FEELS_LIKE_TEMPERATURE)
     ):
         return False
     return True
 
 
-def _is_rain_expected(context: RecommendContext) -> bool:
+def _is_precipitation_expected(context: RecommendContext) -> bool:
     weather = context.weather
-    if weather.weather_condition_cd in RAIN_CONDITION_CODES:
+    if weather.weather_condition_cd in PRECIPITATION_CONDITION_CODES:
         return True
-    return any(h.weather_condition_cd in RAIN_CONDITION_CODES for h in weather.hourly)
+    window_start = context.going_out_start_at.replace(minute=0, second=0, microsecond=0)
+    return any(
+        h.weather_condition_cd in PRECIPITATION_CONDITION_CODES
+        for h in weather.hourly
+        if window_start <= h.at <= context.going_out_end_at
+    )
 
 
 def _determine_outer_requirement(context: RecommendContext) -> OuterRequirement:
@@ -71,7 +80,7 @@ def _determine_outer_requirement(context: RecommendContext) -> OuterRequirement:
 
 def filter_clothing(context: RecommendContext) -> FilterResult:
     """계절 역행 제거 + 두께/체감온도 필터링 + 아우터 판정을 한 번에 수행한다."""
-    rain_expected = _is_rain_expected(context)
+    precipitation_expected = _is_precipitation_expected(context)
     min_feels_like = context.weather.min_feels_like_temperature
 
     candidates = [
@@ -80,12 +89,12 @@ def filter_clothing(context: RecommendContext) -> FilterResult:
         if _season_matches(c, context.season_cd) and _thickness_matches(c, min_feels_like)
     ]
 
-    if rain_expected:
+    if precipitation_expected:
         # 방수 우선: 제외하지 않고 방수 의류를 앞쪽으로 정렬한다 (FR-REC-02).
         candidates = sorted(candidates, key=lambda c: 0 if c.is_waterproof else 1)
 
     return FilterResult(
         candidates=candidates,
         outer_requirement=_determine_outer_requirement(context),
-        rain_expected=rain_expected,
+        precipitation_expected=precipitation_expected,
     )
