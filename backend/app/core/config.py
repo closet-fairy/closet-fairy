@@ -16,6 +16,11 @@ class Settings(BaseSettings):
     KMA_TIMEOUT_SECONDS: float = 5.0
     DEV_MEMBER_ID: int = 1
 
+    SEASON_MOVING_AVERAGE_WINDOW_DAYS: int = 9
+    SEASON_DATA_MAX_STALENESS_DAYS: int = 2
+    SUMMER_AVG_TEMPERATURE_THRESHOLD: Decimal = Decimal("20.0")
+    WINTER_AVG_TEMPERATURE_THRESHOLD: Decimal = Decimal("5.0")
+
     PREFERENCE_SCORE_EMA_ALPHA: Decimal = Decimal("0.95")
     PREFERENCE_SCORE_PRIOR_WEIGHT: Decimal = Decimal("5")
 
@@ -46,7 +51,6 @@ class Settings(BaseSettings):
     EXPLORATION_UCB_COEFFICIENT: Decimal = Decimal("0.5")
 
     OUTER_REQUIRED_FEELS_LIKE_TEMPERATURE: Decimal = Decimal("16.0")
-    SUMMER_AVG_TEMPERATURE_THRESHOLD: Decimal = Decimal("20.0")
 
     MAX_RETRY_PER_VALIDATION_STAGE: int = 2
 

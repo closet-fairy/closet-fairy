@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
 from sqlalchemy import text
@@ -25,3 +25,66 @@ async def upsert_daily_weather(
     )
     await db.commit()
     return len(rows)
+
+
+RECENT_AVG_TEMPERATURES_SQL = text(
+    """
+    SELECT weather_dt, avg_temperature
+    FROM daily_weather
+    WHERE region_cd = :region_cd
+      AND weather_dt BETWEEN :start_date AND :end_date
+    ORDER BY weather_dt DESC
+    LIMIT :days
+    """
+)
+
+
+async def get_recent_avg_temperatures(
+    db: AsyncSession, region_cd: str, end_date: date, days: int
+) -> list[tuple[date, Decimal]]:
+    """region_cd의 end_date 이전(포함) days일 구간 평균기온을, 날짜 오름차순으로 반환한다.
+
+    구간 하한(end_date - days + 1)을 걸어서, 중간에 빠진 날이 있어도 그만큼
+    더 오래된 날짜를 끌어와 개수를 채우지 않는다. 행이 모자라면 호출부가
+    데이터 부족으로 보고 월 기준 판정으로 대체한다.
+    """
+    start_date = end_date - timedelta(days=days - 1)
+    result = await db.execute(
+        RECENT_AVG_TEMPERATURES_SQL,
+        {
+            "region_cd": region_cd,
+            "start_date": start_date,
+            "end_date": end_date,
+            "days": days,
+        },
+    )
+    rows = result.all()
+    return [(row.weather_dt, row.avg_temperature) for row in reversed(rows)]
+
+
+LATEST_WEATHER_DATE_SQL = text(
+    """
+    SELECT MAX(weather_dt) AS latest_date
+    FROM daily_weather
+    WHERE region_cd = :region_cd
+      AND weather_dt BETWEEN :start_date AND :end_date
+    """
+)
+
+
+async def get_latest_available_date(
+    db: AsyncSession, region_cd: str, end_date: date, max_staleness_days: int
+) -> date | None:
+    """region_cd의 end_date 기준 최근 max_staleness_days일 내에서 실제로 존재하는 가장 최근 날짜.
+
+    배치가 하루 정도 늦게 돌아 "어제" 행이 없는 경우는 허용하되, 배치가 장기간
+    멈춰 아주 오래된 데이터만 남아있으면 None을 반환해 호출부가 데이터 부족으로
+    보고 월 기준 판정으로 대체하게 한다.
+    """
+    start_date = end_date - timedelta(days=max_staleness_days)
+    result = await db.execute(
+        LATEST_WEATHER_DATE_SQL,
+        {"region_cd": region_cd, "start_date": start_date, "end_date": end_date},
+    )
+    row = result.first()
+    return row.latest_date if row else None
