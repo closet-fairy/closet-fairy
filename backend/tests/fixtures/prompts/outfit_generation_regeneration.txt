@@ -41,16 +41,19 @@ orange, pink
 chic
 
 ## 후보 목록
-형식: id | 분류 | 이름 | 색상 | 스타일 | 두께 | 출처 | 최근 착용
-id:o1042 | outer | 네이비 블레이저 | navy | classic,minimal | medium | 보유 | -
-id:e7 | outer | 베이지 트렌치코트 | beige | classic | medium | 에센셜 | -
-id:o2002 | top | 그레이 니트 | gray | casual | medium | 보유 | -
-id:o2001 | top | 화이트 옥스퍼드 셔츠 | white | classic,preppy | thin | 보유 | 최근
-id:o3001 | bottom | 블랙 슬랙스 | black | minimal | medium | 보유 | -
-id:e12 | bottom | 데님 팬츠 | blue | casual | medium | 에센셜 | -
-id:o4001 | shoes | - | - | - | - | 보유 | -
-id:e21 | shoes | 블랙 로퍼 | black | classic | - | 에센셜 | -
-id:o5001 | accessories | 가죽 벨트 | brown | classic | - | 보유 | -
+형식: id | 분류 | 이름 | 색상 | 스타일 | 두께 | 출처
+id:o1042 | outer | 네이비 블레이저 | navy | classic,minimal | medium | 보유
+id:e7 | outer | 베이지 트렌치코트 | beige | classic | medium | 에센셜
+id:o2002 | top | 그레이 니트 | gray | casual | medium | 보유
+id:o2001 | top | 화이트 옥스퍼드 셔츠 | white | classic,preppy | thin | 보유
+id:o3001 | bottom | 블랙 슬랙스 | black | minimal | medium | 보유
+id:e12 | bottom | 데님 팬츠 | blue | casual | medium | 에센셜
+id:o4001 | shoes | - | - | - | - | 보유
+id:e21 | shoes | 블랙 로퍼 | black | classic | - | 에센셜
+id:o5001 | accessories | 가죽 벨트 | brown | classic | - | 보유
+
+## 최근 채택한 옷
+o2001
 
 ## 유지 중인 세트
 - 세트 1: e21, e7, o2002, o3001

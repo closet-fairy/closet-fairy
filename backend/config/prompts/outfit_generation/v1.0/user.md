@@ -47,9 +47,14 @@
 
 {{/exploration_style}}
 ## 후보 목록
-형식: id | 분류 | 이름 | 색상 | 스타일 | 두께 | 출처 | 최근 착용
+형식: id | 분류 | 이름 | 색상 | 스타일 | 두께 | 출처
 {{candidates}}
 
+{{#recently_adopted}}
+## 최근 채택한 옷
+{{recently_adopted}}
+
+{{/recently_adopted}}
 {{#kept_outfits}}
 ## 유지 중인 세트
 {{kept_outfits}}

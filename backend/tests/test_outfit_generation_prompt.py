@@ -343,15 +343,72 @@ def test_candidate_lines_are_sorted_by_category_recency_source_and_id():
 def test_candidate_line_format():
     lines = candidate_lines(assemble_outfit_generation_prompt(make_input()).user)
 
+    assert lines[0] == "id:o1042 | outer | 네이비 블레이저 | navy | classic,minimal | medium | 보유"
     assert (
-        lines[0]
-        == "id:o1042 | outer | 네이비 블레이저 | navy | classic,minimal | medium | 보유 | -"
+        lines[3] == "id:o2001 | top | 화이트 옥스퍼드 셔츠 | white | classic,preppy | thin | 보유"
     )
-    assert lines[3] == (
-        "id:o2001 | top | 화이트 옥스퍼드 셔츠 | white | classic,preppy | thin | 보유 | 최근"
+    assert lines[6] == "id:o4001 | shoes | - | - | - | - | 보유"
+    assert lines[7] == "id:e21 | shoes | 블랙 로퍼 | black | classic | - | 에센셜"
+
+
+def test_every_candidate_line_has_seven_columns():
+    lines = candidate_lines(assemble_outfit_generation_prompt(make_input()).user)
+
+    assert len(lines) == len(CANDIDATES)
+    assert all(len(line.split(" | ")) == 7 for line in lines)
+
+
+def test_recently_adopted_goes_last_within_category():
+    data = make_input(
+        candidates=(
+            CandidateItem(
+                "owned", 1, "top", "니트", "gray", ["casual"], "medium", is_recently_adopted=True
+            ),
+            CandidateItem("owned", 2, "top", "셔츠", "white", ["classic"], "thin"),
+            CandidateItem("essential", 3, "top", "티셔츠", "black", ["casual"], "thin"),
+            CandidateItem(
+                "owned", 4, "outer", "자켓", "navy", ["classic"], "medium", is_recently_adopted=True
+            ),
+        )
     )
-    assert lines[6] == "id:o4001 | shoes | - | - | - | - | 보유 | -"
-    assert lines[7] == "id:e21 | shoes | 블랙 로퍼 | black | classic | - | 에센셜 | -"
+
+    ids = [
+        line.split(" | ")[0]
+        for line in candidate_lines(assemble_outfit_generation_prompt(data).user)
+    ]
+
+    assert ids == ["id:o4", "id:o2", "id:e3", "id:o1"]
+
+
+def test_recently_adopted_block_lists_keys_in_candidate_order():
+    data = make_input(
+        candidates=CANDIDATES
+        + (
+            CandidateItem(
+                "essential",
+                30,
+                "outer",
+                "블랙 패딩",
+                "black",
+                ["casual"],
+                "thick",
+                is_recently_adopted=True,
+            ),
+        )
+    )
+
+    user = assemble_outfit_generation_prompt(data).user
+
+    assert "## 최근 채택한 옷\ne30, o2001\n" in user
+
+
+def test_no_recently_adopted_removes_block_with_heading():
+    candidates = tuple(dataclasses.replace(c, is_recently_adopted=False) for c in CANDIDATES)
+
+    user = assemble_outfit_generation_prompt(make_input(candidates=candidates)).user
+
+    assert "최근 채택" not in user
+    assert "## 후보 목록" in user
 
 
 def test_same_number_in_owned_and_essential_gets_distinct_ids():
@@ -393,7 +450,7 @@ def test_candidate_name_is_sanitized_to_one_line(name, expected):
 
     assert len(lines) == 1
     assert lines[0].split(" | ")[2] == expected
-    assert len(lines[0].split(" | ")) == 8
+    assert len(lines[0].split(" | ")) == 7
 
 
 def test_empty_candidates_is_rejected():

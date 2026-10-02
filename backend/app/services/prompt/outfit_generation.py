@@ -165,6 +165,7 @@ def assemble_outfit_generation_prompt(data: OutfitPromptInput) -> AssembledPromp
     template = load_prompt_template(PROMPT_NAME, PROMPT_VERSION)
     start_at = _to_kst(data.going_out_start_at)
     end_at = _to_kst(data.going_out_end_at)
+    candidates = _sort_candidates(data.candidates)
 
     values = {
         "weather": _format_weather(data.weather),
@@ -179,7 +180,10 @@ def assemble_outfit_generation_prompt(data: OutfitPromptInput) -> AssembledPromp
         "avoided_styles": ", ".join(sorted(data.style_result.avoided)) or None,
         "avoided_colors": ", ".join(sorted(data.color_result.avoided)) or None,
         "exploration_style": data.exploration_style,
-        "candidates": _format_candidates(data.candidates),
+        "candidates": _format_candidates(candidates),
+        "recently_adopted": _text_or_none(
+            ", ".join(c.key for c in candidates if c.is_recently_adopted)
+        ),
         "kept_outfits": _format_kept_outfits(data.kept_outfits),
         "regeneration_instructions": _format_instructions(data.regeneration_instructions),
         "failure_reasons": _format_failure_reasons(data.failure_reasons),
@@ -286,7 +290,7 @@ def _format_preferred(result: ClassificationResult) -> str | None:
     return _text_or_none(", ".join(result.preferred))
 
 
-def _format_candidates(candidates: Sequence[CandidateItem]) -> str | None:
+def _sort_candidates(candidates: Sequence[CandidateItem]) -> list[CandidateItem]:
     keys = [c.key for c in candidates]
     if len(keys) != len(set(keys)):
         raise ValueError("후보 목록에 같은 id가 두 번 있습니다.")
@@ -294,7 +298,7 @@ def _format_candidates(candidates: Sequence[CandidateItem]) -> str | None:
         if c.category_cd not in CATEGORY_ORDER:
             raise ValueError(f"알 수 없는 코드값입니다: {c.category_cd}")
 
-    ordered = sorted(
+    return sorted(
         candidates,
         key=lambda c: (
             CATEGORY_ORDER.index(c.category_cd),
@@ -303,6 +307,9 @@ def _format_candidates(candidates: Sequence[CandidateItem]) -> str | None:
             c.item_id,
         ),
     )
+
+
+def _format_candidates(candidates: Sequence[CandidateItem]) -> str | None:
     return _text_or_none(
         "\n".join(
             " | ".join(
@@ -314,10 +321,9 @@ def _format_candidates(candidates: Sequence[CandidateItem]) -> str | None:
                     ",".join(sorted(set(c.style_cds))) or "-",
                     c.thickness_cd or "-",
                     _SOURCE_LABELS[c.source],
-                    "최근" if c.is_recently_adopted else "-",
                 ]
             )
-            for c in ordered
+            for c in candidates
         )
     )
 
