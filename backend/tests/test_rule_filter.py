@@ -225,3 +225,11 @@ def test_rain_outside_going_out_window_is_ignored():
     result = filter_clothing(context)
 
     assert result.precipitation_expected is False
+
+
+def test_current_weather_condition_triggers_precipitation():
+    context = _context([], _weather(min_feels_like_temperature=20.0, weather_condition_cd="rain"))
+
+    result = filter_clothing(context)
+
+    assert result.precipitation_expected is True

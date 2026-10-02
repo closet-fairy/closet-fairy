@@ -15,8 +15,10 @@ from app.services.recommend_context import RecommendContext
 OuterRequirement = Literal["required", "optional", "excluded"]
 
 # TPO 프리셋 중 "격식 상황"(결혼식 하객·면접 등)으로 취급하는 코드.
-# 자유 입력(custom)은 1차 룰을 건너뛰고 2차 AI 리뷰어에 위임한다 (FR-REC-03-1).
+# 자유 입력(custom)은 이 격식 판정만 건너뛰고 2차 AI 리뷰어에 위임한다 (FR-REC-03-1).
 FORMAL_TPO_CODES = {"formal"}
+RAINY_TPO_CD = "rainy"
+MIDWINTER_TPO_CD = "midwinter"
 
 PRECIPITATION_CONDITION_CODES = {"rain", "sleet", "snow"}
 
@@ -56,7 +58,7 @@ def _is_precipitation_expected(context: RecommendContext) -> bool:
     weather = context.weather
     if weather.weather_condition_cd in PRECIPITATION_CONDITION_CODES:
         return True
-    if context.tpo_input_type_cd == "preset" and context.tpo_cd == "rainy":
+    if context.tpo_input_type_cd == "preset" and context.tpo_cd == RAINY_TPO_CD:
         return True
     window_start = context.going_out_start_at.replace(minute=0, second=0, microsecond=0)
     return any(
@@ -71,7 +73,7 @@ def _determine_outer_requirement(context: RecommendContext) -> OuterRequirement:
     min_feels_like = context.weather.min_feels_like_temperature
     is_preset = context.tpo_input_type_cd == "preset"
     is_formal_tpo = is_preset and context.tpo_cd in FORMAL_TPO_CODES
-    is_midwinter_tpo = is_preset and context.tpo_cd == "midwinter"
+    is_midwinter_tpo = is_preset and context.tpo_cd == MIDWINTER_TPO_CD
 
     if is_formal_tpo or is_midwinter_tpo:
         return "required"
