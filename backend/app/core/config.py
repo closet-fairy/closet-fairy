@@ -51,6 +51,9 @@ class Settings(BaseSettings):
     EXPLORATION_UCB_COEFFICIENT: Decimal = Decimal("0.5")
 
     OUTER_REQUIRED_FEELS_LIKE_TEMPERATURE: Decimal = Decimal("16.0")
+    OUTER_EXCLUDED_FEELS_LIKE_TEMPERATURE: Decimal = Decimal("20.0")
+    THICK_CLOTHING_MAX_FEELS_LIKE_TEMPERATURE: Decimal = Decimal("20.0")
+    THIN_CLOTHING_MIN_FEELS_LIKE_TEMPERATURE: Decimal = Decimal("5.0")
 
     MAX_RETRY_PER_VALIDATION_STAGE: int = 2
 
