@@ -8,8 +8,7 @@
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
+from app.core.db import AsyncSessionLocal
 from app.repositories import clothing as clothing_repo
 from app.repositories import member_setting as member_setting_repo
 from app.repositories import recommendation_session as session_repo
@@ -39,8 +38,9 @@ def _to_kst(dt: datetime) -> datetime:
     return dt.replace(tzinfo=timezone.utc).astimezone(KST)
 
 
-async def collect_context(db: AsyncSession, recommendation_session_id: int) -> RecommendContext:
-    session = await session_repo.get_session(db, recommendation_session_id)
+async def collect_context(recommendation_session_id: int) -> RecommendContext:
+    async with AsyncSessionLocal() as db:
+        session = await session_repo.get_session(db, recommendation_session_id)
     if session is None:
         raise ValueError(f"recommendation_session not found: {recommendation_session_id}")
 
@@ -48,26 +48,29 @@ async def collect_context(db: AsyncSession, recommendation_session_id: int) -> R
     going_out_end = _to_kst(session.going_out_end_at)
     now = datetime.now(KST)
 
+    # DB 세션을 쥐지 않은 상태에서 기상청 응답을 기다린다 (커넥션 점유 방지).
     weather = await get_weather(
         session.sido_nm, session.sigungu_nm, going_out_start, going_out_end, now
     )
-    await weather_snapshot_repo.insert_weather_snapshot(db, recommendation_session_id, weather)
 
-    setting = await member_setting_repo.get_member_setting(db, session.member_id)
-    if setting is None:
-        birth_year = None
-        temperature_sensitivity_cd = None
-        gender_cd = "unisex"
-        preferred_styles: list[str] = []
-    else:
-        birth_year = setting.birth_year
-        temperature_sensitivity_cd = setting.temperature_sensitivity_cd
-        gender_cd = setting.gender_cd
-        preferred_styles = await member_setting_repo.get_preferred_styles(
-            db, setting.member_setting_id
-        )
+    async with AsyncSessionLocal() as db:
+        await weather_snapshot_repo.insert_weather_snapshot(db, recommendation_session_id, weather)
 
-    clothing = await clothing_repo.get_completed_clothing(db, session.member_id)
+        setting = await member_setting_repo.get_member_setting(db, session.member_id)
+        if setting is None:
+            birth_year = None
+            temperature_sensitivity_cd = None
+            gender_cd = "unisex"
+            preferred_styles: list[str] = []
+        else:
+            birth_year = setting.birth_year
+            temperature_sensitivity_cd = setting.temperature_sensitivity_cd
+            gender_cd = setting.gender_cd
+            preferred_styles = await member_setting_repo.get_preferred_styles(
+                db, setting.member_setting_id
+            )
+
+        clothing = await clothing_repo.get_completed_clothing(db, session.member_id)
 
     return RecommendContext(
         recommendation_session_id=recommendation_session_id,

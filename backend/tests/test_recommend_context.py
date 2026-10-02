@@ -31,6 +31,18 @@ FAKE_WEATHER = WeatherResult(
 )
 
 
+class _FakeDbSession:
+    async def __aenter__(self):
+        return None
+
+    async def __aexit__(self, *exc_info):
+        return False
+
+
+def _fake_async_session_local():
+    return _FakeDbSession()
+
+
 @pytest.fixture
 def common_mocks(monkeypatch):
     saved_snapshots = []
@@ -44,6 +56,7 @@ def common_mocks(monkeypatch):
     async def fake_insert_weather_snapshot(db, recommendation_session_id, weather):
         saved_snapshots.append((recommendation_session_id, weather))
 
+    monkeypatch.setattr(ctx_service, "AsyncSessionLocal", _fake_async_session_local)
     monkeypatch.setattr(session_repo, "get_session", fake_get_session)
     monkeypatch.setattr(ctx_service, "get_weather", fake_get_weather)
     monkeypatch.setattr(
@@ -62,11 +75,13 @@ async def test_context_filled_for_dev_member_without_setting(common_mocks, monke
     monkeypatch.setattr(member_setting_repo, "get_member_setting", fake_get_member_setting)
     monkeypatch.setattr(clothing_repo, "get_completed_clothing", fake_get_completed_clothing)
 
-    context = await ctx_service.collect_context(db=None, recommendation_session_id=123)
+    context = await ctx_service.collect_context(recommendation_session_id=123)
 
     assert context.recommendation_session_id == 123
     assert context.member_id == 1
     assert context.season_cd == "fall"
+    assert context.going_out_start_at.isoformat() == "2026-09-27T15:00:00+09:00"
+    assert context.going_out_end_at.isoformat() == "2026-09-27T18:00:00+09:00"
     assert context.weather.temperature == 20.0
     assert context.birth_year is None
     assert context.temperature_sensitivity_cd is None
@@ -111,7 +126,7 @@ async def test_context_filled_with_setting_and_clothing(common_mocks, monkeypatc
     monkeypatch.setattr(member_setting_repo, "get_preferred_styles", fake_get_preferred_styles)
     monkeypatch.setattr(clothing_repo, "get_completed_clothing", fake_get_completed_clothing)
 
-    context = await ctx_service.collect_context(db=None, recommendation_session_id=456)
+    context = await ctx_service.collect_context(recommendation_session_id=456)
 
     assert context.birth_year == 2000
     assert context.temperature_sensitivity_cd == "cold_sensitive"
