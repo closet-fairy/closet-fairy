@@ -4,6 +4,7 @@ from decimal import Decimal
 import pytest
 from fastapi.testclient import TestClient
 
+import app.api.recommendation_session as session_api
 from app.api.deps import get_now
 from app.core.db import get_db
 from app.main import app
@@ -28,6 +29,9 @@ def client(monkeypatch):
     async def fake_recent_avg_temperatures(db, region_cd, end_date, days):
         return []
 
+    async def fake_run_pipeline(recommendation_session_id):
+        return None
+
     async def fake_latest_available_date(db, region_cd, end_date, max_staleness_days):
         return None
 
@@ -38,6 +42,7 @@ def client(monkeypatch):
     monkeypatch.setattr(
         rec_session_service, "get_latest_available_date", fake_latest_available_date
     )
+    monkeypatch.setattr(session_api, "run_recommendation_pipeline", fake_run_pipeline)
     app.dependency_overrides[get_db] = fake_db
     app.dependency_overrides[get_now] = lambda: FIXED_NOW
     with TestClient(app) as c:
