@@ -56,6 +56,8 @@ def _is_precipitation_expected(context: RecommendContext) -> bool:
     weather = context.weather
     if weather.weather_condition_cd in PRECIPITATION_CONDITION_CODES:
         return True
+    if context.tpo_input_type_cd == "preset" and context.tpo_cd == "rainy":
+        return True
     window_start = context.going_out_start_at.replace(minute=0, second=0, microsecond=0)
     return any(
         h.weather_condition_cd in PRECIPITATION_CONDITION_CODES

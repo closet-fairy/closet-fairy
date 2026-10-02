@@ -128,6 +128,14 @@ def test_outer_required_at_16_degrees():
     assert result.outer_requirement == "required"
 
 
+def test_outer_optional_between_thresholds():
+    context = _context([], _weather(min_feels_like_temperature=18.0), tpo_cd="daily")
+
+    result = filter_clothing(context)
+
+    assert result.outer_requirement == "optional"
+
+
 def test_outer_required_for_wedding_tpo_regardless_of_temperature():
     context = _context(
         [], _weather(min_feels_like_temperature=26.0), tpo_cd="formal", tpo_input_type_cd="preset"
@@ -171,6 +179,14 @@ def test_rain_in_going_out_window_prioritizes_waterproof_items():
     result = filter_clothing(context)
 
     assert [c.clothing_id for c in result.candidates] == [2, 1]
+    assert result.precipitation_expected is True
+
+
+def test_rainy_tpo_triggers_precipitation_even_with_clear_forecast():
+    context = _context([], _weather(min_feels_like_temperature=20.0), tpo_cd="rainy")
+
+    result = filter_clothing(context)
+
     assert result.precipitation_expected is True
 
 
