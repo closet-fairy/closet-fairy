@@ -19,6 +19,9 @@ FIXED_SESSION = SessionRow(
     going_out_start_at=datetime(2026, 9, 27, 6, 0),  # UTC naive, KST 15:00
     going_out_end_at=datetime(2026, 9, 27, 9, 0),  # UTC naive, KST 18:00
     season_cd="fall",
+    tpo_cd="daily",
+    tpo_text=None,
+    tpo_input_type_cd="preset",
 )
 
 FAKE_WEATHER = WeatherResult(

@@ -60,11 +60,15 @@ class SessionRow:
     going_out_start_at: datetime
     going_out_end_at: datetime
     season_cd: str
+    tpo_cd: str
+    tpo_text: str | None
+    tpo_input_type_cd: str
 
 
 SELECT_SESSION_SQL = text(
     """
-    SELECT member_id, sido_nm, sigungu_nm, going_out_start_at, going_out_end_at, season_cd
+    SELECT member_id, sido_nm, sigungu_nm, going_out_start_at, going_out_end_at,
+           season_cd, tpo_cd, tpo_text, tpo_input_type_cd
     FROM recommendation_session
     WHERE recommendation_session_id = :recommendation_session_id
     """
@@ -85,4 +89,7 @@ async def get_session(db: AsyncSession, recommendation_session_id: int) -> Sessi
         going_out_start_at=row.going_out_start_at,
         going_out_end_at=row.going_out_end_at,
         season_cd=row.season_cd,
+        tpo_cd=row.tpo_cd,
+        tpo_text=row.tpo_text,
+        tpo_input_type_cd=row.tpo_input_type_cd,
     )

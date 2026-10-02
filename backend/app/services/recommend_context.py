@@ -25,6 +25,9 @@ class RecommendContext:
     going_out_start_at: datetime  # KST
     going_out_end_at: datetime  # KST
     season_cd: str
+    tpo_cd: str
+    tpo_text: str | None
+    tpo_input_type_cd: str
     weather: WeatherResult
     birth_year: int | None
     temperature_sensitivity_cd: str | None
@@ -78,6 +81,9 @@ async def collect_context(recommendation_session_id: int) -> RecommendContext:
         going_out_start_at=going_out_start,
         going_out_end_at=going_out_end,
         season_cd=session.season_cd,
+        tpo_cd=session.tpo_cd,
+        tpo_text=session.tpo_text,
+        tpo_input_type_cd=session.tpo_input_type_cd,
         weather=weather,
         birth_year=birth_year,
         temperature_sensitivity_cd=temperature_sensitivity_cd,
