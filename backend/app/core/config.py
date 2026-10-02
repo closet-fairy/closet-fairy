@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     DEV_MEMBER_ID: int = 1
 
     SEASON_MOVING_AVERAGE_WINDOW_DAYS: int = 9
+    SEASON_DATA_MAX_STALENESS_DAYS: int = 2
     SUMMER_AVG_TEMPERATURE_THRESHOLD: Decimal = Decimal("20.0")
     WINTER_AVG_TEMPERATURE_THRESHOLD: Decimal = Decimal("5.0")
 

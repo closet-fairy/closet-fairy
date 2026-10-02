@@ -66,7 +66,9 @@ async def create_session(
 async def determine_season_for_region(db: AsyncSession, region_cd: str, now: datetime) -> str:
     settings = get_settings()
     kst_now = now.astimezone(KST)
-    latest_date = await get_latest_available_date(db, region_cd, kst_now.date())
+    latest_date = await get_latest_available_date(
+        db, region_cd, kst_now.date(), settings.SEASON_DATA_MAX_STALENESS_DAYS
+    )
     if latest_date is None:
         temps = []
     else:

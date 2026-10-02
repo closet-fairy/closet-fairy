@@ -1,4 +1,5 @@
-from datetime import datetime
+from datetime import date, datetime, timedelta
+from decimal import Decimal
 
 import pytest
 from fastapi.testclient import TestClient
@@ -27,7 +28,7 @@ def client(monkeypatch):
     async def fake_recent_avg_temperatures(db, region_cd, end_date, days):
         return []
 
-    async def fake_latest_available_date(db, region_cd, end_date):
+    async def fake_latest_available_date(db, region_cd, end_date, max_staleness_days):
         return None
 
     monkeypatch.setattr(session_repo, "insert_session", fake_insert)
@@ -107,3 +108,24 @@ def test_end_before_start_goes_next_day(client):
 def test_unknown_region_404(client):
     res = client.post("/recommendation-sessions", json=body(sido_nm="없는도"))
     assert res.status_code == 404
+
+
+def test_trend_based_season_when_data_available(client, monkeypatch):
+    async def fake_latest_available_date(db, region_cd, end_date, max_staleness_days):
+        return date(2026, 9, 26)
+
+    async def fake_recent_avg_temperatures(db, region_cd, end_date, days):
+        return [
+            (date(2026, 9, 26) - timedelta(days=i), Decimal("22.0")) for i in reversed(range(days))
+        ]
+
+    monkeypatch.setattr(
+        rec_session_service, "get_latest_available_date", fake_latest_available_date
+    )
+    monkeypatch.setattr(
+        rec_session_service, "get_recent_avg_temperatures", fake_recent_avg_temperatures
+    )
+
+    res = client.post("/recommendation-sessions", json=body())
+    assert res.status_code == 202
+    assert client.calls[0]["season_cd"] == "summer"

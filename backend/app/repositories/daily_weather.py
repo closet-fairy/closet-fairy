@@ -66,21 +66,25 @@ LATEST_WEATHER_DATE_SQL = text(
     """
     SELECT MAX(weather_dt) AS latest_date
     FROM daily_weather
-    WHERE region_cd = :region_cd AND weather_dt <= :end_date
+    WHERE region_cd = :region_cd
+      AND weather_dt BETWEEN :start_date AND :end_date
     """
 )
 
 
 async def get_latest_available_date(
-    db: AsyncSession, region_cd: str, end_date: date
+    db: AsyncSession, region_cd: str, end_date: date, max_staleness_days: int
 ) -> date | None:
-    """region_cd의 end_date 이전(포함) 데이터 중 실제로 존재하는 가장 최근 날짜.
+    """region_cd의 end_date 기준 최근 max_staleness_days일 내에서 실제로 존재하는 가장 최근 날짜.
 
-    배치가 아직 돌지 않아 "어제" 행이 없을 수 있으므로, 끝점을 고정하지 않고
-    실제 최신 적재일을 찾아 그 날짜를 기준으로 이동평균을 계산한다.
+    배치가 하루 정도 늦게 돌아 "어제" 행이 없는 경우는 허용하되, 배치가 장기간
+    멈춰 아주 오래된 데이터만 남아있으면 None을 반환해 호출부가 데이터 부족으로
+    보고 월 기준 판정으로 대체하게 한다.
     """
+    start_date = end_date - timedelta(days=max_staleness_days)
     result = await db.execute(
-        LATEST_WEATHER_DATE_SQL, {"region_cd": region_cd, "end_date": end_date}
+        LATEST_WEATHER_DATE_SQL,
+        {"region_cd": region_cd, "start_date": start_date, "end_date": end_date},
     )
     row = result.first()
     return row.latest_date if row else None
