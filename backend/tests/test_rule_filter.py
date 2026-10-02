@@ -146,6 +146,19 @@ def test_outer_required_for_wedding_tpo_regardless_of_temperature():
     assert result.outer_requirement == "required"
 
 
+def test_outer_required_for_midwinter_tpo_regardless_of_temperature():
+    context = _context(
+        [],
+        _weather(min_feels_like_temperature=18.0),
+        tpo_cd="midwinter",
+        tpo_input_type_cd="preset",
+    )
+
+    result = filter_clothing(context)
+
+    assert result.outer_requirement == "required"
+
+
 def test_custom_tpo_skips_formal_rule():
     context = _context(
         [], _weather(min_feels_like_temperature=26.0), tpo_cd="custom", tpo_input_type_cd="custom"

@@ -69,9 +69,11 @@ def _is_precipitation_expected(context: RecommendContext) -> bool:
 def _determine_outer_requirement(context: RecommendContext) -> OuterRequirement:
     settings = get_settings()
     min_feels_like = context.weather.min_feels_like_temperature
-    is_formal_tpo = context.tpo_input_type_cd == "preset" and context.tpo_cd in FORMAL_TPO_CODES
+    is_preset = context.tpo_input_type_cd == "preset"
+    is_formal_tpo = is_preset and context.tpo_cd in FORMAL_TPO_CODES
+    is_midwinter_tpo = is_preset and context.tpo_cd == "midwinter"
 
-    if is_formal_tpo:
+    if is_formal_tpo or is_midwinter_tpo:
         return "required"
     if min_feels_like <= float(settings.OUTER_REQUIRED_FEELS_LIKE_TEMPERATURE):
         return "required"
