@@ -1,4 +1,5 @@
 """선호도 계산 · 분류 · UCB 탐색 스타일 선정. DB에 의존하지 않는 순수 함수만 둔다."""
+
 import logging
 import math
 import random
@@ -142,8 +143,12 @@ def select_exploration_style(
     if not candidates:
         logger.info(
             "탐색 스타일 후보 없음",
-            extra={"event": Event.UCB_EXPLORE_PICK, "style_cd": None, "candidate_count": 0,
-                   "n_sessions": n_sessions},
+            extra={
+                "event": Event.UCB_EXPLORE_PICK,
+                "style_cd": None,
+                "candidate_count": 0,
+                "n_sessions": n_sessions,
+            },
         )
         return None
 
@@ -166,8 +171,13 @@ def select_exploration_style(
 
     logger.info(
         "탐색 스타일 선정",
-        extra={"event": Event.UCB_EXPLORE_PICK, "style_cd": picked, "ucb": best,
-               "candidate_count": len(candidates), "tie_count": len(tied),
-               "n_sessions": n_sessions},
+        extra={
+            "event": Event.UCB_EXPLORE_PICK,
+            "style_cd": picked,
+            "ucb": best,
+            "candidate_count": len(candidates),
+            "tie_count": len(tied),
+            "n_sessions": n_sessions,
+        },
     )
     return picked

@@ -14,18 +14,46 @@ from app.services.preference_score import (
 
 SETTINGS = Settings(_env_file=None)
 
-STYLES = ["minimal", "casual", "street", "classic", "formal", "sporty", "romantic",
-          "vintage", "bohemian", "preppy", "chic", "unique", "feminine"]
-COLORS = ["black", "white", "gray", "beige", "brown", "navy", "blue",
-          "sky_blue", "green", "khaki", "yellow", "orange", "red", "pink"]
+STYLES = [
+    "minimal",
+    "casual",
+    "street",
+    "classic",
+    "formal",
+    "sporty",
+    "romantic",
+    "vintage",
+    "bohemian",
+    "preppy",
+    "chic",
+    "unique",
+    "feminine",
+]
+COLORS = [
+    "black",
+    "white",
+    "gray",
+    "beige",
+    "brown",
+    "navy",
+    "blue",
+    "sky_blue",
+    "green",
+    "khaki",
+    "yellow",
+    "orange",
+    "red",
+    "pink",
+]
 
 
 def make_rows(values, scores=None, default=("0", "0")):
     """scores: {값: (S, N)}. 지정하지 않은 값은 default."""
     scores = scores or {}
     return [
-        PreferenceRow(v, Decimal(scores.get(v, default)[0]), Decimal(scores.get(v, default)[1]),
-                      seq)
+        PreferenceRow(
+            v, Decimal(scores.get(v, default)[0]), Decimal(scores.get(v, default)[1]), seq
+        )
         for seq, v in enumerate(values, start=1)
     ]
 
@@ -35,6 +63,7 @@ def ema(s, n, delta):
 
 
 # ---------- EMA ----------
+
 
 def test_ema_exposure_count_after_three_zero_delta_updates():
     s, n = Decimal("0"), Decimal("0")
@@ -73,6 +102,7 @@ def test_ema_zero_delta_still_increases_exposure():
 
 
 # ---------- 분류 ----------
+
 
 def test_new_member_not_injected():
     result = classify("style", make_rows(STYLES), SETTINGS)
@@ -162,6 +192,7 @@ def test_style_and_color_classified_independently():
 
 # ---------- UCB ----------
 
+
 def pick(rows, n_sessions=5, seed=0):
     result = classify("style", rows, SETTINGS)
     return select_exploration_style(result, rows, n_sessions, SETTINGS, random.Random(seed))
@@ -184,8 +215,15 @@ def test_ucb_excludes_preferred_and_avoided():
 
 def test_ucb_picks_low_preferred_even_with_lower_ranked_preferred():
     scores = {v: ("0", "50") for v in STYLES}
-    scores.update({"minimal": ("5", "0"), "casual": ("4", "0"), "street": ("3", "0"),
-                   "classic": ("2", "0"), "formal": ("1", "0")})
+    scores.update(
+        {
+            "minimal": ("5", "0"),
+            "casual": ("4", "0"),
+            "street": ("3", "0"),
+            "classic": ("2", "0"),
+            "formal": ("1", "0"),
+        }
+    )
     rows = make_rows(STYLES, scores)
 
     result = classify("style", rows, SETTINGS)
