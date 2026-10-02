@@ -17,8 +17,11 @@ OuterRequirement = Literal["required", "optional", "excluded"]
 # TPO 프리셋 중 "격식 상황"(결혼식 하객·면접 등)으로 취급하는 코드.
 # 자유 입력(custom)은 이 격식 판정만 건너뛰고 2차 AI 리뷰어에 위임한다 (FR-REC-03-1).
 FORMAL_TPO_CODES = {"formal"}
+# 겹쳐 입지 않는(단독 착용) 슬롯 — 얇은 옷 추위 제외 규칙을 여기에만 적용한다.
+SINGLE_LAYER_CATEGORIES = {"outer", "shoes", "socks"}
 RAINY_TPO_CD = "rainy"
 MIDWINTER_TPO_CD = "midwinter"
+
 
 PRECIPITATION_CONDITION_CODES = {"rain", "sleet", "snow"}
 
@@ -43,11 +46,11 @@ def _thickness_matches(candidate: ClothingCandidate, min_feels_like: float) -> b
         settings.THICK_CLOTHING_MAX_FEELS_LIKE_TEMPERATURE
     ):
         return False
-    # 얇은 옷은 아우터(단독 착용) 슬롯에서만 추위 기준으로 제외한다.
+    # 얇은 옷은 겹쳐 입지 않는 슬롯(아우터·신발·양말)에서만 추위 기준으로 제외한다.
     # 상의·하의는 코트/니트 안에 겹쳐 입는 정상적인 후보라 그대로 둔다.
     if (
         candidate.thickness_cd == "thin"
-        and candidate.category_cd == "outer"
+        and candidate.category_cd in SINGLE_LAYER_CATEGORIES
         and min_feels_like < float(settings.THIN_CLOTHING_MIN_FEELS_LIKE_TEMPERATURE)
     ):
         return False

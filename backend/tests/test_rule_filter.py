@@ -120,6 +120,15 @@ def test_thin_outer_is_removed_in_winter():
     assert result.candidates == []
 
 
+def test_thin_shoes_are_removed_in_winter():
+    thin_shoes = _clothing(1, category_cd="shoes", thickness_cd="thin", seasons=["winter"])
+    context = _context([thin_shoes], _weather(min_feels_like_temperature=-5.0), season_cd="winter")
+
+    result = filter_clothing(context)
+
+    assert result.candidates == []
+
+
 def test_outer_required_at_16_degrees():
     context = _context([], _weather(min_feels_like_temperature=16.0), tpo_cd="daily")
 
