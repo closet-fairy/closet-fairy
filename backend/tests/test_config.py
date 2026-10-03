@@ -25,3 +25,7 @@ def test_tuned_preference_score_defaults():
     assert settings.SCORE_DELTA_RATING_3 == Decimal("1.0")
     assert settings.SCORE_DELTA_RATING_2 == Decimal("0.0")
     assert settings.SCORE_DELTA_RATING_1 == Decimal("-1.0")
+
+
+def test_reviewer_model_defaults_to_haiku():
+    assert Settings(_env_file=None).LLM_REVIEWER_MODEL == "claude-haiku-4-5"
