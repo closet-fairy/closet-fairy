@@ -1,8 +1,8 @@
 """에센셜 의류 보충 (REC-09).
 
-보유 의류만으로 상의·하의·신발이 2벌 미만이거나 필수 아우터가 없을 때
+보유 의류로만 상의쨌하의쨌신발이 2벌 미만이거나 필수 아우터가 없을 때
 essential_item 마스터에서 보충한다. 핵심 로직(supplement_essentials)은
-DB·외부 API 호출이 없는 순수 함수이고, DB 조회는 collect_essential_candidates()가 담당한다.
+DB쨌외부 API 호출이 없는 순수 함수이고, DB 조회는 collect_essential_candidates()가 담당한다.
 """
 
 from collections import Counter
@@ -26,7 +26,7 @@ MAX_CANDIDATES_PER_CATEGORY = 8
 
 # TPO 프리셋별 에센셜 formality_level 허용 구간 (2026-10-03 팀 확정).
 # 구간에 맞는 에센셜이 하나도 없으면 _fetch_essential_items()가 전체 구간(1~5)으로
-# 재조회한다 — 시드 데이터가 모든 계절×TPO 조합을 다 못 채워도 코디 자체가 비는 상황은 막는다.
+# 재조회한다. 시드 데이터가 모든 계절×TPO 조합을 다 못 채워도 코디 자체가 비는 상황을 막는다.
 FORMALITY_RANGE_BY_TPO: dict[str, tuple[int, int]] = {
     "daily": (1, 5),
     "work": (2, 5),
@@ -89,7 +89,7 @@ def _from_essential(item: EssentialItemCandidate) -> SupplementedCandidate:
 def _sort_candidates(
     items: list[SupplementedCandidate], preferred_styles: list[str], precipitation_expected: bool
 ) -> list[SupplementedCandidate]:
-    """방수 우선(비 예보 시) > 선호 스타일 우선 순으로 정렬한다."""
+    """방수 우선(비 예보 때) > 선호 스타일 우선 순으로 정렬한다."""
     preferred = set(preferred_styles)
 
     def sort_key(c: SupplementedCandidate) -> tuple[int, int]:
@@ -107,13 +107,27 @@ def formality_range_for_tpo(tpo_cd: str, tpo_input_type_cd: str) -> tuple[int, i
     return FORMALITY_RANGE_BY_TPO.get(tpo_cd, DEFAULT_FORMALITY_RANGE)
 
 
+def shortage_categories(candidates: list[ClothingCandidate]) -> set[str]:
+    """부족한 카테고리(두 벌 미만인 top/bottom/shoes)를 돌려준다.
+
+    supplement_essentials()와 collect_essential_candidates()가 같은 기준을
+    쓰도록 판정 로직을 여기 한곳으로 모았다.
+    """
+    counts = Counter(c.category_cd for c in candidates if c.category_cd is not None)
+    return {
+        category_cd
+        for category_cd in SHORTAGE_CHECK_CATEGORIES
+        if counts[category_cd] < MIN_ITEMS_PER_CATEGORY
+    }
+
+
 def supplement_essentials(
     filter_result: FilterResult,
     preferred_styles: list[str],
     essential_items_by_category: dict[str, list[EssentialItemCandidate]],
     min_feels_like_temperature: float,
 ) -> SupplementResult:
-    """순수 함수: 보유 후보 + (이미 조회된) 에센셜 후보로 최종 후보 목록을 구성한다."""
+    """순수 함수: 보유 전부 + (이미 조회된) 에센셜 전부로 최종 후보 목록을 구성한다."""
     by_category: dict[str, list[SupplementedCandidate]] = {}
     for candidate in filter_result.candidates:
         if candidate.category_cd is None:
@@ -124,16 +138,17 @@ def supplement_essentials(
     precipitation_expected = filter_result.precipitation_expected
 
     def _essentials_for(category_cd: str) -> list[SupplementedCandidate]:
-        # 에센셜도 REC-08과 같은 두께·체감온도 규칙을 통과해야 한다.
+        # 에센셜도 REC-08과 같은 두께쨌체감온도 규칙을 통과해야 한다.
         raw = essential_items_by_category.get(category_cd, [])
         filtered = [e for e in raw if thickness_matches(e, min_feels_like_temperature)]
         return _sort_candidates(
             [_from_essential(e) for e in filtered], preferred_styles, precipitation_expected
         )
 
+    shortage = shortage_categories(filter_result.candidates)
     for category_cd in SHORTAGE_CHECK_CATEGORIES:
         current = by_category.setdefault(category_cd, [])
-        if len(current) < MIN_ITEMS_PER_CATEGORY:
+        if category_cd in shortage:
             is_clothing_shortage = True
             needed = MIN_ITEMS_PER_CATEGORY - len(current)
             current.extend(_essentials_for(category_cd)[:needed])
@@ -191,11 +206,7 @@ async def collect_essential_candidates(
     owned_counts = Counter(
         c.category_cd for c in filter_result.candidates if c.category_cd is not None
     )
-    categories = {
-        category_cd
-        for category_cd in SHORTAGE_CHECK_CATEGORIES
-        if owned_counts[category_cd] < MIN_ITEMS_PER_CATEGORY
-    }
+    categories = shortage_categories(filter_result.candidates)
     if filter_result.outer_requirement == "required" and not owned_counts["outer"]:
         categories.add("outer")
 

@@ -234,23 +234,17 @@ async def test_fetch_essential_items_falls_back_to_full_formality_range_when_nar
     assert items[0].essential_item_id == 999
 
 
-async def test_fetch_essential_items_does_not_fall_back_when_narrow_range_has_items():
+async def test_fetch_essential_items_does_not_fall_back_when_narrow_range_has_items(monkeypatch):
     async def fake_get_essential_items(
         db, category_cd, season_cd, gender_cd, min_formality, max_formality
     ):
         assert (min_formality, max_formality) == (2, 5)
         return [_essential(1, category_cd)]
 
-    import app.services.essential_supplement as mod
-
-    original = essential_item_repo.get_essential_items
-    mod.essential_item_repo.get_essential_items = fake_get_essential_items
-    try:
-        context = SimpleNamespace(season_cd="summer", gender_cd="unisex")
-        items = await _fetch_essential_items(
-            db=None, category_cd="bottom", context=context, min_formality=2, max_formality=5
-        )
-    finally:
-        mod.essential_item_repo.get_essential_items = original
+    monkeypatch.setattr(essential_item_repo, "get_essential_items", fake_get_essential_items)
+    context = SimpleNamespace(season_cd="summer", gender_cd="unisex")
+    items = await _fetch_essential_items(
+        db=None, category_cd="bottom", context=context, min_formality=2, max_formality=5
+    )
 
     assert len(items) == 1
