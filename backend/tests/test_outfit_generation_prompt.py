@@ -319,6 +319,21 @@ def test_duplicate_regeneration_instruction_seq_is_rejected():
         assemble_outfit_generation_prompt(data)
 
 
+def test_empty_kept_outfit_items_are_rejected():
+    data = regeneration_input(kept_outfits=(KeptOutfit(1, [], "preferred"),))
+
+    with pytest.raises(ValueError, match="아이템이 없습니다"):
+        assemble_outfit_generation_prompt(data)
+
+
+@pytest.mark.parametrize("seq", [0, 5])
+def test_failure_reason_seq_out_of_range_is_rejected(seq):
+    data = make_input(failure_reasons=(FailureReason(seq, "신발이 없다."),))
+
+    with pytest.raises(ValueError, match="실패 사유의 세트 번호"):
+        assemble_outfit_generation_prompt(data)
+
+
 @pytest.mark.parametrize("key", ["1042", "x7", "o", "o12a"])
 def test_invalid_kept_outfit_key_is_rejected(key):
     data = regeneration_input(kept_outfits=(KeptOutfit(1, ["o1042", key], "preferred"),))

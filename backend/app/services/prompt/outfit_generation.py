@@ -178,6 +178,9 @@ def assemble_outfit_generation_prompt(data: OutfitPromptInput) -> AssembledPromp
     instruction_seqs = [i.seq for i in data.regeneration_instructions]
     if len(instruction_seqs) != len(set(instruction_seqs)):
         raise ValueError(f"재추천 지시 번호는 서로 달라야 합니다: {instruction_seqs}")
+    failure_seqs = [r.outfit_seq for r in data.failure_reasons if r.outfit_seq is not None]
+    if any(not 1 <= seq <= 4 for seq in failure_seqs):
+        raise ValueError(f"실패 사유의 세트 번호는 1~4여야 합니다: {failure_seqs}")
     for k in data.kept_outfits:
         if k.outfit_type not in get_args(OutfitType):
             raise ValueError(f"알 수 없는 코드값입니다: {k.outfit_type}")
@@ -371,6 +374,8 @@ def _format_category(candidate: CandidateItem) -> str:
 
 def _format_kept_outfits(kept_outfits: Sequence[KeptOutfit]) -> str | None:
     for k in kept_outfits:
+        if not k.item_keys:
+            raise ValueError(f"유지 중인 세트에 아이템이 없습니다: 세트 {k.outfit_seq}")
         invalid = [key for key in k.item_keys if not _ITEM_KEY.fullmatch(key)]
         if invalid:
             raise ValueError(f"유지 중인 세트의 아이템 키 형식이 올바르지 않습니다: {invalid}")
