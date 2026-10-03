@@ -1,13 +1,12 @@
 """에센셜 의류 보충 (REC-09).
 
-보유 의류로만 상의쨌하의쨌신발이 2벌 미만이거나 필수 아우터가 없을 때
+보유 의류로만 상의·하의·신발이 2벌 미만이거나 필수 아우터가 없을 때
 essential_item 마스터에서 보충한다. 핵심 로직(supplement_essentials)은
-DB쨌외부 API 호출이 없는 순수 함수이고, DB 조회는 collect_essential_candidates()가 담당한다.
+DB·외부 API 호출이 없는 순수 함수이고, DB 조회는 collect_essential_candidates()가 담당한다.
 """
 
 from collections import Counter
 from dataclasses import dataclass
-from typing import Literal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,10 +14,9 @@ from app.core.db import AsyncSessionLocal
 from app.repositories import essential_item as essential_item_repo
 from app.repositories.clothing import ClothingCandidate
 from app.repositories.essential_item import EssentialItemCandidate
+from app.services.prompt.outfit_generation import ItemSource, candidate_key
 from app.services.recommend_context import RecommendContext
 from app.services.rule_filter import FilterResult, thickness_matches
-
-SourceCd = Literal["owned", "essential"]
 
 SHORTAGE_CHECK_CATEGORIES = ("top", "bottom", "shoes")
 MIN_ITEMS_PER_CATEGORY = 2
@@ -41,8 +39,8 @@ DEFAULT_FORMALITY_RANGE = (1, 5)
 
 @dataclass
 class SupplementedCandidate:
-    id: str  # 보유: "1042", 에센셜: "E31"
-    source_cd: SourceCd
+    id: str  # candidate_key() 규칙을 따른다 — 보유: "o1042", 에센셜: "e31"
+    source_cd: ItemSource
     category_cd: str
     accessory_type_cd: str | None
     item_name: str | None
@@ -60,7 +58,7 @@ class SupplementResult:
 
 def _from_owned(candidate: ClothingCandidate) -> SupplementedCandidate:
     return SupplementedCandidate(
-        id=str(candidate.clothing_id),
+        id=candidate_key("owned", candidate.clothing_id),
         source_cd="owned",
         category_cd=candidate.category_cd,
         accessory_type_cd=candidate.accessory_type_cd,
@@ -74,7 +72,7 @@ def _from_owned(candidate: ClothingCandidate) -> SupplementedCandidate:
 
 def _from_essential(item: EssentialItemCandidate) -> SupplementedCandidate:
     return SupplementedCandidate(
-        id=f"E{item.essential_item_id}",
+        id=candidate_key("essential", item.essential_item_id),
         source_cd="essential",
         category_cd=item.category_cd,
         accessory_type_cd=item.accessory_type_cd,
@@ -127,7 +125,7 @@ def supplement_essentials(
     essential_items_by_category: dict[str, list[EssentialItemCandidate]],
     min_feels_like_temperature: float,
 ) -> SupplementResult:
-    """순수 함수: 보유 전부 + (이미 조회된) 에센셜 전부로 최종 후보 목록을 구성한다."""
+    """순수 함수: 보유 후보 + (이미 조회된) 에센셜 후보로 최종 후보 목록을 구성한다."""
     by_category: dict[str, list[SupplementedCandidate]] = {}
     for candidate in filter_result.candidates:
         if candidate.category_cd is None:
@@ -138,7 +136,7 @@ def supplement_essentials(
     precipitation_expected = filter_result.precipitation_expected
 
     def _essentials_for(category_cd: str) -> list[SupplementedCandidate]:
-        # 에센셜도 REC-08과 같은 두께쨌체감온도 규칙을 통과해야 한다.
+        # 에센셜도 REC-08과 같은 두께·체감온도 규칙을 통과해야 한다.
         raw = essential_items_by_category.get(category_cd, [])
         filtered = [e for e in raw if thickness_matches(e, min_feels_like_temperature)]
         return _sort_candidates(
@@ -203,11 +201,9 @@ async def collect_essential_candidates(
     context: RecommendContext, filter_result: FilterResult
 ) -> SupplementResult:
     """부족할 수 있는 카테고리의 에센셜 후보만 DB에서 모아 supplement_essentials()에 넘긴다."""
-    owned_counts = Counter(
-        c.category_cd for c in filter_result.candidates if c.category_cd is not None
-    )
     categories = shortage_categories(filter_result.candidates)
-    if filter_result.outer_requirement == "required" and not owned_counts["outer"]:
+    has_owned_outer = any(c.category_cd == "outer" for c in filter_result.candidates)
+    if filter_result.outer_requirement == "required" and not has_owned_outer:
         categories.add("outer")
 
     essential_items_by_category: dict[str, list[EssentialItemCandidate]] = {}

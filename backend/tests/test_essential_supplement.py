@@ -99,7 +99,7 @@ def test_only_shoes_shortage_supplements_only_shoes():
     assert result.is_clothing_shortage is True
     shoes = [c for c in result.candidates if c.category_cd == "shoes"]
     assert len(shoes) == 2
-    assert shoes[1].id == "E101"
+    assert shoes[1].id == "e101"
     assert shoes[1].source_cd == "essential"
     tops = [c for c in result.candidates if c.category_cd == "top"]
     bottoms = [c for c in result.candidates if c.category_cd == "bottom"]
@@ -144,7 +144,7 @@ def test_outer_required_and_missing_adds_one_essential_outer():
 
     outers = [c for c in result.candidates if c.category_cd == "outer"]
     assert len(outers) == 1
-    assert outers[0].id == "E201"
+    assert outers[0].id == "e201"
     assert outers[0].source_cd == "essential"
     # 아우터 보충 자체는 "부족"이 아니라 "필수 공백" 처리이므로 shortage는 올리지 않는다
     assert result.is_clothing_shortage is False
@@ -161,7 +161,7 @@ def test_preferred_style_is_prioritized_within_category_cap():
 
     tops = [c for c in result.candidates if c.category_cd == "top"]
     assert len(tops) == 8
-    assert tops[0].id == "9"
+    assert tops[0].id == "o9"
 
 
 def test_essential_fails_thickness_rule_is_not_used_to_fill_shortage():
@@ -205,7 +205,7 @@ def test_precipitation_expected_prioritizes_waterproof_over_style_in_cap():
 
     shoes = [c for c in result.candidates if c.category_cd == "shoes"]
     assert len(shoes) == 8
-    assert shoes[0].id == "9"
+    assert shoes[0].id == "o9"
     assert shoes[0].is_waterproof is True
 
 
@@ -248,3 +248,18 @@ async def test_fetch_essential_items_does_not_fall_back_when_narrow_range_has_it
     )
 
     assert len(items) == 1
+
+
+def test_candidate_ids_follow_prompt_candidate_key_rule():
+    from app.services.prompt.outfit_generation import candidate_key
+
+    owned = [_owned(1042, "top"), _owned(1043, "top"), _owned(1, "bottom"), _owned(2, "bottom")]
+    essentials_by_category = {"shoes": [_essential(31, "shoes"), _essential(32, "shoes")]}
+
+    result = supplement_essentials(
+        _filter_result(owned), [], essentials_by_category, min_feels_like_temperature=15.0
+    )
+
+    ids = {c.id for c in result.candidates}
+    assert candidate_key("owned", 1042) in ids
+    assert candidate_key("essential", 31) in ids
