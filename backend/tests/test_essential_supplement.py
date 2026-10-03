@@ -8,6 +8,7 @@ from app.repositories.essential_item import EssentialItemCandidate
 from app.services.essential_supplement import (
     DEFAULT_FORMALITY_RANGE,
     _fetch_essential_items,
+    formality_range_for_tpo,
     supplement_essentials,
 )
 from app.services.prompt.outfit_generation import candidate_key
@@ -303,3 +304,14 @@ async def test_fetch_essential_items_does_not_fall_back_when_narrow_range_has_it
     )
 
     assert len(items) == 1
+
+
+def test_formality_range_for_preset_tpo_uses_table():
+    assert formality_range_for_tpo("formal", "preset") == (4, 5)
+    assert formality_range_for_tpo("exercise", "preset") == (1, 3)
+
+
+def test_formality_range_for_custom_input_is_not_restricted():
+    # 자유 입력 TPO는 격식 구간을 제한하지 않는다 (FR-REC-03-1).
+    # tpo_cd가 프리셋 코드와 겹쳐도 입력 유형이 preset이 아니면 전체 구간을 쓴다.
+    assert formality_range_for_tpo("formal", "custom") == DEFAULT_FORMALITY_RANGE
