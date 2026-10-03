@@ -1,8 +1,15 @@
 """REC-09 에센셜 보충(supplement_essentials) 단위 테스트."""
 
+from types import SimpleNamespace
+
+from app.repositories import essential_item as essential_item_repo
 from app.repositories.clothing import ClothingCandidate
 from app.repositories.essential_item import EssentialItemCandidate
-from app.services.essential_supplement import supplement_essentials
+from app.services.essential_supplement import (
+    DEFAULT_FORMALITY_RANGE,
+    _fetch_essential_items,
+    supplement_essentials,
+)
 from app.services.rule_filter import FilterResult
 
 
@@ -178,7 +185,7 @@ def test_untagged_category_owned_item_is_excluded():
 
     result = supplement_essentials(_filter_result(owned), [], {}, min_feels_like_temperature=15.0)
 
-    assert all(c.category_cd != "" for c in result.candidates)
+    assert all(c.category_cd is not None for c in result.candidates)
     assert len(result.candidates) == 2
 
 
@@ -200,3 +207,50 @@ def test_precipitation_expected_prioritizes_waterproof_over_style_in_cap():
     assert len(shoes) == 8
     assert shoes[0].id == "9"
     assert shoes[0].is_waterproof is True
+
+
+async def test_fetch_essential_items_falls_back_to_full_formality_range_when_narrow_range_is_empty(
+    monkeypatch,
+):
+    calls = []
+
+    async def fake_get_essential_items(
+        db, category_cd, season_cd, gender_cd, min_formality, max_formality
+    ):
+        calls.append((min_formality, max_formality))
+        if (min_formality, max_formality) == DEFAULT_FORMALITY_RANGE:
+            return [_essential(999, category_cd)]
+        return []
+
+    monkeypatch.setattr(essential_item_repo, "get_essential_items", fake_get_essential_items)
+
+    context = SimpleNamespace(season_cd="summer", gender_cd="unisex")
+    items = await _fetch_essential_items(
+        db=None, category_cd="bottom", context=context, min_formality=2, max_formality=5
+    )
+
+    assert calls == [(2, 5), (1, 5)]
+    assert len(items) == 1
+    assert items[0].essential_item_id == 999
+
+
+async def test_fetch_essential_items_does_not_fall_back_when_narrow_range_has_items():
+    async def fake_get_essential_items(
+        db, category_cd, season_cd, gender_cd, min_formality, max_formality
+    ):
+        assert (min_formality, max_formality) == (2, 5)
+        return [_essential(1, category_cd)]
+
+    import app.services.essential_supplement as mod
+
+    original = essential_item_repo.get_essential_items
+    mod.essential_item_repo.get_essential_items = fake_get_essential_items
+    try:
+        context = SimpleNamespace(season_cd="summer", gender_cd="unisex")
+        items = await _fetch_essential_items(
+            db=None, category_cd="bottom", context=context, min_formality=2, max_formality=5
+        )
+    finally:
+        mod.essential_item_repo.get_essential_items = original
+
+    assert len(items) == 1

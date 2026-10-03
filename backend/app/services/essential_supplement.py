@@ -9,6 +9,8 @@ from collections import Counter
 from dataclasses import dataclass
 from typing import Literal
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.db import AsyncSessionLocal
 from app.repositories import essential_item as essential_item_repo
 from app.repositories.clothing import ClothingCandidate
@@ -154,7 +156,11 @@ def supplement_essentials(
 
 
 async def _fetch_essential_items(
-    db, category_cd: str, context: RecommendContext, min_formality: int, max_formality: int
+    db: AsyncSession,
+    category_cd: str,
+    context: RecommendContext,
+    min_formality: int,
+    max_formality: int,
 ) -> list[EssentialItemCandidate]:
     items = await essential_item_repo.get_essential_items(
         db,
