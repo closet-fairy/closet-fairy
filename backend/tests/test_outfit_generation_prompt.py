@@ -297,6 +297,28 @@ def test_unknown_kept_outfit_type_is_rejected():
         assemble_outfit_generation_prompt(data)
 
 
+@pytest.mark.parametrize("seqs", [(0, 1), (1, 5), (2, 2)])
+def test_invalid_kept_outfit_seq_is_rejected(seqs):
+    data = regeneration_input(
+        kept_outfits=tuple(KeptOutfit(seq, ["o3001"], "preferred") for seq in seqs)
+    )
+
+    with pytest.raises(ValueError, match="세트 번호"):
+        assemble_outfit_generation_prompt(data)
+
+
+def test_duplicate_regeneration_instruction_seq_is_rejected():
+    data = regeneration_input(
+        regeneration_instructions=(
+            RegenerationInstruction(1, "하의를 바꾼다."),
+            RegenerationInstruction(1, "밝은 색을 쓴다."),
+        )
+    )
+
+    with pytest.raises(ValueError, match="재추천 지시 번호"):
+        assemble_outfit_generation_prompt(data)
+
+
 @pytest.mark.parametrize("key", ["1042", "x7", "o", "o12a"])
 def test_invalid_kept_outfit_key_is_rejected(key):
     data = regeneration_input(kept_outfits=(KeptOutfit(1, ["o1042", key], "preferred"),))

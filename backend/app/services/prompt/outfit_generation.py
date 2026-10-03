@@ -3,7 +3,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
-from typing import Literal
+from typing import Literal, get_args
 
 import pydantic
 
@@ -172,8 +172,14 @@ def assemble_outfit_generation_prompt(data: OutfitPromptInput) -> AssembledPromp
             f"새로 만들 벌 수와 유지 중인 세트 수의 합은 4 이하여야 합니다: "
             f"{data.outfit_count} + {len(data.kept_outfits)}"
         )
+    kept_seqs = [k.outfit_seq for k in data.kept_outfits]
+    if any(not 1 <= seq <= 4 for seq in kept_seqs) or len(kept_seqs) != len(set(kept_seqs)):
+        raise ValueError(f"유지 중인 세트 번호는 1~4이고 서로 달라야 합니다: {kept_seqs}")
+    instruction_seqs = [i.seq for i in data.regeneration_instructions]
+    if len(instruction_seqs) != len(set(instruction_seqs)):
+        raise ValueError(f"재추천 지시 번호는 서로 달라야 합니다: {instruction_seqs}")
     for k in data.kept_outfits:
-        if k.outfit_type not in ("preferred", "exploratory"):
+        if k.outfit_type not in get_args(OutfitType):
             raise ValueError(f"알 수 없는 코드값입니다: {k.outfit_type}")
     kept_exploratory = sum(k.outfit_type == "exploratory" for k in data.kept_outfits)
     if kept_exploratory > 1:
