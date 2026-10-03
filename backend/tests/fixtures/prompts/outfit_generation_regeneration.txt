@@ -69,4 +69,4 @@ o2001
 - 세트 4: 신발이 없다.
 
 ## 생성 요청
-코디 세트 4벌을 만든다. preferred 3벌, exploratory 1벌.
+코디 세트 2벌을 만든다. preferred 1벌, exploratory 1벌.

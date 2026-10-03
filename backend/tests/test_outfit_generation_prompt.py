@@ -2,7 +2,7 @@ import dataclasses
 import json
 import random
 import re
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
 
@@ -23,12 +23,11 @@ from app.services.prompt.outfit_generation import (
     WeatherInput,
     assemble_outfit_generation_prompt,
 )
-from app.services.prompt.template import PROMPTS_DIR, PromptTemplateError
+from app.services.prompt.template import PROMPTS_DIR
+from app.services.weather.base_time import KST
 from app.services.weather.weather_service import condition_cd
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures" / "prompts"
-KST = timezone(timedelta(hours=9))
-
 REGENERATION_HEADINGS = {"## 유지 중인 세트", "## 재추천 지시", "## 직전 생성의 검증 실패 사유"}
 
 
@@ -132,9 +131,10 @@ def make_input(**overrides) -> OutfitPromptInput:
 
 def regeneration_input(**overrides) -> OutfitPromptInput:
     fields = dict(
+        outfit_count=2,
         kept_outfits=(
-            KeptOutfit(1, ["o3001", "e7", "o2002", "e21"]),
-            KeptOutfit(3, ["o1042", "o2001", "e12", "o4001"]),
+            KeptOutfit(1, ["o3001", "e7", "o2002", "e21"], "preferred"),
+            KeptOutfit(3, ["o1042", "o2001", "e12", "o4001"], "preferred"),
         ),
         regeneration_instructions=(
             RegenerationInstruction(1, "하의를 청바지 계열로 바꾼다."),
@@ -201,7 +201,7 @@ def test_shuffled_input_order_gives_same_prompt(seed):
         style_result=style_result(avoided=shuffled(data.style_result.avoided, rng)),
         color_result=color_result(avoided=shuffled(data.color_result.avoided, rng)),
         kept_outfits=[
-            KeptOutfit(k.outfit_seq, shuffled(k.item_keys, rng))
+            dataclasses.replace(k, item_keys=shuffled(k.item_keys, rng))
             for k in shuffled(data.kept_outfits, rng)
         ],
         regeneration_instructions=shuffled(data.regeneration_instructions, rng),
@@ -224,7 +224,7 @@ def test_initial_prompt_has_no_regeneration_or_failure_blocks():
 
 
 def test_regeneration_adds_only_regeneration_blocks():
-    initial = assemble_outfit_generation_prompt(make_input()).user
+    initial = assemble_outfit_generation_prompt(make_input(outfit_count=2)).user
     regeneration = assemble_outfit_generation_prompt(regeneration_input()).user
 
     added = [s for s in sections(regeneration) if heading(s) in REGENERATION_HEADINGS]
@@ -240,6 +240,69 @@ def test_regeneration_blocks_follow_seq_order():
     assert "- 세트 1: e21, e7, o2002, o3001\n- 세트 3: e12, o1042, o2001, o4001" in user
     assert "- 하의를 청바지 계열로 바꾼다.\n- 전체적으로 밝은 색을 쓴다." in user
     assert "- 세트 2: 상의가 두 개다.\n- 세트 4: 신발이 없다." in user
+
+
+def test_kept_exploratory_with_exploration_style_is_rejected():
+    data = regeneration_input(
+        outfit_count=1,
+        kept_outfits=(
+            KeptOutfit(1, ["o3001", "e7"], "preferred"),
+            KeptOutfit(2, ["o2002", "e21"], "preferred"),
+            KeptOutfit(3, ["o1042", "e12"], "exploratory"),
+        ),
+    )
+
+    with pytest.raises(ValueError, match="이미 탐색 코디가 있어"):
+        assemble_outfit_generation_prompt(data)
+
+
+def test_two_kept_exploratory_outfits_are_rejected():
+    data = regeneration_input(
+        exploration_style=None,
+        kept_outfits=(
+            KeptOutfit(1, ["o3001", "e7"], "exploratory"),
+            KeptOutfit(3, ["o1042", "e12"], "exploratory"),
+        ),
+    )
+
+    with pytest.raises(ValueError, match="2벌 이상"):
+        assemble_outfit_generation_prompt(data)
+
+
+def test_kept_without_exploratory_creates_one_exploratory():
+    user = assemble_outfit_generation_prompt(regeneration_input()).user
+
+    assert "## 탐색 스타일\nchic\n" in user
+    assert user.endswith("코디 세트 2벌을 만든다. preferred 1벌, exploratory 1벌.")
+
+
+def test_kept_exploratory_without_exploration_style_creates_preferred_only():
+    data = regeneration_input(
+        exploration_style=None,
+        kept_outfits=(
+            KeptOutfit(1, ["o3001", "e7"], "preferred"),
+            KeptOutfit(3, ["o1042", "e12"], "exploratory"),
+        ),
+    )
+
+    user = assemble_outfit_generation_prompt(data).user
+
+    assert user.endswith("코디 세트 2벌을 만든다. preferred 2벌.")
+
+
+def test_unknown_kept_outfit_type_is_rejected():
+    data = regeneration_input(kept_outfits=(KeptOutfit(1, ["o3001"], "explore"),))
+
+    with pytest.raises(ValueError, match="알 수 없는 코드값입니다: explore"):
+        assemble_outfit_generation_prompt(data)
+
+
+@pytest.mark.parametrize("key", ["1042", "x7", "o", "o12a"])
+def test_invalid_kept_outfit_key_is_rejected(key):
+    data = regeneration_input(kept_outfits=(KeptOutfit(1, ["o1042", key], "preferred"),))
+
+    with pytest.raises(ValueError, match="아이템 키 형식"):
+        assemble_outfit_generation_prompt(data)
 
 
 def test_failure_reason_without_outfit_comes_first():
@@ -323,6 +386,11 @@ def test_single_exploratory_regeneration():
 def test_outfit_count_out_of_range_is_rejected(count):
     with pytest.raises(ValueError, match="outfit_count"):
         assemble_outfit_generation_prompt(make_input(outfit_count=count))
+
+
+def test_outfit_count_plus_kept_outfits_over_four_is_rejected():
+    with pytest.raises(ValueError, match="합은 4 이하"):
+        assemble_outfit_generation_prompt(regeneration_input(outfit_count=3))
 
 
 def test_swapped_classification_results_are_rejected():
@@ -503,7 +571,7 @@ def test_unknown_accessory_type_is_rejected():
 
 
 def test_empty_candidates_is_rejected():
-    with pytest.raises(PromptTemplateError, match="candidates"):
+    with pytest.raises(ValueError, match="후보 목록이 비었습니다"):
         assemble_outfit_generation_prompt(make_input(candidates=()))
 
 

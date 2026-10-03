@@ -1,7 +1,7 @@
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 from decimal import Decimal
 from typing import Literal
 
@@ -9,13 +9,13 @@ import pydantic
 
 from app.services.preference_score import ClassificationResult
 from app.services.prompt.template import load_prompt_template, render
+from app.services.weather.base_time import KST
 
 PROMPT_NAME = "outfit_generation"
 PROMPT_VERSION = "v1.0"
 
-KST = timezone(timedelta(hours=9))
-
 ItemSource = Literal["owned", "essential"]
+OutfitType = Literal["preferred", "exploratory"]
 
 CATEGORY_ORDER = ("outer", "top", "bottom", "shoes", "socks", "accessories")
 ACCESSORY_TYPES = ("hat", "bag", "belt", "watch", "scarf", "eyewear", "jewelry", "etc")
@@ -50,6 +50,9 @@ _GENDER_LABELS = {"male": "남성", "female": "여성", "unisex": "선택 안 �
 
 _CONTROL_CHARS = re.compile(r"[\x00-\x1f\x7f-\x9f]")
 _WHITESPACE = re.compile(r"\s+")
+_ITEM_KEY = re.compile(
+    "(?:" + "|".join(re.escape(prefix) for prefix in _ITEM_ID_PREFIX.values()) + r")\d+"
+)
 
 
 @dataclass(frozen=True)
@@ -94,6 +97,7 @@ class CandidateItem:
 class KeptOutfit:
     outfit_seq: int
     item_keys: Sequence[str]
+    outfit_type: OutfitType
 
 
 @dataclass(frozen=True)
@@ -138,7 +142,7 @@ class AssembledPrompt:
 
 
 class GeneratedOutfit(pydantic.BaseModel):
-    outfit_type: Literal["preferred", "exploratory"]
+    outfit_type: OutfitType
     item_ids: list[str]
     reason: str
 
@@ -163,6 +167,23 @@ def assemble_outfit_generation_prompt(data: OutfitPromptInput) -> AssembledPromp
         raise ValueError("color_result는 색상 분류 결과여야 합니다.")
     if not 1 <= data.outfit_count <= 4:
         raise ValueError(f"outfit_count는 1~4여야 합니다: {data.outfit_count}")
+    if data.outfit_count + len(data.kept_outfits) > 4:
+        raise ValueError(
+            f"새로 만들 벌 수와 유지 중인 세트 수의 합은 4 이하여야 합니다: "
+            f"{data.outfit_count} + {len(data.kept_outfits)}"
+        )
+    for k in data.kept_outfits:
+        if k.outfit_type not in ("preferred", "exploratory"):
+            raise ValueError(f"알 수 없는 코드값입니다: {k.outfit_type}")
+    kept_exploratory = sum(k.outfit_type == "exploratory" for k in data.kept_outfits)
+    if kept_exploratory > 1:
+        raise ValueError(f"유지 중인 세트에 탐색 코디가 2벌 이상 있습니다: {kept_exploratory}벌")
+    if kept_exploratory and data.exploration_style is not None:
+        raise ValueError(
+            "유지 중인 세트에 이미 탐색 코디가 있어 탐색 스타일을 함께 줄 수 없습니다."
+        )
+    if not data.candidates:
+        raise ValueError("후보 목록이 비었습니다.")
 
     template = load_prompt_template(PROMPT_NAME, PROMPT_VERSION)
     start_at = _to_kst(data.going_out_start_at)
@@ -343,6 +364,10 @@ def _format_category(candidate: CandidateItem) -> str:
 
 
 def _format_kept_outfits(kept_outfits: Sequence[KeptOutfit]) -> str | None:
+    for k in kept_outfits:
+        invalid = [key for key in k.item_keys if not _ITEM_KEY.fullmatch(key)]
+        if invalid:
+            raise ValueError(f"유지 중인 세트의 아이템 키 형식이 올바르지 않습니다: {invalid}")
     return _text_or_none(
         "\n".join(
             f"- 세트 {k.outfit_seq}: {', '.join(sorted(k.item_keys))}"
