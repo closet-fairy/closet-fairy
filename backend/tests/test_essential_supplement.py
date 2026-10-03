@@ -7,7 +7,11 @@ from app.services.rule_filter import FilterResult
 
 
 def _owned(
-    clothing_id: int, category_cd: str, styles: list[str] | None = None
+    clothing_id: int,
+    category_cd: str | None,
+    styles: list[str] | None = None,
+    thickness_cd: str = "medium",
+    is_waterproof: bool = False,
 ) -> ClothingCandidate:
     return ClothingCandidate(
         clothing_id=clothing_id,
@@ -15,8 +19,8 @@ def _owned(
         accessory_type_cd=None,
         item_name=f"owned-{clothing_id}",
         color_cd="black",
-        thickness_cd="medium",
-        is_waterproof=False,
+        thickness_cd=thickness_cd,
+        is_waterproof=is_waterproof,
         origin_image_url="http://example.com/img.png",
         cutout_image_url=None,
         styles=styles or [],
@@ -25,7 +29,11 @@ def _owned(
 
 
 def _essential(
-    essential_item_id: int, category_cd: str, style_cd: str = "casual"
+    essential_item_id: int,
+    category_cd: str,
+    style_cd: str = "casual",
+    thickness_cd: str | None = "medium",
+    is_waterproof: bool = False,
 ) -> EssentialItemCandidate:
     return EssentialItemCandidate(
         essential_item_id=essential_item_id,
@@ -34,18 +42,20 @@ def _essential(
         accessory_type_cd=None,
         style_cd=style_cd,
         color_cd="black",
-        thickness_cd="medium",
-        is_waterproof=False,
+        thickness_cd=thickness_cd,
+        is_waterproof=is_waterproof,
         formality_level=1,
         gender_cd="unisex",
     )
 
 
 def _filter_result(
-    candidates: list[ClothingCandidate], outer_requirement="optional"
+    candidates: list[ClothingCandidate], outer_requirement="optional", precipitation_expected=False
 ) -> FilterResult:
     return FilterResult(
-        candidates=candidates, outer_requirement=outer_requirement, precipitation_expected=False
+        candidates=candidates,
+        outer_requirement=outer_requirement,
+        precipitation_expected=precipitation_expected,
     )
 
 
@@ -58,7 +68,7 @@ def test_no_shortage_when_each_category_has_two_items():
         _owned(5, "shoes"),
         _owned(6, "shoes"),
     ]
-    result = supplement_essentials(_filter_result(owned), [], {})
+    result = supplement_essentials(_filter_result(owned), [], {}, min_feels_like_temperature=15.0)
 
     assert result.is_clothing_shortage is False
     assert len(result.candidates) == 6
@@ -75,7 +85,9 @@ def test_only_shoes_shortage_supplements_only_shoes():
     ]
     essentials_by_category = {"shoes": [_essential(101, "shoes"), _essential(102, "shoes")]}
 
-    result = supplement_essentials(_filter_result(owned), [], essentials_by_category)
+    result = supplement_essentials(
+        _filter_result(owned), [], essentials_by_category, min_feels_like_temperature=15.0
+    )
 
     assert result.is_clothing_shortage is True
     shoes = [c for c in result.candidates if c.category_cd == "shoes"]
@@ -94,7 +106,9 @@ def test_empty_closet_fills_two_of_each_required_category():
         "shoes": [_essential(5, "shoes"), _essential(6, "shoes")],
     }
 
-    result = supplement_essentials(_filter_result([]), [], essentials_by_category)
+    result = supplement_essentials(
+        _filter_result([]), [], essentials_by_category, min_feels_like_temperature=15.0
+    )
 
     assert result.is_clothing_shortage is True
     for category_cd in ("top", "bottom", "shoes"):
@@ -115,7 +129,10 @@ def test_outer_required_and_missing_adds_one_essential_outer():
     essentials_by_category = {"outer": [_essential(201, "outer")]}
 
     result = supplement_essentials(
-        _filter_result(owned, outer_requirement="required"), [], essentials_by_category
+        _filter_result(owned, outer_requirement="required"),
+        [],
+        essentials_by_category,
+        min_feels_like_temperature=15.0,
     )
 
     outers = [c for c in result.candidates if c.category_cd == "outer"]
@@ -131,8 +148,55 @@ def test_preferred_style_is_prioritized_within_category_cap():
     preferred_owned = _owned(9, "top", styles=["minimal"])  # 선호 스타일
     owned.append(preferred_owned)
 
-    result = supplement_essentials(_filter_result(owned), ["minimal"], {})
+    result = supplement_essentials(
+        _filter_result(owned), ["minimal"], {}, min_feels_like_temperature=15.0
+    )
 
     tops = [c for c in result.candidates if c.category_cd == "top"]
     assert len(tops) == 8
     assert tops[0].id == "9"
+
+
+def test_essential_fails_thickness_rule_is_not_used_to_fill_shortage():
+    # 겨울(체감 -5도)인데 에센셜 아우터가 thin뿐이면, REC-08 두께 규칙에 걸려 보충에 쓰이지 않는다.
+    thin_outer = _essential(301, "outer", thickness_cd="thin")
+    essentials_by_category = {"outer": [thin_outer]}
+
+    result = supplement_essentials(
+        _filter_result([], outer_requirement="required"),
+        [],
+        essentials_by_category,
+        min_feels_like_temperature=-5.0,
+    )
+
+    assert result.candidates == []
+
+
+def test_untagged_category_owned_item_is_excluded():
+    untagged = _owned(1, None)
+    owned = [untagged, _owned(2, "top"), _owned(3, "top")]
+
+    result = supplement_essentials(_filter_result(owned), [], {}, min_feels_like_temperature=15.0)
+
+    assert all(c.category_cd != "" for c in result.candidates)
+    assert len(result.candidates) == 2
+
+
+def test_precipitation_expected_prioritizes_waterproof_over_style_in_cap():
+    preferred_non_waterproof = [
+        _owned(i, "shoes", styles=["minimal"], is_waterproof=False) for i in range(1, 9)
+    ]
+    waterproof_non_preferred = _owned(9, "shoes", styles=["casual"], is_waterproof=True)
+    owned = preferred_non_waterproof + [waterproof_non_preferred]
+
+    result = supplement_essentials(
+        _filter_result(owned, precipitation_expected=True),
+        ["minimal"],
+        {},
+        min_feels_like_temperature=15.0,
+    )
+
+    shoes = [c for c in result.candidates if c.category_cd == "shoes"]
+    assert len(shoes) == 8
+    assert shoes[0].id == "9"
+    assert shoes[0].is_waterproof is True

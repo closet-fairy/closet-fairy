@@ -32,7 +32,7 @@ ESSENTIAL_ITEM_SQL = text(
        AND es.season_cd = :season_cd
        AND (:gender_cd = 'unisex' OR ei.gender_cd IN (:gender_cd, 'unisex'))
        AND ei.formality_level BETWEEN :min_formality AND :max_formality
-     ORDER BY ei.formality_level
+     ORDER BY ei.formality_level, ei.essential_item_id
     """
 )
 
