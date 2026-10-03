@@ -113,6 +113,7 @@ def test_get_weather_success():
     assert r.min_feels_like_temperature == feels_like(6.0, 3.0)
     assert r.hourly_json()[0]["at"].startswith("2026-09-27T15:00")
 
+
 NCST_COLD_NOW = [
     {"category": "T1H", "obsrValue": "5.0"},
     {"category": "RN1", "obsrValue": "0"},
