@@ -1,0 +1,50 @@
+{
+  "$defs": {
+    "GeneratedOutfit": {
+      "type": "object",
+      "title": "GeneratedOutfit",
+      "properties": {
+        "outfit_type": {
+          "type": "string",
+          "enum": [
+            "preferred",
+            "exploratory"
+          ],
+          "title": "Outfit Type"
+        },
+        "item_ids": {
+          "type": "array",
+          "title": "Item Ids",
+          "items": {
+            "type": "string"
+          }
+        },
+        "reason": {
+          "type": "string",
+          "title": "Reason"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "outfit_type",
+        "item_ids",
+        "reason"
+      ]
+    }
+  },
+  "type": "object",
+  "title": "OutfitGenerationOutput",
+  "properties": {
+    "outfits": {
+      "type": "array",
+      "title": "Outfits",
+      "items": {
+        "$ref": "#/$defs/GeneratedOutfit"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "outfits"
+  ]
+}
