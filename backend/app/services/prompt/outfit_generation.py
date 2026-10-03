@@ -18,6 +18,7 @@ KST = timezone(timedelta(hours=9))
 ItemSource = Literal["owned", "essential"]
 
 CATEGORY_ORDER = ("outer", "top", "bottom", "shoes", "socks", "accessories")
+ACCESSORY_TYPES = ("hat", "bag", "belt", "watch", "scarf", "eyewear", "jewelry", "etc")
 
 # clothing_id와 essential_item_id는 서로 다른 테이블의 AUTO_INCREMENT라 같은 숫자가 나올 수 있어,
 # 출처 접두사로 후보 id를 구분한다
@@ -82,6 +83,7 @@ class CandidateItem:
     style_cds: Sequence[str]
     thickness_cd: str | None
     is_recently_adopted: bool = False
+    accessory_type_cd: str | None = None
 
     @property
     def key(self) -> str:
@@ -297,6 +299,12 @@ def _sort_candidates(candidates: Sequence[CandidateItem]) -> list[CandidateItem]
     for c in candidates:
         if c.category_cd not in CATEGORY_ORDER:
             raise ValueError(f"알 수 없는 코드값입니다: {c.category_cd}")
+        if c.accessory_type_cd is None:
+            continue
+        if c.category_cd != "accessories":
+            raise ValueError(f"악세서리가 아닌 후보에 악세서리 종류가 있습니다: {c.key}")
+        if c.accessory_type_cd not in ACCESSORY_TYPES:
+            raise ValueError(f"알 수 없는 코드값입니다: {c.accessory_type_cd}")
 
     return sorted(
         candidates,
@@ -315,7 +323,7 @@ def _format_candidates(candidates: Sequence[CandidateItem]) -> str | None:
             " | ".join(
                 [
                     f"id:{c.key}",
-                    c.category_cd,
+                    _format_category(c),
                     sanitize_inline(c.item_name or "") or "-",
                     c.color_cd or "-",
                     ",".join(sorted(set(c.style_cds))) or "-",
@@ -326,6 +334,12 @@ def _format_candidates(candidates: Sequence[CandidateItem]) -> str | None:
             for c in candidates
         )
     )
+
+
+def _format_category(candidate: CandidateItem) -> str:
+    if candidate.accessory_type_cd is None:
+        return candidate.category_cd
+    return f"{candidate.category_cd}:{candidate.accessory_type_cd}"
 
 
 def _format_kept_outfits(kept_outfits: Sequence[KeptOutfit]) -> str | None:

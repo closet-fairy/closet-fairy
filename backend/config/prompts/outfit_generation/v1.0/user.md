@@ -47,7 +47,7 @@
 
 {{/exploration_style}}
 ## 후보 목록
-형식: id | 분류 | 이름 | 색상 | 스타일 | 두께 | 출처
+형식: id | 분류(악세서리는 accessories:종류) | 이름 | 색상 | 스타일 | 두께 | 출처
 {{candidates}}
 
 {{#recently_adopted}}

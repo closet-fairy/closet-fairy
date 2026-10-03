@@ -5,7 +5,8 @@
 ## 규칙
 1. 아이템은 [후보 목록]에 있는 id만 쓴다. 목록에 없는 id를 만들거나 고치지 않는다.
 2. 모든 세트에 top, bottom, shoes를 1개씩 넣는다.
-3. outer, top, bottom, shoes는 세트당 1개까지다. socks와 accessories는 넣지 않아도 된다. accessories는 같은 종류(모자, 가방, 벨트 등)를 겹쳐 넣지 않는다.
+3. outer, top, bottom, shoes는 세트당 1개까지다. socks와 accessories는 넣지 않아도 된다.
+   accessories는 hat·bag·belt·watch·scarf·eyewear 종류별로 세트당 1개까지다. jewelry와 종류가 없는(etc·미상) 악세서리는 개수 제한이 없다.
 4. [아우터]가 "필수"이면 모든 세트에 outer를 1개 넣는다.
 5. [기피 스타일]이나 [기피 색상]이 태깅된 아이템은 exploratory 세트에 쓰지 않는다. 예외는 없다.
    preferred 세트에서도 되도록 쓰지 않고, 그 아이템 없이는 규칙 2~4를 지킬 수 없을 때만 쓴다.

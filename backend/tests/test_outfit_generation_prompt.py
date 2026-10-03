@@ -82,7 +82,16 @@ CANDIDATES = (
     CandidateItem("essential", 12, "bottom", "데님 팬츠", "blue", ["casual"], "medium"),
     CandidateItem("owned", 4001, "shoes", None, None, [], None),
     CandidateItem("essential", 21, "shoes", "블랙 로퍼", "black", ["classic"], None),
-    CandidateItem("owned", 5001, "accessories", "가죽 벨트", "brown", ["classic"], None),
+    CandidateItem(
+        "owned",
+        5001,
+        "accessories",
+        "가죽 벨트",
+        "brown",
+        ["classic"],
+        None,
+        accessory_type_cd="belt",
+    ),
 )
 
 
@@ -451,6 +460,46 @@ def test_candidate_name_is_sanitized_to_one_line(name, expected):
     assert len(lines) == 1
     assert lines[0].split(" | ")[2] == expected
     assert len(lines[0].split(" | ")) == 7
+
+
+def test_accessory_type_is_attached_to_category():
+    lines = candidate_lines(assemble_outfit_generation_prompt(make_input()).user)
+
+    assert lines[8] == "id:o5001 | accessories:belt | 가죽 벨트 | brown | classic | - | 보유"
+
+
+def test_accessory_without_type_shows_category_only():
+    data = make_input(
+        candidates=(CandidateItem("owned", 1, "accessories", "반지", "gray", [], None),)
+    )
+
+    lines = candidate_lines(assemble_outfit_generation_prompt(data).user)
+
+    assert lines == ["id:o1 | accessories | 반지 | gray | - | - | 보유"]
+
+
+def test_accessory_type_on_non_accessory_is_rejected():
+    data = make_input(
+        candidates=(
+            CandidateItem("owned", 1, "top", "셔츠", "white", [], "thin", accessory_type_cd="belt"),
+        )
+    )
+
+    with pytest.raises(ValueError, match="악세서리가 아닌 후보"):
+        assemble_outfit_generation_prompt(data)
+
+
+def test_unknown_accessory_type_is_rejected():
+    data = make_input(
+        candidates=(
+            CandidateItem(
+                "owned", 1, "accessories", "?", "gray", [], None, accessory_type_cd="ring"
+            ),
+        )
+    )
+
+    with pytest.raises(ValueError, match="알 수 없는 코드값입니다: ring"):
+        assemble_outfit_generation_prompt(data)
 
 
 def test_empty_candidates_is_rejected():
