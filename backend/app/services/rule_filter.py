@@ -10,6 +10,7 @@ from typing import Literal
 
 from app.core.config import get_settings
 from app.repositories.clothing import ClothingCandidate
+from app.repositories.essential_item import EssentialItemCandidate
 from app.services.recommend_context import RecommendContext
 
 OuterRequirement = Literal["required", "optional", "excluded"]
@@ -40,7 +41,9 @@ def _season_matches(candidate: ClothingCandidate, season_cd: str) -> bool:
     return season_cd in candidate.seasons
 
 
-def _thickness_matches(candidate: ClothingCandidate, min_feels_like: float) -> bool:
+def thickness_matches(
+    candidate: ClothingCandidate | EssentialItemCandidate, min_feels_like: float
+) -> bool:
     settings = get_settings()
     if candidate.thickness_cd == "thick" and min_feels_like > float(
         settings.THICK_CLOTHING_MAX_FEELS_LIKE_TEMPERATURE
@@ -95,7 +98,7 @@ def filter_clothing(context: RecommendContext) -> FilterResult:
     candidates = [
         c
         for c in context.clothing
-        if _season_matches(c, context.season_cd) and _thickness_matches(c, min_feels_like)
+        if _season_matches(c, context.season_cd) and thickness_matches(c, min_feels_like)
     ]
 
     if precipitation_expected:
