@@ -16,13 +16,14 @@ from app.repositories.clothing import ClothingCandidate
 from app.repositories.essential_item import EssentialItemCandidate
 from app.services.prompt.outfit_generation import ItemSource, candidate_key
 from app.services.recommend_context import RecommendContext
-from app.services.rule_filter import FilterResult, thickness_matches
+from app.services.rule_filter import FilterResult, OuterRequirement, thickness_matches
 
 SHORTAGE_CHECK_CATEGORIES = ("top", "bottom", "shoes")
 MIN_ITEMS_PER_CATEGORY = 2
-MAX_CANDIDATES_PER_CATEGORY = 8
+MAX_CANDIDATES_PER_CATEGORY = 8  # 악세서리는 종류(accessory_type_cd)별로 따로 적용
 
 # TPO 프리셋별 에센셜 formality_level 허용 구간 (2026-10-03 팀 확정).
+# 자유 입력(custom)은 formality_range_for_tpo()에서 전체 구간을 쓰므로 표에 없다.
 # 구간에 맞는 에센셜이 하나도 없으면 _fetch_essential_items()가 전체 구간(1~5)으로
 # 재조회한다. 시드 데이터가 모든 계절×TPO 조합을 다 못 채워도 코디 자체가 비는 상황을 막는다.
 FORMALITY_RANGE_BY_TPO: dict[str, tuple[int, int]] = {
@@ -32,7 +33,6 @@ FORMALITY_RANGE_BY_TPO: dict[str, tuple[int, int]] = {
     "exercise": (1, 3),
     "rainy": (1, 5),
     "midwinter": (1, 5),
-    "custom": (1, 5),
 }
 DEFAULT_FORMALITY_RANGE = (1, 5)
 
@@ -52,8 +52,16 @@ class SupplementedCandidate:
 
 @dataclass
 class SupplementResult:
+    """보충 결과.
+
+    outer_requirement는 실제로 적용할 아우터 필요도다. 필수(required)인데 보유·에센셜
+    어디에도 쓸 아우터가 없으면 optional로 낮춘다. 이후 단계(프롬프트, 1차 검증)는
+    FilterResult가 아니라 이 값을 써야 한다.
+    """
+
     candidates: list[SupplementedCandidate]
     is_clothing_shortage: bool
+    outer_requirement: OuterRequirement
 
 
 def _from_owned(candidate: ClothingCandidate) -> SupplementedCandidate:
@@ -98,6 +106,22 @@ def _sort_candidates(
     return sorted(items, key=sort_key)
 
 
+def _cap_groups(
+    category_cd: str, items: list[SupplementedCandidate]
+) -> list[list[SupplementedCandidate]]:
+    """상한을 적용할 묶음을 돌려준다.
+
+    악세서리는 모자·가방·벨트 등 종류가 한 카테고리에 섞여 있어, 한 종류가
+    상한을 다 차지하지 않도록 종류별로 나눠 자른다.
+    """
+    if category_cd != "accessories":
+        return [items]
+    groups: dict[str | None, list[SupplementedCandidate]] = {}
+    for c in items:
+        groups.setdefault(c.accessory_type_cd, []).append(c)
+    return list(groups.values())
+
+
 def formality_range_for_tpo(tpo_cd: str, tpo_input_type_cd: str) -> tuple[int, int]:
     """자유 입력 TPO는 격식 구간을 제한하지 않는다 (FR-REC-03-1과 같은 원칙)."""
     if tpo_input_type_cd != "preset":
@@ -134,6 +158,7 @@ def supplement_essentials(
 
     is_clothing_shortage = False
     precipitation_expected = filter_result.precipitation_expected
+    outer_requirement = filter_result.outer_requirement
 
     def _essentials_for(category_cd: str) -> list[SupplementedCandidate]:
         # 에센셜도 REC-08과 같은 두께·체감온도 규칙을 통과해야 한다.
@@ -151,21 +176,33 @@ def supplement_essentials(
             needed = MIN_ITEMS_PER_CATEGORY - len(current)
             current.extend(_essentials_for(category_cd)[:needed])
 
-    outer_candidates = by_category.setdefault("outer", [])
-    if filter_result.outer_requirement == "required" and not outer_candidates:
+    if outer_requirement == "excluded":
+        # 체감온도가 높아 아우터를 입지 않는 날: 보유 아우터도 후보에서 뺀다.
+        by_category.pop("outer", None)
+    elif outer_requirement == "required" and not by_category.get("outer"):
         essentials = _essentials_for("outer")
         if essentials:
-            outer_candidates.append(essentials[0])
+            by_category["outer"] = [essentials[0]]
+        else:
+            # 보유·에센셜 모두 쓸 아우터가 없으면 필수를 지킬 수 없다.
+            # 이후 검증에서 코디 전체가 탈락하지 않도록 선택으로 낮추고 부족으로 표시한다.
+            outer_requirement = "optional"
+            is_clothing_shortage = True
 
     final_candidates: list[SupplementedCandidate] = []
-    for items in by_category.values():
-        final_candidates.extend(
-            _sort_candidates(items, preferred_styles, precipitation_expected)[
-                :MAX_CANDIDATES_PER_CATEGORY
-            ]
-        )
+    for category_cd, items in by_category.items():
+        for group in _cap_groups(category_cd, items):
+            final_candidates.extend(
+                _sort_candidates(group, preferred_styles, precipitation_expected)[
+                    :MAX_CANDIDATES_PER_CATEGORY
+                ]
+            )
 
-    return SupplementResult(candidates=final_candidates, is_clothing_shortage=is_clothing_shortage)
+    return SupplementResult(
+        candidates=final_candidates,
+        is_clothing_shortage=is_clothing_shortage,
+        outer_requirement=outer_requirement,
+    )
 
 
 async def _fetch_essential_items(
