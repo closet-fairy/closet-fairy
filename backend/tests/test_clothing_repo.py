@@ -72,3 +72,34 @@ async def test_get_completed_clothing_merges_tags_by_clothing_id():
     assert by_id[2].styles == ["street"]
     assert by_id[2].seasons == ["summer"]
     assert by_id[2].is_waterproof is None
+
+
+class _RecordingDb:
+    def __init__(self, rows):
+        self._rows = rows
+        self.params = None
+
+    async def execute(self, stmt, params):
+        self.params = params
+        return _Result(self._rows)
+
+
+async def test_count_completed_by_category_fills_missing_with_zero():
+    db = _RecordingDb([])
+
+    counts = await clothing_repo.count_completed_by_category(
+        db, member_id=7, category_cds=("top", "bottom", "shoes")
+    )
+
+    assert counts == {"top": 0, "bottom": 0, "shoes": 0}
+    assert db.params == {"member_id": 7, "category_cds": ["top", "bottom", "shoes"]}
+
+
+async def test_count_completed_by_category_merges_rows():
+    db = _RecordingDb([_Row(category_cd="top", cnt=3), _Row(category_cd="shoes", cnt=1)])
+
+    counts = await clothing_repo.count_completed_by_category(
+        db, member_id=7, category_cds=("top", "bottom", "shoes")
+    )
+
+    assert counts == {"top": 3, "bottom": 0, "shoes": 1}

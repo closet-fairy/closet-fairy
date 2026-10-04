@@ -6,6 +6,7 @@ DB·외부 API 호출이 없는 순수 함수이고, DB 조회는 collect_essent
 """
 
 from collections import Counter
+from collections.abc import Mapping
 from dataclasses import dataclass
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -130,16 +131,20 @@ def formality_range_for_tpo(tpo_cd: str, tpo_input_type_cd: str) -> tuple[int, i
 
 
 def shortage_categories(candidates: list[ClothingCandidate]) -> set[str]:
-    """부족한 카테고리(두 벌 미만인 top/bottom/shoes)를 돌려준다.
-
-    supplement_essentials()와 collect_essential_candidates()가 같은 기준을
-    쓰도록 판정 로직을 여기 한곳으로 모았다.
-    """
+    """부족한 카테고리(두 벌 미만인 top/bottom/shoes)를 돌려준다."""
     counts = Counter(c.category_cd for c in candidates if c.category_cd is not None)
+    return shortage_categories_from_counts(counts)
+
+
+def shortage_categories_from_counts(counts: Mapping[str, int]) -> set[str]:
+    """의류 부족 판정 기준(FR-REC-10)은 여기 한곳에만 둔다.
+
+    에센셜 보충(shortage_categories 경유)과 사전 안내(clothing_shortage)가 같이 쓴다.
+    """
     return {
         category_cd
         for category_cd in SHORTAGE_CHECK_CATEGORIES
-        if counts[category_cd] < MIN_ITEMS_PER_CATEGORY
+        if counts.get(category_cd, 0) < MIN_ITEMS_PER_CATEGORY
     }
 
 
