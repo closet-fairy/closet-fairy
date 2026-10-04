@@ -42,6 +42,7 @@ class WeatherResult:
     weather_condition_cd: str
     min_feels_like_temperature: float  # 외출 시간대 최저 체감온도 (아우터 판정용)
     is_fallback: bool = False
+    is_sky_missing: bool = False  # SKY 예보가 없어 맑음으로 가정함 (미리보기는 하늘상태를 숨길 것)
     hourly: list[HourlyWeather] = field(default_factory=list)
 
     def hourly_json(self) -> list[dict]:
@@ -101,6 +102,23 @@ def build_hourly(fcst_items: list[dict]) -> list[HourlyWeather]:
     return hourly
 
 
+def nearest_sky(fcst_items: list[dict], now: datetime) -> int | None:
+    """현재 시각에 가장 가까운 예보 시각의 SKY(하늘상태). 거리가 같으면 이른 시각을 쓴다."""
+    skies = [
+        (
+            datetime.strptime(i["fcstDate"] + i["fcstTime"], "%Y%m%d%H%M").replace(tzinfo=KST),
+            int(i["fcstValue"]),
+        )
+        for i in fcst_items
+        if i["category"] == "SKY"
+    ]
+    if not skies:
+        return None
+    now_kst = now.astimezone(KST)
+    _, sky = min(skies, key=lambda s: (abs(s[0] - now_kst), s[0]))
+    return sky
+
+
 def combine(
     ncst_items: list[dict],
     fcst_items: list[dict],
@@ -114,12 +132,9 @@ def combine(
     current_feels = feels_like(temp, wind)
     hourly = build_hourly(fcst_items)
 
-    # 실황에는 하늘상태(SKY)가 없어서, 가장 가까운 예보 시각의 SKY를 빌려 쓴다
-    first_sky = None
-    for item in fcst_items:
-        if item["category"] == "SKY":
-            first_sky = int(item["fcstValue"])
-            break
+    # 실황에는 하늘상태(SKY)가 없어, 현재 시각에 가장 가까운 예보 시각의 SKY를 빌려 쓴다
+    pty = int(float(now_values.get("PTY", 0)))
+    sky = nearest_sky(fcst_items, now)
 
     # 외출 시간대: 시작 시각이 속한 정시부터 종료 시각까지
     window_start = going_out_start.replace(minute=0, second=0, microsecond=0)
@@ -136,7 +151,8 @@ def combine(
         feels_like_temperature=current_feels,
         precipitation=parse_precipitation(now_values.get("RN1", 0)),
         wind_speed=wind,
-        weather_condition_cd=condition_cd(int(float(now_values.get("PTY", 0))), first_sky),
+        weather_condition_cd=condition_cd(pty, sky),
+        is_sky_missing=sky is None and pty == 0,
         min_feels_like_temperature=min_feels,
         hourly=hourly,
     )
