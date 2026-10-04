@@ -32,9 +32,9 @@ def test_nearest_sky_picks_closest_forecast_time_not_first():
 
 
 def test_nearest_sky_crosses_midnight():
-    # 00:20 조회 → 전날 23시가 아니라 다음 날짜의 00시 예보를 써야 한다 (날짜 파싱 확인)
-    now = datetime(2026, 10, 5, 0, 20, tzinfo=KST)
-    fcst = [_sky("2300", 1), _sky("0000", 4, date="20261005")]
+    # 23:40 조회 → 발표 직후라 예보가 다음 날짜부터 시작하는 경우 (날짜 파싱 확인)
+    now = datetime(2026, 10, 4, 23, 40, tzinfo=KST)
+    fcst = [_sky("0000", 4, date="20261005"), _sky("0100", 1, date="20261005")]
 
     assert nearest_sky(fcst, now) == 4
 
@@ -90,3 +90,19 @@ def test_nearest_sky_falls_back_to_next_hour_right_after_release():
     fcst = [_sky("1800", 3), _sky("1900", 4)]
 
     assert nearest_sky(fcst, now) == 3
+
+
+def test_nearest_sky_prefers_earlier_time_on_tie():
+    # 17시 예보가 없고 16시·18시가 같은 거리면 이른 시각(16시)을 쓴다
+    fcst = [_sky("1600", 3), _sky("1800", 4)]
+
+    assert nearest_sky(fcst, NOW) == 3
+
+
+def test_combine_marks_sky_missing_when_only_sky_is_absent():
+    # 예보는 왔지만 SKY 항목만 빠진 경우도 맑음으로 가정했음을 표시한다
+    fcst = [{"category": "TMP", "fcstDate": "20261004", "fcstTime": "1700", "fcstValue": "20"}]
+    result = _combine(fcst)
+
+    assert result.weather_condition_cd == "clear"
+    assert result.is_sky_missing is True

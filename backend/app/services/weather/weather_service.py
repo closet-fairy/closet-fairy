@@ -134,8 +134,8 @@ def combine(
     current_feels = feels_like(temp, wind)
     hourly = build_hourly(fcst_items)
 
-    # 실황에는 하늘상태(SKY)가 없어, 현재 시각에 가장 가까운 예보 시각의 SKY를 빌려 쓴다
     pty = int(float(now_values.get("PTY", 0)))
+    # 실황에는 하늘상태(SKY)가 없어, 현재 시각에 가장 가까운 예보 시각의 SKY를 빌려 쓴다
     sky = nearest_sky(fcst_items, now)
 
     # 외출 시간대: 시작 시각이 속한 정시부터 종료 시각까지
