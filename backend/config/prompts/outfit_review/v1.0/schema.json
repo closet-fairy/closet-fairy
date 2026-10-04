@@ -1,0 +1,43 @@
+{
+  "$defs": {
+    "OutfitReview": {
+      "type": "object",
+      "title": "OutfitReview",
+      "properties": {
+        "outfit_seq": {
+          "type": "integer",
+          "title": "Outfit Seq"
+        },
+        "reason": {
+          "type": "string",
+          "title": "Reason"
+        },
+        "pass": {
+          "type": "boolean",
+          "title": "Pass"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "outfit_seq",
+        "reason",
+        "pass"
+      ]
+    }
+  },
+  "type": "object",
+  "title": "OutfitReviewOutput",
+  "properties": {
+    "reviews": {
+      "type": "array",
+      "title": "Reviews",
+      "items": {
+        "$ref": "#/$defs/OutfitReview"
+      }
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "reviews"
+  ]
+}
