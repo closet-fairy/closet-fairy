@@ -4,7 +4,9 @@ from pydantic import BaseModel, Field
 class WeatherPreview(BaseModel):
     temperature: float
     feels_like_temperature: float
-    weather_condition_cd: str
+    weather_condition_cd: str = Field(
+        description="clear, cloudy, overcast, rain, sleet, snow 중 하나."
+    )
     is_fallback: bool = Field(
         description=(
             "true면 기상청 조회에 실패해 대체값을 준 것이다. "
