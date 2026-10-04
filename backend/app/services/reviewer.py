@@ -23,7 +23,7 @@ async def review_outfits(llm: LLMClient, data: OutfitReviewInput) -> list[Outfit
             call_name=CALL_NAME,
             prompt_version=prompt.prompt_version,
             model=get_settings().LLM_REVIEWER_MODEL,
-            max_tokens=1024,
+            max_tokens=2048,
             temperature=0.0,
         ),
         system=prompt.system,
