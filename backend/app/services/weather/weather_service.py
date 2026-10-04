@@ -103,7 +103,7 @@ def build_hourly(fcst_items: list[dict]) -> list[HourlyWeather]:
 
 
 def nearest_sky(fcst_items: list[dict], now: datetime) -> int | None:
-    """현재 시각에 가장 가까운 예보 시각의 SKY(하늘상태). 거리가 같으면 이른 시각을 쓴다."""
+    """현재 시각이 속한 정시에 가장 가까운 예보 시각의 SKY(하늘상태). 거리가 같으면 이른 시각을 쓴다."""
     skies = [
         (
             datetime.strptime(i["fcstDate"] + i["fcstTime"], "%Y%m%d%H%M").replace(tzinfo=KST),
@@ -114,8 +114,10 @@ def nearest_sky(fcst_items: list[dict], now: datetime) -> int | None:
     ]
     if not skies:
         return None
-    now_kst = now.astimezone(KST)
-    _, sky = min(skies, key=lambda s: (abs(s[0] - now_kst), s[0]))
+    # 분 단위로 재면 31분 이후엔 다음 정시가 골라져 시간대별 목록(build_hourly)과 어긋나므로
+    # 현재 시각이 속한 정시를 기준으로 잰다. 그 정시 예보가 없으면 가장 가까운 값으로 대신한다.
+    now_hour = now.astimezone(KST).replace(minute=0, second=0, microsecond=0)
+    _, sky = min(skies, key=lambda s: (abs(s[0] - now_hour), s[0]))
     return sky
 
 

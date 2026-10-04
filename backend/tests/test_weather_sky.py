@@ -32,7 +32,8 @@ def test_nearest_sky_picks_closest_forecast_time_not_first():
 
 
 def test_nearest_sky_crosses_midnight():
-    now = datetime(2026, 10, 4, 23, 40, tzinfo=KST)
+    # 00:20 조회 → 전날 23시가 아니라 다음 날짜의 00시 예보를 써야 한다 (날짜 파싱 확인)
+    now = datetime(2026, 10, 5, 0, 20, tzinfo=KST)
     fcst = [_sky("2300", 1), _sky("0000", 4, date="20261005")]
 
     assert nearest_sky(fcst, now) == 4
@@ -73,3 +74,19 @@ def test_combine_sky_missing_is_false_when_precipitating():
 
 def test_combine_sky_missing_is_false_when_sky_present():
     assert _combine([_sky("1700", 1)]).is_sky_missing is False
+
+
+def test_nearest_sky_uses_current_hour_even_after_half_past():
+    # 19:50 조회 → 거리상 20시가 더 가깝지만, 시간대별 목록과 맞게 19시 값을 쓴다
+    now = datetime(2026, 10, 4, 19, 50, tzinfo=KST)
+    fcst = [_sky("1900", 1), _sky("2000", 4)]
+
+    assert nearest_sky(fcst, now) == 1
+
+
+def test_nearest_sky_falls_back_to_next_hour_right_after_release():
+    # 발표 직후라 예보가 다음 시각부터 시작하면 가장 가까운 값으로 대신한다
+    now = datetime(2026, 10, 4, 17, 15, tzinfo=KST)
+    fcst = [_sky("1800", 3), _sky("1900", 4)]
+
+    assert nearest_sky(fcst, now) == 3
