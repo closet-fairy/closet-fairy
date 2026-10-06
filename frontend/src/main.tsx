@@ -22,14 +22,8 @@ const enableMocking = async () => {
     return;
   }
 
-  const { worker } = await import('@/mocks/browser');
-  await worker.start({
-    onUnhandledRequest: (request, print) => {
-      if (new URL(request.url).pathname.startsWith('/api/')) {
-        print.warning();
-      }
-    },
-  });
+  const { worker, warnOnUnhandledApiRequest } = await import('@/mocks/browser');
+  await worker.start({ onUnhandledRequest: warnOnUnhandledApiRequest });
 };
 
 const showDevErrorOverlay = (error: unknown) => {
