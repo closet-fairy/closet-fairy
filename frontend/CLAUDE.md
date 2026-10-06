@@ -14,7 +14,7 @@ frontend/src/
 ├─ routes/        TanStack Router 파일 기반 라우트
 ├─ pages/         화면
 ├─ components/    두 화면 이상에서 쓰는 컴포넌트
-│  └─ common/     디자인 시스템 컴포넌트
+│  └─ common/     디자인 시스템 컴포넌트 (사용처 수와 무관)
 ├─ hooks/         두 화면 이상에서 쓰는 훅
 ├─ domains/       React와 무관한 비즈니스 규칙
 ├─ apis/          HTTP 클라이언트와 요청 설정
@@ -41,6 +41,7 @@ frontend/src/
 - 두 화면 이상에서 쓰게 되면 `components/`, `hooks/`, `constants/`, `types/`로 옮긴다.
 - `components/common/`에는 옷장요정의 도메인을 모르는 컴포넌트만 둔다.
   도메인 데이터를 props로 받거나 도메인 용어가 들어가면 `components/` 바로 아래에 둔다.
+  디자인 시스템 컴포넌트와 헤드리스 라이브러리를 감싼 컴포넌트는 사용처 수와 관계없이 처음부터 `components/common/`에 둔다.
   - ✅ `components/common/Button`, `components/StatusBadge`
   - ❌ `components/common/ClothCard`
 - 요구사항에서 온 비즈니스 규칙은 쓰는 곳이 한 곳이어도 `domains/`에 둔다.
@@ -60,6 +61,7 @@ frontend/src/
 
 컴포넌트는 이름과 같은 폴더를 만들고 아래 파일을 둔다.
 사용처가 한 곳이어도 예외 없이 폴더를 만들며, 한 파일 안에 다른 컴포넌트를 정의하지 않는다.
+단, 화면 컴포넌트는 `<화면>` 이름의 폴더에 `<화면>Page.tsx`로 둔다.
 
 ```
 ClothCard/
@@ -91,6 +93,8 @@ ClothCard/
 - 화면 컴포넌트: `<화면>Page` (`pages/Closet/ClosetPage.tsx`)
 - 훅: `use`로 시작하는 camelCase (`useClothPolling.ts`)
 - 함수: 동사로 시작하는 camelCase (`validateUploadFile.ts`)
+- 라우트 파일: 이름이 URL 경로가 되므로 TanStack Router 파일 기반 라우팅 규칙을 따른다 (`routes/closet.tsx`)
+- 그 밖의 파일: camelCase (`types/cloth.ts`, `constants/clothCategory.ts`)
 
 ## 스타일링
 
@@ -106,7 +110,7 @@ ClothCard/
   HTML 태그(`styled.div` 등)를 감쌀 때는 넘기지 않아도 된다.
   - ✅ `styled(Dialog.Content, transientOptions)<{ $size: Size }>`
 - 전역 스타일은 `styles/globalStyles.ts`에만 둔다. 컴포넌트에서 전역 선택자(`body`, `#root` 등)를 스타일링하지 않는다.
-- 폰트는 `wanted-sans` 패키지에서 불러온다. 글꼴은 `styles/globalStyles.ts`의 `body`에서만 지정한다.
+- 폰트는 `@fontsource-variable/asta-sans` 패키지에서 불러온다. 글꼴은 `styles/globalStyles.ts`의 `body`에서만 지정한다.
 
 ### 토큰
 
@@ -161,6 +165,7 @@ ClothCard/
 
 - 서버에서 받은 데이터는 TanStack Query로 다룬다.
 - Query로 받은 데이터를 `useState`나 Context에 복사해 두지 않는다. 필요한 값은 Query 결과에서 계산해 쓴다.
+  단, 편집 폼처럼 Query 데이터를 초기값으로만 받고 사용자가 고쳐 나가는 값은 로컬 상태로 둔다.
   - ❌ `const [clothes, setClothes] = useState(data);`
 - 전역 클라이언트 상태가 필요해 보이면 상태 관리 라이브러리를 추가하기 전에 사용자에게 먼저 제안한다.
 
@@ -206,7 +211,7 @@ ClothCard/
 ### 테스트
 
 - `domains/`의 함수는 단위 테스트를 작성한다.
-- 컴포넌트와 훅의 테스트는 필요한 경우에만 작성한다.
+- `utils/`의 함수, 컴포넌트, 훅의 테스트는 필요한 경우에만 작성한다.
 - 테스트 파일에 대상 이름으로 감싸는 바깥 `describe`를 두지 않는다. 파일 이름이 대상을 나타낸다.
 - `describe`에는 시나리오 묶음을 한국어 명사형 제목으로 쓴다. 온점을 붙이지 않는다.
   - ✅ `describe('업로드 파일 형식 검증', ...)`
