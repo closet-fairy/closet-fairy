@@ -8,6 +8,20 @@ import { defineConfig, globalIgnores } from 'eslint/config';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
+const AXIOS_ALLOWED_FILES = ['src/apis/httpClient.ts', 'src/apis/apiError.ts'];
+const HEADLESS_ALLOWED_FILES = ['src/components/common/**'];
+
+const AXIOS_RESTRICTION = {
+  name: 'axios',
+  message: 'axios 요청은 src/apis/httpClient.ts의 공용 인스턴스로만 보내세요.',
+};
+
+const HEADLESS_RESTRICTION = {
+  group: ['@radix-ui/*', 'radix-ui', 'vaul', 'sonner'],
+  message:
+    '헤드리스 라이브러리는 src/components/common/에서 감싼 컴포넌트를 통해서만 사용하세요.',
+};
+
 export default defineConfig([
   globalIgnores(['dist', 'src/routeTree.gen.ts']),
   {
@@ -54,20 +68,24 @@ export default defineConfig([
   },
   {
     files: ['**/*.{ts,tsx}'],
-    ignores: ['src/apis/httpClient.ts', 'src/apis/apiError.ts'],
+    ignores: [...AXIOS_ALLOWED_FILES, ...HEADLESS_ALLOWED_FILES],
     rules: {
       'no-restricted-imports': [
         'error',
-        {
-          paths: [
-            {
-              name: 'axios',
-              message:
-                'axios 요청은 src/apis/httpClient.ts의 공용 인스턴스로만 보내세요.',
-            },
-          ],
-        },
+        { paths: [AXIOS_RESTRICTION], patterns: [HEADLESS_RESTRICTION] },
       ],
+    },
+  },
+  {
+    files: AXIOS_ALLOWED_FILES,
+    rules: {
+      'no-restricted-imports': ['error', { patterns: [HEADLESS_RESTRICTION] }],
+    },
+  },
+  {
+    files: HEADLESS_ALLOWED_FILES,
+    rules: {
+      'no-restricted-imports': ['error', { paths: [AXIOS_RESTRICTION] }],
     },
   },
   eslintConfigPrettier,
