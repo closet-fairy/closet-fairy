@@ -106,7 +106,7 @@ ClothCard/
   HTML 태그(`styled.div` 등)를 감쌀 때는 넘기지 않아도 된다.
   - ✅ `styled(Dialog.Content, transientOptions)<{ $size: Size }>`
 - 전역 스타일은 `styles/globalStyles.ts`에만 둔다. 컴포넌트에서 전역 선택자(`body`, `#root` 등)를 스타일링하지 않는다.
-- 폰트는 `wanted-sans` 패키지에서 불러온다. 글꼴은 `styles/globalStyles.ts`의 `body`에서만 지정한다.
+- 폰트는 `@fontsource-variable/asta-sans` 패키지에서 불러온다. 글꼴은 `styles/globalStyles.ts`의 `body`에서만 지정한다.
 
 ### 토큰
 
