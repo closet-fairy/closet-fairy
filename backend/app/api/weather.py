@@ -22,4 +22,5 @@ async def preview_weather(
         feels_like_temperature=weather.feels_like_temperature,
         weather_condition_cd=weather.weather_condition_cd,
         is_fallback=weather.is_fallback,
+        is_sky_missing=weather.is_sky_missing,
     )

@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import get_args
 
 import httpx
 import pytest
@@ -7,6 +8,7 @@ from fastapi.testclient import TestClient
 from app.api.deps import get_now
 from app.core.db import get_db
 from app.main import app
+from app.schemas.weather import WeatherConditionCd
 from app.services.weather import weather_service
 from app.services.weather.base_time import KST
 from app.services.weather.feels_like import feels_like
@@ -50,6 +52,12 @@ def _ok_handler(request: httpx.Request) -> httpx.Response:
     if request.url.path.endswith("getUltraSrtNcst"):
         return httpx.Response(200, json=_ok(NCST))
     return httpx.Response(200, json=_ok(FCST))
+
+
+def _no_sky_handler(request: httpx.Request) -> httpx.Response:
+    if request.url.path.endswith("getUltraSrtNcst"):
+        return httpx.Response(200, json=_ok(NCST))
+    return httpx.Response(200, json=_ok([i for i in FCST if i["category"] != "SKY"]))
 
 
 def _timeout_handler(request: httpx.Request) -> httpx.Response:
@@ -97,6 +105,7 @@ def test_preview_200(make_client):
         "feels_like_temperature": feels_like(8.0, 4.0),
         "weather_condition_cd": "cloudy",
         "is_fallback": False,
+        "is_sky_missing": False,
     }
 
 
@@ -118,7 +127,26 @@ def test_preview_fallback(make_client):
         "feels_like_temperature": 21.2,
         "weather_condition_cd": "clear",
         "is_fallback": True,
+        "is_sky_missing": False,
     }
+
+
+def test_preview_sky_missing(make_client):
+    with make_client(_no_sky_handler) as client:
+        res = preview(client)
+    assert res.status_code == 200
+    body = res.json()
+    assert body["weather_condition_cd"] == "clear"
+    assert body["is_sky_missing"] is True
+    assert body["is_fallback"] is False
+
+
+def test_weather_condition_cd_literal_matches_condition_cd():
+    produced = {
+        weather_service.condition_cd(pty, sky) for pty in range(10) for sky in [None, *range(10)]
+    }
+    produced.add(weather_service.fallback_weather(FIXED_NOW).weather_condition_cd)
+    assert produced == set(get_args(WeatherConditionCd))
 
 
 def test_preview_unknown_sido_404(make_client):
