@@ -14,12 +14,15 @@ from app.core.db import AsyncSessionLocal
 from app.repositories import essential_item as essential_item_repo
 from app.repositories.clothing import ClothingCandidate
 from app.repositories.essential_item import EssentialItemCandidate
+from app.services.clothing_shortage import (
+    MIN_ITEMS_PER_CATEGORY,
+    SHORTAGE_CHECK_CATEGORIES,
+    shortage_categories_from_counts,
+)
 from app.services.prompt.outfit_generation import ItemSource, candidate_key
 from app.services.recommend_context import RecommendContext
 from app.services.rule_filter import FilterResult, OuterRequirement, thickness_matches
 
-SHORTAGE_CHECK_CATEGORIES = ("top", "bottom", "shoes")
-MIN_ITEMS_PER_CATEGORY = 2
 MAX_CANDIDATES_PER_CATEGORY = 8  # 악세서리는 종류(accessory_type_cd)별로 따로 적용
 
 # TPO 프리셋별 에센셜 formality_level 허용 구간 (2026-10-03 팀 확정).
@@ -130,17 +133,9 @@ def formality_range_for_tpo(tpo_cd: str, tpo_input_type_cd: str) -> tuple[int, i
 
 
 def shortage_categories(candidates: list[ClothingCandidate]) -> set[str]:
-    """부족한 카테고리(두 벌 미만인 top/bottom/shoes)를 돌려준다.
-
-    supplement_essentials()와 collect_essential_candidates()가 같은 기준을
-    쓰도록 판정 로직을 여기 한곳으로 모았다.
-    """
+    """부족한 카테고리(두 벌 미만인 top/bottom/shoes)를 돌려준다."""
     counts = Counter(c.category_cd for c in candidates if c.category_cd is not None)
-    return {
-        category_cd
-        for category_cd in SHORTAGE_CHECK_CATEGORIES
-        if counts[category_cd] < MIN_ITEMS_PER_CATEGORY
-    }
+    return shortage_categories_from_counts(counts)
 
 
 def supplement_essentials(

@@ -1,9 +1,10 @@
-"""완료 상태 옷 + 스타일·계절 태그 조회 (REC-07)."""
+"""완료 상태 옷 조회 — 스타일·계절 태그 포함 목록(REC-07), 카테고리별 개수(REC-05)."""
 
 from collections import defaultdict
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 
-from sqlalchemy import text
+from sqlalchemy import bindparam, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -84,3 +85,28 @@ async def get_completed_clothing(db: AsyncSession, member_id: int) -> list[Cloth
         )
         for row in clothing_rows
     ]
+
+
+COMPLETED_COUNT_BY_CATEGORY_SQL = text(
+    """
+    SELECT category_cd, COUNT(*) AS cnt
+    FROM clothing
+    WHERE member_id = :member_id AND processing_status_cd = 'completed'
+      AND category_cd IN :category_cds
+    GROUP BY category_cd
+    """
+).bindparams(bindparam("category_cds", expanding=True))
+
+
+async def count_completed_by_category(
+    db: AsyncSession, member_id: int, category_cds: Sequence[str]
+) -> dict[str, int]:
+    rows = (
+        await db.execute(
+            COMPLETED_COUNT_BY_CATEGORY_SQL,
+            {"member_id": member_id, "category_cds": list(category_cds)},
+        )
+    ).all()
+    counts = {category_cd: 0 for category_cd in category_cds}
+    counts.update({row.category_cd: row.cnt for row in rows})
+    return counts
