@@ -1,3 +1,5 @@
+from typing import get_args
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -5,7 +7,16 @@ from app.api.deps import get_current_member_id
 from app.core.db import get_db
 from app.main import app
 from app.repositories import clothing as clothing_repo
-from app.services.clothing_shortage import judge_clothing_shortage
+from app.schemas.clothing_shortage import (
+    CategoryCounts,
+    ClothingShortageNoticeCd,
+    ShortageCategory,
+)
+from app.services.clothing_shortage import (
+    CLOTHING_SHORTAGE_NOTICE_CD,
+    SHORTAGE_CHECK_CATEGORIES,
+    judge_clothing_shortage,
+)
 
 
 @pytest.fixture
@@ -80,3 +91,9 @@ def test_judge_two_items_is_not_shortage():
     assert result.is_clothing_shortage is False
     assert result.shortage_categories == []
     assert result.notice_cd is None
+
+
+def test_response_schema_matches_service_constants():
+    assert get_args(ShortageCategory) == SHORTAGE_CHECK_CATEGORIES
+    assert tuple(CategoryCounts.model_fields) == SHORTAGE_CHECK_CATEGORIES
+    assert get_args(ClothingShortageNoticeCd) == (CLOTHING_SHORTAGE_NOTICE_CD,)
