@@ -24,7 +24,8 @@ class WeatherPreview(BaseModel):
     is_sky_missing: bool = Field(
         description=(
             "true면 하늘상태(SKY) 예보가 없어 weather_condition_cd를 clear로 가정한 것이다. "
-            "기온·체감온도는 실제 조회값이다. "
+            "기온·체감온도는 실제 조회값이므로, "
+            "하늘상태 표시만 숨기고 기온은 그대로 보여주면 된다. "
             "is_fallback이 true면 날씨 전체가 대체값이며, 이때 이 값은 false로 온다."
         )
     )
