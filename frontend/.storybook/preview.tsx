@@ -6,7 +6,7 @@ import { warnOnUnhandledApiRequest, worker } from '@/mocks/browser';
 import { globalStyles } from '@/styles/globalStyles';
 import StoryQueryClientProvider from './StoryQueryClientProvider';
 import StoryRouterProvider from './StoryRouterProvider';
-import 'wanted-sans/fonts/webfonts/variable/split/WantedSansVariable.css';
+import '@fontsource-variable/asta-sans';
 
 const withGlobalStyles: Decorator = (Story) => (
   <>
