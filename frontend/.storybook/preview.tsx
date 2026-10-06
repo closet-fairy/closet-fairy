@@ -1,4 +1,4 @@
-import { Global } from '@emotion/react';
+import { css, Global } from '@emotion/react';
 import type { Decorator, Preview } from '@storybook/react-vite';
 import { mswLoader } from 'msw-storybook-addon/csf3';
 import { INITIAL_VIEWPORTS } from 'storybook/viewport';
@@ -8,9 +8,16 @@ import StoryQueryClientProvider from './StoryQueryClientProvider';
 import StoryRouterProvider from './StoryRouterProvider';
 import '@fontsource-variable/asta-sans';
 
+const storyRootStyles = css`
+  .sb-main-fullscreen #storybook-root {
+    min-height: 100dvh;
+  }
+`;
+
 const withGlobalStyles: Decorator = (Story) => (
   <>
     <Global styles={globalStyles} />
+    <Global styles={storyRootStyles} />
     <Story />
   </>
 );
