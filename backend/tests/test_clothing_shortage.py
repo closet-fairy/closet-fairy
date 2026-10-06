@@ -16,6 +16,7 @@ from app.services.clothing_shortage import (
     CLOTHING_SHORTAGE_NOTICE_CD,
     SHORTAGE_CHECK_CATEGORIES,
     judge_clothing_shortage,
+    shortage_categories_from_counts,
 )
 
 
@@ -91,6 +92,17 @@ def test_judge_two_items_is_not_shortage():
     assert result.is_clothing_shortage is False
     assert result.shortage_categories == []
     assert result.notice_cd is None
+
+
+@pytest.mark.parametrize(
+    ("counts", "expected"),
+    [
+        ({"top": 3}, {"bottom", "shoes"}),
+        ({}, {"top", "bottom", "shoes"}),
+    ],
+)
+def test_shortage_from_counts_treats_missing_category_as_zero(counts, expected):
+    assert shortage_categories_from_counts(counts) == expected
 
 
 def test_response_schema_matches_service_constants():
