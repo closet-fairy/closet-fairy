@@ -5,7 +5,7 @@ import { defineConfig, loadEnv } from 'vite';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, import.meta.dirname, '');
-  const apiProxyTarget = env.API_PROXY_TARGET ?? 'http://localhost:8000';
+  const apiProxyTarget = env.API_PROXY_TARGET || 'http://localhost:8000';
 
   return {
     plugins: [
