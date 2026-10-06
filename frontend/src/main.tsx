@@ -57,7 +57,7 @@ void enableMocking().then(
     );
   },
   (error: unknown) => {
-    showDevErrorOverlay(error);
     console.error(error);
+    showDevErrorOverlay(error);
   },
 );
