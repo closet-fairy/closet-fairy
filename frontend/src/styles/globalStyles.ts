@@ -16,10 +16,13 @@ export const globalStyles = css`
 
   body {
     font-family:
-      'Wanted Sans Variable',
+      'Asta Sans Variable',
       -apple-system,
       BlinkMacSystemFont,
       system-ui,
+      'Apple SD Gothic Neo',
+      'Noto Sans KR',
+      'Malgun Gothic',
       sans-serif;
     word-break: keep-all;
     overflow-wrap: break-word;
