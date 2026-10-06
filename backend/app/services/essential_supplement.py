@@ -6,7 +6,6 @@ DB·외부 API 호출이 없는 순수 함수이고, DB 조회는 collect_essent
 """
 
 from collections import Counter
-from collections.abc import Mapping
 from dataclasses import dataclass
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,12 +14,15 @@ from app.core.db import AsyncSessionLocal
 from app.repositories import essential_item as essential_item_repo
 from app.repositories.clothing import ClothingCandidate
 from app.repositories.essential_item import EssentialItemCandidate
+from app.services.clothing_shortage import (
+    MIN_ITEMS_PER_CATEGORY,
+    SHORTAGE_CHECK_CATEGORIES,
+    shortage_categories_from_counts,
+)
 from app.services.prompt.outfit_generation import ItemSource, candidate_key
 from app.services.recommend_context import RecommendContext
 from app.services.rule_filter import FilterResult, OuterRequirement, thickness_matches
 
-SHORTAGE_CHECK_CATEGORIES = ("top", "bottom", "shoes")
-MIN_ITEMS_PER_CATEGORY = 2
 MAX_CANDIDATES_PER_CATEGORY = 8  # 악세서리는 종류(accessory_type_cd)별로 따로 적용
 
 # TPO 프리셋별 에센셜 formality_level 허용 구간 (2026-10-03 팀 확정).
@@ -134,18 +136,6 @@ def shortage_categories(candidates: list[ClothingCandidate]) -> set[str]:
     """부족한 카테고리(두 벌 미만인 top/bottom/shoes)를 돌려준다."""
     counts = Counter(c.category_cd for c in candidates if c.category_cd is not None)
     return shortage_categories_from_counts(counts)
-
-
-def shortage_categories_from_counts(counts: Mapping[str, int]) -> set[str]:
-    """의류 부족 판정 기준(FR-REC-10)은 여기 한곳에만 둔다.
-
-    에센셜 보충(shortage_categories 경유)과 사전 안내(clothing_shortage)가 같이 쓴다.
-    """
-    return {
-        category_cd
-        for category_cd in SHORTAGE_CHECK_CATEGORIES
-        if counts.get(category_cd, 0) < MIN_ITEMS_PER_CATEGORY
-    }
 
 
 def supplement_essentials(

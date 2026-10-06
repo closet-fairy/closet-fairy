@@ -1,16 +1,27 @@
 """의류 부족 사전 안내 (REC-05)."""
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.repositories import clothing as clothing_repo
-from app.services.essential_supplement import (
-    SHORTAGE_CHECK_CATEGORIES,
-    shortage_categories_from_counts,
-)
 
+SHORTAGE_CHECK_CATEGORIES = ("top", "bottom", "shoes")
+MIN_ITEMS_PER_CATEGORY = 2
 CLOTHING_SHORTAGE_NOTICE_CD = "clothing_shortage"
+
+
+def shortage_categories_from_counts(counts: Mapping[str, int]) -> set[str]:
+    """의류 부족 판정 기준(FR-REC-10)은 여기 한곳에만 둔다.
+
+    에센셜 보충(shortage_categories 경유)과 사전 안내(clothing_shortage)가 같이 쓴다.
+    """
+    return {
+        category_cd
+        for category_cd in SHORTAGE_CHECK_CATEGORIES
+        if counts.get(category_cd, 0) < MIN_ITEMS_PER_CATEGORY
+    }
 
 
 @dataclass
