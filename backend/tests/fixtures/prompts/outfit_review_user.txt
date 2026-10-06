@@ -1,0 +1,40 @@
+## 날씨
+- 기온 18.0℃ (체감 17.2℃), 맑음
+- 강수 0.0mm, 풍속 2.4m/s
+- 외출 시간대 최저 체감온도 15.1℃
+
+## 외출 시간대 예보
+- 11:00 16.0℃ (체감 15.1℃), 맑음, 강수 0.0mm
+- 12:00 17.0℃ (체감 16.3℃), 맑음, 강수 0.0mm
+- 13:00 18.0℃ (체감 17.2℃), 구름많음, 강수 0.0mm
+
+## 외출 시간
+11:30~13:00
+
+## 계절
+가을 (fall)
+
+## TPO
+격식(결혼식·면접) (formal)
+
+## 회원 정보
+- 체질: 보통
+- 성별: 선택 안 함
+
+## 아우터
+필수
+
+## 검사할 세트
+형식: 분류(악세서리는 accessories:종류) | 이름 | 색상 | 스타일 | 두께 | 출처
+세트 1
+- outer | 네이비 바람막이 | navy | sporty | thin | 에센셜
+- top | 블랙 기능성 티셔츠 | black | sporty | thin | 에센셜
+- bottom | 블랙 트레이닝 팬츠 | black | sporty | medium | 에센셜
+- shoes | 블랙 러닝화 | black | sporty | - | 에센셜
+
+세트 2
+- outer | 네이비 블레이저 | navy | classic | medium | 에센셜
+- top | 화이트 옥스퍼드 셔츠 | white | classic,preppy | thin | 보유
+- bottom | 블랙 슬랙스 | black | formal | medium | 에센셜
+- shoes | - | - | - | - | 보유
+- accessories:belt | 블랙 가죽 벨트 | black | formal | - | 에센셜
