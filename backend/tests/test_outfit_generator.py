@@ -5,6 +5,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from app.core.config import get_settings
+from app.services import outfit_generator
 from app.services.llm import LLMClient, LLMTimeoutError
 from app.services.outfit_generator import (
     FALLBACK_REASON,
@@ -12,6 +14,7 @@ from app.services.outfit_generator import (
     compose_basic_outfits,
     generate_outfits,
     make_basic_outfit_fallback,
+    make_llm_reviewer,
 )
 from app.services.outfit_validation import OutfitValidation
 from app.services.prompt.outfit_generation import (
@@ -65,12 +68,12 @@ def reviewer(*fail_keys: str) -> AsyncMock:
     return AsyncMock(side_effect=review)
 
 
-def no_fallback(seqs, accepted) -> list[DraftOutfit]:
+def no_fallback(seqs, existing) -> list[DraftOutfit]:
     return []
 
 
 def recording_fallback(calls: list):
-    def build(seqs, accepted) -> list[DraftOutfit]:
+    def build(seqs, existing) -> list[DraftOutfit]:
         calls.append(list(seqs))
         return [DraftOutfit(s, "preferred", ("e1", "e2", "e3"), "기본", True) for s in seqs]
 
@@ -184,6 +187,21 @@ async def test_missing_outfits_from_llm_are_regenerated():
 
     assert len(result.outfits) == 4
     assert result.rounds == 2
+    assert result.shortfall_retries == 1
+    assert result.hard_rule_retries == 0
+    assert "## 직전 생성의 검증 실패 사유" not in prompt_data(llm, 1)
+
+
+async def test_repeated_shortfall_stops_at_limit_then_fallback():
+    short = generation(("preferred", GOOD), ("preferred", GOOD), ("exploratory", GOOD))
+    llm = fake_llm(short, generation(), generation())
+    calls: list = []
+
+    result = await run(llm, fallback=recording_fallback(calls))
+
+    assert result.rounds == 3
+    assert result.shortfall_retries == 2
+    assert calls == [[4]]
 
 
 async def test_extra_outfits_from_llm_are_ignored():
@@ -269,6 +287,104 @@ async def test_kept_outfits_are_not_regenerated_or_returned():
     assert [o.outfit_seq for o in result.outfits] == [2, 4]
 
 
+async def test_fallback_does_not_repeat_kept_outfit():
+    kept = (KeptOutfit(1, ["e1", "e2", "e3"], "preferred"),)
+    llm = fake_llm(LLMTimeoutError("timeout"))
+
+    result = await generate_outfits(
+        llm,
+        make_input(outfit_count=1, kept_outfits=kept, exploration_style=None),
+        hard_rule=all_pass_rule,
+        review=reviewer(),
+        fallback=make_basic_outfit_fallback(POOL, is_outer_required=False),
+        max_retry_per_stage=2,
+    )
+
+    assert len(result.outfits) == 1
+    assert frozenset(result.outfits[0].item_keys) != frozenset({"e1", "e2", "e3"})
+
+
+# ---------- 탐색 코디 수 제한 ----------
+
+
+async def test_extra_exploratory_in_one_response_is_relabeled_preferred():
+    llm = fake_llm(generation(*[("exploratory", GOOD)] * 2, *[("preferred", GOOD)] * 2))
+
+    result = await run(llm)
+
+    assert [o.outfit_type for o in result.outfits].count("exploratory") == 1
+
+
+async def test_exploratory_after_exploratory_passed_does_not_break_next_round():
+    llm = fake_llm(
+        generation(
+            ("preferred", BAD), ("preferred", GOOD), ("preferred", GOOD), ("exploratory", GOOD)
+        ),
+        generation(("exploratory", GOOD)),
+    )
+
+    result = await run(llm, hard_rule=rule_rejects("o9999"))
+
+    assert len(result.outfits) == 4
+    assert [o.outfit_type for o in result.outfits].count("exploratory") == 1
+
+
+async def test_exploratory_is_relabeled_when_exploration_not_requested():
+    llm = fake_llm(generation(*[("preferred", GOOD)] * 3, ("exploratory", GOOD)))
+
+    result = await run(llm, exploration_style=None)
+
+    assert all(o.outfit_type == "preferred" for o in result.outfits)
+
+
+async def test_retry_limit_defaults_to_setting():
+    bad = generation(("preferred", BAD), *[("preferred", GOOD)] * 2, ("exploratory", GOOD))
+    llm = fake_llm(bad, *[generation(("preferred", BAD))] * 5)
+
+    result = await generate_outfits(
+        llm,
+        make_input(),
+        hard_rule=rule_rejects("o9999"),
+        review=reviewer(),
+        fallback=no_fallback,
+    )
+
+    assert result.hard_rule_retries == get_settings().MAX_RETRY_PER_VALIDATION_STAGE
+
+
+# ---------- 2차 검증 연결 ----------
+
+
+async def test_llm_reviewer_passes_prompt_input_and_outfits(monkeypatch):
+    captured = {}
+
+    async def fake_review_outfits(llm, data):
+        captured["data"] = data
+        return [OutfitValidation(1, passed=True)]
+
+    monkeypatch.setattr(outfit_generator, "review_outfits", fake_review_outfits)
+    prompt_input = make_input()
+    llm = MagicMock(spec=LLMClient)
+
+    await make_llm_reviewer(llm, prompt_input)([DraftOutfit(1, "preferred", tuple(GOOD), "이유")])
+
+    data = captured["data"]
+    for field in (
+        "weather",
+        "going_out_start_at",
+        "going_out_end_at",
+        "season_cd",
+        "tpo_cd",
+        "tpo_text",
+        "temperature_sensitivity_cd",
+        "gender_cd",
+        "is_outer_required",
+        "candidates",
+    ):
+        assert getattr(data, field) == getattr(prompt_input, field), field
+    assert [(o.outfit_seq, list(o.item_keys)) for o in data.outfits] == [(1, GOOD)]
+
+
 # ---------- 기본 코디 조합 ----------
 
 POOL = (
@@ -302,6 +418,14 @@ def test_compose_skips_combinations_already_taken():
     assert combos == [("o10", "o20", "e3")]
 
 
+def test_compose_does_not_modify_taken_argument():
+    taken = {frozenset({"e1", "e2", "e3"})}
+
+    compose_basic_outfits(POOL, is_outer_required=False, taken=taken, count=2)
+
+    assert taken == {frozenset({"e1", "e2", "e3"})}
+
+
 def test_compose_returns_empty_without_required_category():
     no_shoes = [c for c in POOL if c.category_cd != "shoes"]
 
@@ -310,9 +434,8 @@ def test_compose_returns_empty_without_required_category():
 
 def test_fallback_builder_marks_outfits_as_fallback():
     build = make_basic_outfit_fallback(POOL, is_outer_required=False)
-    accepted = [DraftOutfit(1, "preferred", ("e1", "e2", "e3"), "통과")]
 
-    outfits = build([2, 3], accepted)
+    outfits = build([2, 3], [("e1", "e2", "e3")])
 
     assert [o.outfit_seq for o in outfits] == [2, 3]
     assert all(o.is_fallback and o.reason == FALLBACK_REASON for o in outfits)

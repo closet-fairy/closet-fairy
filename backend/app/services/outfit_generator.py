@@ -14,6 +14,7 @@ from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, replace
 from itertools import product
 
+from app.core.config import get_settings
 from app.core.logging import Event
 from app.services.llm import LLMCallConfig, LLMClient, LLMError
 from app.services.outfit_validation import OutfitValidation, to_failure_reasons
@@ -34,7 +35,6 @@ logger = logging.getLogger(__name__)
 CALL_NAME = "outfit_generation"
 MAX_OUTFITS = 4
 FALLBACK_REASON = "조건에 맞는 코디를 만들지 못해 기본 조합으로 구성했어요."
-MISSING_OUTFIT_REASON = "요청한 수보다 적게 생성했다. 요청한 세트 수를 모두 채운다."
 
 
 @dataclass(frozen=True)
@@ -54,12 +54,13 @@ class GenerationResult:
     rounds: int
     hard_rule_retries: int
     reviewer_retries: int
+    shortfall_retries: int
     fallback_count: int
 
 
 HardRuleCheck = Callable[[Sequence[DraftOutfit]], list[OutfitValidation]]
 ReviewCheck = Callable[[Sequence[DraftOutfit]], Awaitable[list[OutfitValidation]]]
-FallbackBuilder = Callable[[Sequence[int], Sequence[DraftOutfit]], list[DraftOutfit]]
+FallbackBuilder = Callable[[Sequence[int], Sequence[Sequence[str]]], list[DraftOutfit]]
 
 
 async def generate_outfits(
@@ -69,7 +70,7 @@ async def generate_outfits(
     hard_rule: HardRuleCheck,
     review: ReviewCheck,
     fallback: FallbackBuilder,
-    max_retry_per_stage: int,
+    max_retry_per_stage: int | None = None,
     session_id: int | None = None,
 ) -> GenerationResult:
     """prompt_input.outfit_count만큼 세트를 채운다.
@@ -77,11 +78,13 @@ async def generate_outfits(
     prompt_input.kept_outfits(재추천에서 유지하는 세트)는 고정으로 보고 프롬프트에만
     넘기며 결과에는 넣지 않는다. failure_reasons는 이 함수가 채운다.
     """
+    if max_retry_per_stage is None:
+        max_retry_per_stage = get_settings().MAX_RETRY_PER_VALIDATION_STAGE
     target = prompt_input.outfit_count
     kept = tuple(prompt_input.kept_outfits)
     accepted: list[DraftOutfit] = []
     failure_reasons: list[FailureReason] = []
-    hard_retries = reviewer_retries = rounds = 0
+    hard_retries = reviewer_retries = shortfall_retries = rounds = 0
     log_extra = {"recommendation_session_id": session_id}
 
     while len(accepted) < target:
@@ -100,8 +103,8 @@ async def generate_outfits(
             logger.warning("outfit generation call failed", exc_info=True, extra=log_extra)
             break
 
-        hard_failed = _missing_outfits(seqs, drafts)
-        hard_failed += [v for v in hard_rule(drafts) if not v.passed]
+        missing_count = len(seqs) - len(drafts)
+        hard_failed = [v for v in hard_rule(drafts) if not v.passed]
         hard_failed_seqs = {v.outfit_seq for v in hard_failed}
         survivors = [d for d in drafts if d.outfit_seq not in hard_failed_seqs]
 
@@ -129,6 +132,10 @@ async def generate_outfits(
             if reviewer_retries >= max_retry_per_stage:
                 break
             reviewer_retries += 1
+        if missing_count:
+            if shortfall_retries >= max_retry_per_stage:
+                break
+            shortfall_retries += 1
         failure_reasons = to_failure_reasons(hard_failed + review_failed)
         logger.info(
             "outfit regenerate",
@@ -137,6 +144,7 @@ async def generate_outfits(
                 "event": Event.RECOMMEND_REGENERATE,
                 "round": rounds,
                 "regenerate_count": target - len(accepted),
+                "missing_count": missing_count,
             },
         )
 
@@ -144,7 +152,8 @@ async def generate_outfits(
     remaining = target - len(accepted)
     if remaining > 0:
         seqs = _free_seqs(kept, accepted)[:remaining]
-        fallback_outfits = fallback(seqs, accepted)
+        existing = [k.item_keys for k in kept] + [a.item_keys for a in accepted]
+        fallback_outfits = fallback(seqs, existing)
         logger.info(
             "outfit fallback",
             extra={
@@ -160,6 +169,7 @@ async def generate_outfits(
         rounds=rounds,
         hard_rule_retries=hard_retries,
         reviewer_retries=reviewer_retries,
+        shortfall_retries=shortfall_retries,
         fallback_count=len(fallback_outfits),
     )
 
@@ -174,7 +184,7 @@ async def _generate(
         messages=[{"role": "user", "content": prompt.user}],
         output_model=OutfitGenerationOutput,
     )
-    return [
+    drafts = [
         DraftOutfit(
             outfit_seq=seq,
             outfit_type=generated.outfit_type,
@@ -183,6 +193,21 @@ async def _generate(
         )
         for seq, generated in zip(seqs, output.outfits, strict=False)
     ]
+    return _limit_exploratory(drafts, exploration_requested=data.exploration_style is not None)
+
+
+def _limit_exploratory(
+    drafts: Sequence[DraftOutfit], *, exploration_requested: bool
+) -> list[DraftOutfit]:
+    limited: list[DraftOutfit] = []
+    exploratory_taken = not exploration_requested
+    for draft in drafts:
+        if draft.outfit_type == "exploratory":
+            if exploratory_taken:
+                draft = replace(draft, outfit_type="preferred")
+            exploratory_taken = True
+        limited.append(draft)
+    return limited
 
 
 def _free_seqs(kept: Sequence[KeptOutfit], accepted: Sequence[DraftOutfit]) -> list[int]:
@@ -203,15 +228,6 @@ def _exploration_style(
     if any(a.outfit_type == "exploratory" for a in accepted):
         return None
     return prompt_input.exploration_style
-
-
-def _missing_outfits(seqs: Sequence[int], drafts: Sequence[DraftOutfit]) -> list[OutfitValidation]:
-    generated = {d.outfit_seq for d in drafts}
-    return [
-        OutfitValidation(seq, passed=False, reasons=(MISSING_OUTFIT_REASON,))
-        for seq in seqs
-        if seq not in generated
-    ]
 
 
 def _log_failures(
@@ -275,8 +291,8 @@ def make_basic_outfit_fallback(
     쓰므로 없는 옷이 섞일 일이 없다.
     """
 
-    def build(seqs: Sequence[int], accepted: Sequence[DraftOutfit]) -> list[DraftOutfit]:
-        taken = {frozenset(a.item_keys) for a in accepted}
+    def build(seqs: Sequence[int], existing: Sequence[Sequence[str]]) -> list[DraftOutfit]:
+        taken = {frozenset(keys) for keys in existing}
         combos = compose_basic_outfits(candidates, is_outer_required, taken, len(seqs))
         return [
             DraftOutfit(seq, "preferred", combo, FALLBACK_REASON, is_fallback=True)
@@ -293,6 +309,7 @@ def compose_basic_outfits(
     count: int,
 ) -> list[tuple[str, ...]]:
     """기존 세트와 겹치지 않는 기본 조합을 최대 count개 만든다. 순수 함수."""
+    taken = set(taken)
 
     def by_category(category_cd: str) -> list[str]:
         items = [c for c in candidates if c.category_cd == category_cd]
@@ -309,7 +326,8 @@ def compose_basic_outfits(
         (tops[i % len(tops)], bottoms[i % len(bottoms)], shoes[i % len(shoes)])
         for i in range(longest)
     ]
-    ordered = diagonal + [c for c in product(tops, bottoms, shoes) if c not in diagonal]
+    in_diagonal = set(diagonal)
+    ordered = diagonal + [c for c in product(tops, bottoms, shoes) if c not in in_diagonal]
 
     combos: list[tuple[str, ...]] = []
     for i, (top, bottom, shoe) in enumerate(ordered):
