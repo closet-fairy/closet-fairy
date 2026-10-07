@@ -4,7 +4,6 @@ from app.services.hard_rule import SINGLE_WEAR_ACCESSORY_TYPES, validate_hard_ru
 from app.services.outfit_generator import DraftOutfit
 from app.services.outfit_validation import OutfitValidation, to_failure_reasons
 from app.services.prompt.outfit_generation import (
-    ACCESSORY_TYPES,
     CandidateItem,
     KeptOutfit,
     assemble_outfit_generation_prompt,
@@ -112,8 +111,7 @@ def test_empty_drafts_give_empty_result():
     assert check() == []
 
 
-def test_single_wear_accessory_types_are_accessory_types():
-    assert set(SINGLE_WEAR_ACCESSORY_TYPES) <= set(ACCESSORY_TYPES)
+def test_jewelry_and_etc_are_not_single_wear_accessory_types():
     assert {"jewelry", "etc"}.isdisjoint(SINGLE_WEAR_ACCESSORY_TYPES)
 
 

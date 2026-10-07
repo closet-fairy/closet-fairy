@@ -5,14 +5,18 @@ from typing import Protocol, get_args
 
 from app.services.outfit_validation import OutfitValidation
 from app.services.prompt.outfit_generation import (
+    ACCESSORY_TYPES,
     CandidateItem,
     KeptOutfit,
     OutfitType,
-    _sort_candidates,
+    validate_candidates,
 )
 
 SINGLE_ITEM_CATEGORIES = ("outer", "top", "bottom", "shoes", "socks")
-SINGLE_WEAR_ACCESSORY_TYPES = ("hat", "bag", "belt", "watch", "scarf", "eyewear")
+UNLIMITED_ACCESSORY_TYPES = ("jewelry", "etc")
+SINGLE_WEAR_ACCESSORY_TYPES = tuple(
+    t for t in ACCESSORY_TYPES if t not in UNLIMITED_ACCESSORY_TYPES
+)
 
 _CATEGORY_OBJECTS = {
     "outer": "아우터(outer)를",
@@ -61,7 +65,8 @@ def validate_hard_rules(
             raise ValueError(f"알 수 없는 코드값입니다: {draft.outfit_type}")
     if not candidates:
         raise ValueError("후보 목록이 비었습니다.")
-    by_key = {c.key: c for c in _sort_candidates(candidates)}
+    validate_candidates(candidates)
+    by_key = {c.key: c for c in candidates}
 
     ordered = sorted(drafts, key=lambda d: d.outfit_seq)
     reasons_by_seq = {

@@ -76,8 +76,8 @@ async def generate_outfits(
 ) -> GenerationResult:
     """prompt_input.outfit_count만큼 세트를 채운다.
 
-    prompt_input.kept_outfits(재추천에서 유지하는 세트)는 고정으로 보고 프롬프트에만
-    넘기며 결과에는 넣지 않는다. failure_reasons는 이 함수가 채운다.
+    prompt_input.kept_outfits(재추천에서 유지하는 세트)는 고정으로 보고 프롬프트와
+    1차 검증(같은 조합 검사)에 넘기며 결과에는 넣지 않는다. failure_reasons는 이 함수가 채운다.
     """
     if max_retry_per_stage is None:
         max_retry_per_stage = get_settings().MAX_RETRY_PER_VALIDATION_STAGE
