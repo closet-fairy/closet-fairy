@@ -10,6 +10,7 @@ failure_reasons 슬롯에 넣는다. 검증 단계별 재생성 한도를 넘거
 """
 
 import logging
+from collections import Counter
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, replace
 from itertools import product
@@ -81,9 +82,13 @@ async def generate_outfits(
     """
     if max_retry_per_stage is None:
         max_retry_per_stage = get_settings().MAX_RETRY_PER_VALIDATION_STAGE
-    target = prompt_input.outfit_count
     kept = tuple(prompt_input.kept_outfits)
+    known_keys = {c.key for c in prompt_input.candidates}
+    kept_combos = {frozenset(k.item_keys) for k in kept if known_keys.issuperset(k.item_keys)}
+    possible = count_possible_combos(prompt_input.candidates, prompt_input.is_outer_required)
+    target = min(prompt_input.outfit_count, max(possible - len(kept_combos), 0))
     accepted: list[DraftOutfit] = []
+    rejected: set[frozenset[str]] = set()
     failure_reasons: list[FailureReason] = []
     hard_retries = reviewer_retries = shortfall_retries = rounds = 0
     log_extra = {"recommendation_session_id": session_id}
@@ -119,11 +124,20 @@ async def generate_outfits(
             review_failed = []
         review_failed_seqs = {v.outfit_seq for v in review_failed}
         accepted += [d for d in survivors if d.outfit_seq not in review_failed_seqs]
+        rejected |= {
+            frozenset(d.item_keys)
+            for d in drafts
+            if d.outfit_seq in hard_failed_seqs | review_failed_seqs
+            and known_keys.issuperset(d.item_keys)
+        }
 
         _log_failures(Event.HARD_RULE_FAIL, "hard_rule", hard_failed, drafts, rounds, log_extra)
         _log_failures(Event.REVIEWER_FAIL, "reviewer", review_failed, drafts, rounds, log_extra)
 
         if len(accepted) >= target:
+            break
+        used = kept_combos | rejected | {frozenset(a.item_keys) for a in accepted}
+        if len(used) >= possible:
             break
         if hard_failed:
             if hard_retries >= max_retry_per_stage:
@@ -318,6 +332,13 @@ def make_basic_outfit_fallback(
         ]
 
     return build
+
+
+def count_possible_combos(candidates: Sequence[CandidateItem], is_outer_required: bool) -> int:
+    counts = Counter(c.category_cd for c in candidates)
+    total = counts["top"] * counts["bottom"] * counts["shoes"]
+    total *= counts["outer"] if is_outer_required else counts["outer"] + 1
+    return total * 2 ** (counts["socks"] + counts["accessories"])
 
 
 def compose_basic_outfits(

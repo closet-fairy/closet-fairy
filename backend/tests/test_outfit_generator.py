@@ -12,6 +12,7 @@ from app.services.outfit_generator import (
     FALLBACK_REASON,
     DraftOutfit,
     compose_basic_outfits,
+    count_possible_combos,
     generate_outfits,
     make_basic_outfit_fallback,
     make_hard_rule_check,
@@ -23,7 +24,7 @@ from app.services.prompt.outfit_generation import (
     KeptOutfit,
     OutfitGenerationOutput,
 )
-from tests.test_outfit_generation_prompt import make_input
+from tests.test_outfit_generation_prompt import CANDIDATES, make_input
 
 GOOD = ["o2001", "o3001", "o4001"]
 BAD = ["o9999"]
@@ -528,3 +529,58 @@ def test_two_of_each_category_guarantees_minimum_outfits(count):
     assert (
         len(compose_basic_outfits(pool, is_outer_required=False, taken=set(), count=count)) == count
     )
+
+
+# ---------- 가능한 조합 수 ----------
+
+FEW = (
+    CandidateItem("essential", 1, "top", "니트", "gray", ["casual"], "medium"),
+    CandidateItem("essential", 2, "bottom", "울 슬랙스", "gray", ["classic"], "thick"),
+    CandidateItem("essential", 3, "shoes", "첼시부츠", "black", ["minimal"], None),
+    CandidateItem("essential", 4, "shoes", "앵클부츠", "black", ["casual"], None),
+)
+FEW_COMBOS = (["e1", "e2", "e3"], ["e1", "e2", "e4"])
+
+
+def test_count_possible_combos():
+    assert count_possible_combos(POOL, is_outer_required=True) == 4
+    assert count_possible_combos(POOL, is_outer_required=False) == 8
+    assert count_possible_combos(CANDIDATES, is_outer_required=True) == 32
+    assert count_possible_combos(FEW[:2], is_outer_required=False) == 0
+
+
+async def test_target_is_capped_by_possible_combos():
+    llm = fake_llm(generation(("preferred", FEW_COMBOS[0]), ("exploratory", FEW_COMBOS[1])))
+
+    result = await run(llm, candidates=FEW, is_outer_required=False)
+
+    assert len(result.outfits) == 2
+    assert result.rounds == 1
+    assert result.shortfall_retries == 0
+    assert "코디 세트 2벌을 만든다" in prompt_data(llm, 0)
+
+
+async def test_retry_stops_when_every_combo_is_used():
+    llm = fake_llm(generation(("preferred", FEW_COMBOS[0]), ("exploratory", FEW_COMBOS[1])))
+    calls: list = []
+
+    result = await run(
+        llm,
+        candidates=FEW,
+        is_outer_required=False,
+        review=reviewer("e1"),
+        fallback=recording_fallback(calls),
+    )
+
+    assert llm.call_structured.await_count == 1
+    assert result.reviewer_retries == 0
+    assert calls == [[1, 2]]
+
+
+async def test_no_generation_without_required_category():
+    llm = fake_llm()
+
+    result = await run(llm, candidates=FEW[:2], is_outer_required=False)
+
+    assert result.outfits == []
+    assert llm.call_structured.await_count == 0
