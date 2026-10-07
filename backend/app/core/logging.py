@@ -119,6 +119,7 @@ class Event:
     REVIEWER_FAIL = "validation.reviewer.fail"
     RECOMMEND_REGENERATE = "recommend.regenerate"
     RECOMMEND_FALLBACK = "recommend.fallback"
+    RECOMMEND_TARGET_CAPPED = "recommend.target_capped"
     PREFERENCE_SETTLED = "preference.settled"
     UCB_EXPLORE_PICK = "ucb.explore_pick"
     LLM_CALL = "llm.call"

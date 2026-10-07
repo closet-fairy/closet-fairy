@@ -1,5 +1,6 @@
 """REC-15 생성·부분 재생성 루프 테스트. LLM·검증 함수는 모두 가짜로 바꿔 끼운다."""
 
+import logging
 from collections.abc import Sequence
 from unittest.mock import AsyncMock, MagicMock
 
@@ -605,3 +606,44 @@ async def test_malformed_drafts_do_not_use_up_possible_combos():
     assert [list(o.item_keys) for o in result.outfits] == list(FEW_COMBOS)
     assert result.rounds == 2
     assert result.fallback_count == 0
+
+
+async def test_duplicate_item_draft_does_not_use_up_its_combo():
+    socks = CandidateItem("essential", 5, "socks", "양말", "black", ["minimal"], "thin")
+    without_socks, with_socks = ["e1", "e2", "e3"], ["e1", "e2", "e3", "e5"]
+
+    def reject_duplicates(drafts, kept_outfits):
+        return [
+            OutfitValidation(d.outfit_seq, passed=True)
+            if len(set(d.item_keys)) == len(d.item_keys)
+            else OutfitValidation(d.outfit_seq, passed=False, reasons=("중복",))
+            for d in drafts
+        ]
+
+    llm = fake_llm(
+        generation(("preferred", without_socks), ("exploratory", [*with_socks, "e5"])),
+        generation(("exploratory", with_socks)),
+    )
+
+    result = await run(
+        llm, candidates=(*FEW[:3], socks), is_outer_required=False, hard_rule=reject_duplicates
+    )
+
+    assert [list(o.item_keys) for o in result.outfits] == [without_socks, with_socks]
+    assert result.fallback_count == 0
+
+
+async def test_single_possible_combo_is_requested_as_preferred(caplog):
+    caplog.set_level(logging.INFO, logger="app.services.outfit_generator")
+    llm = fake_llm(generation(("preferred", FEW_COMBOS[0])))
+
+    result = await run(llm, candidates=FEW[:3], is_outer_required=False)
+
+    assert [(o.outfit_type, list(o.item_keys)) for o in result.outfits] == [
+        ("preferred", FEW_COMBOS[0])
+    ]
+    prompt = prompt_data(llm, 0)
+    assert "코디 세트 1벌을 만든다. preferred 1벌." in prompt
+    assert "## 탐색 스타일" not in prompt
+    capped = [r for r in caplog.records if getattr(r, "event", None) == "recommend.target_capped"]
+    assert [(r.requested, r.target, r.possible_combos) for r in capped] == [(4, 1, 1)]

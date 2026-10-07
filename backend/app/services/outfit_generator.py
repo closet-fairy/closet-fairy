@@ -97,6 +97,19 @@ async def generate_outfits(
     failure_reasons: list[FailureReason] = []
     hard_retries = reviewer_retries = shortfall_retries = rounds = 0
     log_extra = {"recommendation_session_id": session_id}
+    if target < prompt_input.outfit_count:
+        logger.info(
+            "outfit target capped",
+            extra={
+                **log_extra,
+                "event": Event.RECOMMEND_TARGET_CAPPED,
+                "requested": prompt_input.outfit_count,
+                "target": target,
+                "possible_combos": possible,
+            },
+        )
+        if target <= 1 and not any(k.outfit_type == "preferred" for k in kept):
+            prompt_input = replace(prompt_input, exploration_style=None)
 
     while len(accepted) < target:
         seqs = _free_seqs(kept, accepted)[: target - len(accepted)]
@@ -291,6 +304,8 @@ def count_possible_combos(candidates: Sequence[CandidateItem], is_outer_required
 def _in_combo_space(
     item_keys: Sequence[str], category_by_key: dict[str, str], is_outer_required: bool
 ) -> bool:
+    if len(set(item_keys)) != len(item_keys):
+        return False
     if any(key not in category_by_key for key in item_keys):
         return False
     counts = Counter(category_by_key[key] for key in item_keys)
