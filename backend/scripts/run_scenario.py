@@ -22,7 +22,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.core.config import get_settings  # noqa: E402
-from app.core.db import AsyncSessionLocal  # noqa: E402
+from app.core.db import AsyncSessionLocal, engine  # noqa: E402
 from app.core.logging import setup_logging  # noqa: E402
 from app.repositories import clothing as clothing_repo  # noqa: E402
 from app.repositories import member_setting as member_setting_repo  # noqa: E402
@@ -225,6 +225,7 @@ async def main() -> int:
                 results.append(summary)
     finally:
         await llm.aclose()
+        await engine.dispose()
 
     if args.json:
         args.json.write_text(json.dumps(results, ensure_ascii=False, indent=2), encoding="utf-8")
