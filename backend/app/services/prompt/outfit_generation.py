@@ -87,6 +87,9 @@ class CandidateItem:
     thickness_cd: str | None
     is_recently_adopted: bool = False
     accessory_type_cd: str | None = None
+    # 비어 있으면 계절 검사를 통과한다. 현재 SupplementedCandidate에 계절이 없어
+    # 파이프라인에서는 채워지지 않는다
+    seasons: Sequence[str] = ()
 
     @property
     def key(self) -> str:
@@ -158,6 +161,21 @@ def candidate_key(source: ItemSource, item_id: int) -> str:
 def sanitize_inline(text: str) -> str:
     text = _CONTROL_CHARS.sub(" ", text).replace("|", "/")
     return _WHITESPACE.sub(" ", text).strip()
+
+
+def validate_candidates(candidates: Sequence[CandidateItem]) -> None:
+    keys = [c.key for c in candidates]
+    if len(keys) != len(set(keys)):
+        raise ValueError("후보 목록에 같은 id가 두 번 있습니다.")
+    for c in candidates:
+        if c.category_cd not in CATEGORY_ORDER:
+            raise ValueError(f"알 수 없는 코드값입니다: {c.category_cd}")
+        if c.accessory_type_cd is None:
+            continue
+        if c.category_cd != "accessories":
+            raise ValueError(f"악세서리가 아닌 후보에 악세서리 종류가 있습니다: {c.key}")
+        if c.accessory_type_cd not in ACCESSORY_TYPES:
+            raise ValueError(f"알 수 없는 코드값입니다: {c.accessory_type_cd}")
 
 
 def assemble_outfit_generation_prompt(data: OutfitPromptInput) -> AssembledPrompt:
@@ -323,19 +341,7 @@ def _format_preferred(result: ClassificationResult) -> str | None:
 
 
 def _sort_candidates(candidates: Sequence[CandidateItem]) -> list[CandidateItem]:
-    keys = [c.key for c in candidates]
-    if len(keys) != len(set(keys)):
-        raise ValueError("후보 목록에 같은 id가 두 번 있습니다.")
-    for c in candidates:
-        if c.category_cd not in CATEGORY_ORDER:
-            raise ValueError(f"알 수 없는 코드값입니다: {c.category_cd}")
-        if c.accessory_type_cd is None:
-            continue
-        if c.category_cd != "accessories":
-            raise ValueError(f"악세서리가 아닌 후보에 악세서리 종류가 있습니다: {c.key}")
-        if c.accessory_type_cd not in ACCESSORY_TYPES:
-            raise ValueError(f"알 수 없는 코드값입니다: {c.accessory_type_cd}")
-
+    validate_candidates(candidates)
     return sorted(
         candidates,
         key=lambda c: (
