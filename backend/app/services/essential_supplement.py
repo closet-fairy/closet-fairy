@@ -42,7 +42,7 @@ DEFAULT_FORMALITY_RANGE = (1, 5)
 
 @dataclass
 class SupplementedCandidate:
-    id: str  # candidate_key() 규칙을 따른다 — 보유: "o1042", 에센셜: "e31"
+    item_id: int
     source_cd: ItemSource
     category_cd: str
     accessory_type_cd: str | None
@@ -51,6 +51,11 @@ class SupplementedCandidate:
     styles: list[str]
     thickness_cd: str | None
     is_waterproof: bool | None
+    seasons: list[str]
+
+    @property
+    def key(self) -> str:
+        return candidate_key(self.source_cd, self.item_id)
 
 
 @dataclass
@@ -69,7 +74,7 @@ class SupplementResult:
 
 def _from_owned(candidate: ClothingCandidate) -> SupplementedCandidate:
     return SupplementedCandidate(
-        id=candidate_key("owned", candidate.clothing_id),
+        item_id=candidate.clothing_id,
         source_cd="owned",
         category_cd=candidate.category_cd,
         accessory_type_cd=candidate.accessory_type_cd,
@@ -78,12 +83,13 @@ def _from_owned(candidate: ClothingCandidate) -> SupplementedCandidate:
         styles=candidate.styles,
         thickness_cd=candidate.thickness_cd,
         is_waterproof=candidate.is_waterproof,
+        seasons=list(candidate.seasons),
     )
 
 
 def _from_essential(item: EssentialItemCandidate) -> SupplementedCandidate:
     return SupplementedCandidate(
-        id=candidate_key("essential", item.essential_item_id),
+        item_id=item.essential_item_id,
         source_cd="essential",
         category_cd=item.category_cd,
         accessory_type_cd=item.accessory_type_cd,
@@ -92,6 +98,7 @@ def _from_essential(item: EssentialItemCandidate) -> SupplementedCandidate:
         styles=[item.style_cd],
         thickness_cd=item.thickness_cd,
         is_waterproof=item.is_waterproof,
+        seasons=[],
     )
 
 
