@@ -93,3 +93,25 @@ async def get_session(db: AsyncSession, recommendation_session_id: int) -> Sessi
         tpo_text=row.tpo_text,
         tpo_input_type_cd=row.tpo_input_type_cd,
     )
+
+
+UPDATE_CLOTHING_SHORTAGE_SQL = text(
+    """
+    UPDATE recommendation_session
+    SET is_clothing_shortage = :is_clothing_shortage
+    WHERE recommendation_session_id = :recommendation_session_id
+    """
+)
+
+
+async def update_clothing_shortage(
+    db: AsyncSession, recommendation_session_id: int, is_clothing_shortage: bool
+) -> None:
+    await db.execute(
+        UPDATE_CLOTHING_SHORTAGE_SQL,
+        {
+            "recommendation_session_id": recommendation_session_id,
+            "is_clothing_shortage": is_clothing_shortage,
+        },
+    )
+    await db.commit()

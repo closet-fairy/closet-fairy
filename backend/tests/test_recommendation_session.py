@@ -29,7 +29,7 @@ def client(monkeypatch):
     async def fake_recent_avg_temperatures(db, region_cd, end_date, days):
         return []
 
-    async def fake_run_pipeline(recommendation_session_id):
+    async def fake_run_pipeline(recommendation_session_id, llm):
         return None
 
     async def fake_latest_available_date(db, region_cd, end_date, max_staleness_days):
