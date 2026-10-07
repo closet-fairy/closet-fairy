@@ -103,7 +103,10 @@ def build_hourly(fcst_items: list[dict]) -> list[HourlyWeather]:
 
 
 def nearest_sky(fcst_items: list[dict], now: datetime) -> int | None:
-    """현재 시각이 속한 정시에 가장 가까운 예보 시각의 SKY(하늘상태). 거리가 같으면 이른 시각을 쓴다."""
+    """현재 시각이 속한 정시에 가장 가까운 예보 시각의 SKY(하늘상태).
+
+    거리가 같으면 이른 시각을 쓴다.
+    """
     skies = [
         (
             datetime.strptime(i["fcstDate"] + i["fcstTime"], "%Y%m%d%H%M").replace(tzinfo=KST),
