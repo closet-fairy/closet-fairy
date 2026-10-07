@@ -130,7 +130,7 @@ class RecommendationResult(BaseModel):
                     "recommendation_session_id": 12,
                     "generation_status_cd": "completed",
                     "session_status_cd": "active",
-                    "is_clothing_shortage": False,
+                    "is_clothing_shortage": True,
                     "condition": {
                         "tpo_cd": "work",
                         "tpo_text": None,
