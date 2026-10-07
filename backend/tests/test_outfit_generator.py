@@ -584,3 +584,24 @@ async def test_no_generation_without_required_category():
 
     assert result.outfits == []
     assert llm.call_structured.await_count == 0
+
+
+async def test_malformed_drafts_do_not_use_up_possible_combos():
+    def reject_malformed(drafts, kept_outfits):
+        return [
+            OutfitValidation(d.outfit_seq, passed=True)
+            if list(d.item_keys) in FEW_COMBOS
+            else OutfitValidation(d.outfit_seq, passed=False, reasons=("구성 오류",))
+            for d in drafts
+        ]
+
+    llm = fake_llm(
+        generation(("preferred", ["e1", "e2"]), ("exploratory", ["e1", "e2", "e3", "e4"])),
+        generation(("preferred", FEW_COMBOS[0]), ("exploratory", FEW_COMBOS[1])),
+    )
+
+    result = await run(llm, candidates=FEW, is_outer_required=False, hard_rule=reject_malformed)
+
+    assert [list(o.item_keys) for o in result.outfits] == list(FEW_COMBOS)
+    assert result.rounds == 2
+    assert result.fallback_count == 0

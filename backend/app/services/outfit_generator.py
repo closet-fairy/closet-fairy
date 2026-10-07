@@ -75,7 +75,8 @@ async def generate_outfits(
     max_retry_per_stage: int | None = None,
     session_id: int | None = None,
 ) -> GenerationResult:
-    """prompt_input.outfit_count만큼 세트를 채운다.
+    """prompt_input.outfit_count만큼 세트를 채운다. 후보로 만들 수 있는 조합이 그보다 적으면
+    그 수까지만 채우므로 더 적게(0벌일 수도 있다) 돌려줄 수 있다.
 
     prompt_input.kept_outfits(재추천에서 유지하는 세트)는 고정으로 보고 프롬프트와
     1차 검증(같은 조합 검사)에 넘기며 결과에는 넣지 않는다. failure_reasons는 이 함수가 채운다.
@@ -83,8 +84,12 @@ async def generate_outfits(
     if max_retry_per_stage is None:
         max_retry_per_stage = get_settings().MAX_RETRY_PER_VALIDATION_STAGE
     kept = tuple(prompt_input.kept_outfits)
-    known_keys = {c.key for c in prompt_input.candidates}
-    kept_combos = {frozenset(k.item_keys) for k in kept if known_keys.issuperset(k.item_keys)}
+    category_by_key = {c.key: c.category_cd for c in prompt_input.candidates}
+
+    def countable(item_keys: Sequence[str]) -> bool:
+        return _in_combo_space(item_keys, category_by_key, prompt_input.is_outer_required)
+
+    kept_combos = {frozenset(k.item_keys) for k in kept if countable(k.item_keys)}
     possible = count_possible_combos(prompt_input.candidates, prompt_input.is_outer_required)
     target = min(prompt_input.outfit_count, max(possible - len(kept_combos), 0))
     accepted: list[DraftOutfit] = []
@@ -127,8 +132,7 @@ async def generate_outfits(
         rejected |= {
             frozenset(d.item_keys)
             for d in drafts
-            if d.outfit_seq in hard_failed_seqs | review_failed_seqs
-            and known_keys.issuperset(d.item_keys)
+            if d.outfit_seq in hard_failed_seqs | review_failed_seqs and countable(d.item_keys)
         }
 
         _log_failures(Event.HARD_RULE_FAIL, "hard_rule", hard_failed, drafts, rounds, log_extra)
@@ -270,6 +274,32 @@ def _log_failures(
         )
 
 
+def count_possible_combos(candidates: Sequence[CandidateItem], is_outer_required: bool) -> int:
+    """서로 다른 코디 조합 수의 상한. 정확한 개수가 아니다.
+
+    1차 검증의 같은 조합 판정(아이템 집합 비교)에 맞춰 상의·하의·신발 각 1개, 아우터는
+    필수면 1개·아니면 0~1개로 센다. 양말(1개 제한)·악세서리는 넣거나 뺄 수 있다고 보고
+    2ⁿ으로 넉넉하게 세고, 계절·악세서리 종류 제한은 반영하지 않는다.
+    상한이 실제보다 작으면 만들 수 있는 코디를 놓친다.
+    """
+    counts = Counter(c.category_cd for c in candidates)
+    total = counts["top"] * counts["bottom"] * counts["shoes"]
+    total *= counts["outer"] if is_outer_required else counts["outer"] + 1
+    return total * 2 ** (counts["socks"] + counts["accessories"])
+
+
+def _in_combo_space(
+    item_keys: Sequence[str], category_by_key: dict[str, str], is_outer_required: bool
+) -> bool:
+    if any(key not in category_by_key for key in item_keys):
+        return False
+    counts = Counter(category_by_key[key] for key in item_keys)
+    outer_counts = (1,) if is_outer_required else (0, 1)
+    return counts["top"] == counts["bottom"] == counts["shoes"] == 1 and (
+        counts["outer"] in outer_counts
+    )
+
+
 # ---------- 기본 주입 함수 ----------
 
 
@@ -332,13 +362,6 @@ def make_basic_outfit_fallback(
         ]
 
     return build
-
-
-def count_possible_combos(candidates: Sequence[CandidateItem], is_outer_required: bool) -> int:
-    counts = Counter(c.category_cd for c in candidates)
-    total = counts["top"] * counts["bottom"] * counts["shoes"]
-    total *= counts["outer"] if is_outer_required else counts["outer"] + 1
-    return total * 2 ** (counts["socks"] + counts["accessories"])
 
 
 def compose_basic_outfits(
