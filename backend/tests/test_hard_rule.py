@@ -4,10 +4,13 @@ from app.services.hard_rule import SINGLE_WEAR_ACCESSORY_TYPES, validate_hard_ru
 from app.services.outfit_generator import DraftOutfit
 from app.services.outfit_validation import OutfitValidation, to_failure_reasons
 from app.services.prompt.outfit_generation import (
+    PROMPT_NAME,
+    PROMPT_VERSION,
     CandidateItem,
     KeptOutfit,
     assemble_outfit_generation_prompt,
 )
+from app.services.prompt.template import load_prompt_template
 from tests.test_outfit_generation_prompt import make_input
 
 
@@ -113,6 +116,12 @@ def test_empty_drafts_give_empty_result():
 
 def test_jewelry_and_etc_are_not_single_wear_accessory_types():
     assert {"jewelry", "etc"}.isdisjoint(SINGLE_WEAR_ACCESSORY_TYPES)
+
+
+def test_single_wear_accessory_types_match_generation_prompt_rule():
+    system = load_prompt_template(PROMPT_NAME, PROMPT_VERSION).system
+
+    assert f"accessories는 {'·'.join(SINGLE_WEAR_ACCESSORY_TYPES)} 종류별로" in system
 
 
 # ---------- 그라운딩 ----------
