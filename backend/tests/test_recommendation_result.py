@@ -33,6 +33,6 @@ def test_result_schema_is_published_with_enum_values(client):
         "/RecommendationResult"
     )
     status = spec["components"]["schemas"]["RecommendationResult"]["properties"][
-        "generation_status"
+        "generation_status_cd"
     ]
     assert status["enum"] == ["processing", "completed", "failed"]

@@ -51,7 +51,7 @@ async def get_recommendation_result(
     recommendation_session_id: int,
     member_id: int = Depends(get_current_member_id),
 ) -> RecommendationResult:
-    """추천 결과 조회(폴링). generation_status가 processing이면 잠시 뒤 다시 조회한다.
+    """추천 결과 조회(폴링). generation_status_cd가 processing이면 잠시 뒤 다시 조회한다.
 
     지금은 응답 형식만 공개했고 호출하면 501을 돌려준다.
     실제 조회는 결과 저장(REC-16) 이후 구현한다.

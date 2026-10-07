@@ -1,14 +1,13 @@
 """추천 결과 조회(폴링) 응답 (REC-17)."""
 
-from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
 from app.schemas.recommendation_session import TpoCd
 from app.schemas.weather import WeatherConditionCd
 
-GenerationStatus = Literal["processing", "completed", "failed"]
+GenerationStatusCd = Literal["processing", "completed", "failed"]
 SessionStatusCd = Literal["active", "completed", "canceled", "abandoned"]
 SeasonCd = Literal["spring", "summer", "fall", "winter"]
 SlotCd = Literal["outer", "top", "bottom", "shoes", "socks", "accessories"]
@@ -39,7 +38,10 @@ class OutfitItemResult(BaseModel):
         )
     )
     accessory_type_cd: AccessoryTypeCd | None = Field(
-        description="악세서리 세부 종류. slot_cd가 accessories일 때만 값이 있다."
+        description=(
+            "악세서리 세부 종류. slot_cd가 accessories일 때만 값이 있다. "
+            "회원이 그 옷을 지우면 accessories여도 null일 수 있다."
+        )
     )
     item_source_cd: ItemSourceCd = Field(
         description=(
@@ -70,8 +72,8 @@ class SessionCondition(BaseModel):
     tpo_cd: TpoCd
     tpo_text: str | None = Field(description="tpo_cd가 custom일 때 회원이 직접 입력한 상황.")
     season_cd: SeasonCd = Field(description="요청 시점의 기온 추세로 판정한 계절.")
-    going_out_start_at: datetime = Field(description="외출 시작 시각 (KST, +09:00).")
-    going_out_end_at: datetime = Field(
+    going_out_start_at: AwareDatetime = Field(description="외출 시작 시각 (KST, +09:00).")
+    going_out_end_at: AwareDatetime = Field(
         description="외출 종료 시각 (KST, +09:00). 자정을 넘기면 다음 날짜로 온다."
     )
 
@@ -89,7 +91,7 @@ class SessionWeather(BaseModel):
 
 class RecommendationResult(BaseModel):
     recommendation_session_id: int
-    generation_status: GenerationStatus = Field(
+    generation_status_cd: GenerationStatusCd = Field(
         description=(
             "processing이면 아직 만드는 중이라 outfits가 빈 배열이다. 잠시 뒤 다시 조회한다. "
             "completed면 outfits가 채워져 있다. "
@@ -105,8 +107,9 @@ class RecommendationResult(BaseModel):
     )
     is_clothing_shortage: bool = Field(
         description=(
-            "true면 옷장이 부족해 에센셜 아이템으로 채운 것이다. "
-            "결과 화면에 등록 유도 안내를 띄운다."
+            "true면 옷장에 추천할 옷이 부족한 상태다. "
+            "결과 화면에 등록 유도 안내를 띄운다. "
+            "에센셜 아이템이 섞였는지는 items[].item_source_cd로 판단한다."
         )
     )
     condition: SessionCondition
@@ -114,7 +117,10 @@ class RecommendationResult(BaseModel):
         description="추천 시점 날씨. 날씨를 아직 조회하기 전이면 null이다."
     )
     outfits: list[OutfitResult] = Field(
-        description="outfit_seq 순. completed면 보통 4벌, 적어도 3벌이다."
+        description=(
+            "outfit_seq 순. completed면 1~4벌이다. "
+            "보통 4벌이지만 옷장 사정에 따라 더 적을 수 있다."
+        )
     )
 
     model_config = ConfigDict(
@@ -122,7 +128,7 @@ class RecommendationResult(BaseModel):
             "examples": [
                 {
                     "recommendation_session_id": 12,
-                    "generation_status": "completed",
+                    "generation_status_cd": "completed",
                     "session_status_cd": "active",
                     "is_clothing_shortage": False,
                     "condition": {
@@ -183,7 +189,7 @@ class RecommendationResult(BaseModel):
                 },
                 {
                     "recommendation_session_id": 13,
-                    "generation_status": "processing",
+                    "generation_status_cd": "processing",
                     "session_status_cd": "active",
                     "is_clothing_shortage": False,
                     "condition": {
