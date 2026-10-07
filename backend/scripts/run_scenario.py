@@ -15,6 +15,7 @@ import asyncio
 import json
 import sys
 import time
+import traceback
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -146,7 +147,8 @@ async def build_context(scenario: Scenario, member_id: int) -> RecommendContext:
 
 def summarize(scenario: Scenario, outcome: RecommendOutcome, elapsed_s: float) -> dict:
     names = {
-        c.key: f"{c.item_name or '-'} ({c.category_cd})" for c in outcome.prompt_input.candidates
+        c.key: f"{c.key} {c.item_name or '-'} ({c.category_cd})"
+        for c in outcome.prompt_input.candidates
     }
     generation = outcome.generation
     return {
@@ -214,12 +216,19 @@ async def main() -> int:
     scenarios = list(SCENARIOS.values()) if args.scenario == "all" else [SCENARIOS[args.scenario]]
     llm = create_llm_client(get_settings())
     results = []
+    failed = 0
     try:
         for scenario in scenarios:
             for _ in range(args.runs):
-                context = await build_context(scenario, args.member_id)
-                started = time.perf_counter()
-                outcome = await recommend(context, llm)
+                try:
+                    context = await build_context(scenario, args.member_id)
+                    started = time.perf_counter()
+                    outcome = await recommend(context, llm)
+                except Exception as e:
+                    failed += 1
+                    traceback.print_exc()
+                    results.append({"scenario": scenario.name, "error": repr(e)})
+                    continue
                 summary = summarize(scenario, outcome, time.perf_counter() - started)
                 print_summary(summary)
                 results.append(summary)
@@ -230,7 +239,7 @@ async def main() -> int:
     if args.json:
         args.json.write_text(json.dumps(results, ensure_ascii=False, indent=2), encoding="utf-8")
         print(f"\nJSON 저장: {args.json}")
-    return 0
+    return 1 if failed else 0
 
 
 if __name__ == "__main__":

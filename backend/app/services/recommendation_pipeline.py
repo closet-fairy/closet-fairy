@@ -22,6 +22,7 @@ from app.services.essential_supplement import (
 )
 from app.services.llm import LLMClient
 from app.services.outfit_generator import (
+    MAX_OUTFITS,
     GenerationResult,
     generate_outfits,
     make_basic_outfit_fallback,
@@ -44,8 +45,6 @@ from app.services.rule_filter import filter_clothing
 from app.services.weather.weather_service import WeatherResult
 
 logger = logging.getLogger(__name__)
-
-OUTFIT_COUNT = 4
 
 
 @dataclass(frozen=True)
@@ -131,7 +130,7 @@ def build_prompt_input(
     context: RecommendContext,
     supplement: SupplementResult,
     preferences: Preferences,
-    outfit_count: int = OUTFIT_COUNT,
+    outfit_count: int = MAX_OUTFITS,
 ) -> OutfitPromptInput:
     return OutfitPromptInput(
         weather=to_weather_input(context.weather),

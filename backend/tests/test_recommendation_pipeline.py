@@ -61,9 +61,7 @@ def _context(clothing: list[ClothingCandidate] | None = None) -> RecommendContex
 def _supplemented(
     item_id: int, category_cd: str, source_cd: str = "owned", seasons: list[str] | None = None
 ) -> SupplementedCandidate:
-    prefix = "o" if source_cd == "owned" else "e"
     return SupplementedCandidate(
-        id=f"{prefix}{item_id}",
         item_id=item_id,
         source_cd=source_cd,
         category_cd=category_cd,

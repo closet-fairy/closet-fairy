@@ -42,7 +42,6 @@ DEFAULT_FORMALITY_RANGE = (1, 5)
 
 @dataclass
 class SupplementedCandidate:
-    id: str  # candidate_key() 규칙을 따른다 — 보유: "o1042", 에센셜: "e31"
     item_id: int
     source_cd: ItemSource
     category_cd: str
@@ -53,6 +52,10 @@ class SupplementedCandidate:
     thickness_cd: str | None
     is_waterproof: bool | None
     seasons: list[str]
+
+    @property
+    def key(self) -> str:
+        return candidate_key(self.source_cd, self.item_id)
 
 
 @dataclass
@@ -71,7 +74,6 @@ class SupplementResult:
 
 def _from_owned(candidate: ClothingCandidate) -> SupplementedCandidate:
     return SupplementedCandidate(
-        id=candidate_key("owned", candidate.clothing_id),
         item_id=candidate.clothing_id,
         source_cd="owned",
         category_cd=candidate.category_cd,
@@ -87,7 +89,6 @@ def _from_owned(candidate: ClothingCandidate) -> SupplementedCandidate:
 
 def _from_essential(item: EssentialItemCandidate) -> SupplementedCandidate:
     return SupplementedCandidate(
-        id=candidate_key("essential", item.essential_item_id),
         item_id=item.essential_item_id,
         source_cd="essential",
         category_cd=item.category_cd,
