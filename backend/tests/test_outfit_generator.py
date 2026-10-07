@@ -14,6 +14,7 @@ from app.services.outfit_generator import (
     compose_basic_outfits,
     generate_outfits,
     make_basic_outfit_fallback,
+    make_hard_rule_check,
     make_llm_reviewer,
 )
 from app.services.outfit_validation import OutfitValidation
@@ -41,7 +42,9 @@ def fake_llm(*outputs) -> MagicMock:
 
 
 def rule_rejects(bad_key: str):
-    def check(drafts: Sequence[DraftOutfit]) -> list[OutfitValidation]:
+    def check(
+        drafts: Sequence[DraftOutfit], kept_outfits: Sequence[KeptOutfit]
+    ) -> list[OutfitValidation]:
         return [
             OutfitValidation(d.outfit_seq, passed=False, reasons=("없는 옷",))
             if bad_key in d.item_keys
@@ -52,7 +55,9 @@ def rule_rejects(bad_key: str):
     return check
 
 
-def all_pass_rule(drafts: Sequence[DraftOutfit]) -> list[OutfitValidation]:
+def all_pass_rule(
+    drafts: Sequence[DraftOutfit], kept_outfits: Sequence[KeptOutfit]
+) -> list[OutfitValidation]:
     return [OutfitValidation(d.outfit_seq, passed=True) for d in drafts]
 
 
@@ -350,6 +355,80 @@ async def test_retry_limit_defaults_to_setting():
     )
 
     assert result.hard_rule_retries == get_settings().MAX_RETRY_PER_VALIDATION_STAGE
+
+
+# ---------- 1차 검증 연결 ----------
+
+OTHER = ["o2002", "e12", "e21"]
+
+
+def test_hard_rule_check_passes_prompt_input_fields(monkeypatch):
+    captured = {}
+
+    def fake_validate_hard_rules(drafts, kept_outfits, **kwargs):
+        captured.update(drafts=drafts, kept_outfits=kept_outfits, **kwargs)
+        return [OutfitValidation(1, passed=True)]
+
+    monkeypatch.setattr(outfit_generator, "validate_hard_rules", fake_validate_hard_rules)
+    prompt_input = make_input()
+    drafts = [DraftOutfit(1, "preferred", tuple(GOOD), "이유")]
+    kept = [KeptOutfit(2, OTHER, "preferred")]
+
+    make_hard_rule_check(prompt_input)(drafts, kept)
+
+    assert captured == {
+        "drafts": drafts,
+        "kept_outfits": kept,
+        "candidates": prompt_input.candidates,
+        "is_outer_required": prompt_input.is_outer_required,
+        "season_cd": prompt_input.season_cd,
+        "avoided_styles": prompt_input.style_result.avoided,
+        "avoided_colors": prompt_input.color_result.avoided,
+    }
+
+
+async def test_hard_rule_rejects_combination_passed_in_earlier_round():
+    prompt_input = make_input(outfit_count=2, exploration_style=None, is_outer_required=False)
+    llm = fake_llm(
+        generation(("preferred", GOOD), ("preferred", BAD)),
+        generation(("preferred", list(reversed(GOOD)))),
+        generation(("preferred", OTHER)),
+    )
+
+    result = await generate_outfits(
+        llm,
+        prompt_input,
+        hard_rule=make_hard_rule_check(prompt_input),
+        review=reviewer(),
+        fallback=no_fallback,
+        max_retry_per_stage=2,
+    )
+
+    assert [list(o.item_keys) for o in result.outfits] == [GOOD, OTHER]
+    assert result.hard_rule_retries == 2
+    assert "- 세트 2: 이미 정해진 세트 1과 아이템 조합이 같다." in prompt_data(llm, 2)
+
+
+async def test_hard_rule_rejects_combination_of_kept_outfit():
+    prompt_input = make_input(
+        outfit_count=1,
+        exploration_style=None,
+        is_outer_required=False,
+        kept_outfits=(KeptOutfit(1, GOOD, "preferred"),),
+    )
+    llm = fake_llm(generation(("preferred", GOOD)), generation(("preferred", OTHER)))
+
+    result = await generate_outfits(
+        llm,
+        prompt_input,
+        hard_rule=make_hard_rule_check(prompt_input),
+        review=reviewer(),
+        fallback=no_fallback,
+        max_retry_per_stage=2,
+    )
+
+    assert [(o.outfit_seq, list(o.item_keys)) for o in result.outfits] == [(2, OTHER)]
+    assert "- 세트 2: 이미 정해진 세트 1과 아이템 조합이 같다." in prompt_data(llm, 1)
 
 
 # ---------- 2차 검증 연결 ----------

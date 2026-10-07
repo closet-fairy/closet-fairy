@@ -5,8 +5,8 @@
 failure_reasons 슬롯에 넣는다. 검증 단계별 재생성 한도를 넘거나 LLM 호출이 실패하면
 남은 자리를 기본 코디(폴백)로 채운다.
 
-1차 검증·2차 검증·폴백은 함수로 주입받는다. 1차 검증(REC-13)이 끝나면 그 함수를
-끼우기만 하면 되고, 재추천(FR-REF)도 kept_outfits만 바꿔 같은 함수를 쓴다.
+1차 검증·2차 검증·폴백은 함수로 주입받는다. 1차 검증은 make_hard_rule_check()로 만들고,
+재추천(FR-REF)도 kept_outfits만 바꿔 같은 함수를 쓴다.
 """
 
 import logging
@@ -16,6 +16,7 @@ from itertools import product
 
 from app.core.config import get_settings
 from app.core.logging import Event
+from app.services.hard_rule import validate_hard_rules
 from app.services.llm import LLMCallConfig, LLMClient, LLMError
 from app.services.outfit_validation import OutfitValidation, to_failure_reasons
 from app.services.prompt.outfit_generation import (
@@ -58,7 +59,7 @@ class GenerationResult:
     fallback_count: int
 
 
-HardRuleCheck = Callable[[Sequence[DraftOutfit]], list[OutfitValidation]]
+HardRuleCheck = Callable[[Sequence[DraftOutfit], Sequence[KeptOutfit]], list[OutfitValidation]]
 ReviewCheck = Callable[[Sequence[DraftOutfit]], Awaitable[list[OutfitValidation]]]
 FallbackBuilder = Callable[[Sequence[int], Sequence[Sequence[str]]], list[DraftOutfit]]
 
@@ -104,7 +105,7 @@ async def generate_outfits(
             break
 
         missing_count = len(seqs) - len(drafts)
-        hard_failed = [v for v in hard_rule(drafts) if not v.passed]
+        hard_failed = [v for v in hard_rule(drafts, data.kept_outfits) if not v.passed]
         hard_failed_seqs = {v.outfit_seq for v in hard_failed}
         survivors = [d for d in drafts if d.outfit_seq not in hard_failed_seqs]
 
@@ -256,6 +257,23 @@ def _log_failures(
 
 
 # ---------- 기본 주입 함수 ----------
+
+
+def make_hard_rule_check(prompt_input: OutfitPromptInput) -> HardRuleCheck:
+    def check(
+        drafts: Sequence[DraftOutfit], kept_outfits: Sequence[KeptOutfit]
+    ) -> list[OutfitValidation]:
+        return validate_hard_rules(
+            drafts,
+            kept_outfits,
+            candidates=prompt_input.candidates,
+            is_outer_required=prompt_input.is_outer_required,
+            season_cd=prompt_input.season_cd,
+            avoided_styles=prompt_input.style_result.avoided,
+            avoided_colors=prompt_input.color_result.avoided,
+        )
+
+    return check
 
 
 def make_llm_reviewer(llm: LLMClient, prompt_input: OutfitPromptInput) -> ReviewCheck:

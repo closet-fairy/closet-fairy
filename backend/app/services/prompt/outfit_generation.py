@@ -87,6 +87,9 @@ class CandidateItem:
     thickness_cd: str | None
     is_recently_adopted: bool = False
     accessory_type_cd: str | None = None
+    # 비어 있으면 계절 검사를 통과한다. 현재 SupplementedCandidate에 계절이 없어
+    # 파이프라인에서는 채워지지 않는다
+    seasons: Sequence[str] = ()
 
     @property
     def key(self) -> str:
