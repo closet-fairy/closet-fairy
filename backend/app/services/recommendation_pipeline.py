@@ -69,22 +69,21 @@ async def run_recommendation_pipeline(recommendation_session_id: int, llm: LLMCl
     try:
         context = await collect_context(recommendation_session_id)
         outcome = await recommend(context, llm)
-        if outcome.generation.outfits:
-            await save_recommendation_result(
-                recommendation_session_id,
-                context.member_id,
-                outcome.generation.outfits,
-                outcome.supplement,
+        if not outcome.generation.outfits:
+            logger.warning("recommend.pipeline.empty session_id=%s", recommendation_session_id)
+            await mark_generation_failed(
+                recommendation_session_id, outcome.supplement.is_clothing_shortage
             )
+            return
+        await save_recommendation_result(
+            recommendation_session_id,
+            context.member_id,
+            outcome.generation.outfits,
+            outcome.supplement,
+        )
     except Exception:
         logger.exception("recommend.pipeline.failed session_id=%s", recommendation_session_id)
         await mark_generation_failed(recommendation_session_id)
-        return
-    if not outcome.generation.outfits:
-        logger.warning("recommend.pipeline.empty session_id=%s", recommendation_session_id)
-        await mark_generation_failed(
-            recommendation_session_id, outcome.supplement.is_clothing_shortage
-        )
         return
     logger.info(
         "recommend.pipeline.saved session_id=%s outfits=%d fallback=%d rounds=%d",
