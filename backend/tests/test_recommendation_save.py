@@ -32,12 +32,10 @@ def _clothing(
     item_name: str | None = None,
     color_nm: str | None = "블랙",
     cutout: str | None = None,
-    category_cd: str = "top",
     accessory_type_cd: str | None = None,
 ) -> ClothingSnapshot:
     return ClothingSnapshot(
         clothing_id=clothing_id,
-        category_cd=category_cd,
         accessory_type_cd=accessory_type_cd,
         item_name=item_name,
         color_nm=color_nm,
@@ -55,9 +53,9 @@ CANDIDATES = [
 ]
 BY_KEY = {c.key: c for c in CANDIDATES}
 CLOTHING = {
-    10: _clothing(10, "네이비 블레이저", cutout="http://img/10/cutout.png", category_cd="outer"),
+    10: _clothing(10, "네이비 블레이저", cutout="http://img/10/cutout.png"),
     11: _clothing(11, None, color_nm="화이트"),
-    12: _clothing(12, "슬랙스", category_cd="bottom"),
+    12: _clothing(12, "슬랙스"),
 }
 ESSENTIALS = {
     31: EssentialItemSnapshot(31, "블랙 로퍼", None),
@@ -114,12 +112,12 @@ def test_owned_item_without_cutout_uses_origin_and_without_name_uses_color_and_c
         (_candidate(11, "top"), _clothing(11, color_nm=None), "상의"),
         (
             _candidate(20, "accessories", accessory_type_cd="hat"),
-            _clothing(20, category_cd="accessories", accessory_type_cd="hat"),
+            _clothing(20, accessory_type_cd="hat"),
             "블랙 모자",
         ),
         (
             _candidate(21, "accessories"),
-            _clothing(21, category_cd="accessories"),
+            _clothing(21),
             "블랙 악세서리",
         ),
     ],

@@ -108,7 +108,6 @@ async def test_count_completed_by_category_merges_rows():
 async def test_get_clothing_snapshots_filters_by_member_and_ids():
     row = _Row(
         clothing_id=11,
-        category_cd="top",
         accessory_type_cd=None,
         item_name=None,
         color_nm="화이트",
