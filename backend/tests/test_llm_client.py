@@ -182,6 +182,23 @@ async def test_temperature_value_is_sent_via_extra_body():
     assert create.await_args.kwargs["extra_body"] == {"temperature": 0.3}
 
 
+async def test_thinking_none_is_omitted_from_request():
+    llm, create = _make([_ok_message()])
+
+    await _call(llm)
+
+    assert "thinking" not in create.await_args.kwargs
+
+
+async def test_thinking_value_is_sent():
+    llm, create = _make([_ok_message()])
+    config = LLMCallConfig(call_name="t", prompt_version="t/v1", thinking={"type": "disabled"})
+
+    await _call(llm, config)
+
+    assert create.await_args.kwargs["thinking"] == {"type": "disabled"}
+
+
 async def test_request_uses_structured_output_and_config_values():
     llm, create = _make([_ok_message()])
 

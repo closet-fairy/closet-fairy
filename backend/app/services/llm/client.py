@@ -49,6 +49,7 @@ class LLMCallConfig:
     # temperature를 400으로 거절하므로, 받는 모델을 쓰는 호출에서만 값을 넣는다.
     temperature: float | None = None
     timeout_s: float = 60.0
+    thinking: dict[str, Any] | None = None
 
 
 class LLMClient:
@@ -97,6 +98,8 @@ class LLMClient:
         if config.temperature is not None:
             # SDK 1.x는 temperature 인자를 없앴다. API로는 extra_body로만 보낼 수 있다.
             request["extra_body"] = {"temperature": config.temperature}
+        if config.thinking is not None:
+            request["thinking"] = config.thinking
 
         start = time.perf_counter()
         attempts = 0

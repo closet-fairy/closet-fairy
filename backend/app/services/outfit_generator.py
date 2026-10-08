@@ -211,7 +211,11 @@ async def _generate(
 ) -> list[DraftOutfit]:
     prompt = assemble_outfit_generation_prompt(data)
     output = await llm.call_structured(
-        LLMCallConfig(call_name=CALL_NAME, prompt_version=prompt.prompt_version),
+        LLMCallConfig(
+            call_name=CALL_NAME,
+            prompt_version=prompt.prompt_version,
+            thinking={"type": "disabled"},
+        ),
         system=prompt.system,
         messages=[{"role": "user", "content": prompt.user}],
         output_model=OutfitGenerationOutput,
