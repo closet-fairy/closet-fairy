@@ -118,8 +118,7 @@ class RecommendationResult(BaseModel):
     )
     outfits: list[OutfitResult] = Field(
         description=(
-            "outfit_seq 순. completed면 1~4벌이다. "
-            "보통 4벌이지만 옷장 사정에 따라 더 적을 수 있다."
+            "outfit_seq 순. completed면 1~4벌이다. 보통 4벌이지만 옷장 사정에 따라 더 적을 수 있다."
         )
     )
 

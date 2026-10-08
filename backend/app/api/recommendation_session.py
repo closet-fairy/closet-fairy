@@ -5,12 +5,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_member_id, get_now
 from app.core.db import get_db
-from app.core.errors import AppError
 from app.schemas.recommendation_result import RecommendationResult
 from app.schemas.recommendation_session import (
     RecommendationSessionCreate,
     RecommendationSessionCreated,
 )
+from app.services import recommendation_result as result_service
 from app.services import recommendation_session as session_service
 from app.services.llm import LLMClient, get_llm_client
 from app.services.recommendation_pipeline import run_recommendation_pipeline
@@ -35,27 +35,15 @@ async def create_recommendation_session(
     )
 
 
-class ResultNotImplementedError(AppError):
-    code = "NOT_IMPLEMENTED"
-    status_code = status.HTTP_501_NOT_IMPLEMENTED
-    message = "추천 결과 조회는 아직 구현되지 않았습니다."
-
-
 @router.get(
     "/{recommendation_session_id}",
     response_model=RecommendationResult,
-    responses={
-        404: {"description": "없는 세션이거나 본인 세션이 아님"},
-        501: {"description": "구현 전 (응답 형식만 먼저 공개)"},
-    },
+    responses={404: {"description": "없는 세션이거나 본인 세션이 아님"}},
 )
 async def get_recommendation_result(
     recommendation_session_id: int,
+    db: AsyncSession = Depends(get_db),
     member_id: int = Depends(get_current_member_id),
 ) -> RecommendationResult:
-    """추천 결과 조회(폴링). generation_status_cd가 processing이면 잠시 뒤 다시 조회한다.
-
-    지금은 응답 형식만 공개했고 호출하면 501을 돌려준다.
-    실제 조회는 결과 저장(REC-16) 이후 구현한다.
-    """
-    raise ResultNotImplementedError()
+    """추천 결과 조회(폴링). generation_status_cd가 processing이면 잠시 뒤 다시 조회한다."""
+    return await result_service.get_recommendation_result(db, recommendation_session_id, member_id)
