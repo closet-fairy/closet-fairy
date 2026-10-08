@@ -647,3 +647,20 @@ async def test_single_possible_combo_is_requested_as_preferred(caplog):
     assert "## 탐색 스타일" not in prompt
     capped = [r for r in caplog.records if getattr(r, "event", None) == "recommend.target_capped"]
     assert [(r.requested, r.target, r.possible_combos) for r in capped] == [(4, 1, 1)]
+
+
+async def test_kept_outfit_uses_up_one_of_possible_combos():
+    kept = (KeptOutfit(1, FEW_COMBOS[0], "preferred"),)
+    llm = fake_llm(generation(("preferred", FEW_COMBOS[1])))
+
+    result = await run(
+        llm,
+        candidates=FEW,
+        is_outer_required=False,
+        outfit_count=3,
+        kept_outfits=kept,
+        exploration_style=None,
+    )
+
+    assert [(o.outfit_seq, list(o.item_keys)) for o in result.outfits] == [(2, FEW_COMBOS[1])]
+    assert "코디 세트 1벌을 만든다" in prompt_data(llm, 0)

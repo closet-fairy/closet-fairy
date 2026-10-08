@@ -108,8 +108,8 @@ async def generate_outfits(
                 "possible_combos": possible,
             },
         )
-        if target <= 1 and not any(k.outfit_type == "preferred" for k in kept):
-            prompt_input = replace(prompt_input, exploration_style=None)
+    if target <= 1 and not any(k.outfit_type == "preferred" for k in kept):
+        prompt_input = replace(prompt_input, exploration_style=None)
 
     while len(accepted) < target:
         seqs = _free_seqs(kept, accepted)[: target - len(accepted)]
