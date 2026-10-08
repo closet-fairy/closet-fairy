@@ -1,8 +1,9 @@
 """에센셜 의류 조회 (REC-09)."""
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 
-from sqlalchemy import text
+from sqlalchemy import bindparam, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -76,3 +77,40 @@ async def get_essential_items(
         )
         for row in rows
     ]
+
+
+@dataclass(frozen=True)
+class EssentialItemSnapshot:
+    essential_item_id: int
+    item_name: str
+    image_url: str | None
+
+
+ESSENTIAL_ITEM_SNAPSHOT_SQL = text(
+    """
+    SELECT essential_item_id, item_name, image_url
+      FROM essential_item
+     WHERE essential_item_id IN :essential_item_ids
+    """
+).bindparams(bindparam("essential_item_ids", expanding=True))
+
+
+async def get_essential_item_snapshots(
+    db: AsyncSession, essential_item_ids: Sequence[int]
+) -> dict[int, EssentialItemSnapshot]:
+    """추천 결과 저장용으로 에센셜 의류의 이름·이미지를 가져온다. 없는 id는 결과에서 빠진다."""
+    if not essential_item_ids:
+        return {}
+    rows = (
+        await db.execute(
+            ESSENTIAL_ITEM_SNAPSHOT_SQL, {"essential_item_ids": list(essential_item_ids)}
+        )
+    ).all()
+    return {
+        row.essential_item_id: EssentialItemSnapshot(
+            essential_item_id=row.essential_item_id,
+            item_name=row.item_name,
+            image_url=row.image_url,
+        )
+        for row in rows
+    }

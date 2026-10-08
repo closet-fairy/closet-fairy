@@ -95,23 +95,62 @@ async def get_session(db: AsyncSession, recommendation_session_id: int) -> Sessi
     )
 
 
-UPDATE_CLOTHING_SHORTAGE_SQL = text(
+COMPLETE_GENERATION_SQL = text(
     """
     UPDATE recommendation_session
-    SET is_clothing_shortage = :is_clothing_shortage
+    SET generation_status_cd = 'completed', is_clothing_shortage = :is_clothing_shortage
     WHERE recommendation_session_id = :recommendation_session_id
+      AND generation_status_cd = 'processing'
     """
 )
 
 
-async def update_clothing_shortage(
+async def complete_generation(
     db: AsyncSession, recommendation_session_id: int, is_clothing_shortage: bool
-) -> None:
-    await db.execute(
-        UPDATE_CLOTHING_SHORTAGE_SQL,
+) -> bool:
+    """processing인 세션만 completed로 바꾸고, 바꿨는지를 돌려준다. commit은 호출자가 한다."""
+    result = await db.execute(
+        COMPLETE_GENERATION_SQL,
         {
             "recommendation_session_id": recommendation_session_id,
             "is_clothing_shortage": is_clothing_shortage,
         },
     )
-    await db.commit()
+    return result.rowcount == 1
+
+
+FAIL_GENERATION_SQL = text(
+    """
+    UPDATE recommendation_session
+    SET generation_status_cd = 'failed'
+    WHERE recommendation_session_id = :recommendation_session_id
+      AND generation_status_cd = 'processing'
+    """
+)
+
+FAIL_GENERATION_WITH_SHORTAGE_SQL = text(
+    """
+    UPDATE recommendation_session
+    SET generation_status_cd = 'failed', is_clothing_shortage = :is_clothing_shortage
+    WHERE recommendation_session_id = :recommendation_session_id
+      AND generation_status_cd = 'processing'
+    """
+)
+
+
+async def mark_generation_failed(
+    db: AsyncSession,
+    recommendation_session_id: int,
+    is_clothing_shortage: bool | None = None,
+) -> bool:
+    """processing인 세션만 failed로 바꾸고, 바꿨는지를 돌려준다. commit은 호출자가 한다.
+
+    is_clothing_shortage가 None이면 그 컬럼은 건드리지 않는다.
+    """
+    params: dict = {"recommendation_session_id": recommendation_session_id}
+    if is_clothing_shortage is None:
+        result = await db.execute(FAIL_GENERATION_SQL, params)
+    else:
+        params["is_clothing_shortage"] = is_clothing_shortage
+        result = await db.execute(FAIL_GENERATION_WITH_SHORTAGE_SQL, params)
+    return result.rowcount == 1

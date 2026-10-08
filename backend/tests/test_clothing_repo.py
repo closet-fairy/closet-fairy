@@ -103,3 +103,28 @@ async def test_count_completed_by_category_merges_rows():
     )
 
     assert counts == {"top": 3, "bottom": 0, "shoes": 1}
+
+
+async def test_get_clothing_snapshots_filters_by_member_and_ids():
+    row = _Row(
+        clothing_id=11,
+        item_name=None,
+        color_nm="화이트",
+        origin_image_url="http://a/11.png",
+        cutout_image_url=None,
+    )
+    db = _RecordingDb([row])
+
+    snapshots = await clothing_repo.get_clothing_snapshots(db, member_id=7, clothing_ids=[11, 12])
+
+    assert db.params == {"member_id": 7, "clothing_ids": [11, 12]}
+    assert list(snapshots) == [11]
+    assert snapshots[11].item_name is None
+    assert snapshots[11].color_nm == "화이트"
+
+
+async def test_get_clothing_snapshots_skips_query_for_empty_ids():
+    db = _RecordingDb([])
+
+    assert await clothing_repo.get_clothing_snapshots(db, member_id=7, clothing_ids=[]) == {}
+    assert db.params is None

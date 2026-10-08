@@ -110,3 +110,47 @@ async def count_completed_by_category(
     counts = {category_cd: 0 for category_cd in category_cds}
     counts.update({row.category_cd: row.cnt for row in rows})
     return counts
+
+
+@dataclass(frozen=True)
+class ClothingSnapshot:
+    clothing_id: int
+    item_name: str | None
+    color_nm: str | None
+    origin_image_url: str
+    cutout_image_url: str | None
+
+
+CLOTHING_SNAPSHOT_SQL = text(
+    """
+    SELECT c.clothing_id, c.item_name, co.color_nm,
+           c.origin_image_url, c.cutout_image_url
+    FROM clothing c
+    LEFT JOIN color co ON co.color_cd = c.color_cd
+    WHERE c.member_id = :member_id AND c.clothing_id IN :clothing_ids
+    """
+).bindparams(bindparam("clothing_ids", expanding=True))
+
+
+async def get_clothing_snapshots(
+    db: AsyncSession, member_id: int, clothing_ids: Sequence[int]
+) -> dict[int, ClothingSnapshot]:
+    """추천 결과 저장용으로 옷의 현재 이름·이미지를 가져온다. 없는 id는 결과에서 빠진다."""
+    if not clothing_ids:
+        return {}
+    rows = (
+        await db.execute(
+            CLOTHING_SNAPSHOT_SQL,
+            {"member_id": member_id, "clothing_ids": list(clothing_ids)},
+        )
+    ).all()
+    return {
+        row.clothing_id: ClothingSnapshot(
+            clothing_id=row.clothing_id,
+            item_name=row.item_name,
+            color_nm=row.color_nm,
+            origin_image_url=row.origin_image_url,
+            cutout_image_url=row.cutout_image_url,
+        )
+        for row in rows
+    }
