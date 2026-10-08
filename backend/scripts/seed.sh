@@ -23,7 +23,7 @@ run_sql() {
 echo " 시드 적재 "
 for file in db/seeds/*.sql; do
   case "$file" in
-    *004_dev_member.sql)
+    *_dev_*.sql)
       if [ "$SEED_DEV_MEMBER" != "1" ]; then
         echo "  건너뜀 : $file (SEED_DEV_MEMBER=0)"
         continue
@@ -96,6 +96,14 @@ if [ "$SEED_DEV_MEMBER" = "1" ]; then
   run_sql --table -e "
   SELECT COUNT(*) AS 실제, 27 AS 기대, IF(COUNT(*) = 27, 'OK', 'FAIL') AS 결과
   FROM preference_score;
+  "
+
+  echo
+  echo "=== 6. 개발 회원 시드 옷 30벌 ==="
+  run_sql --table -e "
+  SELECT COUNT(*) AS 실제, 30 AS 기대, IF(COUNT(*) = 30, 'OK', 'FAIL') AS 결과
+  FROM clothing
+  WHERE origin_image_url LIKE 'dev-seed/%';
   "
 fi
 
