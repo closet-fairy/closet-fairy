@@ -664,3 +664,12 @@ async def test_kept_outfit_uses_up_one_of_possible_combos():
 
     assert [(o.outfit_seq, list(o.item_keys)) for o in result.outfits] == [(2, FEW_COMBOS[1])]
     assert "코디 세트 1벌을 만든다" in prompt_data(llm, 0)
+
+
+async def test_generation_call_disables_thinking():
+    llm = fake_llm(generation(*[("preferred", GOOD)] * 3, ("exploratory", GOOD)))
+
+    await run(llm)
+
+    config = llm.call_structured.call_args_list[0].args[0]
+    assert config.thinking == {"type": "disabled"}
