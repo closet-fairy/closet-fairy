@@ -1,8 +1,7 @@
 """추천 파이프라인.
 
 컨텍스트 수집(REC-07) → 룰 전처리(REC-08) → 에센셜 보충(REC-09) → 선호도·탐색 스타일(REC-10)
-→ 생성 입력 조립 → 생성 루프(REC-15, 1차·2차 검증과 폴백 포함) 순서로 잇는다.
-결과 저장(REC-16)이 생기면 run_recommendation_pipeline() 끝에 붙인다.
+→ 생성 입력 조립 → 생성 루프(REC-15, 1차·2차 검증과 폴백 포함) → 결과 저장(REC-16) 순서로 잇는다.
 """
 
 import logging
@@ -14,7 +13,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.core.db import AsyncSessionLocal
 from app.repositories import preference_score as preference_repo
-from app.repositories import recommendation_session as session_repo
 from app.services.essential_supplement import (
     SupplementedCandidate,
     SupplementResult,
@@ -41,6 +39,10 @@ from app.services.prompt.outfit_generation import (
     WeatherInput,
 )
 from app.services.recommend_context import RecommendContext, collect_context
+from app.services.recommendation_save import (
+    mark_generation_failed,
+    save_recommendation_result,
+)
 from app.services.rule_filter import filter_clothing
 from app.services.weather.weather_service import WeatherResult
 
@@ -67,15 +69,25 @@ async def run_recommendation_pipeline(recommendation_session_id: int, llm: LLMCl
     try:
         context = await collect_context(recommendation_session_id)
         outcome = await recommend(context, llm)
-        async with AsyncSessionLocal() as db:
-            await session_repo.update_clothing_shortage(
-                db, recommendation_session_id, outcome.supplement.is_clothing_shortage
+        if outcome.generation.outfits:
+            await save_recommendation_result(
+                recommendation_session_id,
+                context.member_id,
+                outcome.generation.outfits,
+                outcome.supplement,
             )
     except Exception:
         logger.exception("recommend.pipeline.failed session_id=%s", recommendation_session_id)
+        await mark_generation_failed(recommendation_session_id)
+        return
+    if not outcome.generation.outfits:
+        logger.warning("recommend.pipeline.empty session_id=%s", recommendation_session_id)
+        await mark_generation_failed(
+            recommendation_session_id, outcome.supplement.is_clothing_shortage
+        )
         return
     logger.info(
-        "recommend.pipeline.generated session_id=%s outfits=%d fallback=%d rounds=%d",
+        "recommend.pipeline.saved session_id=%s outfits=%d fallback=%d rounds=%d",
         recommendation_session_id,
         len(outcome.generation.outfits),
         outcome.generation.fallback_count,

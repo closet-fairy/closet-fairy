@@ -234,39 +234,99 @@ async def test_recommend_wires_all_checks_with_same_prompt_input(monkeypatch):
     assert len(outcome.generation.outfits) == 3
 
 
-async def test_pipeline_saves_clothing_shortage(monkeypatch):
-    saved = {}
+def _outcome(generation: GenerationResult, shortage: bool = False) -> pipeline.RecommendOutcome:
+    return pipeline.RecommendOutcome(
+        generation=generation,
+        supplement=_supplement(shortage=shortage),
+        prompt_input=None,
+        owned_count=0,
+        filtered_owned_count=0,
+    )
+
+
+def _patch_run(monkeypatch, outcome: pipeline.RecommendOutcome | Exception):
+    calls = {"saved": [], "failed": []}
 
     async def fake_collect_context(session_id):
         return _context()
 
     async def fake_recommend(context, llm):
-        return pipeline.RecommendOutcome(
-            generation=_generation(),
-            supplement=_supplement(shortage=True),
-            prompt_input=None,
-            owned_count=0,
-            filtered_owned_count=0,
-        )
+        if isinstance(outcome, Exception):
+            raise outcome
+        return outcome
 
-    async def fake_update(db, session_id, is_clothing_shortage):
-        saved[session_id] = is_clothing_shortage
+    async def fake_save(session_id, member_id, outfits, supplement):
+        calls["saved"].append((session_id, member_id, list(outfits), supplement))
+
+    async def fake_mark_failed(session_id, is_clothing_shortage=None):
+        calls["failed"].append((session_id, is_clothing_shortage))
 
     monkeypatch.setattr(pipeline, "collect_context", fake_collect_context)
     monkeypatch.setattr(pipeline, "recommend", fake_recommend)
-    monkeypatch.setattr(pipeline.session_repo, "update_clothing_shortage", fake_update)
-    monkeypatch.setattr(pipeline, "AsyncSessionLocal", _fake_session)
+    monkeypatch.setattr(pipeline, "save_recommendation_result", fake_save)
+    monkeypatch.setattr(pipeline, "mark_generation_failed", fake_mark_failed)
+    return calls
+
+
+async def test_pipeline_saves_generated_outfits(monkeypatch):
+    outcome = _outcome(_generation(), shortage=True)
+    calls = _patch_run(monkeypatch, outcome)
 
     await pipeline.run_recommendation_pipeline(7, MagicMock(spec=LLMClient))
 
-    assert saved == {7: True}
+    assert calls["saved"] == [(7, 1, outcome.generation.outfits, outcome.supplement)]
+    assert calls["failed"] == []
+
+
+async def test_pipeline_marks_failed_with_shortage_when_no_outfits(monkeypatch):
+    empty = GenerationResult(
+        outfits=[],
+        rounds=3,
+        hard_rule_retries=2,
+        reviewer_retries=0,
+        shortfall_retries=0,
+        fallback_count=0,
+    )
+    calls = _patch_run(monkeypatch, _outcome(empty, shortage=True))
+
+    await pipeline.run_recommendation_pipeline(7, MagicMock(spec=LLMClient))
+
+    assert calls["saved"] == []
+    assert calls["failed"] == [(7, True)]
+
+
+async def test_pipeline_marks_failed_without_shortage_when_recommend_raises(monkeypatch, caplog):
+    calls = _patch_run(monkeypatch, RuntimeError("boom"))
+
+    await pipeline.run_recommendation_pipeline(7, MagicMock(spec=LLMClient))
+
+    assert "recommend.pipeline.failed" in caplog.text
+    assert calls["saved"] == []
+    assert calls["failed"] == [(7, None)]
+
+
+async def test_pipeline_marks_failed_when_save_raises(monkeypatch):
+    calls = _patch_run(monkeypatch, _outcome(_generation()))
+
+    async def failing_save(session_id, member_id, outfits, supplement):
+        raise RuntimeError("db down")
+
+    monkeypatch.setattr(pipeline, "save_recommendation_result", failing_save)
+
+    await pipeline.run_recommendation_pipeline(7, MagicMock(spec=LLMClient))
+
+    assert calls["failed"] == [(7, None)]
 
 
 async def test_pipeline_failure_is_logged_not_raised(monkeypatch, caplog):
     async def failing_collect_context(session_id):
         raise RuntimeError("boom")
 
+    async def fake_mark_failed(session_id, is_clothing_shortage=None):
+        return None
+
     monkeypatch.setattr(pipeline, "collect_context", failing_collect_context)
+    monkeypatch.setattr(pipeline, "mark_generation_failed", fake_mark_failed)
 
     await pipeline.run_recommendation_pipeline(7, MagicMock(spec=LLMClient))
 
