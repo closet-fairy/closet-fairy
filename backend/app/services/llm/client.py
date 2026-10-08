@@ -49,7 +49,7 @@ class LLMCallConfig:
     # temperature를 400으로 거절하므로, 받는 모델을 쓰는 호출에서만 값을 넣는다.
     temperature: float | None = None
     timeout_s: float = 60.0
-    thinking: dict[str, str] | None = None
+    thinking: dict[str, Any] | None = None
 
 
 class LLMClient:
