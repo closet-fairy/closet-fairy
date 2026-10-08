@@ -10,6 +10,7 @@ failure_reasons 슬롯에 넣는다. 검증 단계별 재생성 한도를 넘거
 """
 
 import logging
+from collections import Counter
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, replace
 from itertools import product
@@ -74,19 +75,41 @@ async def generate_outfits(
     max_retry_per_stage: int | None = None,
     session_id: int | None = None,
 ) -> GenerationResult:
-    """prompt_input.outfit_count만큼 세트를 채운다.
+    """prompt_input.outfit_count만큼 세트를 채운다. 후보로 만들 수 있는 조합이 그보다 적으면
+    그 수까지만 채우므로 더 적게(0벌일 수도 있다) 돌려줄 수 있다.
 
     prompt_input.kept_outfits(재추천에서 유지하는 세트)는 고정으로 보고 프롬프트와
     1차 검증(같은 조합 검사)에 넘기며 결과에는 넣지 않는다. failure_reasons는 이 함수가 채운다.
     """
     if max_retry_per_stage is None:
         max_retry_per_stage = get_settings().MAX_RETRY_PER_VALIDATION_STAGE
-    target = prompt_input.outfit_count
     kept = tuple(prompt_input.kept_outfits)
+    category_by_key = {c.key: c.category_cd for c in prompt_input.candidates}
+
+    def countable(item_keys: Sequence[str]) -> bool:
+        return _in_combo_space(item_keys, category_by_key, prompt_input.is_outer_required)
+
+    kept_combos = {frozenset(k.item_keys) for k in kept if countable(k.item_keys)}
+    possible = count_possible_combos(prompt_input.candidates, prompt_input.is_outer_required)
+    target = min(prompt_input.outfit_count, max(possible - len(kept_combos), 0))
     accepted: list[DraftOutfit] = []
+    rejected: set[frozenset[str]] = set()
     failure_reasons: list[FailureReason] = []
     hard_retries = reviewer_retries = shortfall_retries = rounds = 0
     log_extra = {"recommendation_session_id": session_id}
+    if target < prompt_input.outfit_count:
+        logger.info(
+            "outfit target capped",
+            extra={
+                **log_extra,
+                "event": Event.RECOMMEND_TARGET_CAPPED,
+                "requested": prompt_input.outfit_count,
+                "target": target,
+                "possible_combos": possible,
+            },
+        )
+    if target <= 1 and not any(k.outfit_type == "preferred" for k in kept):
+        prompt_input = replace(prompt_input, exploration_style=None)
 
     while len(accepted) < target:
         seqs = _free_seqs(kept, accepted)[: target - len(accepted)]
@@ -119,11 +142,19 @@ async def generate_outfits(
             review_failed = []
         review_failed_seqs = {v.outfit_seq for v in review_failed}
         accepted += [d for d in survivors if d.outfit_seq not in review_failed_seqs]
+        rejected |= {
+            frozenset(d.item_keys)
+            for d in drafts
+            if d.outfit_seq in hard_failed_seqs | review_failed_seqs and countable(d.item_keys)
+        }
 
         _log_failures(Event.HARD_RULE_FAIL, "hard_rule", hard_failed, drafts, rounds, log_extra)
         _log_failures(Event.REVIEWER_FAIL, "reviewer", review_failed, drafts, rounds, log_extra)
 
         if len(accepted) >= target:
+            break
+        used = kept_combos | rejected | {frozenset(a.item_keys) for a in accepted}
+        if len(used) >= possible:
             break
         if hard_failed:
             if hard_retries >= max_retry_per_stage:
@@ -254,6 +285,34 @@ def _log_failures(
                 "reasons": list(failure.reasons),
             },
         )
+
+
+def count_possible_combos(candidates: Sequence[CandidateItem], is_outer_required: bool) -> int:
+    """서로 다른 코디 조합 수의 상한. 정확한 개수가 아니다.
+
+    1차 검증의 같은 조합 판정(아이템 집합 비교)에 맞춰 상의·하의·신발 각 1개, 아우터는
+    필수면 1개·아니면 0~1개로 센다. 양말(1개 제한)·악세서리는 넣거나 뺄 수 있다고 보고
+    2ⁿ으로 넉넉하게 세고, 계절·악세서리 종류 제한은 반영하지 않는다.
+    상한이 실제보다 작으면 만들 수 있는 코디를 놓친다.
+    """
+    counts = Counter(c.category_cd for c in candidates)
+    total = counts["top"] * counts["bottom"] * counts["shoes"]
+    total *= counts["outer"] if is_outer_required else counts["outer"] + 1
+    return total * 2 ** (counts["socks"] + counts["accessories"])
+
+
+def _in_combo_space(
+    item_keys: Sequence[str], category_by_key: dict[str, str], is_outer_required: bool
+) -> bool:
+    if len(set(item_keys)) != len(item_keys):
+        return False
+    if any(key not in category_by_key for key in item_keys):
+        return False
+    counts = Counter(category_by_key[key] for key in item_keys)
+    outer_counts = (1,) if is_outer_required else (0, 1)
+    return counts["top"] == counts["bottom"] == counts["shoes"] == 1 and (
+        counts["outer"] in outer_counts
+    )
 
 
 # ---------- 기본 주입 함수 ----------

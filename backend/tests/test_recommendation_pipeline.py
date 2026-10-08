@@ -288,6 +288,7 @@ async def test_recommend_runs_real_loop_with_fake_llm(monkeypatch):
         outer_requirement="optional",
     )
     combos = [["o1", "o3", "e5"], ["o2", "o4", "e6"], ["o1", "o4", "e5"], ["o2", "o3", "e6"]]
+    reviewed: list[list[int]] = []
 
     async def fake_collect(context, filter_result):
         return supplement
@@ -300,6 +301,7 @@ async def test_recommend_runs_real_loop_with_fake_llm(monkeypatch):
             outfits = [{"outfit_type": "preferred", "item_ids": c, "reason": "r"} for c in combos]
             return OutfitGenerationOutput.model_validate({"outfits": outfits})
         seqs = [int(n) for n in re.findall(r"^세트 (\d+)$", messages[0]["content"], re.M)]
+        reviewed.append(seqs)
         reviews = [{"outfit_seq": seq, "reason": "ok", "pass": True} for seq in seqs]
         return OutfitReviewOutput.model_validate({"reviews": reviews})
 
@@ -316,3 +318,4 @@ async def test_recommend_runs_real_loop_with_fake_llm(monkeypatch):
     assert generation.rounds == 1
     assert generation.fallback_count == 0
     assert llm.call_structured.await_count == 2
+    assert reviewed == [[1, 2, 3, 4]]

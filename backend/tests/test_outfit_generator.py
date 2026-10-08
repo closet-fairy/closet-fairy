@@ -1,5 +1,6 @@
 """REC-15 생성·부분 재생성 루프 테스트. LLM·검증 함수는 모두 가짜로 바꿔 끼운다."""
 
+import logging
 from collections.abc import Sequence
 from unittest.mock import AsyncMock, MagicMock
 
@@ -12,6 +13,7 @@ from app.services.outfit_generator import (
     FALLBACK_REASON,
     DraftOutfit,
     compose_basic_outfits,
+    count_possible_combos,
     generate_outfits,
     make_basic_outfit_fallback,
     make_hard_rule_check,
@@ -23,7 +25,7 @@ from app.services.prompt.outfit_generation import (
     KeptOutfit,
     OutfitGenerationOutput,
 )
-from tests.test_outfit_generation_prompt import make_input
+from tests.test_outfit_generation_prompt import CANDIDATES, make_input
 
 GOOD = ["o2001", "o3001", "o4001"]
 BAD = ["o9999"]
@@ -528,3 +530,137 @@ def test_two_of_each_category_guarantees_minimum_outfits(count):
     assert (
         len(compose_basic_outfits(pool, is_outer_required=False, taken=set(), count=count)) == count
     )
+
+
+# ---------- 가능한 조합 수 ----------
+
+FEW = (
+    CandidateItem("essential", 1, "top", "니트", "gray", ["casual"], "medium"),
+    CandidateItem("essential", 2, "bottom", "울 슬랙스", "gray", ["classic"], "thick"),
+    CandidateItem("essential", 3, "shoes", "첼시부츠", "black", ["minimal"], None),
+    CandidateItem("essential", 4, "shoes", "앵클부츠", "black", ["casual"], None),
+)
+FEW_COMBOS = (["e1", "e2", "e3"], ["e1", "e2", "e4"])
+
+
+def test_count_possible_combos():
+    assert count_possible_combos(POOL, is_outer_required=True) == 4
+    assert count_possible_combos(POOL, is_outer_required=False) == 8
+    assert count_possible_combos(CANDIDATES, is_outer_required=True) == 32
+    assert count_possible_combos(FEW[:2], is_outer_required=False) == 0
+
+
+async def test_target_is_capped_by_possible_combos():
+    llm = fake_llm(generation(("preferred", FEW_COMBOS[0]), ("exploratory", FEW_COMBOS[1])))
+
+    result = await run(llm, candidates=FEW, is_outer_required=False)
+
+    assert len(result.outfits) == 2
+    assert result.rounds == 1
+    assert result.shortfall_retries == 0
+    assert "코디 세트 2벌을 만든다" in prompt_data(llm, 0)
+
+
+async def test_retry_stops_when_every_combo_is_used():
+    llm = fake_llm(generation(("preferred", FEW_COMBOS[0]), ("exploratory", FEW_COMBOS[1])))
+    calls: list = []
+
+    result = await run(
+        llm,
+        candidates=FEW,
+        is_outer_required=False,
+        review=reviewer("e1"),
+        fallback=recording_fallback(calls),
+    )
+
+    assert llm.call_structured.await_count == 1
+    assert result.reviewer_retries == 0
+    assert calls == [[1, 2]]
+
+
+async def test_no_generation_without_required_category():
+    llm = fake_llm()
+
+    result = await run(llm, candidates=FEW[:2], is_outer_required=False)
+
+    assert result.outfits == []
+    assert llm.call_structured.await_count == 0
+
+
+async def test_malformed_drafts_do_not_use_up_possible_combos():
+    def reject_malformed(drafts, kept_outfits):
+        return [
+            OutfitValidation(d.outfit_seq, passed=True)
+            if list(d.item_keys) in FEW_COMBOS
+            else OutfitValidation(d.outfit_seq, passed=False, reasons=("구성 오류",))
+            for d in drafts
+        ]
+
+    llm = fake_llm(
+        generation(("preferred", ["e1", "e2"]), ("exploratory", ["e1", "e2", "e3", "e4"])),
+        generation(("preferred", FEW_COMBOS[0]), ("exploratory", FEW_COMBOS[1])),
+    )
+
+    result = await run(llm, candidates=FEW, is_outer_required=False, hard_rule=reject_malformed)
+
+    assert [list(o.item_keys) for o in result.outfits] == list(FEW_COMBOS)
+    assert result.rounds == 2
+    assert result.fallback_count == 0
+
+
+async def test_duplicate_item_draft_does_not_use_up_its_combo():
+    socks = CandidateItem("essential", 5, "socks", "양말", "black", ["minimal"], "thin")
+    without_socks, with_socks = ["e1", "e2", "e3"], ["e1", "e2", "e3", "e5"]
+
+    def reject_duplicates(drafts, kept_outfits):
+        return [
+            OutfitValidation(d.outfit_seq, passed=True)
+            if len(set(d.item_keys)) == len(d.item_keys)
+            else OutfitValidation(d.outfit_seq, passed=False, reasons=("중복",))
+            for d in drafts
+        ]
+
+    llm = fake_llm(
+        generation(("preferred", without_socks), ("exploratory", [*with_socks, "e5"])),
+        generation(("exploratory", with_socks)),
+    )
+
+    result = await run(
+        llm, candidates=(*FEW[:3], socks), is_outer_required=False, hard_rule=reject_duplicates
+    )
+
+    assert [list(o.item_keys) for o in result.outfits] == [without_socks, with_socks]
+    assert result.fallback_count == 0
+
+
+async def test_single_possible_combo_is_requested_as_preferred(caplog):
+    caplog.set_level(logging.INFO, logger="app.services.outfit_generator")
+    llm = fake_llm(generation(("preferred", FEW_COMBOS[0])))
+
+    result = await run(llm, candidates=FEW[:3], is_outer_required=False)
+
+    assert [(o.outfit_type, list(o.item_keys)) for o in result.outfits] == [
+        ("preferred", FEW_COMBOS[0])
+    ]
+    prompt = prompt_data(llm, 0)
+    assert "코디 세트 1벌을 만든다. preferred 1벌." in prompt
+    assert "## 탐색 스타일" not in prompt
+    capped = [r for r in caplog.records if getattr(r, "event", None) == "recommend.target_capped"]
+    assert [(r.requested, r.target, r.possible_combos) for r in capped] == [(4, 1, 1)]
+
+
+async def test_kept_outfit_uses_up_one_of_possible_combos():
+    kept = (KeptOutfit(1, FEW_COMBOS[0], "preferred"),)
+    llm = fake_llm(generation(("preferred", FEW_COMBOS[1])))
+
+    result = await run(
+        llm,
+        candidates=FEW,
+        is_outer_required=False,
+        outfit_count=3,
+        kept_outfits=kept,
+        exploration_style=None,
+    )
+
+    assert [(o.outfit_seq, list(o.item_keys)) for o in result.outfits] == [(2, FEW_COMBOS[1])]
+    assert "코디 세트 1벌을 만든다" in prompt_data(llm, 0)
