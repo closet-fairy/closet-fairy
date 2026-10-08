@@ -32,11 +32,9 @@ def _clothing(
     item_name: str | None = None,
     color_nm: str | None = "블랙",
     cutout: str | None = None,
-    accessory_type_cd: str | None = None,
 ) -> ClothingSnapshot:
     return ClothingSnapshot(
         clothing_id=clothing_id,
-        accessory_type_cd=accessory_type_cd,
         item_name=item_name,
         color_nm=color_nm,
         origin_image_url=f"http://img/{clothing_id}/origin.png",
@@ -112,7 +110,7 @@ def test_owned_item_without_cutout_uses_origin_and_without_name_uses_color_and_c
         (_candidate(11, "top"), _clothing(11, color_nm=None), "상의"),
         (
             _candidate(20, "accessories", accessory_type_cd="hat"),
-            _clothing(20, accessory_type_cd="hat"),
+            _clothing(20),
             "블랙 모자",
         ),
         (

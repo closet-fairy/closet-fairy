@@ -115,7 +115,6 @@ async def count_completed_by_category(
 @dataclass(frozen=True)
 class ClothingSnapshot:
     clothing_id: int
-    accessory_type_cd: str | None
     item_name: str | None
     color_nm: str | None
     origin_image_url: str
@@ -124,7 +123,7 @@ class ClothingSnapshot:
 
 CLOTHING_SNAPSHOT_SQL = text(
     """
-    SELECT c.clothing_id, c.accessory_type_cd, c.item_name, co.color_nm,
+    SELECT c.clothing_id, c.item_name, co.color_nm,
            c.origin_image_url, c.cutout_image_url
     FROM clothing c
     LEFT JOIN color co ON co.color_cd = c.color_cd
@@ -148,7 +147,6 @@ async def get_clothing_snapshots(
     return {
         row.clothing_id: ClothingSnapshot(
             clothing_id=row.clothing_id,
-            accessory_type_cd=row.accessory_type_cd,
             item_name=row.item_name,
             color_nm=row.color_nm,
             origin_image_url=row.origin_image_url,

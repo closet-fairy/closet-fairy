@@ -166,9 +166,8 @@ def _to_item_row(
 
 
 def _fallback_name(candidate: SupplementedCandidate, clothing: ClothingSnapshot) -> str:
-    accessory_type_cd = clothing.accessory_type_cd or candidate.accessory_type_cd
-    if candidate.category_cd == "accessories" and accessory_type_cd is not None:
-        label = _ACCESSORY_TYPE_LABELS[accessory_type_cd]
+    if candidate.category_cd == "accessories" and candidate.accessory_type_cd is not None:
+        label = _ACCESSORY_TYPE_LABELS[candidate.accessory_type_cd]
     else:
         label = _CATEGORY_LABELS[candidate.category_cd]
     return f"{clothing.color_nm} {label}" if clothing.color_nm else label
