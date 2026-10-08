@@ -23,7 +23,7 @@ run_sql() {
 echo " 시드 적재 "
 for file in db/seeds/*.sql; do
   case "$file" in
-    *004_dev_member.sql|*005_dev_closet.sql)
+    *_dev_*.sql)
       if [ "$SEED_DEV_MEMBER" != "1" ]; then
         echo "  건너뜀 : $file (SEED_DEV_MEMBER=0)"
         continue
