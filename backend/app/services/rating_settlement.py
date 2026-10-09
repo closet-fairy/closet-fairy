@@ -68,6 +68,8 @@ def resolve_attribute_deltas(rows: Iterable[AttributeFeedback]) -> dict[Attribut
     others: dict[AttributeKey, Decimal] = {}
     for row in rows:
         key = (row.attribute_type_cd, row.attribute_value)
+        # 부호가 아니라 유형으로 판정한다.
+        # 별점 2점은 델타가 0이라 부호로 보면 거절(-0.1)에 밀려 음수가 된다
         if row.feedback_type_cd == "rated":
             rated[key] = row.applied_delta
         else:

@@ -86,6 +86,8 @@ UPDATE_SCORE_SQL = text(
 
 
 async def lock_member_scores(db: AsyncSession, member_id: int) -> list[ScoreRow]:
+    # 실제 잠금 순서는 ORDER BY가 아니라 인덱스 스캔 순서다.
+    # 모든 정산이 이 문장으로 잠가야 순서가 같아 교착이 생기지 않는다
     result = await db.execute(LOCK_MEMBER_SCORES_SQL, {"member_id": member_id})
     return [
         ScoreRow(
