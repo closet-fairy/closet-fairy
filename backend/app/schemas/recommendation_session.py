@@ -49,3 +49,15 @@ class RecommendationSessionCreate(BaseModel):
 class RecommendationSessionCreated(BaseModel):
     recommendation_session_id: int
     session_status_cd: str
+
+
+class RatingCreate(BaseModel):
+    outfit_id: int = Field(gt=0)
+    rating: int = Field(ge=1, le=5)
+
+
+class RatingResult(BaseModel):
+    recommendation_session_id: int
+    outfit_id: int
+    rating: int
+    session_status_cd: str

@@ -154,3 +154,59 @@ async def mark_generation_failed(
         params["is_clothing_shortage"] = is_clothing_shortage
         result = await db.execute(FAIL_GENERATION_WITH_SHORTAGE_SQL, params)
     return result.rowcount == 1
+
+
+@dataclass(frozen=True)
+class RatingSessionRow:
+    member_id: int
+    session_status_cd: str
+    generation_status_cd: str
+    settled_at: datetime | None
+
+
+LOCK_SESSION_FOR_RATING_SQL = text(
+    """
+    SELECT member_id, session_status_cd, generation_status_cd, settled_at
+    FROM recommendation_session
+    WHERE recommendation_session_id = :recommendation_session_id
+    FOR UPDATE
+    """
+)
+
+
+async def lock_session_for_rating(
+    db: AsyncSession, recommendation_session_id: int
+) -> RatingSessionRow | None:
+    result = await db.execute(
+        LOCK_SESSION_FOR_RATING_SQL, {"recommendation_session_id": recommendation_session_id}
+    )
+    row = result.first()
+    if row is None:
+        return None
+    return RatingSessionRow(
+        member_id=row.member_id,
+        session_status_cd=row.session_status_cd,
+        generation_status_cd=row.generation_status_cd,
+        settled_at=row.settled_at,
+    )
+
+
+COMPLETE_SETTLEMENT_SQL = text(
+    """
+    UPDATE recommendation_session
+    SET settled_at = :settled_at, session_status_cd = 'completed', ended_at = :settled_at
+    WHERE recommendation_session_id = :recommendation_session_id
+      AND settled_at IS NULL
+    """
+)
+
+
+async def complete_settlement(
+    db: AsyncSession, recommendation_session_id: int, settled_at: datetime
+) -> bool:
+    """정산되지 않은 세션만 completed로 바꾸고, 바꿨는지를 돌려준다. commit은 호출자가 한다."""
+    result = await db.execute(
+        COMPLETE_SETTLEMENT_SQL,
+        {"recommendation_session_id": recommendation_session_id, "settled_at": settled_at},
+    )
+    return result.rowcount == 1
