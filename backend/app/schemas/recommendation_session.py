@@ -61,3 +61,14 @@ class RatingResult(BaseModel):
     outfit_id: int
     rating: int
     session_status_cd: str
+
+
+class CancelResult(BaseModel):
+    recommendation_session_id: int
+    session_status_cd: Literal["canceled", "abandoned"] = Field(
+        description=(
+            "canceled면 이번 요청으로 취소됐거나 이미 취소된 세션이다. "
+            "abandoned면 오래 활동이 없어 이미 종료된 세션이다. "
+            "어느 쪽이든 점수는 반영되지 않았으므로 조건 입력 화면으로 이동하면 된다."
+        )
+    )

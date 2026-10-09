@@ -121,5 +121,8 @@ class Event:
     RECOMMEND_FALLBACK = "recommend.fallback"
     RECOMMEND_TARGET_CAPPED = "recommend.target_capped"
     PREFERENCE_SETTLED = "preference.settled"
+    SESSION_CANCELED = "session.canceled"
+    SESSION_ABANDONED = "session.abandoned"
+    SESSION_CLEANED = "session.cleaned"
     UCB_EXPLORE_PICK = "ucb.explore_pick"
     LLM_CALL = "llm.call"

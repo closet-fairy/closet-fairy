@@ -18,6 +18,7 @@ from app.services.preference_score import classify
 from app.services.prompt.outfit_generation import OutfitGenerationOutput
 from app.services.prompt.outfit_review import OutfitReviewOutput
 from app.services.recommend_context import RecommendContext
+from app.services.recommendation_save import GenerationNotProcessingError
 from app.services.weather.base_time import KST
 from app.services.weather.weather_service import HourlyWeather, WeatherResult
 
@@ -316,6 +317,21 @@ async def test_pipeline_marks_failed_when_save_raises(monkeypatch):
     await pipeline.run_recommendation_pipeline(7, MagicMock(spec=LLMClient))
 
     assert calls["failed"] == [(7, None)]
+
+
+async def test_pipeline_discards_result_of_ended_session_quietly(monkeypatch, caplog):
+    calls = _patch_run(monkeypatch, _outcome(_generation()))
+
+    async def rejected_save(session_id, member_id, outfits, supplement):
+        raise GenerationNotProcessingError(session_id)
+
+    monkeypatch.setattr(pipeline, "save_recommendation_result", rejected_save)
+
+    await pipeline.run_recommendation_pipeline(7, MagicMock(spec=LLMClient))
+
+    assert calls["failed"] == []
+    assert "recommend.pipeline.discarded session_id=7" in caplog.text
+    assert not [r for r in caplog.records if r.levelname == "ERROR"]
 
 
 async def test_pipeline_failure_is_logged_not_raised(monkeypatch, caplog):

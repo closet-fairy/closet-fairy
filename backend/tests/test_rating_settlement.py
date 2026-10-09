@@ -9,7 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from app.core.config import Settings
 from app.repositories.outfit_feedback import AttributeFeedback, FeedbackRow
 from app.repositories.preference_score import ScoreRow, ScoreUpdate
-from app.repositories.recommendation_session import RatingSessionRow
+from app.repositories.recommendation_session import LockedSessionRow
 from app.services import rating_settlement as settlement
 from app.services.weather.base_time import KST
 
@@ -199,7 +199,7 @@ class _ForeignKeyFailure(Exception):
         super().__init__(1452, "Cannot add or update a child row")
 
 
-ACTIVE = RatingSessionRow(
+ACTIVE = LockedSessionRow(
     member_id=1, session_status_cd="active", generation_status_cd="completed", settled_at=None
 )
 SCORES = [
@@ -226,10 +226,11 @@ def _patch_repos(
     attribute_feedbacks=ATTRIBUTE_FEEDBACKS,
     completed=True,
     insert_error=None,
+    cleanup_error=None,
 ):
     calls = []
 
-    async def lock_session_for_rating(db, session_id):
+    async def lock_session(db, session_id):
         calls.append(("lock_session", session_id))
         return session
 
@@ -257,7 +258,7 @@ def _patch_repos(
         calls.append(("complete", session_id, settled_at))
         return completed
 
-    monkeypatch.setattr(settlement.session_repo, "lock_session_for_rating", lock_session_for_rating)
+    monkeypatch.setattr(settlement.session_repo, "lock_session", lock_session)
     monkeypatch.setattr(settlement.deck_repo, "find_session_outfit_ids", find_session_outfit_ids)
     monkeypatch.setattr(settlement.feedback_repo, "insert_feedbacks", insert_feedbacks)
     monkeypatch.setattr(
@@ -267,7 +268,14 @@ def _patch_repos(
     )
     monkeypatch.setattr(settlement.score_repo, "lock_member_scores", lock_member_scores)
     monkeypatch.setattr(settlement.score_repo, "update_scores", update_scores)
+
+    async def cleanup_ended_session(db, session_id):
+        calls.append(("cleanup", session_id, list(db.events)))
+        if cleanup_error is not None:
+            raise cleanup_error
+
     monkeypatch.setattr(settlement.session_repo, "complete_settlement", complete_settlement)
+    monkeypatch.setattr(settlement, "cleanup_ended_session", cleanup_ended_session)
     return calls
 
 
@@ -289,6 +297,7 @@ async def test_settles_whole_session_in_one_transaction_with_session_locked_firs
         "lock_scores",
         "update_scores",
         "complete",
+        "cleanup",
     ]
     assert db.events == ["commit"]
 
@@ -372,7 +381,7 @@ async def test_settled_event_is_not_logged_when_commit_fails(monkeypatch, caplog
 
 @pytest.mark.parametrize(
     "session",
-    [None, RatingSessionRow(2, "active", "completed", None)],
+    [None, LockedSessionRow(2, "active", "completed", None)],
     ids=["missing", "other-member"],
 )
 async def test_missing_or_other_members_session_is_404(monkeypatch, session):
@@ -387,7 +396,7 @@ async def test_missing_or_other_members_session_is_404(monkeypatch, session):
 
 
 async def test_already_settled_session_is_409_and_writes_nothing(monkeypatch):
-    settled = RatingSessionRow(1, "completed", "completed", datetime(2026, 10, 9, 12, 0))
+    settled = LockedSessionRow(1, "completed", "completed", datetime(2026, 10, 9, 12, 0))
     calls = _patch_repos(monkeypatch, session=settled)
 
     with pytest.raises(settlement.SessionAlreadySettledError):
@@ -407,7 +416,7 @@ async def test_already_settled_session_is_409_and_writes_nothing(monkeypatch):
     ],
 )
 async def test_unratable_session_is_409(monkeypatch, status, generation):
-    calls = _patch_repos(monkeypatch, session=RatingSessionRow(1, status, generation, None))
+    calls = _patch_repos(monkeypatch, session=LockedSessionRow(1, status, generation, None))
 
     with pytest.raises(settlement.SessionNotRatableError):
         await _rate(_FakeDb())
@@ -449,3 +458,32 @@ async def test_other_integrity_error_is_reraised(monkeypatch):
 
     with pytest.raises(IntegrityError):
         await _rate(_FakeDb())
+
+
+async def test_session_is_cleaned_in_separate_step_after_commit(monkeypatch):
+    calls = _patch_repos(monkeypatch)
+
+    await _rate(_FakeDb())
+
+    assert calls[-1] == ("cleanup", 7, ["commit"])
+
+
+async def test_cleanup_failure_is_logged_and_rating_still_succeeds(monkeypatch, caplog):
+    _patch_repos(monkeypatch, cleanup_error=RuntimeError("deadlock"))
+    db = _FakeDb()
+
+    await _rate(db)
+
+    assert db.events == ["commit"]
+    warning = next(r for r in caplog.records if r.levelname == "WARNING")
+    assert warning.recommendation_session_id == 7
+    assert warning.exc_info is not None
+
+
+async def test_session_is_not_cleaned_when_settlement_fails(monkeypatch):
+    calls = _patch_repos(monkeypatch, completed=False)
+
+    with pytest.raises(settlement.SessionAlreadySettledError):
+        await _rate(_FakeDb())
+
+    assert "cleanup" not in [c[0] for c in calls]

@@ -7,8 +7,9 @@ from app.repositories.recommendation_deck import OutfitItemRow
 
 
 class _Result:
-    def __init__(self, lastrowid, rows=()):
+    def __init__(self, lastrowid, rows=(), rowcount=0):
         self.lastrowid = lastrowid
+        self.rowcount = rowcount
         self._rows = rows
 
     def __iter__(self):
@@ -16,14 +17,15 @@ class _Result:
 
 
 class _FakeDb:
-    def __init__(self, rows=()):
+    def __init__(self, rows=(), rowcount=0):
         self.executed = []
         self.committed = False
         self._rows = [SimpleNamespace(**r) for r in rows]
+        self._rowcount = rowcount
 
     async def execute(self, statement, params):
         self.executed.append((str(statement), params))
-        return _Result(len(self.executed), self._rows)
+        return _Result(len(self.executed), self._rows, self._rowcount)
 
     async def commit(self):
         self.committed = True
@@ -94,3 +96,45 @@ async def test_find_session_outfit_ids_spans_every_deck():
     assert "d.recommendation_session_id = :recommendation_session_id" in sql
     assert "ORDER BY d.deck_seq, o.outfit_seq" in sql
     assert ids == [101, 201]
+
+
+async def test_delete_outfits_except_keeps_only_given_outfit_in_session():
+    db = _FakeDb(rowcount=3)
+
+    deleted = await deck_repo.delete_outfits_except(db, 7, 102)
+
+    sql, params = db.executed[0]
+    assert "DELETE o FROM outfit o" in sql
+    assert "d.recommendation_session_id = :recommendation_session_id" in sql
+    assert "o.outfit_id <> :keep_outfit_id" in sql
+    assert params == {"recommendation_session_id": 7, "keep_outfit_id": 102}
+    assert deleted == 3
+    assert not db.committed
+
+
+async def test_delete_empty_decks_only_in_session():
+    db = _FakeDb(rowcount=1)
+
+    deleted = await deck_repo.delete_empty_decks(db, 7)
+
+    sql, params = db.executed[0]
+    assert "DELETE d FROM recommendation_deck d" in sql
+    assert "LEFT JOIN outfit o" in sql
+    assert "d.recommendation_session_id = :recommendation_session_id" in sql
+    assert "o.outfit_id IS NULL" in sql
+    assert params == {"recommendation_session_id": 7}
+    assert deleted == 1
+    assert not db.committed
+
+
+async def test_delete_session_decks_removes_every_deck_of_session():
+    db = _FakeDb(rowcount=2)
+
+    deleted = await deck_repo.delete_session_decks(db, 7)
+
+    sql, params = db.executed[0]
+    assert "DELETE FROM recommendation_deck" in sql
+    assert "WHERE recommendation_session_id = :recommendation_session_id" in sql
+    assert params == {"recommendation_session_id": 7}
+    assert deleted == 2
+    assert not db.committed
