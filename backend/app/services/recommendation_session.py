@@ -42,6 +42,10 @@ def to_db_utc(dt: datetime) -> datetime:
     return dt.astimezone(timezone.utc).replace(tzinfo=None)
 
 
+def from_db_utc(dt: datetime) -> datetime:
+    return dt.replace(tzinfo=timezone.utc).astimezone(KST)
+
+
 async def create_session(
     db: AsyncSession, member_id: int, req: RecommendationSessionCreate, now: datetime
 ) -> int:
