@@ -22,7 +22,7 @@ from app.repositories import recommendation_deck as deck_repo
 from app.repositories import recommendation_session as session_repo
 from app.repositories.outfit_feedback import AttributeFeedback, FeedbackRow
 from app.repositories.preference_score import ScoreRow, ScoreUpdate
-from app.services.preference_score import update_ema
+from app.services.preference_score import decay_ema, update_ema
 from app.services.recommendation_session import to_db_utc
 
 logger = logging.getLogger(__name__)
@@ -82,8 +82,11 @@ def plan_score_updates(
     for row in rows:
         delta = deltas.get((row.attribute_type_cd, row.attribute_value))
         if delta is None:
+            s, n = decay_ema(row.score_sum, row.exposure_count, settings)
+        else:
+            s, n = update_ema(row.score_sum, row.exposure_count, delta, settings)
+        if s == row.score_sum and n == row.exposure_count:
             continue
-        s, n = update_ema(row.score_sum, row.exposure_count, delta, settings)
         updates.append(ScoreUpdate(row.preference_score_id, s, n))
     return updates
 

@@ -50,6 +50,22 @@ def update_ema(
     return new_score.quantize(quantum, rounding=ROUND_HALF_UP), new_count
 
 
+def decay_ema(
+    score_sum: Decimal, exposure_count: Decimal, settings: Settings
+) -> tuple[Decimal, Decimal]:
+    alpha = settings.PREFERENCE_SCORE_EMA_ALPHA
+    quantum = Decimal(1).scaleb(-settings.PREFERENCE_SCORE_DECIMAL_PLACES)
+
+    new_score = (alpha * score_sum).quantize(quantum, rounding=ROUND_HALF_UP)
+    new_count = (alpha * exposure_count).quantize(quantum, rounding=ROUND_HALF_UP)
+
+    if abs(new_score) < settings.PREFERENCE_SCORE_ZERO_EPSILON:
+        new_score = Decimal(0)
+    new_score = min(max(new_score, settings.PREFERENCE_SCORE_MIN), settings.PREFERENCE_SCORE_MAX)
+
+    return new_score.quantize(quantum, rounding=ROUND_HALF_UP), new_count
+
+
 def compute_preference(score_sum: Decimal, exposure_count: Decimal, settings: Settings) -> Decimal:
     p = score_sum / (exposure_count + settings.PREFERENCE_SCORE_PRIOR_WEIGHT)
     return p.quantize(PREFERENCE_QUANTUM, rounding=ROUND_HALF_UP)

@@ -135,14 +135,30 @@ def test_rated_two_with_rejection_keeps_positive_score():
     assert updates == [ScoreUpdate(2, Decimal("1.90"), Decimal("1.95"))]
 
 
-def test_unexposed_attributes_are_not_updated():
+def test_unexposed_attributes_only_decay_without_exposure_increase():
     rows = [
         _score(1, "style", "minimal", "2.00", "1.00"),
         _score(2, "style", "casual", "5.00", "3.00"),
-        _score(15, "color", "black"),
+        _score(3, "style", "street", "-4.00", "4.00"),
     ]
 
     updates = settlement.plan_score_updates(rows, {("style", "minimal"): Decimal("-0.1")}, SETTINGS)
+
+    assert updates == [
+        ScoreUpdate(1, Decimal("1.80"), Decimal("1.95")),
+        ScoreUpdate(2, Decimal("4.75"), Decimal("2.85")),
+        ScoreUpdate(3, Decimal("-3.80"), Decimal("3.80")),
+    ]
+
+
+def test_unexposed_rows_that_do_not_change_are_not_written():
+    rows = [
+        _score(1, "style", "minimal", "2.00", "1.00"),
+        _score(15, "color", "black"),
+        _score(16, "color", "white", "0.00", "0.10"),
+    ]
+
+    updates = settlement.plan_score_updates(rows, {("style", "minimal"): Decimal("3.0")}, SETTINGS)
 
     assert [u.preference_score_id for u in updates] == [1]
 
@@ -186,6 +202,7 @@ ACTIVE = RatingSessionRow(
 SCORES = [
     _score(1, "style", "minimal", "2.00", "1.00"),
     _score(2, "style", "casual", "2.00", "1.00"),
+    _score(3, "style", "street", "-4.00", "4.00"),
     _score(15, "color", "black"),
     _score(16, "color", "white"),
 ]
@@ -307,6 +324,7 @@ async def test_score_updates_and_settled_time_are_written(monkeypatch):
         [
             ScoreUpdate(1, Decimal("4.90"), Decimal("1.95")),
             ScoreUpdate(2, Decimal("1.80"), Decimal("1.95")),
+            ScoreUpdate(3, Decimal("-3.80"), Decimal("3.80")),
             ScoreUpdate(15, Decimal("3.00"), Decimal("1.00")),
         ],
     )
@@ -319,7 +337,7 @@ async def test_missing_score_row_is_skipped_with_warning(monkeypatch, caplog):
 
     await _rate(_FakeDb())
 
-    assert [u.preference_score_id for u in calls[5][1]] == [1, 2, 15]
+    assert [u.preference_score_id for u in calls[5][1]] == [1, 2, 3, 15]
     warning = next(r for r in caplog.records if r.levelname == "WARNING")
     assert warning.missing_attributes == ["color:pink"]
 
@@ -334,7 +352,7 @@ async def test_settled_event_logs_counts_only(monkeypatch, caplog):
     assert record.recommendation_session_id == 7
     assert record.outfit_count == 3
     assert record.exposed_attribute_count == 3
-    assert record.updated_row_count == 3
+    assert record.updated_row_count == 4
     assert record.rated_delta == Decimal("3.0")
     assert not hasattr(record, "rating")
 
