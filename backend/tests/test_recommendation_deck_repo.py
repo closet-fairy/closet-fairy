@@ -1,22 +1,29 @@
 """추천 결과(덱·코디·코디 아이템) 저장 리포지토리 테스트."""
 
+from types import SimpleNamespace
+
 from app.repositories import recommendation_deck as deck_repo
 from app.repositories.recommendation_deck import OutfitItemRow
 
 
 class _Result:
-    def __init__(self, lastrowid):
+    def __init__(self, lastrowid, rows=()):
         self.lastrowid = lastrowid
+        self._rows = rows
+
+    def __iter__(self):
+        return iter(self._rows)
 
 
 class _FakeDb:
-    def __init__(self):
+    def __init__(self, rows=()):
         self.executed = []
         self.committed = False
+        self._rows = [SimpleNamespace(**r) for r in rows]
 
     async def execute(self, statement, params):
         self.executed.append((str(statement), params))
-        return _Result(len(self.executed))
+        return _Result(len(self.executed), self._rows)
 
     async def commit(self):
         self.committed = True
@@ -76,3 +83,14 @@ async def test_insert_outfit_items_sends_all_items_at_once():
         },
     ]
     assert not db.committed
+
+
+async def test_find_session_outfit_ids_spans_every_deck():
+    db = _FakeDb([{"outfit_id": 101}, {"outfit_id": 201}])
+
+    ids = await deck_repo.find_session_outfit_ids(db, 7)
+
+    sql, params = db.executed[0]
+    assert "d.recommendation_session_id = :recommendation_session_id" in sql
+    assert "ORDER BY d.deck_seq, o.outfit_seq" in sql
+    assert ids == [101, 201]

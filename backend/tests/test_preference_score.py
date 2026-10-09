@@ -8,6 +8,7 @@ from app.repositories.preference_score import PreferenceRow
 from app.services.preference_score import (
     ClassificationResult,
     classify,
+    decay_ema,
     select_exploration_style,
     update_ema,
 )
@@ -99,6 +100,38 @@ def test_ema_rounds_half_up():
 
 def test_ema_zero_delta_still_increases_exposure():
     assert ema("5.00", "0", "0") == (Decimal("4.75"), Decimal("1.00"))
+
+
+def decay(s, n):
+    return decay_ema(Decimal(s), Decimal(n), SETTINGS)
+
+
+def test_decay_multiplies_score_and_exposure_by_alpha_without_adding_exposure():
+    assert decay("5.00", "3.00") == (Decimal("4.75"), Decimal("2.85"))
+    assert decay("-4.00", "4.00") == (Decimal("-3.80"), Decimal("3.80"))
+
+
+def test_decay_small_score_snaps_to_zero():
+    assert str(decay("0.04", "1")[0]) == "0.00"
+    assert str(decay("-0.04", "1")[0]) == "0.00"
+
+
+def test_decay_rounds_half_up():
+    assert decay("0.30", "0.30") == (Decimal("0.29"), Decimal("0.29"))
+    assert str(decay("-0.30", "1")[0]) == "-0.29"
+
+
+def test_decay_clips_out_of_range_score():
+    assert str(decay("80.00", "1")[0]) == "60.00"
+    assert str(decay("-30.00", "1")[0]) == "-20.00"
+
+
+def test_decay_keeps_zero_row_unchanged():
+    assert decay("0.00", "0.00") == (Decimal("0.00"), Decimal("0.00"))
+
+
+def test_decay_exposure_stays_at_lower_rounding_floor():
+    assert decay("0", "0.10")[1] == Decimal("0.10")
 
 
 # ---------- 분류 ----------

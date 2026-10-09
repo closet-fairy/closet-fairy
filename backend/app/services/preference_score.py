@@ -33,21 +33,39 @@ class ClassificationResult:
     preference_by_value: dict[str, Decimal]
 
 
-def update_ema(
-    score_sum: Decimal, exposure_count: Decimal, delta: Decimal, settings: Settings
+def _apply_ema(
+    score_sum: Decimal,
+    exposure_count: Decimal,
+    delta: Decimal,
+    exposure_increment: Decimal,
+    settings: Settings,
 ) -> tuple[Decimal, Decimal]:
     alpha = settings.PREFERENCE_SCORE_EMA_ALPHA
     quantum = Decimal(1).scaleb(-settings.PREFERENCE_SCORE_DECIMAL_PLACES)
 
     # Decimal 기본 반올림은 HALF_EVEN이라, MySQL ROUND()와 맞추려면 HALF_UP을 명시해야 한다
     new_score = (alpha * score_sum + delta).quantize(quantum, rounding=ROUND_HALF_UP)
-    new_count = (alpha * exposure_count + 1).quantize(quantum, rounding=ROUND_HALF_UP)
+    new_count = (alpha * exposure_count + exposure_increment).quantize(
+        quantum, rounding=ROUND_HALF_UP
+    )
 
     if abs(new_score) < settings.PREFERENCE_SCORE_ZERO_EPSILON:
         new_score = Decimal(0)
     new_score = min(max(new_score, settings.PREFERENCE_SCORE_MIN), settings.PREFERENCE_SCORE_MAX)
 
     return new_score.quantize(quantum, rounding=ROUND_HALF_UP), new_count
+
+
+def update_ema(
+    score_sum: Decimal, exposure_count: Decimal, delta: Decimal, settings: Settings
+) -> tuple[Decimal, Decimal]:
+    return _apply_ema(score_sum, exposure_count, delta, Decimal(1), settings)
+
+
+def decay_ema(
+    score_sum: Decimal, exposure_count: Decimal, settings: Settings
+) -> tuple[Decimal, Decimal]:
+    return _apply_ema(score_sum, exposure_count, Decimal(0), Decimal(0), settings)
 
 
 def compute_preference(score_sum: Decimal, exposure_count: Decimal, settings: Settings) -> Decimal:
