@@ -26,6 +26,7 @@ def _session(**overrides) -> ResultSessionRow:
         feels_like_temperature=Decimal("12.8"),
         weather_condition_cd="cloudy",
         is_weather_fallback=False,
+        has_weather=True,
     )
     return ResultSessionRow(**{**fields, **overrides})
 
@@ -102,6 +103,7 @@ async def test_weather_is_null_before_snapshot(fake_repo):
         feels_like_temperature=None,
         weather_condition_cd=None,
         is_weather_fallback=None,
+        has_weather=False,
     )
 
     result = await _get()
@@ -190,6 +192,7 @@ async def test_latest_deck_wins_per_outfit_seq(fake_repo):
         (1, 101, "preferred"),
         (2, 201, "exploratory"),
     ]
+    assert fake_repo["style_calls"] == [[1, 3]]
 
 
 async def test_snapshot_name_and_image_are_used(fake_repo):

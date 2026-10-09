@@ -1,7 +1,6 @@
 """추천 결과 조회 (REC-17)."""
 
 from collections.abc import Mapping, Sequence
-from datetime import datetime, timezone
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,7 +15,7 @@ from app.schemas.recommendation_result import (
     SessionWeather,
 )
 from app.services.prompt.outfit_generation import CATEGORY_ORDER
-from app.services.weather.base_time import KST
+from app.services.recommendation_session import from_db_utc
 
 
 class RecommendationSessionNotFoundError(NotFoundError):
@@ -32,7 +31,7 @@ async def get_recommendation_result(
 
     outfits: list[OutfitResult] = []
     if session.generation_status_cd == "completed":
-        rows = await result_repo.get_outfit_items(db, recommendation_session_id)
+        rows = latest_deck_rows(await result_repo.get_outfit_items(db, recommendation_session_id))
         clothing_ids = sorted({r.clothing_id for r in rows if r.clothing_id is not None})
         styles = await result_repo.get_clothing_styles(db, clothing_ids)
         outfits = build_outfits(rows, styles)
@@ -54,19 +53,21 @@ async def get_recommendation_result(
     )
 
 
-def build_outfits(
-    rows: Sequence[OutfitItemResultRow], styles_by_clothing: Mapping[int, Sequence[str]]
-) -> list[OutfitResult]:
+def latest_deck_rows(rows: Sequence[OutfitItemResultRow]) -> list[OutfitItemResultRow]:
     latest_deck_by_seq: dict[int, int] = {}
     for row in rows:
         latest_deck_by_seq[row.outfit_seq] = max(
             row.deck_seq, latest_deck_by_seq.get(row.outfit_seq, row.deck_seq)
         )
+    return [row for row in rows if row.deck_seq == latest_deck_by_seq[row.outfit_seq]]
 
+
+def build_outfits(
+    rows: Sequence[OutfitItemResultRow], styles_by_clothing: Mapping[int, Sequence[str]]
+) -> list[OutfitResult]:
     items_by_outfit: dict[int, list[OutfitItemResultRow]] = {}
     for row in rows:
-        if row.deck_seq == latest_deck_by_seq[row.outfit_seq]:
-            items_by_outfit.setdefault(row.outfit_id, []).append(row)
+        items_by_outfit.setdefault(row.outfit_id, []).append(row)
 
     outfits = []
     for items in items_by_outfit.values():
@@ -82,10 +83,6 @@ def build_outfits(
             )
         )
     return sorted(outfits, key=lambda o: o.outfit_seq)
-
-
-def from_db_utc(dt: datetime) -> datetime:
-    return dt.replace(tzinfo=timezone.utc).astimezone(KST)
 
 
 def _to_item(
@@ -106,7 +103,7 @@ def _to_item(
 
 
 def _to_weather(session: ResultSessionRow) -> SessionWeather | None:
-    if session.temperature is None:
+    if not session.has_weather:
         return None
     return SessionWeather(
         temperature=float(session.temperature),

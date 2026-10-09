@@ -25,6 +25,7 @@ class ResultSessionRow:
     feels_like_temperature: Decimal | None
     weather_condition_cd: str | None
     is_weather_fallback: bool | None
+    has_weather: bool
 
 
 @dataclass(frozen=True)
@@ -49,7 +50,8 @@ SESSION_SQL = text(
     SELECT s.member_id, s.generation_status_cd, s.session_status_cd, s.is_clothing_shortage,
            s.tpo_cd, s.tpo_text, s.season_cd, s.going_out_start_at, s.going_out_end_at,
            w.temperature, w.feels_like_temperature, w.weather_condition_cd,
-           w.is_fallback AS is_weather_fallback
+           w.is_fallback AS is_weather_fallback,
+           w.recommendation_session_id AS weather_session_id
     FROM recommendation_session s
     LEFT JOIN weather_snapshot w ON w.recommendation_session_id = s.recommendation_session_id
     WHERE s.recommendation_session_id = :recommendation_session_id
@@ -105,6 +107,7 @@ async def get_session(db: AsyncSession, recommendation_session_id: int) -> Resul
         is_weather_fallback=(
             bool(row.is_weather_fallback) if row.is_weather_fallback is not None else None
         ),
+        has_weather=row.weather_session_id is not None,
     )
 
 

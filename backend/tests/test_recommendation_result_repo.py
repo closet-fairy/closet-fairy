@@ -47,6 +47,7 @@ def _session_row(**overrides):
         feels_like_temperature=Decimal("16.1"),
         weather_condition_cd="rain",
         is_weather_fallback=0,
+        weather_session_id=7,
     )
     return _Row(**{**fields, **overrides})
 
@@ -58,16 +59,19 @@ async def test_get_session_converts_flags_to_bool():
 
     assert row.is_clothing_shortage is True
     assert row.is_weather_fallback is False
+    assert row.has_weather is True
     assert db.executed[0][1] == {"recommendation_session_id": 7}
 
 
 async def test_get_session_keeps_missing_weather_as_none():
-    db = _FakeDb(_Result([_session_row(is_weather_fallback=None, temperature=None)]))
+    db = _FakeDb(
+        _Result([_session_row(is_weather_fallback=None, temperature=None, weather_session_id=None)])
+    )
 
     row = await result_repo.get_session(db, 7)
 
+    assert row.has_weather is False
     assert row.is_weather_fallback is None
-    assert row.temperature is None
 
 
 async def test_get_session_returns_none_when_missing():
@@ -98,3 +102,48 @@ async def test_get_clothing_styles_skips_query_without_ids():
 
     assert await result_repo.get_clothing_styles(db, []) == {}
     assert db.executed == []
+
+
+async def test_get_outfit_items_maps_every_column():
+    db = _FakeDb(
+        _Result(
+            [
+                _Row(
+                    deck_seq=2,
+                    outfit_id=31,
+                    outfit_seq=3,
+                    outfit_type_cd="exploratory",
+                    reason="이유",
+                    outfit_item_id=41,
+                    slot_cd="accessories",
+                    item_source_cd="owned",
+                    clothing_id=51,
+                    item_name_snapshot="실버 시계",
+                    image_url_snapshot="http://a/51.png",
+                    accessory_type_cd="watch",
+                    essential_style_cd=None,
+                )
+            ]
+        )
+    )
+
+    rows = await result_repo.get_outfit_items(db, 7)
+
+    assert rows == [
+        result_repo.OutfitItemResultRow(
+            deck_seq=2,
+            outfit_id=31,
+            outfit_seq=3,
+            outfit_type_cd="exploratory",
+            reason="이유",
+            outfit_item_id=41,
+            slot_cd="accessories",
+            item_source_cd="owned",
+            clothing_id=51,
+            item_name_snapshot="실버 시계",
+            image_url_snapshot="http://a/51.png",
+            accessory_type_cd="watch",
+            essential_style_cd=None,
+        )
+    ]
+    assert db.executed[0][1] == {"recommendation_session_id": 7}
