@@ -175,12 +175,15 @@ class _FakeTransaction:
 
     async def __aexit__(self, exc_type, exc, tb):
         self._db.events.append("rollback" if exc_type else "commit")
+        if exc_type is None and self._db.commit_error is not None:
+            raise self._db.commit_error
         return False
 
 
 class _FakeDb:
-    def __init__(self):
+    def __init__(self, commit_error=None):
         self.events = []
+        self.commit_error = commit_error
 
     def begin(self):
         return _FakeTransaction(self)
@@ -355,6 +358,16 @@ async def test_settled_event_logs_counts_only(monkeypatch, caplog):
     assert record.updated_row_count == 4
     assert record.rated_delta == Decimal("3.0")
     assert not hasattr(record, "rating")
+
+
+async def test_settled_event_is_not_logged_when_commit_fails(monkeypatch, caplog):
+    _patch_repos(monkeypatch)
+    caplog.set_level("INFO")
+
+    with pytest.raises(RuntimeError, match="commit failed"):
+        await _rate(_FakeDb(commit_error=RuntimeError("commit failed")))
+
+    assert not [r for r in caplog.records if getattr(r, "event", None) == "preference.settled"]
 
 
 @pytest.mark.parametrize(

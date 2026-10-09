@@ -7,6 +7,7 @@
 
 import logging
 from collections.abc import Iterable, Mapping, Sequence
+from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 
@@ -50,6 +51,14 @@ class SessionAlreadySettledError(ConflictError):
 class SessionNotRatableError(ConflictError):
     code = "SESSION_NOT_RATABLE"
     message = "별점을 매길 수 없는 세션입니다."
+
+
+@dataclass(frozen=True)
+class SettlementSummary:
+    outfit_count: int
+    exposed_attribute_count: int
+    updated_row_count: int
+    rated_delta: Decimal
 
 
 def rating_delta(rating: int, settings: Settings) -> Decimal:
@@ -103,11 +112,25 @@ async def rate_and_settle(
 ) -> None:
     try:
         async with db.begin():
-            await _rate_and_settle(db, recommendation_session_id, member_id, outfit_id, rating, now)
+            summary = await _rate_and_settle(
+                db, recommendation_session_id, member_id, outfit_id, rating, now
+            )
     except IntegrityError as e:
         if _is_duplicate_entry(e):
             raise SessionAlreadySettledError() from e
         raise
+
+    logger.info(
+        "세션 정산 완료",
+        extra={
+            "event": Event.PREFERENCE_SETTLED,
+            "recommendation_session_id": recommendation_session_id,
+            "outfit_count": summary.outfit_count,
+            "exposed_attribute_count": summary.exposed_attribute_count,
+            "updated_row_count": summary.updated_row_count,
+            "rated_delta": summary.rated_delta,
+        },
+    )
 
 
 async def _rate_and_settle(
@@ -117,7 +140,7 @@ async def _rate_and_settle(
     outfit_id: int,
     rating: int,
     now: datetime,
-) -> None:
+) -> SettlementSummary:
     settings = get_settings()
 
     session = await session_repo.lock_session_for_rating(db, recommendation_session_id)
@@ -162,16 +185,11 @@ async def _rate_and_settle(
     if not await session_repo.complete_settlement(db, recommendation_session_id, to_db_utc(now)):
         raise SessionAlreadySettledError()
 
-    logger.info(
-        "세션 정산 완료",
-        extra={
-            "event": Event.PREFERENCE_SETTLED,
-            "recommendation_session_id": recommendation_session_id,
-            "outfit_count": len(outfit_ids),
-            "exposed_attribute_count": len(deltas),
-            "updated_row_count": len(updates),
-            "rated_delta": rated_delta,
-        },
+    return SettlementSummary(
+        outfit_count=len(outfit_ids),
+        exposed_attribute_count=len(deltas),
+        updated_row_count=len(updates),
+        rated_delta=rated_delta,
     )
 
 
