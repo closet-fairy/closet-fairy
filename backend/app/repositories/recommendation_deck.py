@@ -95,3 +95,21 @@ async def insert_outfit_items(
             for item in items
         ],
     )
+
+
+SELECT_SESSION_OUTFIT_IDS_SQL = text(
+    """
+    SELECT o.outfit_id
+    FROM outfit o
+    JOIN recommendation_deck d ON d.recommendation_deck_id = o.recommendation_deck_id
+    WHERE d.recommendation_session_id = :recommendation_session_id
+    ORDER BY d.deck_seq, o.outfit_seq
+    """
+)
+
+
+async def find_session_outfit_ids(db: AsyncSession, recommendation_session_id: int) -> list[int]:
+    result = await db.execute(
+        SELECT_SESSION_OUTFIT_IDS_SQL, {"recommendation_session_id": recommendation_session_id}
+    )
+    return [int(r.outfit_id) for r in result]

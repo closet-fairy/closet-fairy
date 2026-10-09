@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from decimal import Decimal
 from typing import NamedTuple
 
@@ -49,3 +50,56 @@ async def find_preference_scores(
 async def count_settled_sessions(db: AsyncSession, member_id: int) -> int:
     result = await db.execute(COUNT_SETTLED_SESSIONS_SQL, {"member_id": member_id})
     return int(result.scalar_one())
+
+
+class ScoreRow(NamedTuple):
+    preference_score_id: int
+    attribute_type_cd: str
+    attribute_value: str
+    score_sum: Decimal
+    exposure_count: Decimal
+
+
+class ScoreUpdate(NamedTuple):
+    preference_score_id: int
+    score_sum: Decimal
+    exposure_count: Decimal
+
+
+LOCK_MEMBER_SCORES_SQL = text(
+    """
+    SELECT preference_score_id, attribute_type_cd, attribute_value, score_sum, exposure_count
+    FROM preference_score
+    WHERE member_id = :member_id
+    ORDER BY preference_score_id
+    FOR UPDATE
+    """
+)
+
+UPDATE_SCORE_SQL = text(
+    """
+    UPDATE preference_score
+    SET score_sum = :score_sum, exposure_count = :exposure_count
+    WHERE preference_score_id = :preference_score_id
+    """
+)
+
+
+async def lock_member_scores(db: AsyncSession, member_id: int) -> list[ScoreRow]:
+    result = await db.execute(LOCK_MEMBER_SCORES_SQL, {"member_id": member_id})
+    return [
+        ScoreRow(
+            r.preference_score_id,
+            r.attribute_type_cd,
+            r.attribute_value,
+            r.score_sum,
+            r.exposure_count,
+        )
+        for r in result
+    ]
+
+
+async def update_scores(db: AsyncSession, updates: Sequence[ScoreUpdate]) -> None:
+    if not updates:
+        return
+    await db.execute(UPDATE_SCORE_SQL, [u._asdict() for u in updates])
