@@ -61,7 +61,6 @@ class Wardrobe:
 class SeededSession:
     session_id: int
     rated_outfit_id: int
-    outfit_count: int
 
 
 @dataclass
@@ -283,7 +282,7 @@ async def create_session(db: AsyncSession, member_id: int, wardrobe: Wardrobe) -
             ("shoes", "essential", wardrobe.essential_shoes),
         ],
     )
-    return SeededSession(session_id, rated, outfit_count=3)
+    return SeededSession(session_id, rated)
 
 
 async def read_scores(factory: async_sessionmaker, member_id: int) -> list[ScoreRow]:
