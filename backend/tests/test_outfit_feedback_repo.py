@@ -14,6 +14,9 @@ class _Result:
     def __iter__(self):
         return iter(self._rows)
 
+    def scalar_one_or_none(self):
+        return self._rows[0].outfit_id if self._rows else None
+
 
 class _FakeDb:
     def __init__(self, rows=()):
@@ -84,3 +87,19 @@ async def test_attribute_feedbacks_union_owned_and_essential_style_and_color():
     assert "feedback_type_cd" in sql
     assert params == {"recommendation_session_id": 7}
     assert rows == [feedback_repo.AttributeFeedback("style", "minimal", "rated", Decimal("3.00"))]
+
+
+async def test_find_rated_outfit_id_reads_rated_feedback_of_session():
+    db = _FakeDb([{"outfit_id": 102}])
+
+    outfit_id = await feedback_repo.find_rated_outfit_id(db, 7)
+
+    sql, params = db.executed[0]
+    assert "recommendation_session_id = :recommendation_session_id" in sql
+    assert "feedback_type_cd = 'rated'" in sql
+    assert params == {"recommendation_session_id": 7}
+    assert outfit_id == 102
+
+
+async def test_find_rated_outfit_id_returns_none_without_rating():
+    assert await feedback_repo.find_rated_outfit_id(_FakeDb(), 7) is None

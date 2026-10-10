@@ -1,4 +1,4 @@
-"""추천 결과(덱·코디·코디 아이템) 저장 (REC-16). commit은 호출자가 한다."""
+"""추천 결과(덱·코디·코디 아이템) 저장과 세션 정리용 삭제 (REC-16, #32). commit은 호출자가 한다."""
 
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -113,3 +113,53 @@ async def find_session_outfit_ids(db: AsyncSession, recommendation_session_id: i
         SELECT_SESSION_OUTFIT_IDS_SQL, {"recommendation_session_id": recommendation_session_id}
     )
     return [int(r.outfit_id) for r in result]
+
+
+DELETE_OUTFITS_EXCEPT_SQL = text(
+    """
+    DELETE o FROM outfit o
+    JOIN recommendation_deck d ON d.recommendation_deck_id = o.recommendation_deck_id
+    WHERE d.recommendation_session_id = :recommendation_session_id
+      AND o.outfit_id <> :keep_outfit_id
+    """
+)
+
+DELETE_EMPTY_DECKS_SQL = text(
+    """
+    DELETE d FROM recommendation_deck d
+    LEFT JOIN outfit o ON o.recommendation_deck_id = d.recommendation_deck_id
+    WHERE d.recommendation_session_id = :recommendation_session_id
+      AND o.outfit_id IS NULL
+    """
+)
+
+DELETE_SESSION_DECKS_SQL = text(
+    """
+    DELETE FROM recommendation_deck
+    WHERE recommendation_session_id = :recommendation_session_id
+    """
+)
+
+
+async def delete_outfits_except(
+    db: AsyncSession, recommendation_session_id: int, keep_outfit_id: int
+) -> int:
+    result = await db.execute(
+        DELETE_OUTFITS_EXCEPT_SQL,
+        {"recommendation_session_id": recommendation_session_id, "keep_outfit_id": keep_outfit_id},
+    )
+    return result.rowcount
+
+
+async def delete_empty_decks(db: AsyncSession, recommendation_session_id: int) -> int:
+    result = await db.execute(
+        DELETE_EMPTY_DECKS_SQL, {"recommendation_session_id": recommendation_session_id}
+    )
+    return result.rowcount
+
+
+async def delete_session_decks(db: AsyncSession, recommendation_session_id: int) -> int:
+    result = await db.execute(
+        DELETE_SESSION_DECKS_SQL, {"recommendation_session_id": recommendation_session_id}
+    )
+    return result.rowcount

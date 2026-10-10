@@ -40,6 +40,7 @@ from app.services.prompt.outfit_generation import (
 )
 from app.services.recommend_context import RecommendContext, collect_context
 from app.services.recommendation_save import (
+    GenerationNotProcessingError,
     mark_generation_failed,
     save_recommendation_result,
 )
@@ -81,6 +82,10 @@ async def run_recommendation_pipeline(recommendation_session_id: int, llm: LLMCl
             outcome.generation.outfits,
             outcome.supplement,
         )
+    except GenerationNotProcessingError:
+        # 취소·이탈로 끝난 세션. failed는 end_session이 이미 기록했다
+        logger.warning("recommend.pipeline.discarded session_id=%s", recommendation_session_id)
+        return
     except Exception:
         logger.exception("recommend.pipeline.failed session_id=%s", recommendation_session_id)
         await mark_generation_failed(recommendation_session_id)

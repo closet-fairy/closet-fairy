@@ -7,6 +7,7 @@ from app.api.deps import get_current_member_id, get_now
 from app.core.db import get_db
 from app.schemas.recommendation_result import RecommendationResult
 from app.schemas.recommendation_session import (
+    CancelResult,
     RatingCreate,
     RatingResult,
     RecommendationSessionCreate,
@@ -15,6 +16,7 @@ from app.schemas.recommendation_session import (
 from app.services import rating_settlement as settlement_service
 from app.services import recommendation_result as result_service
 from app.services import recommendation_session as session_service
+from app.services import session_end as session_end_service
 from app.services.llm import LLMClient, get_llm_client
 from app.services.recommendation_pipeline import run_recommendation_pipeline
 
@@ -76,4 +78,30 @@ async def rate_recommendation(
         outfit_id=body.outfit_id,
         rating=body.rating,
         session_status_cd="completed",
+    )
+
+
+@router.post(
+    "/{recommendation_session_id}/cancel",
+    response_model=CancelResult,
+    responses={
+        404: {"description": "없는 세션이거나 본인 세션이 아님"},
+        409: {"description": "이미 별점을 매겨 끝난 세션"},
+    },
+)
+async def cancel_recommendation_session(
+    recommendation_session_id: int,
+    db: AsyncSession = Depends(get_db),
+    member_id: int = Depends(get_current_member_id),
+    now: datetime = Depends(get_now),
+) -> CancelResult:
+    """조건 입력 화면으로 돌아갈 때 세션을 취소한다. 점수는 반영하지 않고 추천 결과는 지운다.
+
+    생성 중에도 취소할 수 있다. 이미 취소·이탈된 세션이면 상태만 그대로 돌려준다.
+    """
+    session_status_cd = await session_end_service.cancel_session(
+        db, recommendation_session_id, member_id, now
+    )
+    return CancelResult(
+        recommendation_session_id=recommendation_session_id, session_status_cd=session_status_cd
     )

@@ -94,8 +94,10 @@ class RecommendationResult(BaseModel):
     generation_status_cd: GenerationStatusCd = Field(
         description=(
             "processing이면 아직 만드는 중이라 outfits가 빈 배열이다. 잠시 뒤 다시 조회한다. "
-            "completed면 outfits가 채워져 있다. "
-            "failed면 추천을 만들지 못한 것이므로 폴링을 멈추고 다시 시도를 안내한다."
+            "completed면 outfits가 채워져 있다. 단, 끝난 세션은 정리되므로 completed여도 "
+            "1벌이거나 빈 배열일 수 있다(outfits 설명 참고). "
+            "failed면 추천을 만들지 못한 것이므로 폴링을 멈추고 다시 시도를 안내한다. "
+            "생성 중에 취소·이탈된 세션도 failed가 된다."
         )
     )
     session_status_cd: SessionStatusCd = Field(
@@ -118,7 +120,10 @@ class RecommendationResult(BaseModel):
     )
     outfits: list[OutfitResult] = Field(
         description=(
-            "outfit_seq 순. completed면 1~4벌이다. 보통 4벌이지만 옷장 사정에 따라 더 적을 수 있다."
+            "outfit_seq 순. 세션이 active이고 generation_status_cd가 completed면 1~4벌이다. "
+            "보통 4벌이지만 옷장 사정에 따라 더 적을 수 있다. "
+            "세션이 끝나면 정리되므로 session_status_cd가 completed면 별점을 매긴 1벌만, "
+            "canceled·abandoned면 빈 배열이다."
         )
     )
 

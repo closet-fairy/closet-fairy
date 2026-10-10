@@ -25,6 +25,8 @@ from app.repositories.outfit_feedback import AttributeFeedback, FeedbackRow
 from app.repositories.preference_score import ScoreRow, ScoreUpdate
 from app.services.preference_score import decay_ema, update_ema
 from app.services.recommendation_session import to_db_utc
+from app.services.session_cleanup import cleanup_ended_session
+from app.services.session_errors import SessionAlreadySettledError, SessionNotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -33,19 +35,9 @@ AttributeKey = tuple[str, str]
 MYSQL_DUPLICATE_ENTRY = 1062
 
 
-class SessionNotFoundError(NotFoundError):
-    code = "SESSION_NOT_FOUND"
-    message = "추천 세션을 찾을 수 없습니다."
-
-
 class OutfitNotInSessionError(NotFoundError):
     code = "OUTFIT_NOT_FOUND"
     message = "이 세션에서 추천한 코디가 아닙니다."
-
-
-class SessionAlreadySettledError(ConflictError):
-    code = "SESSION_ALREADY_SETTLED"
-    message = "이미 별점을 매긴 세션입니다."
 
 
 class SessionNotRatableError(ConflictError):
@@ -132,6 +124,16 @@ async def rate_and_settle(
         },
     )
 
+    # 정산 트랜잭션과 잠금 시간을 늘리지 않으려고 commit 뒤 별도 트랜잭션에서 정리한다
+    try:
+        await cleanup_ended_session(db, recommendation_session_id)
+    except Exception:
+        logger.warning(
+            "정산 후 세션 정리 실패. 이탈 배치가 다시 정리한다",
+            exc_info=True,
+            extra={"recommendation_session_id": recommendation_session_id},
+        )
+
 
 async def _rate_and_settle(
     db: AsyncSession,
@@ -143,7 +145,7 @@ async def _rate_and_settle(
 ) -> SettlementSummary:
     settings = get_settings()
 
-    session = await session_repo.lock_session_for_rating(db, recommendation_session_id)
+    session = await session_repo.lock_session(db, recommendation_session_id)
     if session is None or session.member_id != member_id:
         raise SessionNotFoundError()
     if session.settled_at is not None:

@@ -95,3 +95,21 @@ async def find_session_attribute_feedbacks(
         )
         for r in result
     ]
+
+
+SELECT_RATED_OUTFIT_ID_SQL = text(
+    """
+    SELECT outfit_id
+    FROM outfit_feedback
+    WHERE recommendation_session_id = :recommendation_session_id
+      AND feedback_type_cd = 'rated'
+    """
+)
+
+
+async def find_rated_outfit_id(db: AsyncSession, recommendation_session_id: int) -> int | None:
+    result = await db.execute(
+        SELECT_RATED_OUTFIT_ID_SQL, {"recommendation_session_id": recommendation_session_id}
+    )
+    outfit_id = result.scalar_one_or_none()
+    return int(outfit_id) if outfit_id is not None else None
