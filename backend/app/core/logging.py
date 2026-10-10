@@ -127,3 +127,6 @@ class Event:
     SESSION_CLEANED = "session.cleaned"
     UCB_EXPLORE_PICK = "ucb.explore_pick"
     LLM_CALL = "llm.call"
+    BG_REMOVAL_DONE = "bg_removal.done"
+    BG_REMOVAL_FAIL = "bg_removal.fail"
+    BG_REMOVAL_RECOVERED = "bg_removal.recovered"

@@ -37,3 +37,4 @@ e2e_*.json
 scenario_result.json
 
 media/
+smoke-output/

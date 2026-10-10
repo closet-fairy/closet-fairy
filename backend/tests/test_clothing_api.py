@@ -3,7 +3,7 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from app.api.deps import get_current_member_id
+from app.api.deps import get_bg_removal_worker, get_current_member_id
 from app.core.config import get_settings
 from app.core.db import get_db
 from app.main import app
@@ -132,3 +132,34 @@ def test_missing_media_file_is_not_found_in_error_format(client):
 
     assert res.status_code == 404
     assert res.json()["code"] == "NOT_FOUND"
+
+
+class _FakeWorker:
+    def __init__(self):
+        self.notified = 0
+
+    def notify(self):
+        self.notified += 1
+
+
+@pytest.mark.parametrize(("accepted", "expected"), [(True, 1), (False, 0)])
+def test_upload_wakes_worker_only_when_created(client, monkeypatch, accepted, expected):
+    worker = _FakeWorker()
+    app.dependency_overrides[get_bg_removal_worker] = lambda: worker
+    if not accepted:
+
+        async def all_rejected(db, storage, member_id, files):
+            return ClothingUploadResult(accepted=[], rejected=[])
+
+        monkeypatch.setattr(clothing_upload, "upload_clothing", all_rejected)
+
+    res = client.post("/clothing", files=[("files", ("a.jpg", b"x", "image/jpeg"))])
+
+    assert res.status_code == 202
+    assert worker.notified == expected
+
+
+def test_upload_works_without_worker(client):
+    res = client.post("/clothing", files=[("files", ("a.jpg", b"x", "image/jpeg"))])
+
+    assert res.status_code == 202

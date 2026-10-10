@@ -68,6 +68,15 @@ class Settings(BaseSettings):
     CLOTHING_IMAGE_MAX_PIXELS: int = 50_000_000
     CLOTHING_IMAGE_NORMALIZE_CONCURRENCY: int = 4
 
+    # 끄면 lifespan에서 모델 로드와 워커 기동을 건너뛴다. 테스트 전용(tests/conftest.py)
+    BG_REMOVAL_ENABLED: bool = True
+    BG_REMOVAL_MODEL: str = "isnet-general-use"
+    # 끄면 경계가 부드러운 대신 어두운 옷이나 근접 사진에서 옷 안쪽까지 반투명하게 남는다.
+    # 테스트 이미지 34장 중 11장이 전경의 30% 이상 반투명이라 켜 둔다 (프로토타입 README 참고)
+    BG_REMOVAL_POST_PROCESS_MASK: bool = True
+    BG_REMOVAL_CONCURRENCY: int = 1
+    BG_REMOVAL_POLL_INTERVAL_S: float = 2.0
+
     LLM_DEFAULT_MODEL: str = "claude-sonnet-5"
     # 용도(call_name)별 모델 덮어쓰기. .env에 JSON으로 적는다.
     # 예: LLM_MODEL_OVERRIDES={"image_tagging": "claude-haiku-4-5"}

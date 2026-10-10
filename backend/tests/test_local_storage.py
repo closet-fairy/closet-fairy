@@ -16,6 +16,12 @@ async def test_save_creates_folders_and_writes_bytes(storage, tmp_path):
     assert (tmp_path / "media/clothing/1/a.webp").read_bytes() == b"image"
 
 
+async def test_read_returns_saved_bytes(storage):
+    await storage.save("clothing/1/a.webp", b"image")
+
+    assert await storage.read("clothing/1/a.webp") == b"image"
+
+
 async def test_delete_removes_file_and_ignores_missing(storage, tmp_path):
     await storage.save("clothing/1/a.webp", b"image")
 

@@ -12,6 +12,9 @@ class LocalImageStorage:
     async def save(self, key: str, data: bytes) -> None:
         await asyncio.to_thread(self._write, self._path(key), data)
 
+    async def read(self, key: str) -> bytes:
+        return await asyncio.to_thread(self._path(key).read_bytes)
+
     async def delete(self, key: str) -> None:
         await asyncio.to_thread(self._path(key).unlink, missing_ok=True)
 

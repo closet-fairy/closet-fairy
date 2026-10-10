@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Depends, File, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_member_id
+from app.api.deps import get_bg_removal_worker, get_current_member_id
 from app.core.db import get_db
 from app.schemas.clothing import ClothingUploadResult
 from app.services import clothing_upload as upload_service
 from app.services.storage import ImageStorage, get_image_storage
+from app.workers.bg_removal_worker import BgRemovalWorker
 
 router = APIRouter(prefix="/clothing", tags=["clothing"])
 
@@ -16,9 +17,13 @@ async def upload_clothing(
     db: AsyncSession = Depends(get_db),
     member_id: int = Depends(get_current_member_id),
     storage: ImageStorage = Depends(get_image_storage),
+    worker: BgRemovalWorker | None = Depends(get_bg_removal_worker),
 ) -> ClothingUploadResult:
     """옷 사진 업로드 (FR-REG). 배경 제거·태깅은 기다리지 않고 바로 응답한다.
 
     형식·용량이 맞지 않는 사진은 제외하고 rejected에 사유를 담는다. 모두 제외돼도 202다.
     """
-    return await upload_service.upload_clothing(db, storage, member_id, files)
+    result = await upload_service.upload_clothing(db, storage, member_id, files)
+    if result.accepted and worker is not None:
+        worker.notify()
+    return result
