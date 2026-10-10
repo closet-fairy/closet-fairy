@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -28,6 +29,30 @@ DENOMINATOR_NOTE = (
     f"{MAX_OUTFITS}) + 재생성 요청 벌 수(recommend.regenerate의 regenerate_count) 합"
 )
 SOURCE_NOTE = "응답 시간은 E2E 실행 기록, 나머지는 서버 로그 기준"
+TRACKED_EVENTS = frozenset(
+    {
+        Event.RECOMMEND_CANDIDATES,
+        Event.RECOMMEND_TARGET_CAPPED,
+        Event.RECOMMEND_REGENERATE,
+        Event.RECOMMEND_FALLBACK,
+        Event.HARD_RULE_FAIL,
+        Event.REVIEWER_FAIL,
+    }
+)
+HEADER = [
+    ("세션", 6),
+    ("옷", 4),
+    ("룰 후", 5),
+    ("후보", 4),
+    ("축소율", 7),
+    ("목표", 4),
+    ("요청", 4),
+    ("1차 실패", 8),
+    ("2차 실패", 8),
+    ("재생성", 6),
+    ("폴백", 4),
+    ("응답(s)", 7),
+]
 
 
 @dataclass
@@ -81,7 +106,7 @@ def collect_sessions(events: list[dict]) -> dict[int, SessionMetrics]:
     sessions: dict[int, SessionMetrics] = {}
     for e in events:
         session_id = e.get("recommendation_session_id")
-        if not session_id:
+        if not session_id or e["event"] not in TRACKED_EVENTS:
             continue
         m = sessions.setdefault(session_id, SessionMetrics(session_id))
         event = e["event"]
@@ -181,16 +206,19 @@ def _num(value: object) -> str:
     return "-" if value is None else str(value)
 
 
+def pad(text: str, width: int, align: str = ">") -> str:
+    used = sum(2 if unicodedata.east_asian_width(c) in "WF" else 1 for c in text)
+    fill = " " * max(width - used, 0)
+    return fill + text if align == ">" else text + fill
+
+
 def print_report(
     sessions: list[SessionMetrics],
     summary: dict,
     models: list[tuple[str, str, str]],
     missing: list[int],
 ) -> None:
-    print(
-        f"{'세션':>6} {'옷':>4} {'룰 후':>5} {'후보':>4} {'축소율':>7} {'목표':>4} {'요청':>4}"
-        f" {'1차 실패':>8} {'2차 실패':>8} {'재생성':>6} {'폴백':>4} {'응답(s)':>7}"
-    )
+    print(" ".join(pad(text, width) for text, width in HEADER))
     for m in sessions:
         print(
             f"{m.session_id:>6} {_num(m.owned_count):>4} {_num(m.filtered_owned_count):>5}"

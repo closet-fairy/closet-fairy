@@ -80,6 +80,7 @@ from app.services.prompt import (  # noqa: E402
     outfit_review,
 )
 from app.services.weather.base_time import KST  # noqa: E402
+from scripts.aggregate_metrics import RESPONSE_TIME_TARGET_S, pad  # noqa: E402
 
 MIN_OUTFITS = 3
 POLL_INTERVAL_S = 0.5
@@ -88,6 +89,20 @@ POLL_TIMEOUT_S = 120.0
 START_MARGIN = timedelta(minutes=10)
 RATING = 4
 PARTY_TEXT = "친구 생일 파티, 저녁 루프탑 레스토랑"
+RUN_HEADER = [
+    ("#", 2, ">"),
+    ("시나리오", 17, "<"),
+    ("세션", 6, ">"),
+    ("시간(s)", 7, ">"),
+    ("상태", 10, "<"),
+    ("벌수", 4, ">"),
+    ("없는id", 6, ">"),
+    ("에센셜", 6, ">"),
+    ("부족", 5, "<"),
+    ("날씨대체", 8, "<"),
+    ("종료", 7, "<"),
+    ("판정", 0, "<"),
+]
 
 
 @dataclass(frozen=True)
@@ -397,10 +412,8 @@ def build_meta(settings: Settings, member: Member, member_id: int, args) -> dict
 
 
 def print_runs(runs: list[dict]) -> None:
-    print(
-        f"\n{'#':>2} {'시나리오':<17} {'세션':>6} {'시간(s)':>7} {'상태':<10} {'벌수':>4}"
-        f" {'없는id':>6} {'에센셜':>6} {'부족':<5} {'날씨대체':<8} {'종료':<7} 판정"
-    )
+    print()
+    print(" ".join(pad(text, width, align) for text, width, align in RUN_HEADER))
     for i, r in enumerate(runs, 1):
         verdict = "통과" if r["passed"] else "실패: " + ", ".join(r["failures"])
         print(
@@ -414,10 +427,10 @@ def print_runs(runs: list[dict]) -> None:
     passed = sum(r["passed"] for r in runs)
     print(f"\n통과 {passed}/{len(runs)}회")
     if elapsed:
-        over = sum(e > 20 for e in elapsed)
+        over = sum(e > RESPONSE_TIME_TARGET_S for e in elapsed)
         print(
             f"응답 시간 평균 {sum(elapsed) / len(elapsed):.1f}초, 최대 {max(elapsed):.1f}초,"
-            f" 20초 초과 {over}회"
+            f" {RESPONSE_TIME_TARGET_S:.0f}초 초과 {over}회"
         )
 
 

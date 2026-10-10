@@ -7,6 +7,7 @@ import pytest
 from scripts.aggregate_metrics import (
     collect_sessions,
     load_e2e_elapsed,
+    pad,
     parse_events,
     read_log_lines,
     select_sessions,
@@ -40,6 +41,8 @@ LOG_LINES = [
     _line(event="recommend.target_capped", recommendation_session_id=2, requested=4, target=3),
     _line(event="recommend.fallback", recommendation_session_id=2, requested=1, built=1),
     _candidates(0, 30, 10, 10),
+    _line(event="session.canceled", recommendation_session_id=3, deleted_outfit_count=4),
+    _line(event="preference.settled", recommendation_session_id=3),
     _line(event="llm.call", call_name="outfit_generation", model="m", prompt_version="v1.0"),
 ]
 
@@ -57,7 +60,26 @@ def test_requested_is_target_plus_regenerate_count():
 def test_scenario_script_session_zero_is_excluded():
     sessions = collect_sessions(parse_events(LOG_LINES))
 
+    assert 0 not in sessions
+
+
+def test_session_with_only_end_events_is_excluded():
+    sessions = collect_sessions(parse_events(LOG_LINES))
+
     assert set(sessions) == {1, 2}
+
+
+@pytest.mark.parametrize(
+    ("text", "width", "align", "expected"),
+    [
+        ("세션", 6, ">", "  세션"),
+        ("id", 6, ">", "    id"),
+        ("응답(s)", 7, ">", "응답(s)"),
+        ("부족", 5, "<", "부족 "),
+    ],
+)
+def test_pad_counts_hangul_as_two_columns(text, width, align, expected):
+    assert pad(text, width, align) == expected
 
 
 def test_failure_rates_share_requested_denominator():
