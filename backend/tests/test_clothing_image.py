@@ -153,3 +153,17 @@ def test_multi_picture_jpeg_is_accepted_as_first_frame():
 
     assert result.format == "WEBP"
     assert result.size == (40, 30)
+
+
+def test_webp_encoding_failure_is_unreadable(monkeypatch):
+    data = _encode(Image.new("RGB", (10, 10)), "PNG")
+
+    def broken_save(self, fp, format=None, **params):
+        raise OSError("encoder error")
+
+    monkeypatch.setattr(Image.Image, "save", broken_save)
+
+    with pytest.raises(ImageRejectedError) as e:
+        _normalize(data)
+
+    assert e.value.reason is ImageRejectReason.UNREADABLE

@@ -158,8 +158,8 @@ async def get_clothing_snapshots(
 
 INSERT_UPLOADED_CLOTHING_SQL = text(
     """
-    INSERT INTO clothing (member_id, origin_image_url)
-    VALUES (:member_id, :origin_image_url)
+    INSERT INTO clothing (member_id, origin_image_url, processing_status_cd)
+    VALUES (:member_id, :origin_image_url, 'processing')
     """
 )
 

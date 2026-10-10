@@ -45,14 +45,13 @@ def normalize_image(data: bytes, *, quality: int, max_pixels: int) -> bytes:
             ImageOps.exif_transpose(image, in_place=True)
             has_alpha = image.mode in ("RGBA", "LA", "PA") or "transparency" in image.info
             converted = image.convert("RGBA" if has_alpha else "RGB")
+        out = io.BytesIO()
+        save_params = {"format": "WEBP", "quality": quality}
+        if icc_profile:
+            save_params["icc_profile"] = icc_profile
+        converted.save(out, **save_params)
     except Image.DecompressionBombError as e:
         raise ImageRejectedError(ImageRejectReason.RESOLUTION_TOO_HIGH) from e
     except (UnidentifiedImageError, OSError, ValueError) as e:
         raise ImageRejectedError(ImageRejectReason.UNREADABLE) from e
-
-    out = io.BytesIO()
-    save_params = {"format": "WEBP", "quality": quality}
-    if icc_profile:
-        save_params["icc_profile"] = icc_profile
-    converted.save(out, **save_params)
     return out.getvalue()

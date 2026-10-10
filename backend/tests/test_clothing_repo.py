@@ -155,7 +155,7 @@ async def test_insert_uploaded_clothing_creates_clothing_and_bg_removal_job():
 
     assert clothing_id == 55
     (clothing_sql, clothing_params), (job_sql, job_params) = db.executed
-    assert "INSERT INTO clothing (" in clothing_sql
+    assert "INSERT INTO clothing (" in clothing_sql and "'processing'" in clothing_sql
     assert clothing_params == {"member_id": 7, "origin_image_url": "clothing/7/a.webp"}
     assert "INSERT INTO clothing_job" in job_sql and "'bg_removal'" in job_sql
     assert job_params == {"clothing_id": 55}
