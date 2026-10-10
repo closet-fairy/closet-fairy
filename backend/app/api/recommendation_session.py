@@ -19,6 +19,7 @@ from app.services import recommendation_session as session_service
 from app.services import session_end as session_end_service
 from app.services.llm import LLMClient, get_llm_client
 from app.services.recommendation_pipeline import run_recommendation_pipeline
+from app.services.storage import ImageStorage, get_image_storage
 
 router = APIRouter(prefix="/recommendation-sessions", tags=["recommendation"])
 
@@ -49,9 +50,12 @@ async def get_recommendation_result(
     recommendation_session_id: int,
     db: AsyncSession = Depends(get_db),
     member_id: int = Depends(get_current_member_id),
+    storage: ImageStorage = Depends(get_image_storage),
 ) -> RecommendationResult:
     """추천 결과 조회(폴링). generation_status_cd가 processing이면 잠시 뒤 다시 조회한다."""
-    return await result_service.get_recommendation_result(db, recommendation_session_id, member_id)
+    return await result_service.get_recommendation_result(
+        db, storage, recommendation_session_id, member_id
+    )
 
 
 @router.post(

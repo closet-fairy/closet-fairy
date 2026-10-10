@@ -7,8 +7,15 @@ from app.api.deps import get_current_member_id
 from app.core.config import get_settings
 from app.core.db import get_db
 from app.main import app
-from app.schemas.clothing import ClothingUploadResult, RejectedUpload, UploadedClothing
-from app.services import clothing_upload
+from app.schemas.clothing import (
+    ClothingPage,
+    ClothingStatusList,
+    ClothingUploadResult,
+    RejectedUpload,
+    UploadedClothing,
+)
+from app.services import clothing_query, clothing_upload
+from app.services.clothing_query import ClothingNotFoundError
 from app.services.clothing_upload import TooManyUploadFilesError
 from app.services.storage import get_image_storage
 
@@ -132,3 +139,74 @@ def test_missing_media_file_is_not_found_in_error_format(client):
 
     assert res.status_code == 404
     assert res.json()["code"] == "NOT_FOUND"
+
+
+@pytest.fixture
+def query_client(monkeypatch):
+    calls = []
+
+    async def get_clothing_page(db, storage, member_id, cursor, limit):
+        calls.append(("page", storage, member_id, cursor, limit))
+        return ClothingPage(items=[], next_cursor=None)
+
+    async def get_clothing_status(db, storage, member_id, clothing_ids):
+        calls.append(("status", storage, member_id, clothing_ids))
+        return ClothingStatusList(items=[])
+
+    async def get_clothing_detail(db, storage, member_id, clothing_id):
+        calls.append(("detail", storage, member_id, clothing_id))
+        raise ClothingNotFoundError()
+
+    async def fake_db():
+        yield None
+
+    monkeypatch.setattr(clothing_query, "get_clothing_page", get_clothing_page)
+    monkeypatch.setattr(clothing_query, "get_clothing_status", get_clothing_status)
+    monkeypatch.setattr(clothing_query, "get_clothing_detail", get_clothing_detail)
+    app.dependency_overrides[get_db] = fake_db
+    app.dependency_overrides[get_current_member_id] = lambda: 3
+    app.dependency_overrides[get_image_storage] = lambda: STORAGE
+    with TestClient(app) as c:
+        c.calls = calls
+        yield c
+    app.dependency_overrides.clear()
+
+
+def test_list_passes_cursor_and_default_limit(query_client):
+    res = query_client.get("/clothing", params={"cursor": 30})
+
+    assert res.status_code == 200
+    assert res.json() == {"items": [], "next_cursor": None}
+    assert query_client.calls == [("page", STORAGE, 3, 30, 20)]
+
+
+@pytest.mark.parametrize("params", [{"limit": 0}, {"limit": 51}, {"cursor": 0}])
+def test_list_rejects_out_of_range_params(query_client, params):
+    res = query_client.get("/clothing", params=params)
+
+    assert res.status_code == 422
+    assert query_client.calls == []
+
+
+def test_status_parses_comma_separated_ids(query_client):
+    res = query_client.get("/clothing/status", params={"ids": "31,32,31"})
+
+    assert res.status_code == 200
+    assert query_client.calls == [("status", STORAGE, 3, [31, 32, 31])]
+
+
+@pytest.mark.parametrize("ids", ["", "a,b", "1,,2", "0", "1, 2"])
+def test_status_rejects_malformed_ids(query_client, ids):
+    res = query_client.get("/clothing/status", params={"ids": ids})
+
+    assert res.status_code == 422
+    assert res.json()["code"] == "VALIDATION_ERROR"
+    assert query_client.calls == []
+
+
+def test_detail_not_found_uses_clothing_code(query_client):
+    res = query_client.get("/clothing/5")
+
+    assert res.status_code == 404
+    assert res.json() == {"code": "CLOTHING_NOT_FOUND", "message": "옷을 찾을 수 없습니다."}
+    assert query_client.calls == [("detail", STORAGE, 3, 5)]

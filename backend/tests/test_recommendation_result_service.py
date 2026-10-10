@@ -70,8 +70,13 @@ def fake_repo(monkeypatch):
     return state
 
 
+class _Storage:
+    def url(self, key: str) -> str:
+        return f"/media/{key}"
+
+
 async def _get(member_id: int = MEMBER_ID):
-    return await service.get_recommendation_result(object(), 7, member_id)
+    return await service.get_recommendation_result(object(), _Storage(), 7, member_id)
 
 
 # ---------- 세션 ----------
@@ -195,12 +200,16 @@ async def test_latest_deck_wins_per_outfit_seq(fake_repo):
     assert fake_repo["style_calls"] == [[1, 3]]
 
 
-async def test_snapshot_name_and_image_are_used(fake_repo):
+async def test_snapshot_name_and_image_url_are_used(fake_repo):
     fake_repo["rows"] = [
-        _item(1, "top", item_name_snapshot="네이비 니트", image_url_snapshot="http://a/1.png")
+        _item(1, "top", item_name_snapshot="네이비 니트", image_url_snapshot="clothing/7/a.webp"),
+        _item(2, "bottom", item_name_snapshot="블랙 슬랙스", image_url_snapshot=None),
     ]
 
     result = await _get()
 
-    item = result.outfits[0].items[0]
-    assert (item.item_name, item.image_url) == ("네이비 니트", "http://a/1.png")
+    items = result.outfits[0].items
+    assert [(i.item_name, i.image_url) for i in items] == [
+        ("네이비 니트", "/media/clothing/7/a.webp"),
+        ("블랙 슬랙스", None),
+    ]
