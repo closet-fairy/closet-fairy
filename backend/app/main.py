@@ -1,3 +1,6 @@
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
@@ -7,13 +10,21 @@ from app.core.errors import register_exception_handlers
 from app.core.logging import RequestIdMiddleware, setup_logging
 from app.schemas.error import ErrorResponse
 from app.services.llm import llm_lifespan
+from app.workers.bg_removal_lifespan import bg_removal_lifespan
 
 setup_logging()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    async with llm_lifespan(app), bg_removal_lifespan(app):
+        yield
+
 
 app = FastAPI(
     title="Outfit Recommendation API",
     version="0.1.0",
-    lifespan=llm_lifespan,
+    lifespan=lifespan,
     responses={422: {"model": ErrorResponse, "description": "입력값 검증 실패"}},
 )
 

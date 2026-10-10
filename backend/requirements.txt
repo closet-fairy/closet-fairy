@@ -11,6 +11,7 @@ httpx
 python-multipart
 pillow
 pillow-heif
+rembg[cpu]>=2.0.85,<3
 pytest
 pytest-asyncio
 ruff
