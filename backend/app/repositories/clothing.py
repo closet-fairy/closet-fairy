@@ -1,4 +1,4 @@
-"""완료 상태 옷 조회 — 스타일·계절 태그 포함 목록(REC-07), 카테고리별 개수(REC-05)."""
+"""옷 조회·등록 — 스타일·계절 태그 포함 목록(REC-07), 카테고리별 개수(REC-05), 업로드 등록(#71)."""
 
 from collections import defaultdict
 from collections.abc import Sequence
@@ -154,3 +154,29 @@ async def get_clothing_snapshots(
         )
         for row in rows
     }
+
+
+INSERT_UPLOADED_CLOTHING_SQL = text(
+    """
+    INSERT INTO clothing (member_id, origin_image_url, processing_status_cd)
+    VALUES (:member_id, :origin_image_url, 'processing')
+    """
+)
+
+INSERT_BG_REMOVAL_JOB_SQL = text(
+    """
+    INSERT INTO clothing_job (clothing_id, stage_cd)
+    VALUES (:clothing_id, 'bg_removal')
+    """
+)
+
+
+async def insert_uploaded_clothing(db: AsyncSession, member_id: int, origin_image_url: str) -> int:
+    """처리 중(processing) 옷과 배경 제거 대기 작업을 만든다. commit은 호출자가 한다."""
+    result = await db.execute(
+        INSERT_UPLOADED_CLOTHING_SQL,
+        {"member_id": member_id, "origin_image_url": origin_image_url},
+    )
+    clothing_id = int(result.lastrowid)
+    await db.execute(INSERT_BG_REMOVAL_JOB_SQL, {"clothing_id": clothing_id})
+    return clothing_id
