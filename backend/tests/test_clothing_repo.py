@@ -160,3 +160,123 @@ async def test_insert_uploaded_clothing_creates_clothing_and_bg_removal_job():
     assert "INSERT INTO clothing_job" in job_sql and "'bg_removal'" in job_sql
     assert job_params == {"clothing_id": 55}
     assert not db.committed
+
+
+class _QueryResult:
+    def __init__(self, rows):
+        self._rows = rows
+
+    def all(self):
+        return self._rows
+
+    def first(self):
+        return self._rows[0] if self._rows else None
+
+
+class _QueryDb:
+    def __init__(self, *results):
+        self._results = list(results)
+        self.executed = []
+
+    async def execute(self, stmt, params):
+        self.executed.append((str(stmt), params))
+        return _QueryResult(self._results.pop(0))
+
+
+def _card_row(clothing_id, **overrides):
+    fields = dict(
+        clothing_id=clothing_id,
+        processing_status_cd="processing",
+        reviewed_at=None,
+        origin_image_url=f"clothing/7/{clothing_id}.webp",
+        cutout_image_url=None,
+        category_cd=None,
+        item_name=None,
+        created_at="2026-10-10 18:00:00",
+        job_id=clothing_id * 10,
+        job_started_at=None,
+        job_failure_reason=None,
+    )
+    return _Row(**{**fields, **overrides})
+
+
+async def test_get_clothing_page_filters_member_and_cursor():
+    db = _QueryDb([_card_row(9), _card_row(8)])
+
+    rows = await clothing_repo.get_clothing_page(db, 7, 10, 3)
+
+    sql, params = db.executed[0]
+    assert params == {"member_id": 7, "cursor": 10, "limit": 3}
+    assert "c.clothing_id < :cursor" in sql and "ORDER BY c.clothing_id DESC" in sql
+    assert "MAX(lj.clothing_job_id)" in sql
+    assert [(r.clothing_id, r.job_id) for r in rows] == [(9, 90), (8, 80)]
+
+
+async def test_get_clothing_cards_skips_query_for_empty_ids():
+    db = _QueryDb()
+
+    assert await clothing_repo.get_clothing_cards(db, 7, []) == []
+    assert db.executed == []
+
+
+async def test_get_clothing_cards_filters_member_and_ids():
+    db = _QueryDb([_card_row(3)])
+
+    rows = await clothing_repo.get_clothing_cards(db, 7, [3, 4])
+
+    assert db.executed[0][1] == {"member_id": 7, "clothing_ids": [3, 4]}
+    assert [r.clothing_id for r in rows] == [3]
+
+
+async def test_get_clothing_detail_maps_attributes():
+    db = _QueryDb(
+        [
+            _card_row(
+                5,
+                accessory_type_cd=None,
+                color_cd="white",
+                color_text="화이트",
+                thickness_cd="thin",
+                is_waterproof=0,
+            )
+        ]
+    )
+
+    row = await clothing_repo.get_clothing_detail(db, 7, 5)
+
+    assert db.executed[0][1] == {"member_id": 7, "clothing_id": 5}
+    assert (row.clothing_id, row.color_cd, row.color_text) == (5, "white", "화이트")
+    assert row.is_waterproof is False
+
+
+async def test_get_clothing_detail_returns_none_when_missing():
+    assert await clothing_repo.get_clothing_detail(_QueryDb([]), 7, 5) is None
+
+
+async def test_get_clothing_tags_splits_and_orders_seasons():
+    db = _QueryDb(
+        [
+            _Row(tag_type="season", tag_cd="winter"),
+            _Row(tag_type="style", tag_cd="minimal"),
+            _Row(tag_type="season", tag_cd="spring"),
+            _Row(tag_type="style", tag_cd="casual"),
+            _Row(tag_type="season", tag_cd="fall"),
+        ]
+    )
+
+    styles, seasons = await clothing_repo.get_clothing_tags(db, 5)
+
+    assert styles == ["casual", "minimal"]
+    assert seasons == ["spring", "fall", "winter"]
+
+
+async def test_get_clothing_edit_parses_json_text():
+    db = _QueryDb([_Row(rotation_angle=90, perspective_param='{"k": [1, 2]}', brush_mask_url=None)])
+
+    edit = await clothing_repo.get_clothing_edit(db, 5)
+
+    assert edit.perspective_param == {"k": [1, 2]}
+
+
+async def test_get_clothing_edit_returns_none_without_edit():
+    assert await clothing_repo.get_clothing_edit(_QueryDb([]), 5) is None
