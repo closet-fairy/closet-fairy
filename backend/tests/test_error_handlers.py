@@ -1,5 +1,5 @@
 import pytest
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 from pydantic import BaseModel, Field, field_validator
 
@@ -30,6 +30,10 @@ def client():
     @app.get("/items/{item_id}")
     async def get_item(item_id: int) -> dict:
         return {"item_id": item_id}
+
+    @app.get("/raise/{status_code}")
+    async def raise_http(status_code: int) -> dict:
+        raise HTTPException(status_code=status_code, detail="Not authenticated")
 
     return TestClient(app)
 
@@ -76,3 +80,26 @@ def test_wrong_method_keeps_allow_header(client):
     assert res.status_code == 405
     assert res.json() == {"code": "METHOD_NOT_ALLOWED", "message": "허용되지 않은 요청 방식입니다."}
     assert res.headers["allow"] == "POST"
+
+
+def test_mapped_http_exception_uses_korean_message(client):
+    res = client.get("/raise/401")
+    assert res.status_code == 401
+    assert res.json() == {"code": "UNAUTHORIZED", "message": "인증이 필요합니다."}
+
+
+def test_unmapped_http_exception_hides_framework_detail(client):
+    res = client.get("/raise/413")
+    assert res.status_code == 413
+    assert res.json() == {"code": "HTTP_ERROR", "message": "처리 중 오류가 발생했습니다."}
+
+
+def test_openapi_documents_422_as_error_response():
+    from app.main import app
+
+    schema = app.openapi()
+    response = schema["paths"]["/recommendation-sessions"]["post"]["responses"]["422"]
+    assert response["content"]["application/json"]["schema"] == {
+        "$ref": "#/components/schemas/ErrorResponse"
+    }
+    assert "HTTPValidationError" not in schema["components"]["schemas"]

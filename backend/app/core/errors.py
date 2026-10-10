@@ -31,6 +31,12 @@ class NotFoundError(AppError):
     message = "요청한 리소스를 찾을 수 없습니다."
 
 
+class MethodNotAllowedError(AppError):
+    code = "METHOD_NOT_ALLOWED"
+    status_code = status.HTTP_405_METHOD_NOT_ALLOWED
+    message = "허용되지 않은 요청 방식입니다."
+
+
 class ValidationError(AppError):
     code = "VALIDATION_ERROR"
     status_code = 422
@@ -58,8 +64,14 @@ class ConflictError(AppError):
 VALUE_ERROR_PREFIX = "Value error, "
 
 HTTP_ERRORS: dict[int, tuple[str, str]] = {
-    status.HTTP_404_NOT_FOUND: (NotFoundError.code, NotFoundError.message),
-    status.HTTP_405_METHOD_NOT_ALLOWED: ("METHOD_NOT_ALLOWED", "허용되지 않은 요청 방식입니다."),
+    error.status_code: (error.code, error.message)
+    for error in (
+        UnauthorizedError,
+        ForbiddenError,
+        NotFoundError,
+        MethodNotAllowedError,
+        ConflictError,
+    )
 }
 
 
@@ -91,7 +103,7 @@ def register_exception_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(StarletteHTTPException)
     async def handle_http_error(request: Request, exc: StarletteHTTPException) -> JSONResponse:
-        code, message = HTTP_ERRORS.get(exc.status_code, ("HTTP_ERROR", str(exc.detail)))
+        code, message = HTTP_ERRORS.get(exc.status_code, ("HTTP_ERROR", AppError.message))
         return JSONResponse(
             status_code=exc.status_code,
             content={"code": code, "message": message},
