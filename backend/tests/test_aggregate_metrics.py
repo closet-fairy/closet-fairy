@@ -6,9 +6,11 @@ import pytest
 
 from scripts.aggregate_metrics import (
     collect_sessions,
-    load_e2e_elapsed,
+    incomplete_note,
+    load_e2e_runs,
     pad,
     parse_events,
+    print_report,
     read_log_lines,
     select_sessions,
     summarize,
@@ -100,31 +102,73 @@ def test_reduction_rate_is_averaged_per_session():
     assert summary["candidate_count_avg"] == pytest.approx((20 + 9) / 2)
 
 
+def _e2e(tmp_path, runs: list[dict]):
+    path = tmp_path / "e2e.json"
+    path.write_text(json.dumps({"meta": {}, "runs": runs}), encoding="utf-8")
+    return load_e2e_runs([path])
+
+
 def test_e2e_record_selects_sessions_and_supplies_response_time(tmp_path):
-    e2e = tmp_path / "e2e.json"
-    e2e.write_text(
-        json.dumps(
+    e2e_runs = _e2e(
+        tmp_path,
+        [
             {
-                "meta": {},
-                "runs": [
-                    {"recommendation_session_id": 2, "elapsed_s": 25.0},
-                    {"recommendation_session_id": 99, "elapsed_s": 10.0},
-                    {"scenario": "daily", "error": "POST 422"},
-                ],
-            }
-        ),
-        encoding="utf-8",
+                "recommendation_session_id": 2,
+                "elapsed_s": 25.0,
+                "generation_status_cd": "completed",
+            },
+            {
+                "recommendation_session_id": 99,
+                "elapsed_s": 10.0,
+                "generation_status_cd": "completed",
+            },
+            {"scenario": "daily", "error": "POST 422"},
+        ],
     )
 
-    sessions, missing = select_sessions(
-        collect_sessions(parse_events(LOG_LINES)), load_e2e_elapsed([e2e])
-    )
+    sessions, missing = select_sessions(collect_sessions(parse_events(LOG_LINES)), e2e_runs)
     summary = summarize(sessions)
 
     assert [m.session_id for m in sessions] == [2]
     assert missing == [99]
     assert summary["response_time_avg_s"] == 25.0
     assert summary["response_time_over_target"] == 1
+
+
+def test_incomplete_run_is_excluded_from_response_time_and_reported(tmp_path, capsys):
+    e2e_runs = _e2e(
+        tmp_path,
+        [
+            {
+                "recommendation_session_id": 1,
+                "elapsed_s": 120.4,
+                "generation_status_cd": "processing",
+            },
+            {
+                "recommendation_session_id": 2,
+                "elapsed_s": 14.0,
+                "generation_status_cd": "completed",
+            },
+        ],
+    )
+
+    sessions, _ = select_sessions(collect_sessions(parse_events(LOG_LINES)), e2e_runs)
+    summary = summarize(sessions)
+    print_report(sessions, summary, [], [])
+
+    assert [m.session_id for m in sessions] == [1, 2]
+    assert summary["requested"] == 9
+    assert summary["response_time_avg_s"] == 14.0
+    assert summary["response_time_over_target"] == 0
+    assert (
+        "미완료 1회 (processing 1, failed 0) — 응답 시간 평균에서 제외" in capsys.readouterr().out
+    )
+
+
+def test_incomplete_note_counts_each_status():
+    note = incomplete_note(["completed", "failed", "processing", "failed"])
+
+    assert note == "미완료 3회 (processing 1, failed 2) — 응답 시간 평균에서 제외"
 
 
 def test_without_e2e_record_response_time_is_not_computed():

@@ -80,7 +80,11 @@ from app.services.prompt import (  # noqa: E402
     outfit_review,
 )
 from app.services.weather.base_time import KST  # noqa: E402
-from scripts.aggregate_metrics import RESPONSE_TIME_TARGET_S, pad  # noqa: E402
+from scripts.aggregate_metrics import (  # noqa: E402
+    RESPONSE_TIME_TARGET_S,
+    incomplete_note,
+    pad,
+)
 
 MIN_OUTFITS = 3
 POLL_INTERVAL_S = 0.5
@@ -423,15 +427,18 @@ def print_runs(runs: list[dict]) -> None:
             f" {r.get('essential_item_count', '-')!s:>6} {r.get('is_clothing_shortage', '-')!s:<5}"
             f" {r.get('weather_is_fallback', '-')!s:<8} {r.get('ended_by', '-'):<7} {verdict}"
         )
-    elapsed = [r["elapsed_s"] for r in runs if "elapsed_s" in r]
+    statuses = [r["generation_status_cd"] for r in runs if "generation_status_cd" in r]
+    elapsed = [r["elapsed_s"] for r in runs if r.get("generation_status_cd") == "completed"]
     passed = sum(r["passed"] for r in runs)
     print(f"\n통과 {passed}/{len(runs)}회")
     if elapsed:
         over = sum(e > RESPONSE_TIME_TARGET_S for e in elapsed)
         print(
             f"응답 시간 평균 {sum(elapsed) / len(elapsed):.1f}초, 최대 {max(elapsed):.1f}초,"
-            f" {RESPONSE_TIME_TARGET_S:.0f}초 초과 {over}회"
+            f" {RESPONSE_TIME_TARGET_S:.0f}초 초과 {over}회 (completed {len(elapsed)}회 기준)"
         )
+    if statuses:
+        print(f"  {incomplete_note(statuses)}")
 
 
 async def main() -> int:
