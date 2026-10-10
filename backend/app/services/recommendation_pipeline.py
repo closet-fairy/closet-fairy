@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.db import AsyncSessionLocal
+from app.core.logging import Event
 from app.repositories import preference_score as preference_repo
 from app.services.essential_supplement import (
     SupplementedCandidate,
@@ -105,6 +106,16 @@ async def recommend(
     """컨텍스트 하나로 코디를 만든다. 저장은 하지 않는다 (시나리오 스크립트도 이 함수를 쓴다)."""
     filter_result = filter_clothing(context)
     supplement = await collect_essential_candidates(context, filter_result)
+    logger.info(
+        "recommend candidates",
+        extra={
+            "event": Event.RECOMMEND_CANDIDATES,
+            "recommendation_session_id": context.recommendation_session_id,
+            "owned_count": len(context.clothing),
+            "filtered_owned_count": len(filter_result.candidates),
+            "candidate_count": len(supplement.candidates),
+        },
+    )
     async with AsyncSessionLocal() as db:
         preferences = await load_preferences(db, context.member_id, rng or random.Random())
 

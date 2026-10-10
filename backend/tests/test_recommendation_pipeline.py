@@ -235,6 +235,47 @@ async def test_recommend_wires_all_checks_with_same_prompt_input(monkeypatch):
     assert len(outcome.generation.outfits) == 3
 
 
+def _owned(clothing_id: int, seasons: list[str]) -> ClothingCandidate:
+    return ClothingCandidate(
+        clothing_id=clothing_id,
+        category_cd="top",
+        accessory_type_cd=None,
+        item_name=f"owned-{clothing_id}",
+        color_cd="black",
+        thickness_cd="medium",
+        is_waterproof=False,
+        origin_image_url=f"{clothing_id}.png",
+        cutout_image_url=None,
+        seasons=seasons,
+    )
+
+
+async def test_recommend_logs_candidate_counts(monkeypatch, caplog):
+    async def fake_collect(context, filter_result):
+        return _supplement()
+
+    async def fake_load(db, member_id, rng):
+        return _preferences()
+
+    async def fake_generate(llm, prompt_input, **kwargs):
+        return _generation()
+
+    monkeypatch.setattr(pipeline, "collect_essential_candidates", fake_collect)
+    monkeypatch.setattr(pipeline, "load_preferences", fake_load)
+    monkeypatch.setattr(pipeline, "generate_outfits", fake_generate)
+    monkeypatch.setattr(pipeline, "AsyncSessionLocal", _fake_session)
+    caplog.set_level("INFO", logger="app.services.recommendation_pipeline")
+    clothing = [_owned(1, ["fall"]), _owned(2, ["fall"]), _owned(3, ["summer"])]
+
+    await pipeline.recommend(_context(clothing), MagicMock(spec=LLMClient))
+
+    (record,) = [r for r in caplog.records if getattr(r, "event", None) == "recommend.candidates"]
+    assert record.recommendation_session_id == 7
+    assert record.owned_count == 3
+    assert record.filtered_owned_count == 2
+    assert record.candidate_count == 3
+
+
 def _outcome(generation: GenerationResult, shortage: bool = False) -> pipeline.RecommendOutcome:
     return pipeline.RecommendOutcome(
         generation=generation,

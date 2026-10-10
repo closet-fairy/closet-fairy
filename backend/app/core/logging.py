@@ -120,6 +120,7 @@ class Event:
     RECOMMEND_REGENERATE = "recommend.regenerate"
     RECOMMEND_FALLBACK = "recommend.fallback"
     RECOMMEND_TARGET_CAPPED = "recommend.target_capped"
+    RECOMMEND_CANDIDATES = "recommend.candidates"
     PREFERENCE_SETTLED = "preference.settled"
     SESSION_CANCELED = "session.canceled"
     SESSION_ABANDONED = "session.abandoned"
