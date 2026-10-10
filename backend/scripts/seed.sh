@@ -95,7 +95,12 @@ if [ "$SEED_DEV_MEMBER" = "1" ]; then
   echo "=== 5. 개발 회원 선호 점수 27행 ==="
   run_sql --table -e "
   SELECT COUNT(*) AS 실제, 27 AS 기대, IF(COUNT(*) = 27, 'OK', 'FAIL') AS 결과
-  FROM preference_score;
+  FROM preference_score
+  WHERE member_id = (
+    SELECT member_id FROM member
+    WHERE provider_cd = 'google'
+      AND provider_user_id_hash = UNHEX(SHA2('dev-google-0001', 256))
+  );
   "
 
   echo
@@ -104,6 +109,25 @@ if [ "$SEED_DEV_MEMBER" = "1" ]; then
   SELECT COUNT(*) AS 실제, 30 AS 기대, IF(COUNT(*) = 30, 'OK', 'FAIL') AS 결과
   FROM clothing
   WHERE origin_image_url LIKE 'dev-seed/%';
+  "
+
+  echo
+  echo "=== 7. 부족 회원 선호 점수 27행, 시드 옷 5벌 ==="
+  run_sql --table -e "
+  SET @sparse_member_id = (
+    SELECT member_id FROM member
+    WHERE provider_cd = 'google'
+      AND provider_user_id_hash = UNHEX(SHA2('dev-google-0002', 256))
+  );
+  SELECT '선호 점수' AS 항목, COUNT(*) AS 실제, 27 AS 기대,
+         IF(COUNT(*) = 27, 'OK', 'FAIL') AS 결과
+  FROM preference_score
+  WHERE member_id = @sparse_member_id
+  UNION ALL
+  SELECT '시드 옷', COUNT(*), 5, IF(COUNT(*) = 5, 'OK', 'FAIL')
+  FROM clothing
+  WHERE member_id = @sparse_member_id
+    AND origin_image_url LIKE 'dev-seed-sparse/%';
   "
 fi
 
