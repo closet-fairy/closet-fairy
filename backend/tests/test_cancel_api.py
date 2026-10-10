@@ -8,8 +8,7 @@ from fastapi.testclient import TestClient
 from app.api.deps import get_current_member_id, get_now
 from app.core.db import get_db
 from app.main import app
-from app.services import rating_settlement as settlement
-from app.services import session_end
+from app.services import session_end, session_errors
 from app.services.weather.base_time import KST
 
 FIXED_NOW = datetime(2026, 10, 9, 21, 30, tzinfo=KST)
@@ -60,8 +59,8 @@ def test_cancel_of_abandoned_session_returns_its_status(client):
 @pytest.mark.parametrize(
     ("error", "status_code", "code"),
     [
-        (settlement.SessionNotFoundError(), 404, "SESSION_NOT_FOUND"),
-        (settlement.SessionAlreadySettledError(), 409, "SESSION_ALREADY_SETTLED"),
+        (session_errors.SessionNotFoundError(), 404, "SESSION_NOT_FOUND"),
+        (session_errors.SessionAlreadySettledError(), 409, "SESSION_ALREADY_SETTLED"),
     ],
 )
 def test_service_errors_map_to_status_and_code(client, error, status_code, code):

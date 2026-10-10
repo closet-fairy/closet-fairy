@@ -1,7 +1,8 @@
 """별점 정산 동시성 검증 스크립트. 실제 MySQL에 붙고 LLM은 호출하지 않는다.
 
 검증용 회원·옷·세션·덱·코디를 SQL로 직접 넣고 rate_and_settle을 동시에 호출한다.
-  (a) 같은 세션에 N회 동시 → 정산 1회, 나머지 SESSION_ALREADY_SETTLED, 피드백 행 수 = 코디 수
+  (a) 같은 세션에 N회 동시 → 정산 1회, 나머지 SESSION_ALREADY_SETTLED,
+      정산 후 정리되어 별점 피드백 1행만 남음
   (b) 같은 회원의 세션 N개 동시 정산 → 최종 S·N이 순차 계산 결과와 일치 (손실 갱신 없음)
 끝나면 검증용 회원을 지운다(FK CASCADE). 개발 회원 데이터는 건드리지 않는다.
 
@@ -32,7 +33,6 @@ from sqlalchemy.ext.asyncio import (  # noqa: E402
 )
 
 from app.core.config import get_settings  # noqa: E402
-from app.repositories import outfit_feedback as feedback_repo  # noqa: E402
 from app.repositories import preference_score as score_repo  # noqa: E402
 from app.repositories.preference_score import ScoreRow  # noqa: E402
 from app.services import rating_settlement as settlement  # noqa: E402
@@ -358,12 +358,6 @@ def compare_scores(
     return diffs
 
 
-async def session_deltas(factory: async_sessionmaker, session_id: int) -> dict:
-    async with factory() as db:
-        rows = await feedback_repo.find_session_attribute_feedbacks(db, session_id)
-    return settlement.resolve_attribute_deltas(rows)
-
-
 async def count(factory: async_sessionmaker, sql: str, params: dict) -> int:
     async with factory() as db:
         return int((await db.execute(text(sql), params)).scalar_one())
@@ -403,8 +397,8 @@ async def check_same_session(factory, n: int, rating: int, member_ids: list[int]
         "SELECT COUNT(*) FROM outfit_feedback WHERE recommendation_session_id = :s",
         {"s": seeded.session_id},
     )
-    if feedbacks != seeded.outfit_count:
-        failures.append(f"피드백 {feedbacks}행 (기대 {seeded.outfit_count}행)")
+    if feedbacks != 1:
+        failures.append(f"피드백 {feedbacks}행 (기대 1행)")
     settled = await count(
         factory,
         """
@@ -416,11 +410,7 @@ async def check_same_session(factory, n: int, rating: int, member_ids: list[int]
     )
     if settled != 1:
         failures.append("세션이 completed + settled_at으로 바뀌지 않음")
-    deltas = await session_deltas(factory, seeded.session_id)
-    want_deltas = expected_deltas(wardrobe, rating, settings)
-    if deltas != want_deltas:
-        failures.append(f"속성 델타 {sorted(deltas.items())} (기대 {sorted(want_deltas.items())})")
-    expected = apply_sequentially(before, deltas, 1, settings)
+    expected = apply_sequentially(before, expected_deltas(wardrobe, rating, settings), 1, settings)
     failures += compare_scores(await read_scores(factory, member_id), expected)
 
     return report(f"(a) 같은 세션 {n}회 동시 요청", failures)
@@ -464,13 +454,10 @@ async def check_same_member(factory, n: int, rating: int, member_ids: list[int])
         """,
         {"m": member_id},
     )
-    if feedbacks != n * sessions[0].outfit_count:
-        failures.append(f"피드백 {feedbacks}행 (기대 {n * sessions[0].outfit_count}행)")
+    if feedbacks != n:
+        failures.append(f"피드백 {feedbacks}행 (기대 {n}행)")
 
-    all_deltas = [await session_deltas(factory, s.session_id) for s in sessions]
-    if any(d != all_deltas[0] for d in all_deltas):
-        failures.append("세션마다 속성 델타가 다름 (순차 계산 기대값을 하나로 정할 수 없음)")
-    expected = apply_sequentially(before, all_deltas[0], n, settings)
+    expected = apply_sequentially(before, expected_deltas(wardrobe, rating, settings), n, settings)
     failures += compare_scores(await read_scores(factory, member_id), expected)
 
     return report(f"(b) 같은 회원 세션 {n}개 동시 정산", failures)

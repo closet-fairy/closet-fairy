@@ -11,9 +11,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logging import Event
 from app.repositories import recommendation_session as session_repo
-from app.services.rating_settlement import SessionAlreadySettledError, SessionNotFoundError
 from app.services.recommendation_session import to_db_utc
 from app.services.session_cleanup import cleanup_locked_session
+from app.services.session_errors import SessionAlreadySettledError, SessionNotFoundError
 
 logger = logging.getLogger(__name__)
 

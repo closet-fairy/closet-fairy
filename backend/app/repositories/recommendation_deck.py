@@ -1,4 +1,4 @@
-"""추천 결과(덱·코디·코디 아이템) 저장 (REC-16). commit은 호출자가 한다."""
+"""추천 결과(덱·코디·코디 아이템) 저장과 세션 정리용 삭제 (REC-16, #32). commit은 호출자가 한다."""
 
 from collections.abc import Sequence
 from dataclasses import dataclass

@@ -60,11 +60,11 @@ async def cleanup_ended_session(db: AsyncSession, recommendation_session_id: int
             db, recommendation_session_id, session.session_status_cd
         )
 
-    log_cleaned(recommendation_session_id, result)
+    _log_cleaned(recommendation_session_id, result)
     return result
 
 
-def log_cleaned(recommendation_session_id: int, result: CleanupResult) -> None:
+def _log_cleaned(recommendation_session_id: int, result: CleanupResult) -> None:
     if result == NOTHING_DELETED:
         return
     logger.info(

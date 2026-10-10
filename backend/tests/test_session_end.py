@@ -5,8 +5,7 @@ from datetime import datetime
 import pytest
 
 from app.repositories.recommendation_session import LockedSessionRow
-from app.services import rating_settlement as settlement
-from app.services import session_end
+from app.services import session_end, session_errors
 from app.services.session_cleanup import CleanupResult
 from app.services.weather.base_time import KST
 
@@ -121,7 +120,7 @@ async def test_cancel_of_settled_session_is_409(monkeypatch):
     calls = _patch_repos(monkeypatch, session=settled)
     db = _FakeDb()
 
-    with pytest.raises(settlement.SessionAlreadySettledError):
+    with pytest.raises(session_errors.SessionAlreadySettledError):
         await session_end.cancel_session(db, 7, 1, FIXED_NOW)
 
     assert calls == [("lock_session", 7)]
@@ -132,7 +131,7 @@ async def test_cancel_of_settled_session_is_409(monkeypatch):
 async def test_cancel_of_missing_or_other_members_session_is_404(monkeypatch, session):
     calls = _patch_repos(monkeypatch, session=session)
 
-    with pytest.raises(settlement.SessionNotFoundError):
+    with pytest.raises(session_errors.SessionNotFoundError):
         await session_end.cancel_session(_FakeDb(), 7, 1, FIXED_NOW)
 
     assert calls == [("lock_session", 7)]

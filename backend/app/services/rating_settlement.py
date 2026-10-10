@@ -26,6 +26,7 @@ from app.repositories.preference_score import ScoreRow, ScoreUpdate
 from app.services.preference_score import decay_ema, update_ema
 from app.services.recommendation_session import to_db_utc
 from app.services.session_cleanup import cleanup_ended_session
+from app.services.session_errors import SessionAlreadySettledError, SessionNotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -34,19 +35,9 @@ AttributeKey = tuple[str, str]
 MYSQL_DUPLICATE_ENTRY = 1062
 
 
-class SessionNotFoundError(NotFoundError):
-    code = "SESSION_NOT_FOUND"
-    message = "추천 세션을 찾을 수 없습니다."
-
-
 class OutfitNotInSessionError(NotFoundError):
     code = "OUTFIT_NOT_FOUND"
     message = "이 세션에서 추천한 코디가 아닙니다."
-
-
-class SessionAlreadySettledError(ConflictError):
-    code = "SESSION_ALREADY_SETTLED"
-    message = "이미 별점을 매긴 세션입니다."
 
 
 class SessionNotRatableError(ConflictError):
