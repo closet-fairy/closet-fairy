@@ -14,4 +14,4 @@ pillow-heif
 pytest
 pytest-asyncio
 ruff
-pre-commit
+pre-commit

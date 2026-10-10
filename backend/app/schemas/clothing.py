@@ -2,7 +2,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-RejectReasonCd = Literal["unsupported_format", "too_large", "unreadable"]
+RejectReasonCd = Literal["unsupported_format", "too_large", "resolution_too_high", "unreadable"]
 
 
 class UploadedClothing(BaseModel):
@@ -22,4 +22,4 @@ class ClothingUploadResult(BaseModel):
     accepted: list[UploadedClothing] = Field(
         description="옷으로 등록된 사진. 배경 제거·태깅은 이후 비동기로 진행된다."
     )
-    rejected: list[RejectedUpload] = Field(description="형식·용량 때문에 제외된 사진과 사유")
+    rejected: list[RejectedUpload] = Field(description="형식·용량·해상도 때문에 제외된 사진과 사유")

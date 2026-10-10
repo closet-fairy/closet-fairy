@@ -2,6 +2,8 @@
 
 import asyncio
 import io
+import threading
+import time
 
 import pytest
 from PIL import Image
@@ -17,15 +19,24 @@ def _image_bytes(fmt: str = "JPEG", size=(20, 10)) -> bytes:
     return out.getvalue()
 
 
+class _RecordingIO(io.BytesIO):
+    def __init__(self, data: bytes):
+        super().__init__(data)
+        self.read_sizes = []
+
+    def read(self, size: int | None = -1) -> bytes:
+        self.read_sizes.append(size)
+        return super().read(size)
+
+
 class _File:
     def __init__(self, filename: str | None, data: bytes):
         self.filename = filename
-        self._data = data
-        self.read_sizes = []
+        self.file = _RecordingIO(data)
 
-    async def read(self, size: int = -1) -> bytes:
-        self.read_sizes.append(size)
-        return self._data if size < 0 else self._data[:size]
+    @property
+    def read_sizes(self):
+        return self.file.read_sizes
 
 
 class _Storage:
@@ -122,7 +133,7 @@ async def test_rejected_files_are_reported_and_others_saved(inserted, small_limi
         ("anim.gif", "unsupported_format"),
         ("big.jpg", "too_large"),
     ]
-    assert result.rejected[1].message == "사진이 너무 큽니다. 2MB 이하로 올려 주세요."
+    assert result.rejected[1].message == "사진 용량이 너무 큽니다. 2MB 이하로 올려 주세요."
     assert files[2].read_sizes == [2 * 1024 * 1024 + 1]
     assert len(inserted) == 1
 
@@ -200,36 +211,78 @@ async def test_cleanup_failure_keeps_original_error(monkeypatch, caplog):
     assert "이미지 정리 실패" in caplog.text
 
 
-async def test_normalization_runs_concurrently_up_to_the_limit(monkeypatch, inserted):
+@pytest.fixture
+def two_workers(monkeypatch):
     monkeypatch.setenv("CLOTHING_IMAGE_NORMALIZE_CONCURRENCY", "2")
     get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
+
+
+@pytest.fixture
+def slow_normalize(monkeypatch):
     state = {"active": 0, "peak": 0}
+    lock = threading.Lock()
 
-    async def slow_read_and_normalize(file, settings):
-        state["active"] += 1
-        state["peak"] = max(state["peak"], state["active"])
-        await asyncio.sleep(0.01)
-        state["active"] -= 1
-        return b"webp-" + file.filename.encode()
+    def normalize_image(data, *, quality, max_pixels):
+        with lock:
+            state["active"] += 1
+            state["peak"] = max(state["peak"], state["active"])
+        time.sleep(0.02)
+        with lock:
+            state["active"] -= 1
+        return b"webp-" + data
 
-    monkeypatch.setattr(upload, "_read_and_normalize", slow_read_and_normalize)
-    files = [_File(f"{i}.jpg", b"") for i in range(5)]
-    try:
-        result = await upload.upload_clothing(_FakeDb(), _Storage(), 7, files)
-    finally:
-        get_settings.cache_clear()
+    monkeypatch.setattr(upload, "normalize_image", normalize_image)
+    return state
 
-    assert state["peak"] == 2
+
+async def test_normalization_runs_concurrently_up_to_the_pool_size(
+    inserted, two_workers, slow_normalize
+):
+    files = [_File(f"{i}.jpg", str(i).encode()) for i in range(5)]
+
+    result = await upload.upload_clothing(_FakeDb(), _Storage(), 7, files)
+
+    assert slow_normalize["peak"] == 2
     assert [c.file_name for c in result.accepted] == [f"{i}.jpg" for i in range(5)]
 
 
+async def test_concurrent_requests_share_one_pool(inserted, two_workers, slow_normalize):
+    def request(prefix):
+        files = [_File(f"{prefix}{i}.jpg", b"x") for i in range(3)]
+        return upload.upload_clothing(_FakeDb(), _Storage(), 7, files)
+
+    results = await asyncio.gather(request("a"), request("b"), request("c"))
+
+    assert slow_normalize["peak"] == 2
+    assert [len(r.accepted) for r in results] == [3, 3, 3]
+
+
 async def test_unexpected_error_while_preparing_is_raised(monkeypatch, inserted):
-    async def broken(file, settings):
-        raise RuntimeError("thread pool down")
+    def broken(data, *, quality, max_pixels):
+        raise RuntimeError("decoder crashed")
 
-    monkeypatch.setattr(upload, "_read_and_normalize", broken)
+    monkeypatch.setattr(upload, "normalize_image", broken)
 
-    with pytest.raises(RuntimeError, match="thread pool down"):
+    with pytest.raises(RuntimeError, match="decoder crashed"):
         await upload.upload_clothing(_FakeDb(), _Storage(), 7, [_File("a.jpg", b"")])
 
     assert inserted == []
+
+
+async def test_high_resolution_photo_is_rejected_with_resolution_message(inserted, monkeypatch):
+    monkeypatch.setenv("CLOTHING_IMAGE_MAX_PIXELS", "10000")
+    get_settings.cache_clear()
+    try:
+        result = await upload.upload_clothing(
+            _FakeDb(), _Storage(), 7, [_File("big.jpg", _image_bytes(size=(200, 100)))]
+        )
+    finally:
+        get_settings.cache_clear()
+
+    assert result.accepted == []
+    assert result.rejected[0].reason_cd == "resolution_too_high"
+    assert result.rejected[0].message == (
+        "사진 해상도가 너무 높습니다. 1만 화소 이하로 찍은 사진을 올려 주세요."
+    )
