@@ -94,6 +94,7 @@ async def test_cancel_logs_after_commit_with_counts_only(monkeypatch, caplog):
 
     record = next(r for r in caplog.records if getattr(r, "event", None) == "session.canceled")
     assert record.recommendation_session_id == 7
+    assert record.deleted_outfit_count == 4
     assert record.deleted_deck_count == 1
 
 
@@ -157,6 +158,7 @@ async def test_inactive_session_is_abandoned_after_recheck_under_lock(monkeypatc
     assert db.events == ["commit"]
     record = next(r for r in caplog.records if getattr(r, "event", None) == "session.abandoned")
     assert record.recommendation_session_id == 7
+    assert record.deleted_outfit_count == 4
     assert record.deleted_deck_count == 1
 
 

@@ -94,7 +94,8 @@ class RecommendationResult(BaseModel):
     generation_status_cd: GenerationStatusCd = Field(
         description=(
             "processing이면 아직 만드는 중이라 outfits가 빈 배열이다. 잠시 뒤 다시 조회한다. "
-            "completed면 outfits가 채워져 있다. "
+            "completed면 outfits가 채워져 있다. 단, 끝난 세션은 정리되므로 completed여도 "
+            "1벌이거나 빈 배열일 수 있다(outfits 설명 참고). "
             "failed면 추천을 만들지 못한 것이므로 폴링을 멈추고 다시 시도를 안내한다. "
             "생성 중에 취소·이탈된 세션도 failed가 된다."
         )

@@ -6,7 +6,6 @@
 
 import logging
 from datetime import datetime
-from typing import Literal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,12 +17,10 @@ from app.services.session_cleanup import cleanup_locked_session
 
 logger = logging.getLogger(__name__)
 
-CanceledStatusCd = Literal["canceled", "abandoned"]
-
 
 async def cancel_session(
     db: AsyncSession, recommendation_session_id: int, member_id: int, now: datetime
-) -> CanceledStatusCd:
+) -> session_repo.EndedSessionStatusCd:
     async with db.begin():
         session = await session_repo.lock_session(db, recommendation_session_id)
         if session is None or session.member_id != member_id:
@@ -41,6 +38,7 @@ async def cancel_session(
         extra={
             "event": Event.SESSION_CANCELED,
             "recommendation_session_id": recommendation_session_id,
+            "deleted_outfit_count": cleanup.deleted_outfit_count,
             "deleted_deck_count": cleanup.deleted_deck_count,
         },
     )
@@ -65,6 +63,7 @@ async def abandon_if_inactive(
         extra={
             "event": Event.SESSION_ABANDONED,
             "recommendation_session_id": recommendation_session_id,
+            "deleted_outfit_count": cleanup.deleted_outfit_count,
             "deleted_deck_count": cleanup.deleted_deck_count,
         },
     )
