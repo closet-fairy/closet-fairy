@@ -10,7 +10,8 @@ pydantic>=2.12,<3
 httpx
 python-multipart
 pillow
+pillow-heif
 pytest
 pytest-asyncio
 ruff
-pre-commit
+pre-commit

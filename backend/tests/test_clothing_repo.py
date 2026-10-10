@@ -128,3 +128,35 @@ async def test_get_clothing_snapshots_skips_query_for_empty_ids():
 
     assert await clothing_repo.get_clothing_snapshots(db, member_id=7, clothing_ids=[]) == {}
     assert db.params is None
+
+
+class _InsertResult:
+    def __init__(self, lastrowid):
+        self.lastrowid = lastrowid
+
+
+class _InsertDb:
+    def __init__(self):
+        self.executed = []
+        self.committed = False
+
+    async def execute(self, stmt, params):
+        self.executed.append((str(stmt), params))
+        return _InsertResult(55)
+
+    async def commit(self):
+        self.committed = True
+
+
+async def test_insert_uploaded_clothing_creates_clothing_and_bg_removal_job():
+    db = _InsertDb()
+
+    clothing_id = await clothing_repo.insert_uploaded_clothing(db, 7, "clothing/7/a.webp")
+
+    assert clothing_id == 55
+    (clothing_sql, clothing_params), (job_sql, job_params) = db.executed
+    assert "INSERT INTO clothing (" in clothing_sql
+    assert clothing_params == {"member_id": 7, "origin_image_url": "clothing/7/a.webp"}
+    assert "INSERT INTO clothing_job" in job_sql and "'bg_removal'" in job_sql
+    assert job_params == {"clothing_id": 55}
+    assert not db.committed

@@ -1,5 +1,6 @@
 from decimal import Decimal
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -58,6 +59,13 @@ class Settings(BaseSettings):
     MAX_RETRY_PER_VALIDATION_STAGE: int = 2
 
     SESSION_ABANDON_TIMEOUT_MINUTES: int = 30
+
+    MEDIA_ROOT: Path = Path("media")
+    MEDIA_URL_PREFIX: str = "/media"
+    CLOTHING_UPLOAD_MAX_FILES: int = 20
+    CLOTHING_UPLOAD_MAX_BYTES: int = 20 * 1024 * 1024
+    CLOTHING_IMAGE_WEBP_QUALITY: int = 90
+    CLOTHING_IMAGE_NORMALIZE_CONCURRENCY: int = 4
 
     LLM_DEFAULT_MODEL: str = "claude-sonnet-5"
     # 용도(call_name)별 모델 덮어쓰기. .env에 JSON으로 적는다.
