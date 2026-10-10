@@ -7,7 +7,9 @@
 from __future__ import annotations
 
 from fastapi import FastAPI, Request, status
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 
 class AppError(Exception):
@@ -53,6 +55,21 @@ class ConflictError(AppError):
     message = "요청을 처리할 수 없는 상태입니다."
 
 
+VALUE_ERROR_PREFIX = "Value error, "
+
+HTTP_ERRORS: dict[int, tuple[str, str]] = {
+    status.HTTP_404_NOT_FOUND: (NotFoundError.code, NotFoundError.message),
+    status.HTTP_405_METHOD_NOT_ALLOWED: ("METHOD_NOT_ALLOWED", "허용되지 않은 요청 방식입니다."),
+}
+
+
+def validation_message(exc: RequestValidationError) -> str:
+    for error in exc.errors():
+        if error.get("type") == "value_error":
+            return str(error["msg"]).removeprefix(VALUE_ERROR_PREFIX)
+    return ValidationError.message
+
+
 def register_exception_handlers(app: FastAPI) -> None:
     """main.py에서 앱 생성 직후 한 번 호출한다."""
 
@@ -61,6 +78,24 @@ def register_exception_handlers(app: FastAPI) -> None:
         return JSONResponse(
             status_code=exc.status_code,
             content={"code": exc.code, "message": exc.message},
+        )
+
+    @app.exception_handler(RequestValidationError)
+    async def handle_validation_error(
+        request: Request, exc: RequestValidationError
+    ) -> JSONResponse:
+        return JSONResponse(
+            status_code=ValidationError.status_code,
+            content={"code": ValidationError.code, "message": validation_message(exc)},
+        )
+
+    @app.exception_handler(StarletteHTTPException)
+    async def handle_http_error(request: Request, exc: StarletteHTTPException) -> JSONResponse:
+        code, message = HTTP_ERRORS.get(exc.status_code, ("HTTP_ERROR", str(exc.detail)))
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"code": code, "message": message},
+            headers=exc.headers,
         )
 
     @app.exception_handler(Exception)
