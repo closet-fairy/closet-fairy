@@ -78,6 +78,8 @@ class Settings(BaseSettings):
     BG_REMOVAL_CONCURRENCY: int = 1
     BG_REMOVAL_POLL_INTERVAL_S: float = 2.0
 
+    # 끄면 워커를 띄우지 않는다. 테스트 전용(tests/conftest.py).
+    # 꺼 두면 배경 제거가 끝난 옷이 "처리 중"으로 남는다
     AUTO_TAGGING_ENABLED: bool = True
     AUTO_TAGGING_MODEL: str = "claude-haiku-4-5"
     AUTO_TAGGING_IMAGE_MAX_SIDE: int = 1024
@@ -87,7 +89,7 @@ class Settings(BaseSettings):
 
     LLM_DEFAULT_MODEL: str = "claude-sonnet-5"
     # 용도(call_name)별 모델 덮어쓰기. .env에 JSON으로 적는다.
-    # 예: LLM_MODEL_OVERRIDES={"image_tagging": "claude-haiku-4-5"}
+    # 예: LLM_MODEL_OVERRIDES={"outfit_generation": "claude-haiku-4-5"}
     LLM_MODEL_OVERRIDES: dict[str, str] = {}
     # 리뷰어는 이 값을 LLMCallConfig.model로 넘겨 LLM_MODEL_OVERRIDES보다 우선한다.
     # overrides에 기본값을 두면 .env에서 dict를 지정할 때 통째로 덮여 사라지므로 따로 둔다

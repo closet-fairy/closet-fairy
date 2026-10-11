@@ -49,6 +49,7 @@ class AutoTaggingWorker(ClothingJobWorker):
         try:
             is_completed = await self._record_result(job, tags)
         except Exception:
+            # 기록하지 못한 job은 처리 중으로 남고, 서버를 재시작할 때 대기열로 되돌아간다
             logger.exception(
                 "자동 태깅 결과를 기록하지 못함", extra={"clothing_id": job.clothing_id}
             )
