@@ -38,6 +38,7 @@ async def bg_removal_lifespan(app: FastAPI) -> AsyncIterator[None]:
         AsyncSessionLocal,
         concurrency=settings.BG_REMOVAL_CONCURRENCY,
         poll_interval_s=settings.BG_REMOVAL_POLL_INTERVAL_S,
+        tagging_worker=getattr(app.state, "auto_tagging_worker", None),
     )
     await worker.start()
     app.state.bg_removal_worker = worker

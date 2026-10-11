@@ -3,12 +3,14 @@
 clothing_job 테이블을 큐로 쓴다. started_at IS NULL이면 대기 중이다(FR-REG-10).
 """
 
-from dataclasses import dataclass
+from collections.abc import Sequence
+from dataclasses import dataclass, field
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 STAGE_BG_REMOVAL = "bg_removal"
+STAGE_AUTO_TAGGING = "auto_tagging"
 
 
 @dataclass(frozen=True)
@@ -16,6 +18,33 @@ class ClaimedJob:
     clothing_job_id: int
     clothing_id: int
     origin_image_url: str
+    cutout_image_url: str | None = None
+
+
+@dataclass(frozen=True)
+class ClothingTags:
+    category_cd: str | None = None
+    accessory_type_cd: str | None = None
+    item_name: str | None = None
+    color_cd: str | None = None
+    color_text: str | None = None
+    style_cds: Sequence[str] = field(default_factory=tuple)
+    season_cds: Sequence[str] = field(default_factory=tuple)
+    thickness_cd: str | None = None
+    is_waterproof: bool | None = None
+
+    @property
+    def is_empty(self) -> bool:
+        scalars = (
+            self.category_cd,
+            self.accessory_type_cd,
+            self.item_name,
+            self.color_cd,
+            self.color_text,
+            self.thickness_cd,
+            self.is_waterproof,
+        )
+        return all(v is None for v in scalars) and not self.style_cds and not self.season_cds
 
 
 # 서버가 처리 도중 죽으면 started_at만 찍히고 finished_at은 비어 남는다.
@@ -31,7 +60,7 @@ REQUEUE_INTERRUPTED_SQL = text(
 # SKIP LOCKED로 다른 워커가 잡고 있는 행을 건너뛰어, 같은 job을 두 번 처리하지 않는다
 SELECT_NEXT_JOB_SQL = text(
     """
-    SELECT j.clothing_job_id, j.clothing_id, c.origin_image_url
+    SELECT j.clothing_job_id, j.clothing_id, c.origin_image_url, c.cutout_image_url
     FROM clothing_job j
     JOIN clothing c ON c.clothing_id = j.clothing_id
     WHERE j.stage_cd = :stage_cd AND j.started_at IS NULL AND j.is_canceled = FALSE
@@ -62,12 +91,40 @@ FINISH_JOB_SQL = text(
     """
 )
 
-COMPLETE_CLOTHING_SQL = text(
+SAVE_CUTOUT_SQL = text(
+    """
+    UPDATE clothing SET cutout_image_url = :cutout_image_url WHERE clothing_id = :clothing_id
+    """
+)
+
+ENQUEUE_JOB_SQL = text(
+    """
+    INSERT INTO clothing_job (clothing_id, stage_cd) VALUES (:clothing_id, :stage_cd)
+    """
+)
+
+COMPLETE_WITH_TAGS_SQL = text(
     """
     UPDATE clothing
-    SET cutout_image_url = :cutout_image_url, processing_status_cd = 'completed'
+    SET category_cd = :category_cd,
+        accessory_type_cd = :accessory_type_cd,
+        item_name = :item_name,
+        color_cd = :color_cd,
+        color_text = :color_text,
+        thickness_cd = :thickness_cd,
+        is_waterproof = :is_waterproof,
+        processing_status_cd = 'completed'
     WHERE clothing_id = :clothing_id
     """
+)
+
+DELETE_STYLES_SQL = text("DELETE FROM clothing_style WHERE clothing_id = :clothing_id")
+DELETE_SEASONS_SQL = text("DELETE FROM clothing_season WHERE clothing_id = :clothing_id")
+INSERT_STYLE_SQL = text(
+    "INSERT INTO clothing_style (clothing_id, style_cd) VALUES (:clothing_id, :style_cd)"
+)
+INSERT_SEASON_SQL = text(
+    "INSERT INTO clothing_season (clothing_id, season_cd) VALUES (:clothing_id, :season_cd)"
 )
 
 FAIL_CLOTHING_SQL = text(
@@ -92,6 +149,7 @@ async def claim_next(db: AsyncSession, stage_cd: str) -> ClaimedJob | None:
         clothing_job_id=row.clothing_job_id,
         clothing_id=row.clothing_id,
         origin_image_url=row.origin_image_url,
+        cutout_image_url=row.cutout_image_url,
     )
 
 
@@ -116,11 +174,36 @@ async def finish_job(
     )
 
 
-async def complete_clothing(db: AsyncSession, clothing_id: int, cutout_image_url: str) -> None:
+async def save_cutout(db: AsyncSession, clothing_id: int, cutout_image_url: str) -> None:
     await db.execute(
-        COMPLETE_CLOTHING_SQL,
-        {"clothing_id": clothing_id, "cutout_image_url": cutout_image_url},
+        SAVE_CUTOUT_SQL, {"clothing_id": clothing_id, "cutout_image_url": cutout_image_url}
     )
+
+
+async def enqueue_job(db: AsyncSession, clothing_id: int, stage_cd: str) -> None:
+    await db.execute(ENQUEUE_JOB_SQL, {"clothing_id": clothing_id, "stage_cd": stage_cd})
+
+
+async def complete_with_tags(db: AsyncSession, clothing_id: int, tags: ClothingTags) -> None:
+    await db.execute(
+        COMPLETE_WITH_TAGS_SQL,
+        {
+            "clothing_id": clothing_id,
+            "category_cd": tags.category_cd,
+            "accessory_type_cd": tags.accessory_type_cd,
+            "item_name": tags.item_name,
+            "color_cd": tags.color_cd,
+            "color_text": tags.color_text,
+            "thickness_cd": tags.thickness_cd,
+            "is_waterproof": tags.is_waterproof,
+        },
+    )
+    await db.execute(DELETE_STYLES_SQL, {"clothing_id": clothing_id})
+    await db.execute(DELETE_SEASONS_SQL, {"clothing_id": clothing_id})
+    for style_cd in tags.style_cds:
+        await db.execute(INSERT_STYLE_SQL, {"clothing_id": clothing_id, "style_cd": style_cd})
+    for season_cd in tags.season_cds:
+        await db.execute(INSERT_SEASON_SQL, {"clothing_id": clothing_id, "season_cd": season_cd})
 
 
 async def fail_clothing(db: AsyncSession, clothing_id: int) -> None:

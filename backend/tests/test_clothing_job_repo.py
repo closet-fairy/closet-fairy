@@ -34,14 +34,22 @@ class _FakeDb:
 async def test_claim_next_marks_started_and_returns_job():
     db = _FakeDb(
         [
-            _Result(_Row(clothing_job_id=31, clothing_id=21, origin_image_url="clothing/3/a.webp")),
+            _Result(
+                _Row(
+                    clothing_job_id=31,
+                    clothing_id=21,
+                    origin_image_url="clothing/3/a.webp",
+                    cutout_image_url="clothing/3/a_cutout.webp",
+                )
+            ),
             _Result(),
         ]
     )
 
-    job = await job_repo.claim_next(db, "bg_removal")
+    job = await job_repo.claim_next(db, "auto_tagging")
 
-    assert job == job_repo.ClaimedJob(31, 21, "clothing/3/a.webp")
+    assert job == job_repo.ClaimedJob(31, 21, "clothing/3/a.webp", "clothing/3/a_cutout.webp")
+    assert db.statements[0] == (job_repo.SELECT_NEXT_JOB_SQL, {"stage_cd": "auto_tagging"})
     assert db.statements[1] == (job_repo.MARK_STARTED_SQL, {"clothing_job_id": 31})
 
 
@@ -63,3 +71,82 @@ async def test_requeue_interrupted_returns_affected_rows():
     db = _FakeDb([_Result(rowcount=2)])
 
     assert await job_repo.requeue_interrupted(db, "bg_removal") == 2
+
+
+async def test_save_cutout_keeps_clothing_processing():
+    db = _FakeDb([_Result()])
+
+    await job_repo.save_cutout(db, 21, "clothing/3/a_cutout.webp")
+
+    stmt, params = db.statements[0]
+    assert "processing_status_cd" not in str(stmt)
+    assert params == {"clothing_id": 21, "cutout_image_url": "clothing/3/a_cutout.webp"}
+
+
+async def test_enqueue_job_inserts_waiting_job():
+    db = _FakeDb([_Result()])
+
+    await job_repo.enqueue_job(db, 21, "auto_tagging")
+
+    assert db.statements == [
+        (job_repo.ENQUEUE_JOB_SQL, {"clothing_id": 21, "stage_cd": "auto_tagging"})
+    ]
+
+
+async def test_complete_with_tags_replaces_styles_and_seasons():
+    db = _FakeDb([_Result() for _ in range(7)])
+    tags = job_repo.ClothingTags(
+        category_cd="outer",
+        item_name="네이비 울 코트",
+        color_cd="navy",
+        color_text="네이비",
+        style_cds=("classic", "minimal"),
+        season_cds=("fall", "winter"),
+        thickness_cd="thick",
+        is_waterproof=False,
+    )
+
+    await job_repo.complete_with_tags(db, 21, tags)
+
+    stmt, params = db.statements[0]
+    assert stmt is job_repo.COMPLETE_WITH_TAGS_SQL
+    assert params == {
+        "clothing_id": 21,
+        "category_cd": "outer",
+        "accessory_type_cd": None,
+        "item_name": "네이비 울 코트",
+        "color_cd": "navy",
+        "color_text": "네이비",
+        "thickness_cd": "thick",
+        "is_waterproof": False,
+    }
+    assert db.statements[1:] == [
+        (job_repo.DELETE_STYLES_SQL, {"clothing_id": 21}),
+        (job_repo.DELETE_SEASONS_SQL, {"clothing_id": 21}),
+        (job_repo.INSERT_STYLE_SQL, {"clothing_id": 21, "style_cd": "classic"}),
+        (job_repo.INSERT_STYLE_SQL, {"clothing_id": 21, "style_cd": "minimal"}),
+        (job_repo.INSERT_SEASON_SQL, {"clothing_id": 21, "season_cd": "fall"}),
+        (job_repo.INSERT_SEASON_SQL, {"clothing_id": 21, "season_cd": "winter"}),
+    ]
+
+
+async def test_complete_with_empty_tags_still_completes():
+    db = _FakeDb([_Result() for _ in range(3)])
+
+    await job_repo.complete_with_tags(db, 21, job_repo.ClothingTags())
+
+    assert db.statements[0][0] is job_repo.COMPLETE_WITH_TAGS_SQL
+    assert len(db.statements) == 3
+
+
+@pytest.mark.parametrize(
+    ("tags", "expected"),
+    [
+        (job_repo.ClothingTags(), True),
+        (job_repo.ClothingTags(style_cds=[], season_cds=[]), True),
+        (job_repo.ClothingTags(is_waterproof=False), False),
+        (job_repo.ClothingTags(season_cds=("winter",)), False),
+    ],
+)
+def test_clothing_tags_is_empty(tags, expected):
+    assert tags.is_empty is expected

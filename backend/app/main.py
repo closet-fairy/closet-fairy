@@ -10,6 +10,7 @@ from app.core.errors import register_exception_handlers
 from app.core.logging import RequestIdMiddleware, setup_logging
 from app.schemas.error import ErrorResponse
 from app.services.llm import llm_lifespan
+from app.workers.auto_tagging_lifespan import auto_tagging_lifespan
 from app.workers.bg_removal_lifespan import bg_removal_lifespan
 
 setup_logging()
@@ -17,7 +18,7 @@ setup_logging()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    async with llm_lifespan(app), bg_removal_lifespan(app):
+    async with llm_lifespan(app), auto_tagging_lifespan(app), bg_removal_lifespan(app):
         yield
 
 
