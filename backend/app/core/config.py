@@ -74,6 +74,7 @@ class Settings(BaseSettings):
     # 끄면 경계가 부드러운 대신 어두운 옷이나 근접 사진에서 옷 안쪽까지 반투명하게 남는다.
     # 테스트 이미지 34장 중 11장이 전경의 30% 이상 반투명이라 켜 둔다 (프로토타입 README 참고)
     BG_REMOVAL_POST_PROCESS_MASK: bool = True
+    BG_REMOVAL_MAX_SIDE: int = 2048
     BG_REMOVAL_CONCURRENCY: int = 1
     BG_REMOVAL_POLL_INTERVAL_S: float = 2.0
 

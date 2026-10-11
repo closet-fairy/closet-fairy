@@ -23,7 +23,4 @@ async def upload_clothing(
 
     형식·용량이 맞지 않는 사진은 제외하고 rejected에 사유를 담는다. 모두 제외돼도 202다.
     """
-    result = await upload_service.upload_clothing(db, storage, member_id, files)
-    if result.accepted and worker is not None:
-        worker.notify()
-    return result
+    return await upload_service.upload_clothing(db, storage, member_id, files, worker)

@@ -2,7 +2,7 @@
 
 backend/ 폴더에서 실행한다:
     python scripts/bg_removal_smoke.py <이미지 또는 폴더> [<이미지 또는 폴더> ...]
-결과 PNG는 smoke-output/에 저장된다. 최초 실행 시 모델(약 170MB)을 내려받는다.
+결과 WEBP는 smoke-output/에 저장된다. 최초 실행 시 모델(약 170MB)을 내려받는다.
 """
 
 from __future__ import annotations
@@ -43,7 +43,12 @@ def main() -> None:
 
     settings = get_settings()
     started = time.perf_counter()
-    remover = BackgroundRemover(settings.BG_REMOVAL_MODEL, settings.BG_REMOVAL_POST_PROCESS_MASK)
+    remover = BackgroundRemover(
+        settings.BG_REMOVAL_MODEL,
+        settings.BG_REMOVAL_POST_PROCESS_MASK,
+        settings.BG_REMOVAL_MAX_SIDE,
+        settings.CLOTHING_IMAGE_WEBP_QUALITY,
+    )
     remover.warmup()
     print(
         f"모델 {settings.BG_REMOVAL_MODEL}"
@@ -56,7 +61,9 @@ def main() -> None:
     for path in images:
         data = path.read_bytes()
         with Image.open(io.BytesIO(data)) as src:
-            expected_size = ImageOps.exif_transpose(src).size
+            upright = ImageOps.exif_transpose(src)
+            upright.thumbnail((settings.BG_REMOVAL_MAX_SIDE, settings.BG_REMOVAL_MAX_SIDE))
+            expected_size = upright.size
 
         t0 = time.perf_counter()
         cutout = remover.remove(data)
@@ -73,7 +80,7 @@ def main() -> None:
                 f" → {ms:.0f}ms, {out.mode} {out.width}x{out.height},"
                 f" 알파 {low}~{high}, 투명 {transparent:.0%} {'OK' if ok else 'MISMATCH'}"
             )
-        (OUTPUT_DIR / f"{path.parent.name}-{path.stem}.png").write_bytes(cutout)
+        (OUTPUT_DIR / f"{path.parent.name}-{path.stem}.webp").write_bytes(cutout)
 
     print(
         f"\n{len(elapsed)}장 평균 {statistics.mean(elapsed):.0f}ms"

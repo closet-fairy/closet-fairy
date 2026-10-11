@@ -19,8 +19,8 @@ def test_enabled_lifespan_loads_model_and_runs_worker_until_shutdown(monkeypatch
     events = []
 
     class FakeRemover:
-        def __init__(self, model_name, post_process_mask):
-            events.append(("load", model_name, post_process_mask))
+        def __init__(self, model_name, post_process_mask, max_side, webp_quality):
+            events.append(("load", model_name, post_process_mask, max_side, webp_quality))
 
         def warmup(self):
             events.append("warmup")
@@ -44,7 +44,7 @@ def test_enabled_lifespan_loads_model_and_runs_worker_until_shutdown(monkeypatch
         assert "stop" not in events
 
     assert events == [
-        ("load", "isnet-general-use", True),
+        ("load", "isnet-general-use", True, 2048, 90),
         "warmup",
         ("worker", 1, 2.0),
         "start",

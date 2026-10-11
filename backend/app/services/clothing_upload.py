@@ -2,7 +2,8 @@
 
 사진 읽기·정규화는 CPU와 메모리를 많이 써서 프로세스 전체가 공유하는 스레드 풀에서 돌린다.
 요청이 여러 개 동시에 들어와도 한 번에 처리하는 사진 수는 풀 크기를 넘지 않는다.
-정상 사진만 저장하고 옷·배경 제거 작업을 한 트랜잭션으로 만든다. 처리는 기다리지 않는다.
+정상 사진만 저장하고 옷·배경 제거 작업을 한 트랜잭션으로 만든 뒤 워커를 깨운다.
+처리는 기다리지 않는다.
 DB 저장이 실패하면 이미 저장한 이미지를 지운다.
 """
 
@@ -30,6 +31,10 @@ logger = logging.getLogger(__name__)
 class UploadFileLike(Protocol):
     filename: str | None
     file: BinaryIO
+
+
+class JobNotifier(Protocol):
+    def notify(self) -> None: ...
 
 
 class NoUploadFilesError(ValidationError):
@@ -69,6 +74,7 @@ async def upload_clothing(
     storage: ImageStorage,
     member_id: int,
     files: Sequence[UploadFileLike],
+    worker: JobNotifier | None = None,
 ) -> ClothingUploadResult:
     settings = get_settings()
     if not files:
@@ -115,6 +121,8 @@ async def upload_clothing(
         await _delete_quietly(storage, [image.key for image in saved])
         raise
 
+    if clothing_ids and worker is not None:
+        worker.notify()
     return ClothingUploadResult(
         accepted=[
             UploadedClothing(

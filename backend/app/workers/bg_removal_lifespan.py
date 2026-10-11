@@ -25,7 +25,11 @@ async def bg_removal_lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     # 모델 로드(최초 1회는 다운로드)와 워밍업이 수 초 걸리는 동기 작업이라 스레드에서 돌린다
     remover = await asyncio.to_thread(
-        BackgroundRemover, settings.BG_REMOVAL_MODEL, settings.BG_REMOVAL_POST_PROCESS_MASK
+        BackgroundRemover,
+        settings.BG_REMOVAL_MODEL,
+        settings.BG_REMOVAL_POST_PROCESS_MASK,
+        settings.BG_REMOVAL_MAX_SIDE,
+        settings.CLOTHING_IMAGE_WEBP_QUALITY,
     )
     await asyncio.to_thread(remover.warmup)
     worker = BgRemovalWorker(

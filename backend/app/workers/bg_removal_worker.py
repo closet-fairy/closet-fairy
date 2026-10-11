@@ -31,9 +31,9 @@ class Remover(Protocol):
 
 
 def cutout_key_for(origin_key: str) -> str:
-    """원본 키 옆에 결과를 둔다. clothing/1/abc.webp → clothing/1/abc_cutout.png"""
+    """원본 키 옆에 결과를 둔다. clothing/1/abc.webp → clothing/1/abc_cutout.webp"""
     stem, _ = posixpath.splitext(origin_key)
-    return f"{stem}_cutout.png"
+    return f"{stem}_cutout.webp"
 
 
 class BgRemovalWorker:
@@ -165,6 +165,5 @@ class BgRemovalWorker:
             # DB에 실패조차 기록하지 못하면 job은 처리 중으로 남는다.
             # 서버를 재시작할 때 requeue_interrupted가 대기열로 되돌린다
             logger.exception(
-                "배경 제거 실패를 기록하지 못함",
-                extra={"event": Event.BG_REMOVAL_FAIL, "clothing_id": job.clothing_id},
+                "배경 제거 실패를 기록하지 못함", extra={"clothing_id": job.clothing_id}
             )

@@ -20,7 +20,7 @@ def client(monkeypatch):
     calls = []
     outcome = {"error": None}
 
-    async def fake_upload_clothing(db, storage, member_id, files):
+    async def fake_upload_clothing(db, storage, member_id, files, worker=None):
         calls.append(
             (storage, member_id, [(f.filename, await f.read(), f.content_type) for f in files])
         )
@@ -134,29 +134,21 @@ def test_missing_media_file_is_not_found_in_error_format(client):
     assert res.json()["code"] == "NOT_FOUND"
 
 
-class _FakeWorker:
-    def __init__(self):
-        self.notified = 0
+def test_upload_passes_worker_to_service(client, monkeypatch):
+    worker = object()
+    received = []
 
-    def notify(self):
-        self.notified += 1
+    async def upload_clothing(db, storage, member_id, files, worker=None):
+        received.append(worker)
+        return ClothingUploadResult(accepted=[], rejected=[])
 
-
-@pytest.mark.parametrize(("accepted", "expected"), [(True, 1), (False, 0)])
-def test_upload_wakes_worker_only_when_created(client, monkeypatch, accepted, expected):
-    worker = _FakeWorker()
+    monkeypatch.setattr(clothing_upload, "upload_clothing", upload_clothing)
     app.dependency_overrides[get_bg_removal_worker] = lambda: worker
-    if not accepted:
-
-        async def all_rejected(db, storage, member_id, files):
-            return ClothingUploadResult(accepted=[], rejected=[])
-
-        monkeypatch.setattr(clothing_upload, "upload_clothing", all_rejected)
 
     res = client.post("/clothing", files=[("files", ("a.jpg", b"x", "image/jpeg"))])
 
     assert res.status_code == 202
-    assert worker.notified == expected
+    assert received == [worker]
 
 
 def test_upload_works_without_worker(client):

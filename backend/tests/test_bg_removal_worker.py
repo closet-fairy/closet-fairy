@@ -12,7 +12,7 @@ from app.workers import bg_removal_worker
 from app.workers.bg_removal_worker import FAILURE_REASON, BgRemovalWorker, cutout_key_for
 
 ORIGIN_KEY = "clothing/7/abc.webp"
-CUTOUT_KEY = "clothing/7/abc_cutout.png"
+CUTOUT_KEY = "clothing/7/abc_cutout.webp"
 
 
 class _FakeDb:
@@ -40,7 +40,7 @@ class _FakeRemover:
         self.thread_names.append(threading.current_thread().name)
         if self._error:
             raise self._error
-        return b"cutout-png"
+        return b"cutout-webp"
 
 
 @pytest.fixture
@@ -117,8 +117,8 @@ async def test_run_once_returns_false_when_queue_is_empty(queue, storage):
 @pytest.mark.parametrize(
     ("origin", "cutout"),
     [
-        ("clothing/7/abc.webp", "clothing/7/abc_cutout.png"),
-        ("dev-seed/01.png", "dev-seed/01_cutout.png"),
+        ("clothing/7/abc.webp", "clothing/7/abc_cutout.webp"),
+        ("dev-seed/01.png", "dev-seed/01_cutout.webp"),
     ],
 )
 def test_cutout_key_sits_next_to_origin_key(origin, cutout):
@@ -132,7 +132,7 @@ async def test_success_saves_cutout_next_to_origin_and_completes(queue, storage,
     assert await _worker(queue, storage, remover).run_once() is True
 
     assert remover.inputs == [b"origin-webp"]
-    assert (tmp_path / CUTOUT_KEY).read_bytes() == b"cutout-png"
+    assert (tmp_path / CUTOUT_KEY).read_bytes() == b"cutout-webp"
     assert queue.completed == [(21, CUTOUT_KEY)]
     assert queue.finished == [(31, None)]
     assert queue.failed == []
