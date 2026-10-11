@@ -1,0 +1,169 @@
+{
+  "type": "object",
+  "title": "ClothingTaggingOutput",
+  "properties": {
+    "category": {
+      "anyOf": [
+        {
+          "type": "string",
+          "enum": [
+            "outer",
+            "top",
+            "bottom",
+            "shoes",
+            "socks",
+            "accessories"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Category"
+    },
+    "accessory_type": {
+      "anyOf": [
+        {
+          "type": "string",
+          "enum": [
+            "hat",
+            "bag",
+            "belt",
+            "watch",
+            "scarf",
+            "eyewear",
+            "jewelry",
+            "etc"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Accessory Type"
+    },
+    "item_name": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Item Name"
+    },
+    "color": {
+      "anyOf": [
+        {
+          "type": "string",
+          "enum": [
+            "black",
+            "white",
+            "gray",
+            "beige",
+            "brown",
+            "navy",
+            "blue",
+            "sky_blue",
+            "green",
+            "khaki",
+            "yellow",
+            "orange",
+            "red",
+            "pink"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Color"
+    },
+    "color_text": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Color Text"
+    },
+    "styles": {
+      "type": "array",
+      "title": "Styles",
+      "items": {
+        "type": "string",
+        "enum": [
+          "minimal",
+          "casual",
+          "street",
+          "classic",
+          "formal",
+          "sporty",
+          "romantic",
+          "vintage",
+          "bohemian",
+          "preppy",
+          "chic",
+          "unique",
+          "feminine"
+        ]
+      }
+    },
+    "seasons": {
+      "type": "array",
+      "title": "Seasons",
+      "items": {
+        "type": "string",
+        "enum": [
+          "spring",
+          "summer",
+          "fall",
+          "winter"
+        ]
+      }
+    },
+    "thickness": {
+      "anyOf": [
+        {
+          "type": "string",
+          "enum": [
+            "thin",
+            "medium",
+            "thick"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Thickness"
+    },
+    "is_waterproof": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Is Waterproof"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "category",
+    "accessory_type",
+    "item_name",
+    "color",
+    "color_text",
+    "styles",
+    "seasons",
+    "thickness",
+    "is_waterproof"
+  ]
+}

@@ -74,6 +74,12 @@ async def test_get_completed_clothing_merges_tags_by_clothing_id():
     assert by_id[2].is_waterproof is None
 
 
+def test_completed_clothing_without_category_is_not_a_candidate():
+    sql = " ".join(str(clothing_repo.CLOTHING_SQL).split())
+
+    assert "AND category_cd IS NOT NULL" in sql
+
+
 class _RecordingDb:
     def __init__(self, rows):
         self._rows = rows

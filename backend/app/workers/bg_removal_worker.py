@@ -1,9 +1,7 @@
 """배경 제거 워커 (#72).
 
-앱 lifespan과 함께 뜨는 asyncio 태스크다. clothing_job을 큐로 삼아 하나씩 꺼내 처리하므로
-서버가 재시작돼도 작업이 사라지지 않는다(NFR-REG-09).
-BackgroundTasks는 재시작하면 사라져서 쓰지 않는다.
 추론은 전용 스레드 풀에서 돌려 이벤트 루프(다른 API 응답)를 막지 않는다.
+누끼를 저장하면 같은 트랜잭션에서 자동 태깅 작업을 등록한다(FR-REG-11, #73).
 """
 
 import asyncio
@@ -17,8 +15,10 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.logging import Event
 from app.repositories import clothing_job as job_repo
-from app.repositories.clothing_job import STAGE_BG_REMOVAL, ClaimedJob
+from app.repositories.clothing_job import STAGE_AUTO_TAGGING, STAGE_BG_REMOVAL, ClaimedJob
+from app.services.clothing_upload import JobNotifier
 from app.services.storage import ImageStorage
+from app.workers.clothing_job_worker import ClothingJobWorker
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +36,11 @@ def cutout_key_for(origin_key: str) -> str:
     return f"{stem}_cutout.webp"
 
 
-class BgRemovalWorker:
+class BgRemovalWorker(ClothingJobWorker):
+    stage_cd = STAGE_BG_REMOVAL
+    label = "배경 제거"
+    recovered_event = Event.BG_REMOVAL_RECOVERED
+
     def __init__(
         self,
         remover: Remover,
@@ -44,68 +48,19 @@ class BgRemovalWorker:
         session_factory: async_sessionmaker[AsyncSession],
         concurrency: int = 1,
         poll_interval_s: float = 2.0,
+        tagging_worker: JobNotifier | None = None,
     ) -> None:
+        super().__init__(session_factory, concurrency, poll_interval_s)
         self._remover = remover
         self._storage = storage
-        self._session_factory = session_factory
-        self._concurrency = concurrency
-        self._poll_interval_s = poll_interval_s
-        self._wakeup = asyncio.Event()
+        self._tagging_worker = tagging_worker
         self._executor = ThreadPoolExecutor(
             max_workers=concurrency, thread_name_prefix="bg-removal"
         )
-        self._tasks: list[asyncio.Task[None]] = []
-
-    async def start(self) -> None:
-        async with self._session_factory() as db:
-            requeued = await job_repo.requeue_interrupted(db, STAGE_BG_REMOVAL)
-            await db.commit()
-        if requeued:
-            logger.info(
-                "중단된 배경 제거 작업을 다시 대기열에 넣음",
-                extra={"event": Event.BG_REMOVAL_RECOVERED, "count": requeued},
-            )
-        self._tasks = [
-            asyncio.create_task(self._run(), name=f"bg-removal-{i}")
-            for i in range(self._concurrency)
-        ]
 
     async def stop(self) -> None:
-        for task in self._tasks:
-            task.cancel()
-        await asyncio.gather(*self._tasks, return_exceptions=True)
+        await super().stop()
         self._executor.shutdown(wait=False, cancel_futures=True)
-
-    def notify(self) -> None:
-        """새 작업이 들어왔음을 알린다. 없어도 poll_interval_s마다 큐를 확인한다."""
-        self._wakeup.set()
-
-    async def _run(self) -> None:
-        while True:
-            try:
-                handled = await self.run_once()
-            except Exception:
-                logger.exception("배경 제거 워커 루프 오류")
-                handled = False
-            if not handled:
-                await self._wait_for_work()
-
-    async def _wait_for_work(self) -> None:
-        try:
-            await asyncio.wait_for(self._wakeup.wait(), timeout=self._poll_interval_s)
-        except TimeoutError:
-            pass
-        self._wakeup.clear()
-
-    async def run_once(self) -> bool:
-        """대기 중인 작업을 하나 처리한다. 처리할 작업이 없으면 False."""
-        async with self._session_factory() as db:
-            job = await job_repo.claim_next(db, STAGE_BG_REMOVAL)
-            await db.commit()
-        if job is None:
-            return False
-        await self._process(job)
-        return True
 
     async def _process(self, job: ClaimedJob) -> None:
         started = time.perf_counter()
@@ -126,6 +81,8 @@ class BgRemovalWorker:
         if not is_completed:
             await self._storage.delete(cutout_key)
             return
+        if self._tagging_worker is not None:
+            self._tagging_worker.notify()
         logger.info(
             "배경 제거 완료",
             extra={
@@ -150,8 +107,9 @@ class BgRemovalWorker:
                 await job_repo.finish_job(db, job.clothing_job_id)
                 await db.commit()
                 return False
-            await job_repo.complete_clothing(db, job.clothing_id, cutout_key)
+            await job_repo.save_cutout(db, job.clothing_id, cutout_key)
             await job_repo.finish_job(db, job.clothing_job_id)
+            await job_repo.enqueue_job(db, job.clothing_id, STAGE_AUTO_TAGGING)
             await db.commit()
         return True
 

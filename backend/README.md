@@ -26,8 +26,9 @@ FastAPI + MySQL 8.0 (최소 8.0.19). Python 3.12.
 5. **마이그레이션** — `bash scripts/migrate.sh`
 6. **시드** — `bash scripts/seed.sh`
 7. **서버 실행** — `uvicorn app.main:app --reload` → http://localhost:8000/docs
-   - 서버가 켜질 때 배경 제거 대기열을 DB에서 조회하므로 4단계의 DB가 떠 있어야 한다
+   - 서버가 켜질 때 배경 제거·자동 태깅 대기열을 DB에서 조회하므로 4단계의 DB가 떠 있어야 한다
    - 처음 켤 때 배경 제거 모델(약 170MB)을 내려받느라 `Application startup complete`까지 수 분이 걸릴 수 있다. 다음부터는 몇 초다
+   - 자동 태깅은 `.env`의 `ANTHROPIC_API_KEY`로 이미지 분석 모델을 부른다. 키가 없으면 옷 속성이 빈 채로 완료된다
 
 `/health`가 200을 반환하면 정상이다.
 

@@ -26,8 +26,10 @@ def test_enabled_lifespan_loads_model_and_runs_worker_until_shutdown(monkeypatch
             events.append("warmup")
 
     class FakeWorker:
-        def __init__(self, remover, storage, session_factory, concurrency, poll_interval_s):
-            events.append(("worker", concurrency, poll_interval_s))
+        def __init__(
+            self, remover, storage, session_factory, concurrency, poll_interval_s, tagging_worker
+        ):
+            events.append(("worker", concurrency, poll_interval_s, tagging_worker))
 
         async def start(self):
             events.append("start")
@@ -46,7 +48,7 @@ def test_enabled_lifespan_loads_model_and_runs_worker_until_shutdown(monkeypatch
     assert events == [
         ("load", "isnet-general-use", True, 2048, 90),
         "warmup",
-        ("worker", 1, 2.0),
+        ("worker", 1, 2.0, None),
         "start",
         "stop",
     ]

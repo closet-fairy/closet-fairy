@@ -35,6 +35,7 @@ CLOTHING_SQL = text(
            thickness_cd, is_waterproof, origin_image_url, cutout_image_url
     FROM clothing
     WHERE member_id = :member_id AND processing_status_cd = 'completed'
+      AND category_cd IS NOT NULL
     """
 )
 

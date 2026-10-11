@@ -130,3 +130,6 @@ class Event:
     BG_REMOVAL_DONE = "bg_removal.done"
     BG_REMOVAL_FAIL = "bg_removal.fail"
     BG_REMOVAL_RECOVERED = "bg_removal.recovered"
+    AUTO_TAGGING_DONE = "auto_tagging.done"
+    AUTO_TAGGING_FALLBACK = "auto_tagging.fallback"
+    AUTO_TAGGING_RECOVERED = "auto_tagging.recovered"

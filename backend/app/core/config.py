@@ -78,6 +78,13 @@ class Settings(BaseSettings):
     BG_REMOVAL_CONCURRENCY: int = 1
     BG_REMOVAL_POLL_INTERVAL_S: float = 2.0
 
+    AUTO_TAGGING_ENABLED: bool = True
+    AUTO_TAGGING_MODEL: str = "claude-haiku-4-5"
+    AUTO_TAGGING_IMAGE_MAX_SIDE: int = 1024
+    AUTO_TAGGING_TIMEOUT_S: float = 60.0
+    AUTO_TAGGING_CONCURRENCY: int = 2
+    AUTO_TAGGING_POLL_INTERVAL_S: float = 2.0
+
     LLM_DEFAULT_MODEL: str = "claude-sonnet-5"
     # 용도(call_name)별 모델 덮어쓰기. .env에 JSON으로 적는다.
     # 예: LLM_MODEL_OVERRIDES={"image_tagging": "claude-haiku-4-5"}
