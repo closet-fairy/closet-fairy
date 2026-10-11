@@ -286,3 +286,43 @@ async def test_high_resolution_photo_is_rejected_with_resolution_message(inserte
     assert result.rejected[0].message == (
         "사진 해상도가 너무 높습니다. 1만 화소 이하로 찍은 사진을 올려 주세요."
     )
+
+
+class _Worker:
+    def __init__(self):
+        self.notified = 0
+
+    def notify(self):
+        self.notified += 1
+
+
+async def test_worker_is_woken_after_clothing_is_committed(inserted):
+    db, worker = _FakeDb(), _Worker()
+
+    await upload.upload_clothing(db, _Storage(), 7, [_File("a.jpg", _image_bytes())], worker)
+
+    assert db.events == ["begin", "commit"]
+    assert worker.notified == 1
+
+
+async def test_worker_is_not_woken_when_every_file_is_rejected(inserted):
+    worker = _Worker()
+
+    await upload.upload_clothing(_FakeDb(), _Storage(), 7, [_File("x.txt", b"hello")], worker)
+
+    assert worker.notified == 0
+
+
+async def test_worker_is_not_woken_when_db_fails(monkeypatch):
+    async def insert_uploaded_clothing(db, member_id, origin_image_url):
+        raise RuntimeError("db down")
+
+    monkeypatch.setattr(upload.clothing_repo, "insert_uploaded_clothing", insert_uploaded_clothing)
+    worker = _Worker()
+
+    with pytest.raises(RuntimeError):
+        await upload.upload_clothing(
+            _FakeDb(), _Storage(), 7, [_File("a.jpg", _image_bytes())], worker
+        )
+
+    assert worker.notified == 0

@@ -11,6 +11,8 @@ from typing import Any
 from sqlalchemy import bindparam, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.repositories.clothing_job import STAGE_BG_REMOVAL
+
 
 @dataclass
 class ClothingCandidate:
@@ -170,7 +172,7 @@ INSERT_UPLOADED_CLOTHING_SQL = text(
 INSERT_BG_REMOVAL_JOB_SQL = text(
     """
     INSERT INTO clothing_job (clothing_id, stage_cd)
-    VALUES (:clothing_id, 'bg_removal')
+    VALUES (:clothing_id, :stage_cd)
     """
 )
 
@@ -182,7 +184,9 @@ async def insert_uploaded_clothing(db: AsyncSession, member_id: int, origin_imag
         {"member_id": member_id, "origin_image_url": origin_image_url},
     )
     clothing_id = int(result.lastrowid)
-    await db.execute(INSERT_BG_REMOVAL_JOB_SQL, {"clothing_id": clothing_id})
+    await db.execute(
+        INSERT_BG_REMOVAL_JOB_SQL, {"clothing_id": clothing_id, "stage_cd": STAGE_BG_REMOVAL}
+    )
     return clothing_id
 
 

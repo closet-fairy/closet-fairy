@@ -2,8 +2,11 @@
 
 from datetime import datetime
 
+from fastapi import Request
+
 from app.core.config import get_settings
 from app.services.weather.base_time import KST
+from app.workers.bg_removal_worker import BgRemovalWorker
 
 
 def get_current_member_id() -> int:
@@ -14,3 +17,8 @@ def get_current_member_id() -> int:
 def get_now() -> datetime:
     """현재 시각(KST). 테스트에서 시각을 고정하려고 함수로 뺐다."""
     return datetime.now(KST)
+
+
+def get_bg_removal_worker(request: Request) -> BgRemovalWorker | None:
+    """배경 제거를 끈 환경(테스트 등)에서는 워커가 없어 None이다."""
+    return getattr(request.app.state, "bg_removal_worker", None)

@@ -3,7 +3,7 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from app.api.deps import get_current_member_id
+from app.api.deps import get_bg_removal_worker, get_current_member_id
 from app.core.config import get_settings
 from app.core.db import get_db
 from app.main import app
@@ -27,7 +27,7 @@ def client(monkeypatch):
     calls = []
     outcome = {"error": None}
 
-    async def fake_upload_clothing(db, storage, member_id, files):
+    async def fake_upload_clothing(db, storage, member_id, files, worker=None):
         calls.append(
             (storage, member_id, [(f.filename, await f.read(), f.content_type) for f in files])
         )
@@ -139,6 +139,29 @@ def test_missing_media_file_is_not_found_in_error_format(client):
 
     assert res.status_code == 404
     assert res.json()["code"] == "NOT_FOUND"
+
+
+def test_upload_passes_worker_to_service(client, monkeypatch):
+    worker = object()
+    received = []
+
+    async def upload_clothing(db, storage, member_id, files, worker=None):
+        received.append(worker)
+        return ClothingUploadResult(accepted=[], rejected=[])
+
+    monkeypatch.setattr(clothing_upload, "upload_clothing", upload_clothing)
+    app.dependency_overrides[get_bg_removal_worker] = lambda: worker
+
+    res = client.post("/clothing", files=[("files", ("a.jpg", b"x", "image/jpeg"))])
+
+    assert res.status_code == 202
+    assert received == [worker]
+
+
+def test_upload_works_without_worker(client):
+    res = client.post("/clothing", files=[("files", ("a.jpg", b"x", "image/jpeg"))])
+
+    assert res.status_code == 202
 
 
 @pytest.fixture

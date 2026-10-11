@@ -16,6 +16,7 @@ FastAPI + MySQL 8.0 (최소 8.0.19). Python 3.12.
    source .venv/Scripts/activate      # Mac/Linux: source .venv/bin/activate
 ```
 2. **패키지 설치** — `pip install -r requirements.txt`
+   - 배경 제거용 rembg가 포함돼 있어 처음 설치에 수 분이 걸린다
 3. **환경 변수** — `cp .env.example .env` (`.env`는 커밋 금지)
    - 로컬 개발은 기본값 그대로 동작한다. 주석(`#`) 처리된 항목은 값을 바꿀 때만 주석을 풀고 채운다.
    - 값을 비운 채로 주석만 풀면 서버가 기동되지 않는다.
@@ -25,6 +26,8 @@ FastAPI + MySQL 8.0 (최소 8.0.19). Python 3.12.
 5. **마이그레이션** — `bash scripts/migrate.sh`
 6. **시드** — `bash scripts/seed.sh`
 7. **서버 실행** — `uvicorn app.main:app --reload` → http://localhost:8000/docs
+   - 서버가 켜질 때 배경 제거 대기열을 DB에서 조회하므로 4단계의 DB가 떠 있어야 한다
+   - 처음 켤 때 배경 제거 모델(약 170MB)을 내려받느라 `Application startup complete`까지 수 분이 걸릴 수 있다. 다음부터는 몇 초다
 
 `/health`가 200을 반환하면 정상이다.
 
