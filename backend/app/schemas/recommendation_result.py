@@ -4,35 +4,18 @@ from typing import Literal
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
+from app.schemas.codes import AccessoryTypeCd, CategoryCd, SeasonCd, StyleCd
 from app.schemas.recommendation_session import TpoCd
 from app.schemas.weather import WeatherConditionCd
 
 GenerationStatusCd = Literal["processing", "completed", "failed"]
 SessionStatusCd = Literal["active", "completed", "canceled", "abandoned"]
-SeasonCd = Literal["spring", "summer", "fall", "winter"]
-SlotCd = Literal["outer", "top", "bottom", "shoes", "socks", "accessories"]
-AccessoryTypeCd = Literal["hat", "bag", "belt", "watch", "scarf", "eyewear", "jewelry", "etc"]
 ItemSourceCd = Literal["owned", "essential"]
 OutfitTypeCd = Literal["preferred", "exploratory"]
-StyleCd = Literal[
-    "minimal",
-    "casual",
-    "street",
-    "classic",
-    "formal",
-    "sporty",
-    "romantic",
-    "vintage",
-    "bohemian",
-    "preppy",
-    "chic",
-    "unique",
-    "feminine",
-]
 
 
 class OutfitItemResult(BaseModel):
-    slot_cd: SlotCd = Field(
+    slot_cd: CategoryCd = Field(
         description=(
             "착용 슬롯. 아이템은 outer → top → bottom → shoes → socks → accessories 순으로 온다."
         )
@@ -160,7 +143,7 @@ class RecommendationResult(BaseModel):
                                     "accessory_type_cd": None,
                                     "item_source_cd": "owned",
                                     "item_name": "네이비 블레이저",
-                                    "image_url": "https://example.com/clothing/1042/cutout.png",
+                                    "image_url": "/media/clothing/7/1042_cutout.png",
                                     "style_cds": ["minimal", "classic"],
                                 },
                                 {
@@ -168,7 +151,7 @@ class RecommendationResult(BaseModel):
                                     "accessory_type_cd": None,
                                     "item_source_cd": "owned",
                                     "item_name": "화이트 옥스퍼드 셔츠",
-                                    "image_url": "https://example.com/clothing/2001/cutout.png",
+                                    "image_url": "/media/clothing/7/2001_cutout.png",
                                     "style_cds": ["classic", "preppy"],
                                 },
                                 {
@@ -176,7 +159,7 @@ class RecommendationResult(BaseModel):
                                     "accessory_type_cd": None,
                                     "item_source_cd": "owned",
                                     "item_name": "블랙 슬랙스",
-                                    "image_url": "https://example.com/clothing/3001/cutout.png",
+                                    "image_url": "/media/clothing/7/3001_cutout.png",
                                     "style_cds": ["minimal"],
                                 },
                                 {
@@ -184,7 +167,7 @@ class RecommendationResult(BaseModel):
                                     "accessory_type_cd": None,
                                     "item_source_cd": "essential",
                                     "item_name": "블랙 로퍼",
-                                    "image_url": "https://example.com/essential/21.png",
+                                    "image_url": "/media/essential/21.png",
                                     "style_cds": ["classic"],
                                 },
                             ],
