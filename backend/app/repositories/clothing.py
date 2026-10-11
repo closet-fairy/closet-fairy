@@ -11,6 +11,7 @@ from typing import Any
 from sqlalchemy import bindparam, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.repositories import clothing_job as job_repo
 from app.repositories.clothing_job import STAGE_BG_REMOVAL
 
 
@@ -60,6 +61,9 @@ SEASONS_SQL = text(
 
 async def get_completed_clothing(db: AsyncSession, member_id: int) -> list[ClothingCandidate]:
     """완료 상태 옷을 스타일·계절 태그와 함께 반환한다.
+
+    분류(category_cd)가 비어 있는 옷은 뺀다. 자동 태깅이 실패하면 분류 없이 완료되는데(FR-REG-20),
+    이런 옷이 후보에 들어가면 추천 프롬프트 조립이 코드값 검사에서 실패한다.
 
     태그를 같은 쿼리에서 LEFT JOIN하면 옷 한 벌당 행 수가 (스타일 수 × 계절 수)로
     곱해지므로, 태그는 별도 쿼리 2번으로 받아 옷 id 기준으로 합친다.
@@ -170,13 +174,6 @@ INSERT_UPLOADED_CLOTHING_SQL = text(
     """
 )
 
-INSERT_BG_REMOVAL_JOB_SQL = text(
-    """
-    INSERT INTO clothing_job (clothing_id, stage_cd)
-    VALUES (:clothing_id, :stage_cd)
-    """
-)
-
 
 async def insert_uploaded_clothing(db: AsyncSession, member_id: int, origin_image_url: str) -> int:
     """처리 중(processing) 옷과 배경 제거 대기 작업을 만든다. commit은 호출자가 한다."""
@@ -185,9 +182,7 @@ async def insert_uploaded_clothing(db: AsyncSession, member_id: int, origin_imag
         {"member_id": member_id, "origin_image_url": origin_image_url},
     )
     clothing_id = int(result.lastrowid)
-    await db.execute(
-        INSERT_BG_REMOVAL_JOB_SQL, {"clothing_id": clothing_id, "stage_cd": STAGE_BG_REMOVAL}
-    )
+    await job_repo.enqueue_job(db, clothing_id, STAGE_BG_REMOVAL)
     return clothing_id
 
 

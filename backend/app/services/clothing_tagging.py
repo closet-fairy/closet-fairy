@@ -14,7 +14,7 @@ from app.services.prompt.clothing_tagging import (
 )
 
 CALL_NAME = "clothing_tagging"
-REQUEST_TIMEOUT_S = 20.0
+REQUEST_TIMEOUT_S = 15.0
 # 투명 배경은 모델이 검정으로 볼 수 있어 검은 옷이 묻히고, 흰 바탕은 흰 옷이 묻혀 연회색을 쓴다
 BACKGROUND_RGB = (238, 238, 238)
 JPEG_QUALITY = 90
