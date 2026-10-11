@@ -19,6 +19,8 @@ class BackgroundRemover:
     def __init__(
         self, model_name: str, post_process_mask: bool, max_side: int, webp_quality: int
     ) -> None:
+        # rembg는 import에만 수십 초가 걸려,
+        # 배경 제거를 꺼 둔 테스트·재기동에서는 불러오지 않도록 여기서 가져온다
         from rembg import new_session, remove
 
         self.model_name = model_name

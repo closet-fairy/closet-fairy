@@ -143,7 +143,7 @@ class RecommendationResult(BaseModel):
                                     "accessory_type_cd": None,
                                     "item_source_cd": "owned",
                                     "item_name": "네이비 블레이저",
-                                    "image_url": "/media/clothing/7/1042_cutout.png",
+                                    "image_url": "/media/clothing/7/1042_cutout.webp",
                                     "style_cds": ["minimal", "classic"],
                                 },
                                 {
@@ -151,7 +151,7 @@ class RecommendationResult(BaseModel):
                                     "accessory_type_cd": None,
                                     "item_source_cd": "owned",
                                     "item_name": "화이트 옥스퍼드 셔츠",
-                                    "image_url": "/media/clothing/7/2001_cutout.png",
+                                    "image_url": "/media/clothing/7/2001_cutout.webp",
                                     "style_cds": ["classic", "preppy"],
                                 },
                                 {
@@ -159,7 +159,7 @@ class RecommendationResult(BaseModel):
                                     "accessory_type_cd": None,
                                     "item_source_cd": "owned",
                                     "item_name": "블랙 슬랙스",
-                                    "image_url": "/media/clothing/7/3001_cutout.png",
+                                    "image_url": "/media/clothing/7/3001_cutout.webp",
                                     "style_cds": ["minimal"],
                                 },
                                 {
