@@ -16,6 +16,7 @@ from app.schemas.recommendation_result import (
 )
 from app.services.prompt.outfit_generation import CATEGORY_ORDER
 from app.services.recommendation_session import from_db_utc
+from app.services.storage import ImageStorage
 
 
 class RecommendationSessionNotFoundError(NotFoundError):
@@ -23,7 +24,7 @@ class RecommendationSessionNotFoundError(NotFoundError):
 
 
 async def get_recommendation_result(
-    db: AsyncSession, recommendation_session_id: int, member_id: int
+    db: AsyncSession, storage: ImageStorage, recommendation_session_id: int, member_id: int
 ) -> RecommendationResult:
     session = await result_repo.get_session(db, recommendation_session_id)
     if session is None or session.member_id != member_id:
@@ -34,7 +35,7 @@ async def get_recommendation_result(
         rows = latest_deck_rows(await result_repo.get_outfit_items(db, recommendation_session_id))
         clothing_ids = sorted({r.clothing_id for r in rows if r.clothing_id is not None})
         styles = await result_repo.get_clothing_styles(db, clothing_ids)
-        outfits = build_outfits(rows, styles)
+        outfits = build_outfits(rows, styles, storage)
 
     return RecommendationResult(
         recommendation_session_id=recommendation_session_id,
@@ -63,7 +64,9 @@ def latest_deck_rows(rows: Sequence[OutfitItemResultRow]) -> list[OutfitItemResu
 
 
 def build_outfits(
-    rows: Sequence[OutfitItemResultRow], styles_by_clothing: Mapping[int, Sequence[str]]
+    rows: Sequence[OutfitItemResultRow],
+    styles_by_clothing: Mapping[int, Sequence[str]],
+    storage: ImageStorage,
 ) -> list[OutfitResult]:
     items_by_outfit: dict[int, list[OutfitItemResultRow]] = {}
     for row in rows:
@@ -79,14 +82,16 @@ def build_outfits(
                 outfit_seq=first.outfit_seq,
                 outfit_type_cd=first.outfit_type_cd,
                 reason=first.reason,
-                items=[_to_item(r, styles_by_clothing) for r in ordered],
+                items=[_to_item(r, styles_by_clothing, storage) for r in ordered],
             )
         )
     return sorted(outfits, key=lambda o: o.outfit_seq)
 
 
 def _to_item(
-    row: OutfitItemResultRow, styles_by_clothing: Mapping[int, Sequence[str]]
+    row: OutfitItemResultRow,
+    styles_by_clothing: Mapping[int, Sequence[str]],
+    storage: ImageStorage,
 ) -> OutfitItemResult:
     if row.item_source_cd == "essential":
         style_cds = [row.essential_style_cd] if row.essential_style_cd else []
@@ -97,7 +102,7 @@ def _to_item(
         accessory_type_cd=row.accessory_type_cd,
         item_source_cd=row.item_source_cd,
         item_name=row.item_name_snapshot,
-        image_url=row.image_url_snapshot,
+        image_url=storage.url(row.image_url_snapshot) if row.image_url_snapshot else None,
         style_cds=style_cds,
     )
 

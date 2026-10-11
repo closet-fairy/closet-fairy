@@ -32,7 +32,7 @@ def fake_db():
 
 
 def test_result_endpoint_returns_not_found_in_error_format(client, fake_db, monkeypatch):
-    async def missing(db, recommendation_session_id, member_id):
+    async def missing(db, storage, recommendation_session_id, member_id):
         raise result_service.RecommendationSessionNotFoundError()
 
     monkeypatch.setattr(result_service, "get_recommendation_result", missing)
@@ -47,7 +47,7 @@ def test_result_endpoint_returns_service_result(client, fake_db, monkeypatch):
     example = RecommendationResult.model_json_schema()["examples"][0]
     captured = {}
 
-    async def found(db, recommendation_session_id, member_id):
+    async def found(db, storage, recommendation_session_id, member_id):
         captured.update(session_id=recommendation_session_id, member_id=member_id)
         return RecommendationResult.model_validate(example)
 
