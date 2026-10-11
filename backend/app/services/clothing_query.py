@@ -49,9 +49,9 @@ async def get_clothing_page(
 async def get_clothing_status(
     db: AsyncSession, storage: ImageStorage, member_id: int, clothing_ids: Sequence[int]
 ) -> ClothingStatusList:
-    unique_ids = sorted(set(clothing_ids))
-    if len(unique_ids) > MAX_STATUS_IDS:
+    if len(clothing_ids) > MAX_STATUS_IDS:
         raise TooManyStatusIdsError()
+    unique_ids = sorted(set(clothing_ids))
     rows = await clothing_repo.get_clothing_cards(db, member_id, unique_ids)
     return ClothingStatusList(items=[_to_progress(row, storage) for row in rows])
 

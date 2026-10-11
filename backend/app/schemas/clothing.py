@@ -2,27 +2,16 @@ from typing import Any, Literal
 
 from pydantic import AwareDatetime, BaseModel, Field
 
-from app.schemas.recommendation_result import AccessoryTypeCd, SeasonCd, SlotCd, StyleCd
+from app.schemas.codes import (
+    AccessoryTypeCd,
+    CategoryCd,
+    ColorCd,
+    SeasonCd,
+    StyleCd,
+    ThicknessCd,
+)
 
 ProcessingStatusCd = Literal["processing", "completed", "failed"]
-CategoryCd = SlotCd
-ColorCd = Literal[
-    "black",
-    "white",
-    "gray",
-    "beige",
-    "brown",
-    "navy",
-    "blue",
-    "sky_blue",
-    "green",
-    "khaki",
-    "yellow",
-    "orange",
-    "red",
-    "pink",
-]
-ThicknessCd = Literal["thin", "medium", "thick"]
 
 RejectReasonCd = Literal["unsupported_format", "too_large", "resolution_too_high", "unreadable"]
 

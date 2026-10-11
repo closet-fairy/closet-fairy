@@ -190,6 +190,15 @@ async def test_status_with_too_many_ids_is_rejected(repo):
     assert repo["calls"] == []
 
 
+async def test_status_counts_ids_before_removing_duplicates(repo):
+    with pytest.raises(TooManyStatusIdsError):
+        await query.get_clothing_status(
+            None, _Storage(), MEMBER_ID, [1] * (query.MAX_STATUS_IDS + 1)
+        )
+
+    assert repo["calls"] == []
+
+
 async def test_status_accepts_max_ids(repo):
     await query.get_clothing_status(
         None, _Storage(), MEMBER_ID, list(range(1, query.MAX_STATUS_IDS + 1))
