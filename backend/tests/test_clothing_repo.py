@@ -407,3 +407,13 @@ async def test_delete_clothing_removes_row():
     assert db.executed == [
         ("DELETE FROM clothing WHERE clothing_id = :clothing_id", {"clothing_id": 5})
     ]
+
+
+async def test_lock_clothing_jobs_locks_only_job_rows_of_members_clothing():
+    db = _InsertDb()
+
+    await clothing_repo.lock_clothing_jobs(db, 7, 5)
+
+    [(sql, params)] = db.executed
+    assert "FOR UPDATE OF j" in sql
+    assert params == {"member_id": 7, "clothing_id": 5}

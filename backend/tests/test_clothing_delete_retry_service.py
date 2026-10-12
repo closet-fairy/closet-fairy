@@ -70,6 +70,9 @@ def repo(monkeypatch):
         r.locks.append((member_id, clothing_id, lock))
         return r.clothing
 
+    async def lock_clothing_jobs(db, member_id, clothing_id):
+        r.locks.append(("jobs", member_id, clothing_id))
+
     async def get_clothing_edit(db, clothing_id):
         return r.edit
 
@@ -86,6 +89,7 @@ def repo(monkeypatch):
 
     for name, fn in {
         "get_clothing_for_edit": get_clothing_for_edit,
+        "lock_clothing_jobs": lock_clothing_jobs,
         "get_clothing_edit": get_clothing_edit,
         "get_rated_snapshot_keys": get_rated_snapshot_keys,
         "delete_clothing": delete_clothing,
@@ -112,7 +116,7 @@ async def test_delete_removes_row_and_all_images(repo, storage, tmp_path):
     await clothing_delete.delete_clothing(_FakeDb(), storage, MEMBER_ID, 5)
 
     assert repo.deleted == [5]
-    assert repo.locks == [(MEMBER_ID, 5, True)]
+    assert repo.locks == [("jobs", MEMBER_ID, 5), (MEMBER_ID, 5, True)]
     assert not any(_exists(tmp_path, key) for key in (ORIGIN, CUTOUT, MASK))
 
 

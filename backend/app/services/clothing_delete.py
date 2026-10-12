@@ -20,6 +20,7 @@ async def delete_clothing(
     db: AsyncSession, storage: ImageStorage, member_id: int, clothing_id: int
 ) -> None:
     async with db.begin():
+        await clothing_repo.lock_clothing_jobs(db, member_id, clothing_id)
         clothing = await clothing_repo.get_clothing_for_edit(db, member_id, clothing_id, lock=True)
         if clothing is None:
             raise ClothingNotFoundError()

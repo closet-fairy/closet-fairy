@@ -191,6 +191,7 @@ async def delete_clothing(
 
 @router.post(
     "/{clothing_id}/retry",
+    status_code=status.HTTP_202_ACCEPTED,
     response_model=ClothingProgress,
     dependencies=[Depends(limit_clothing_requests)],
     responses={

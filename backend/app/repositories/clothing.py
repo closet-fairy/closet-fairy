@@ -535,3 +535,18 @@ async def delete_clothing(db: AsyncSession, clothing_id: int) -> None:
 async def reset_for_retry(db: AsyncSession, clothing_id: int) -> None:
     await db.execute(RESET_FOR_RETRY_SQL, {"clothing_id": clothing_id})
     await job_repo.enqueue_job(db, clothing_id, STAGE_BG_REMOVAL)
+
+
+LOCK_CLOTHING_JOBS_SQL = text(
+    """
+    SELECT j.clothing_job_id
+    FROM clothing_job j
+    JOIN clothing c ON c.clothing_id = j.clothing_id
+    WHERE j.clothing_id = :clothing_id AND c.member_id = :member_id
+    FOR UPDATE OF j
+    """
+)
+
+
+async def lock_clothing_jobs(db: AsyncSession, member_id: int, clothing_id: int) -> None:
+    await db.execute(LOCK_CLOTHING_JOBS_SQL, {"member_id": member_id, "clothing_id": clothing_id})

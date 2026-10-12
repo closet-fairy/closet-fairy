@@ -25,7 +25,7 @@ def get_bg_removal_worker(request: Request) -> BgRemovalWorker | None:
     return getattr(request.app.state, "bg_removal_worker", None)
 
 
-def limit_clothing_requests(
+async def limit_clothing_requests(
     member_id: int = Depends(get_current_member_id),
     limiter: RequestRateLimiter = Depends(get_clothing_rate_limiter),
 ) -> None:
