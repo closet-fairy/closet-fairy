@@ -55,3 +55,27 @@ def normalize_image(data: bytes, *, quality: int, max_pixels: int) -> bytes:
     except (UnidentifiedImageError, OSError, ValueError) as e:
         raise ImageRejectedError(ImageRejectReason.UNREADABLE) from e
     return out.getvalue()
+
+
+def normalize_mask(data: bytes, *, max_pixels: int) -> tuple[bytes, tuple[int, int]]:
+    """브러시 마스크를 흑백 PNG로 다시 저장하고 (PNG, (가로, 세로))를 돌려준다."""
+    try:
+        with Image.open(io.BytesIO(data)) as image:
+            if image.format != "PNG":
+                raise ImageRejectedError(ImageRejectReason.UNSUPPORTED_FORMAT)
+            width, height = image.size
+            if width * height > max_pixels:
+                raise ImageRejectedError(ImageRejectReason.RESOLUTION_TOO_HIGH)
+            mask = image.convert("L")
+        out = io.BytesIO()
+        mask.save(out, format="PNG", optimize=True)
+    except Image.DecompressionBombError as e:
+        raise ImageRejectedError(ImageRejectReason.RESOLUTION_TOO_HIGH) from e
+    except (UnidentifiedImageError, OSError, ValueError) as e:
+        raise ImageRejectedError(ImageRejectReason.UNREADABLE) from e
+    return out.getvalue(), (width, height)
+
+
+def image_size(data: bytes) -> tuple[int, int]:
+    with Image.open(io.BytesIO(data)) as image:
+        return image.size

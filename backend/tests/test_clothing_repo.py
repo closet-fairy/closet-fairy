@@ -1,3 +1,7 @@
+from decimal import Decimal
+
+import pytest
+
 from app.repositories import clothing as clothing_repo
 
 
@@ -286,3 +290,64 @@ async def test_get_clothing_edit_parses_json_text():
 
 async def test_get_clothing_edit_returns_none_without_edit():
     assert await clothing_repo.get_clothing_edit(_QueryDb([]), 5) is None
+
+
+async def test_update_clothing_attributes_sets_only_given_columns():
+    db = _InsertDb()
+
+    await clothing_repo.update_clothing_attributes(db, 5, {"item_name": "셔츠", "color_cd": None})
+
+    [(sql, params)] = db.executed
+    assert " ".join(sql.split()) == (
+        "UPDATE clothing SET item_name = :item_name, color_cd = :color_cd "
+        "WHERE clothing_id = :clothing_id"
+    )
+    assert params == {"item_name": "셔츠", "color_cd": None, "clothing_id": 5}
+
+
+async def test_update_clothing_attributes_skips_empty_and_rejects_unknown_columns():
+    db = _InsertDb()
+
+    await clothing_repo.update_clothing_attributes(db, 5, {})
+    with pytest.raises(ValueError):
+        await clothing_repo.update_clothing_attributes(db, 5, {"member_id": 1})
+
+    assert db.executed == []
+
+
+async def test_mark_reviewed_keeps_first_review_time():
+    db = _InsertDb()
+
+    await clothing_repo.mark_reviewed(db, 5)
+
+    [(sql, params)] = db.executed
+    assert "reviewed_at IS NULL" in sql
+    assert params == {"clothing_id": 5}
+
+
+async def test_get_clothing_for_edit_locks_only_when_asked():
+    db = _QueryDb([], [])
+
+    assert await clothing_repo.get_clothing_for_edit(db, 7, 5) is None
+    await clothing_repo.get_clothing_for_edit(db, 7, 5, lock=True)
+
+    (plain_sql, params), (lock_sql, _) = db.executed
+    assert "FOR UPDATE" not in plain_sql and "FOR UPDATE" in lock_sql
+    assert params == {"member_id": 7, "clothing_id": 5}
+
+
+async def test_upsert_edit_transform_stores_perspective_as_json_text():
+    db = _InsertDb()
+
+    await clothing_repo.upsert_edit_transform(db, 5, Decimal("12.5"), {"corners": ((0, 0),)})
+    await clothing_repo.upsert_edit_transform(db, 5, Decimal(0), None)
+
+    assert [params for _, params in db.executed] == [
+        {
+            "clothing_id": 5,
+            "rotation_angle": Decimal("12.5"),
+            "perspective_param": '{"corners": [[0, 0]]}',
+        },
+        {"clothing_id": 5, "rotation_angle": Decimal(0), "perspective_param": None},
+    ]
+    assert "brush_mask_url" not in db.executed[0][0]

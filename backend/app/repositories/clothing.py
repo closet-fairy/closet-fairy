@@ -364,3 +364,140 @@ async def get_clothing_edit(db: AsyncSession, clothing_id: int) -> ClothingEditR
         perspective_param=json.loads(perspective) if isinstance(perspective, str) else perspective,
         brush_mask_url=row.brush_mask_url,
     )
+
+
+@dataclass(frozen=True)
+class ClothingForEdit:
+    clothing_id: int
+    processing_status_cd: str
+    origin_image_url: str
+    cutout_image_url: str | None
+    category_cd: str | None
+    accessory_type_cd: str | None
+    color_cd: str | None
+
+
+_FOR_EDIT_COLUMNS = """
+    clothing_id, processing_status_cd, origin_image_url, cutout_image_url,
+    category_cd, accessory_type_cd, color_cd
+"""
+
+CLOTHING_FOR_EDIT_SQL = text(
+    f"""
+    SELECT {_FOR_EDIT_COLUMNS}
+    FROM clothing
+    WHERE member_id = :member_id AND clothing_id = :clothing_id
+    """
+)
+
+LOCK_CLOTHING_FOR_EDIT_SQL = text(
+    f"""
+    SELECT {_FOR_EDIT_COLUMNS}
+    FROM clothing
+    WHERE member_id = :member_id AND clothing_id = :clothing_id
+    FOR UPDATE
+    """
+)
+
+EDITABLE_ATTRIBUTE_COLUMNS = (
+    "category_cd",
+    "accessory_type_cd",
+    "item_name",
+    "color_cd",
+    "color_text",
+    "thickness_cd",
+    "is_waterproof",
+)
+
+MARK_REVIEWED_SQL = text(
+    """
+    UPDATE clothing SET reviewed_at = UTC_TIMESTAMP()
+    WHERE clothing_id = :clothing_id AND reviewed_at IS NULL
+    """
+)
+
+UPSERT_EDIT_TRANSFORM_SQL = text(
+    """
+    INSERT INTO clothing_edit (clothing_id, rotation_angle, perspective_param)
+    VALUES (:clothing_id, :rotation_angle, :perspective_param) AS new
+    ON DUPLICATE KEY UPDATE
+        rotation_angle = new.rotation_angle,
+        perspective_param = new.perspective_param
+    """
+)
+
+UPSERT_EDIT_MASK_SQL = text(
+    """
+    INSERT INTO clothing_edit (clothing_id, brush_mask_url)
+    VALUES (:clothing_id, :brush_mask_url) AS new
+    ON DUPLICATE KEY UPDATE brush_mask_url = new.brush_mask_url
+    """
+)
+
+DELETE_EDIT_SQL = text("DELETE FROM clothing_edit WHERE clothing_id = :clothing_id")
+
+
+def _for_edit(row) -> ClothingForEdit:
+    return ClothingForEdit(
+        clothing_id=row.clothing_id,
+        processing_status_cd=row.processing_status_cd,
+        origin_image_url=row.origin_image_url,
+        cutout_image_url=row.cutout_image_url,
+        category_cd=row.category_cd,
+        accessory_type_cd=row.accessory_type_cd,
+        color_cd=row.color_cd,
+    )
+
+
+async def get_clothing_for_edit(
+    db: AsyncSession, member_id: int, clothing_id: int, *, lock: bool = False
+) -> ClothingForEdit | None:
+    """수정 전 확인용. lock이면 행을 잠가 워커의 결과 기록·다른 수정과 순서를 맞춘다."""
+    sql = LOCK_CLOTHING_FOR_EDIT_SQL if lock else CLOTHING_FOR_EDIT_SQL
+    row = (await db.execute(sql, {"member_id": member_id, "clothing_id": clothing_id})).first()
+    return _for_edit(row) if row is not None else None
+
+
+async def update_clothing_attributes(
+    db: AsyncSession, clothing_id: int, values: dict[str, Any]
+) -> None:
+    """values의 열만 바꾼다. 열 이름은 EDITABLE_ATTRIBUTE_COLUMNS 안에서만 받는다."""
+    unknown = values.keys() - set(EDITABLE_ATTRIBUTE_COLUMNS)
+    if unknown:
+        raise ValueError(f"수정할 수 없는 열입니다: {sorted(unknown)}")
+    if not values:
+        return
+    assignments = ", ".join(f"{column} = :{column}" for column in values)
+    await db.execute(
+        text(f"UPDATE clothing SET {assignments} WHERE clothing_id = :clothing_id"),
+        {**values, "clothing_id": clothing_id},
+    )
+
+
+async def mark_reviewed(db: AsyncSession, clothing_id: int) -> None:
+    await db.execute(MARK_REVIEWED_SQL, {"clothing_id": clothing_id})
+
+
+async def upsert_edit_transform(
+    db: AsyncSession, clothing_id: int, rotation_angle: Decimal, perspective_param: Any
+) -> None:
+    await db.execute(
+        UPSERT_EDIT_TRANSFORM_SQL,
+        {
+            "clothing_id": clothing_id,
+            "rotation_angle": rotation_angle,
+            "perspective_param": (
+                json.dumps(perspective_param) if perspective_param is not None else None
+            ),
+        },
+    )
+
+
+async def upsert_edit_mask(db: AsyncSession, clothing_id: int, brush_mask_url: str) -> None:
+    await db.execute(
+        UPSERT_EDIT_MASK_SQL, {"clothing_id": clothing_id, "brush_mask_url": brush_mask_url}
+    )
+
+
+async def delete_clothing_edit(db: AsyncSession, clothing_id: int) -> None:
+    await db.execute(DELETE_EDIT_SQL, {"clothing_id": clothing_id})

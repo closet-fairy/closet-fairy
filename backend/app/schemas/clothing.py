@@ -1,6 +1,7 @@
-from typing import Any, Literal
+from decimal import Decimal
+from typing import Annotated, Any, Literal
 
-from pydantic import AwareDatetime, BaseModel, Field
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
 from app.schemas.codes import (
     AccessoryTypeCd,
@@ -88,3 +89,45 @@ class ClothingDetail(ClothingCard):
     style_cds: list[StyleCd]
     season_cds: list[SeasonCd]
     edit: ClothingEdit | None = Field(description="편집한 적이 없으면 null이다.")
+
+
+class ClothingUpdate(BaseModel):
+    """보낸 필드만 바꾼다. null을 보내면 그 값을 비운다."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    category_cd: CategoryCd | None = None
+    accessory_type_cd: AccessoryTypeCd | None = Field(
+        default=None, description="category_cd가 accessories일 때만 값을 가질 수 있다."
+    )
+    item_name: str | None = Field(default=None, max_length=100)
+    color_cd: ColorCd | None = Field(
+        default=None, description="바꾸면서 color_text를 보내지 않으면 color_text는 비워진다."
+    )
+    color_text: str | None = Field(default=None, max_length=30)
+    style_cds: list[StyleCd] | None = Field(default=None, description="목록 전체를 바꾼다.")
+    season_cds: list[SeasonCd] | None = Field(default=None, description="목록 전체를 바꾼다.")
+    thickness_cd: ThicknessCd | None = None
+    is_waterproof: bool | None = None
+
+
+Ratio = Annotated[float, Field(ge=0, le=1)]
+Point = tuple[Ratio, Ratio]
+
+
+class PerspectiveParam(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    corners: tuple[Point, Point, Point, Point] = Field(
+        description="좌상·우상·우하·좌하 꼭짓점. 이미지 크기에 대한 0~1 비율 좌표 [x, y]",
+        examples=[[[0.02, 0.05], [0.97, 0.01], [0.99, 0.96], [0.03, 0.99]]],
+    )
+
+
+class ClothingEditUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    rotation_angle: Decimal = Field(ge=-180, le=180, max_digits=5, decimal_places=2)
+    perspective_param: PerspectiveParam | None = Field(
+        default=None, description="null이면 원근 보정을 적용하지 않는다."
+    )

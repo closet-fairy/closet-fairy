@@ -1,6 +1,7 @@
 import pytest
 
 from app.repositories import clothing_job as job_repo
+from app.repositories import clothing_tag as tag_repo
 
 
 class _Row:
@@ -121,12 +122,12 @@ async def test_complete_with_tags_replaces_styles_and_seasons():
         "is_waterproof": False,
     }
     assert db.statements[1:] == [
-        (job_repo.DELETE_STYLES_SQL, {"clothing_id": 21}),
-        (job_repo.DELETE_SEASONS_SQL, {"clothing_id": 21}),
-        (job_repo.INSERT_STYLE_SQL, {"clothing_id": 21, "style_cd": "classic"}),
-        (job_repo.INSERT_STYLE_SQL, {"clothing_id": 21, "style_cd": "minimal"}),
-        (job_repo.INSERT_SEASON_SQL, {"clothing_id": 21, "season_cd": "fall"}),
-        (job_repo.INSERT_SEASON_SQL, {"clothing_id": 21, "season_cd": "winter"}),
+        (tag_repo.DELETE_STYLES_SQL, {"clothing_id": 21}),
+        (tag_repo.INSERT_STYLE_SQL, {"clothing_id": 21, "style_cd": "classic"}),
+        (tag_repo.INSERT_STYLE_SQL, {"clothing_id": 21, "style_cd": "minimal"}),
+        (tag_repo.DELETE_SEASONS_SQL, {"clothing_id": 21}),
+        (tag_repo.INSERT_SEASON_SQL, {"clothing_id": 21, "season_cd": "fall"}),
+        (tag_repo.INSERT_SEASON_SQL, {"clothing_id": 21, "season_cd": "winter"}),
     ]
 
 

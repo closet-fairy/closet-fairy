@@ -8,7 +8,9 @@ from PIL import Image
 from app.services.clothing_image import (
     ImageRejectedError,
     ImageRejectReason,
+    image_size,
     normalize_image,
+    normalize_mask,
 )
 
 GPS_IFD = 0x8825
@@ -167,3 +169,31 @@ def test_webp_encoding_failure_is_unreadable(monkeypatch):
         _normalize(data)
 
     assert e.value.reason is ImageRejectReason.UNREADABLE
+
+
+def test_mask_becomes_grayscale_png_with_its_size():
+    mask, size = normalize_mask(
+        _encode(Image.new("RGBA", (30, 20), "white"), "PNG"), max_pixels=MAX_PIXELS
+    )
+
+    assert size == (30, 20)
+    assert (_open(mask).format, _open(mask).mode) == ("PNG", "L")
+
+
+@pytest.mark.parametrize(
+    ("data", "reason"),
+    [
+        (_encode(Image.new("L", (30, 20)), "JPEG"), ImageRejectReason.UNSUPPORTED_FORMAT),
+        (b"not an image", ImageRejectReason.UNREADABLE),
+        (_encode(Image.new("L", (300, 300)), "PNG"), ImageRejectReason.RESOLUTION_TOO_HIGH),
+    ],
+)
+def test_bad_mask_is_rejected(data, reason):
+    with pytest.raises(ImageRejectedError) as error:
+        normalize_mask(data, max_pixels=10_000)
+
+    assert error.value.reason is reason
+
+
+def test_image_size_reads_dimensions():
+    assert image_size(_encode(Image.new("RGB", (12, 34)), "WEBP")) == (12, 34)

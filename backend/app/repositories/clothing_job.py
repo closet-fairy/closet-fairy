@@ -9,6 +9,8 @@ from dataclasses import dataclass, field
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.repositories import clothing_tag as tag_repo
+
 STAGE_BG_REMOVAL = "bg_removal"
 STAGE_AUTO_TAGGING = "auto_tagging"
 
@@ -118,15 +120,6 @@ COMPLETE_WITH_TAGS_SQL = text(
     """
 )
 
-DELETE_STYLES_SQL = text("DELETE FROM clothing_style WHERE clothing_id = :clothing_id")
-DELETE_SEASONS_SQL = text("DELETE FROM clothing_season WHERE clothing_id = :clothing_id")
-INSERT_STYLE_SQL = text(
-    "INSERT INTO clothing_style (clothing_id, style_cd) VALUES (:clothing_id, :style_cd)"
-)
-INSERT_SEASON_SQL = text(
-    "INSERT INTO clothing_season (clothing_id, season_cd) VALUES (:clothing_id, :season_cd)"
-)
-
 FAIL_CLOTHING_SQL = text(
     """
     UPDATE clothing SET processing_status_cd = 'failed' WHERE clothing_id = :clothing_id
@@ -198,12 +191,8 @@ async def complete_with_tags(db: AsyncSession, clothing_id: int, tags: ClothingT
             "is_waterproof": tags.is_waterproof,
         },
     )
-    await db.execute(DELETE_STYLES_SQL, {"clothing_id": clothing_id})
-    await db.execute(DELETE_SEASONS_SQL, {"clothing_id": clothing_id})
-    for style_cd in tags.style_cds:
-        await db.execute(INSERT_STYLE_SQL, {"clothing_id": clothing_id, "style_cd": style_cd})
-    for season_cd in tags.season_cds:
-        await db.execute(INSERT_SEASON_SQL, {"clothing_id": clothing_id, "season_cd": season_cd})
+    await tag_repo.replace_styles(db, clothing_id, tags.style_cds)
+    await tag_repo.replace_seasons(db, clothing_id, tags.season_cds)
 
 
 async def fail_clothing(db: AsyncSession, clothing_id: int) -> None:
