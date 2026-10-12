@@ -12,6 +12,7 @@ const ICON_SIZE: Record<IconSize, number> = {
 export const Container = styled.span<{ $size: IconSize }>`
   display: inline-flex;
   flex: none;
+  vertical-align: middle;
   width: ${({ $size }) => ICON_SIZE[$size]}px;
   height: ${({ $size }) => ICON_SIZE[$size]}px;
 

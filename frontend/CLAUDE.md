@@ -159,7 +159,7 @@ ClothCard/
   - ❌ `import { type Cloth, getCloth } from ...`
 - `enum`을 쓰지 않는다. 문자열 리터럴 유니언이나 `as const` 객체를 쓴다.
 - 객체 형태는 `interface`로, 유니언과 별칭 등 나머지는 `type`으로 정의한다.
-  단, 객체라도 판별 유니언처럼 `type`이 훨씬 적합한 경우에는 `type`을 쓸 수 있다.
+  단, 객체들의 판별 유니언처럼 유니언이 필요한 경우에는 `type`으로 정의한다.
 - 외부에서 들어오는 데이터(API 응답, localStorage, URL 파라미터)는 zod로 검증한 뒤 쓴다.
   내부 값의 타입을 좁힐 때는 `data is X` 형태의 타입 가드를 써도 된다.
 
