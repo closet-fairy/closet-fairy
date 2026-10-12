@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useRef, useState } from 'react';
 import { fn } from 'storybook/test';
+import useStoryOpenState from '../../../../.storybook/useStoryOpenState';
 import StoryStack from '../../../../.storybook/StoryStack';
 import Button from '@/components/common/Button';
 import StarRating from '@/components/common/StarRating';
@@ -11,28 +12,6 @@ const LONG_PARAGRAPHS = Array.from(
   (_, index) =>
     `${index + 1}번째 문단입니다. 본문이 화면 높이를 넘으면 본문 영역만 스크롤되고, 제목과 하단 영역은 제자리에 남습니다.`,
 );
-
-interface OpenStateArgs {
-  isOpen: boolean;
-  onOpenChange: (isOpen: boolean) => void;
-}
-
-const useOpenState = (args: OpenStateArgs) => {
-  const [isOpen, setIsOpen] = useState(args.isOpen);
-  const [prevArgsIsOpen, setPrevArgsIsOpen] = useState(args.isOpen);
-
-  if (args.isOpen !== prevArgsIsOpen) {
-    setPrevArgsIsOpen(args.isOpen);
-    setIsOpen(args.isOpen);
-  }
-
-  const handleOpenChange = (nextIsOpen: boolean) => {
-    args.onOpenChange(nextIsOpen);
-    setIsOpen(nextIsOpen);
-  };
-
-  return { isOpen, setIsOpen, handleOpenChange };
-};
 
 const meta = {
   component: Dialog,
@@ -93,7 +72,7 @@ const meta = {
     docs: { story: { inline: false, height: '480px' } },
   },
   render: function Render(args) {
-    const { isOpen, setIsOpen, handleOpenChange } = useOpenState(args);
+    const { isOpen, setIsOpen, handleOpenChange } = useStoryOpenState(args);
     const [rating, setRating] = useState(0);
     const openerRef = useRef<HTMLButtonElement | null>(null);
 
@@ -148,7 +127,7 @@ const createRenderWithoutRating = (
   cancelLabel: string,
 ): Story['render'] =>
   function Render(args) {
-    const { isOpen, setIsOpen, handleOpenChange } = useOpenState(args);
+    const { isOpen, setIsOpen, handleOpenChange } = useStoryOpenState(args);
 
     return (
       <>

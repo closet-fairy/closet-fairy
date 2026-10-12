@@ -139,3 +139,35 @@ describe('열 때 포커스 위치', () => {
     });
   });
 });
+
+describe('열 때 마운트하는 경우', () => {
+  test('터치로 연 뒤에 다이얼로그를 마운트해도 다이얼로그 자체에 포커스가 가야 한다.', async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<div />);
+
+    await user.pointer({ keys: '[TouchA]', target: document.body });
+    rerender(
+      <Dialog isOpen onOpenChange={vi.fn()} title="추천을 그만 볼까요">
+        <button type="button">확인</button>
+      </Dialog>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('dialog', { name: '추천을 그만 볼까요' }),
+      ).toHaveFocus();
+    });
+  });
+});
+
+describe('본문 키보드 스크롤', () => {
+  test('본문에 포커스할 요소가 없으면 본문 자체가 포커스 대상이어야 한다.', () => {
+    render(
+      <Dialog isOpen onOpenChange={vi.fn()} title="안내">
+        긴 본문
+      </Dialog>,
+    );
+
+    expect(screen.getByText('긴 본문')).toHaveAttribute('tabindex', '0');
+  });
+});

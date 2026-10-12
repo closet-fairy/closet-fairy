@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useRef, useState } from 'react';
 import { fn } from 'storybook/test';
+import useStoryOpenState from '../../../../.storybook/useStoryOpenState';
 import StoryStack from '../../../../.storybook/StoryStack';
 import Button from '@/components/common/Button';
 import Dialog from '@/components/common/Dialog';
@@ -13,28 +14,6 @@ const LONG_PARAGRAPHS = Array.from(
   (_, index) =>
     `${index + 1}번째 문단입니다. 본문이 시트 높이를 넘으면 본문 영역만 스크롤되고, 제목과 하단 영역은 제자리에 남습니다.`,
 );
-
-interface OpenStateArgs {
-  isOpen: boolean;
-  onOpenChange: (isOpen: boolean) => void;
-}
-
-const useOpenState = (args: OpenStateArgs) => {
-  const [isOpen, setIsOpen] = useState(args.isOpen);
-  const [prevArgsIsOpen, setPrevArgsIsOpen] = useState(args.isOpen);
-
-  if (args.isOpen !== prevArgsIsOpen) {
-    setPrevArgsIsOpen(args.isOpen);
-    setIsOpen(args.isOpen);
-  }
-
-  const handleOpenChange = (nextIsOpen: boolean) => {
-    args.onOpenChange(nextIsOpen);
-    setIsOpen(nextIsOpen);
-  };
-
-  return { isOpen, setIsOpen, handleOpenChange };
-};
 
 const meta = {
   component: BottomSheet,
@@ -115,7 +94,7 @@ const meta = {
     docs: { story: { inline: false, height: '480px' } },
   },
   render: function Render(args) {
-    const { isOpen, handleOpenChange } = useOpenState(args);
+    const { isOpen, handleOpenChange } = useStoryOpenState(args);
     const openerRef = useRef<HTMLButtonElement | null>(null);
 
     return (
@@ -147,7 +126,7 @@ const createRenderWithDialog = (
   dialogPlacement: 'inside' | 'beside',
 ): Story['render'] =>
   function Render(args) {
-    const { isOpen, setIsOpen, handleOpenChange } = useOpenState(args);
+    const { isOpen, setIsOpen, handleOpenChange } = useStoryOpenState(args);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
 
     const handleDiscard = () => {
@@ -232,7 +211,7 @@ export const NotDismissable: Story = {
     children: <p>아래 버튼으로만 닫을 수 있습니다.</p>,
   },
   render: function Render(args) {
-    const { isOpen, setIsOpen, handleOpenChange } = useOpenState(args);
+    const { isOpen, setIsOpen, handleOpenChange } = useStoryOpenState(args);
 
     return (
       <>
@@ -276,7 +255,7 @@ export const LongContent: Story = {
     ),
   },
   render: function Render(args) {
-    const { isOpen, setIsOpen, handleOpenChange } = useOpenState(args);
+    const { isOpen, setIsOpen, handleOpenChange } = useStoryOpenState(args);
 
     return (
       <>
@@ -308,7 +287,7 @@ export const SituationInput: Story = {
     description: '짧게 적어주시면 그대로 반영합니다.',
   },
   render: function Render(args) {
-    const { isOpen, setIsOpen, handleOpenChange } = useOpenState(args);
+    const { isOpen, setIsOpen, handleOpenChange } = useStoryOpenState(args);
     const [situation, setSituation] = useState('');
 
     return (

@@ -1,39 +1,29 @@
 import type { RefObject } from 'react';
-import { useEffect } from 'react';
 
 let lastInteractionType = '';
-let subscriberCount = 0;
 
-const handlePointerDown = (event: PointerEvent) => {
-  lastInteractionType = event.pointerType;
-};
-
-const handleKeyDown = () => {
-  lastInteractionType = 'keyboard';
-};
-
-const subscribe = () => {
-  if (subscriberCount === 0) {
-    document.addEventListener('pointerdown', handlePointerDown, true);
-    document.addEventListener('keydown', handleKeyDown, true);
-  }
-  subscriberCount += 1;
-
-  return () => {
-    subscriberCount -= 1;
-
-    if (subscriberCount === 0) {
-      document.removeEventListener('pointerdown', handlePointerDown, true);
-      document.removeEventListener('keydown', handleKeyDown, true);
-    }
-  };
-};
+/*
+ * 오버레이를 여는 탭은 오버레이가 마운트되기 전에 일어날 수 있어서,
+ * 리스너는 오버레이와 상관없이 모듈을 불러올 때 한 번만 붙인다.
+ */
+document.addEventListener(
+  'pointerdown',
+  (event) => {
+    lastInteractionType = event.pointerType;
+  },
+  true,
+);
+document.addEventListener(
+  'keydown',
+  () => {
+    lastInteractionType = 'keyboard';
+  },
+  true,
+);
 
 const useInitialFocusByInteraction = (
   popupRef: RefObject<HTMLElement | null>,
 ) => {
-  useEffect(subscribe, []);
-
   return (openType: string) => {
     const interactionType = openType || lastInteractionType;
 
