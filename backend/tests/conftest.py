@@ -8,6 +8,7 @@ os.environ["BG_REMOVAL_ENABLED"] = "false"
 os.environ["AUTO_TAGGING_ENABLED"] = "false"
 
 
+# 빈도 제한기는 프로세스에 하나라 테스트끼리 요청 수가 쌓여 429가 나지 않도록 매번 새로 만든다
 @pytest.fixture(autouse=True)
 def _fresh_clothing_rate_limiter():
     from app.services.clothing_rate_limit import get_clothing_rate_limiter
