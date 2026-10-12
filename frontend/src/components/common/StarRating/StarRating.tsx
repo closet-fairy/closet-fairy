@@ -1,4 +1,5 @@
-import { useId } from 'react';
+import { useContext, useId } from 'react';
+import { FormFieldContext } from '@/components/common/FormField/FormField.context';
 import Icon from '@/components/common/Icon';
 import * as S from './StarRating.styled';
 
@@ -34,11 +35,14 @@ const StarRating = (props: StarRatingProps) => {
     onChange,
     isReadOnly = false,
     isDisabled = false,
-    'aria-label': ariaLabel = '별점',
+    'aria-label': ariaLabelProp,
     size = 'md',
   } = props;
 
   const name = useId();
+  const formField = useContext(FormFieldContext);
+  const ariaLabel = ariaLabelProp ?? '별점';
+  const isLabelledByField = ariaLabelProp === undefined && formField !== null;
 
   const readOnlyLabel = `${ariaLabel} ${MAX_RATING}점 중 ${value}점`;
 
@@ -64,8 +68,12 @@ const StarRating = (props: StarRatingProps) => {
   }
 
   return (
-    <S.Fieldset disabled={isDisabled}>
-      <S.Legend>{ariaLabel}</S.Legend>
+    <S.Fieldset
+      disabled={isDisabled}
+      aria-labelledby={isLabelledByField ? formField.labelId : undefined}
+      aria-describedby={formField?.hintId}
+    >
+      {!isLabelledByField && <S.Legend>{ariaLabel}</S.Legend>}
       <S.Stars>
         {RATINGS.map((rating) => (
           <S.StarLabel

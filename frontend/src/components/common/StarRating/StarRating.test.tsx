@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, test, vi } from 'vitest';
+import FormField from '@/components/common/FormField';
 import StarRating from './StarRating';
 
 describe('별점 입력', () => {
@@ -74,5 +75,31 @@ describe('읽기 전용 표시', () => {
       screen.getByRole('img', { name: '별점 5점 중 4점' }),
     ).toBeInTheDocument();
     expect(screen.queryByRole('radio')).not.toBeInTheDocument();
+  });
+});
+
+describe('입력 항목 연결', () => {
+  test('FormField 안에 두면 라벨을 이름으로, 안내 문구를 설명으로 가져야 한다.', () => {
+    render(
+      <FormField label="코디 평가" hint="별 하나 이상">
+        <StarRating value={0} onChange={vi.fn()} />
+      </FormField>,
+    );
+
+    expect(
+      screen.getByRole('group', { name: '코디 평가' }),
+    ).toHaveAccessibleDescription('별 하나 이상');
+  });
+
+  test('FormField 안이라도 aria-label을 넘기면 그 이름을 써야 한다.', () => {
+    render(
+      <FormField label="코디 평가">
+        <StarRating value={0} onChange={vi.fn()} aria-label="이 코디의 별점" />
+      </FormField>,
+    );
+
+    expect(
+      screen.getByRole('group', { name: '이 코디의 별점' }),
+    ).toBeInTheDocument();
   });
 });
