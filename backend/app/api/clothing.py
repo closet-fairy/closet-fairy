@@ -128,7 +128,15 @@ async def save_clothing_edit(
 @router.put(
     "/{clothing_id}/edit/mask",
     response_model=ClothingDetail,
-    responses={**_EDIT_RESPONSES, 422: {"description": "PNG가 아니거나 옷 이미지와 크기가 다름"}},
+    responses={
+        **_EDIT_RESPONSES,
+        422: {
+            "description": (
+                "PNG가 아님 (CLOTHING_MASK_INVALID), 옷 이미지와 크기가 다름"
+                " (CLOTHING_MASK_SIZE_MISMATCH), 용량 초과 (CLOTHING_MASK_TOO_LARGE)"
+            )
+        },
+    },
 )
 async def save_clothing_mask(
     clothing_id: int,
