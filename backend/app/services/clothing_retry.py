@@ -27,6 +27,7 @@ async def retry_clothing(
     worker: JobNotifier | None = None,
 ) -> ClothingProgress:
     async with db.begin():
+        await clothing_repo.lock_clothing_jobs(db, member_id, clothing_id)
         clothing = await clothing_repo.get_clothing_for_edit(db, member_id, clothing_id, lock=True)
         if clothing is None:
             raise ClothingNotFoundError()
@@ -36,4 +37,6 @@ async def retry_clothing(
     if worker is not None:
         worker.notify()
     status = await get_clothing_status(db, storage, member_id, [clothing_id])
+    if not status.items:
+        raise ClothingNotFoundError()
     return status.items[0]

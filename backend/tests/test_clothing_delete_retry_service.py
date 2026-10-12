@@ -113,9 +113,11 @@ def _exists(tmp_path, key):
 
 
 async def test_delete_removes_row_and_all_images(repo, storage, tmp_path):
-    await clothing_delete.delete_clothing(_FakeDb(), storage, MEMBER_ID, 5)
+    db = _FakeDb()
 
-    assert repo.deleted == [5]
+    await clothing_delete.delete_clothing(db, storage, MEMBER_ID, 5)
+
+    assert repo.deleted == [5] and db.commits == 1
     assert repo.locks == [("jobs", MEMBER_ID, 5), (MEMBER_ID, 5, True)]
     assert not any(_exists(tmp_path, key) for key in (ORIGIN, CUTOUT, MASK))
 
@@ -152,10 +154,12 @@ async def test_delete_missing_clothing_is_not_found(repo, storage):
 
 async def test_images_stay_when_db_delete_fails(repo, storage, tmp_path):
     repo.delete_error = ConnectionError("db gone")
+    db = _FakeDb()
 
     with pytest.raises(ConnectionError):
-        await clothing_delete.delete_clothing(_FakeDb(), storage, MEMBER_ID, 5)
+        await clothing_delete.delete_clothing(db, storage, MEMBER_ID, 5)
 
+    assert db.commits == 0
     assert all(_exists(tmp_path, key) for key in (ORIGIN, CUTOUT, MASK))
 
 
@@ -203,10 +207,12 @@ def status_query(monkeypatch):
 async def test_retry_requeues_failed_clothing_and_wakes_worker(repo, status_query):
     repo.clothing = _clothing(processing_status_cd="failed")
     worker = _Worker()
+    db = _FakeDb()
 
-    progress = await clothing_retry.retry_clothing(_FakeDb(), None, MEMBER_ID, 5, worker)
+    progress = await clothing_retry.retry_clothing(db, None, MEMBER_ID, 5, worker)
 
-    assert repo.retried == [5]
+    assert repo.retried == [5] and db.commits == 1
+    assert repo.locks == [("jobs", MEMBER_ID, 5), (MEMBER_ID, 5, True)]
     assert worker.notified == 1
     assert progress.processing_status_cd == "processing" and progress.is_queued
     assert status_query == [(MEMBER_ID, [5])]
@@ -224,15 +230,28 @@ async def test_retry_without_worker_still_requeues(repo, status_query):
 async def test_only_failed_clothing_can_be_retried(repo, status_query, status):
     repo.clothing = _clothing(processing_status_cd=status)
     worker = _Worker()
+    db = _FakeDb()
 
     with pytest.raises(ClothingNotRetryableError):
-        await clothing_retry.retry_clothing(_FakeDb(), None, MEMBER_ID, 5, worker)
+        await clothing_retry.retry_clothing(db, None, MEMBER_ID, 5, worker)
 
-    assert repo.retried == [] and worker.notified == 0
+    assert repo.retried == [] and worker.notified == 0 and db.commits == 0
 
 
 async def test_retry_missing_clothing_is_not_found(repo, status_query):
     repo.clothing = None
+
+    with pytest.raises(ClothingNotFoundError):
+        await clothing_retry.retry_clothing(_FakeDb(), None, MEMBER_ID, 5)
+
+
+async def test_retry_of_clothing_deleted_right_after_commit_is_not_found(repo, monkeypatch):
+    repo.clothing = _clothing(processing_status_cd="failed")
+
+    async def deleted_meanwhile(db, storage, member_id, clothing_ids):
+        return ClothingStatusList(items=[])
+
+    monkeypatch.setattr(clothing_retry, "get_clothing_status", deleted_meanwhile)
 
     with pytest.raises(ClothingNotFoundError):
         await clothing_retry.retry_clothing(_FakeDb(), None, MEMBER_ID, 5)
@@ -276,6 +295,21 @@ def test_rate_limiter_counts_each_member_separately():
     limiter.check(2)
     with pytest.raises(TooManyClothingRequestsError):
         limiter.check(1)
+
+
+def test_rate_limiter_forgets_members_who_stopped_requesting():
+    clock = _Clock()
+    limiter = RequestRateLimiter(1, window_s=60, clock=clock)
+    limiter.check(1)
+    clock.now += 30
+    limiter.check(2)
+
+    clock.now += 30
+    limiter.check(3)
+
+    assert set(limiter._requests) == {2, 3}
+    with pytest.raises(TooManyClothingRequestsError):
+        limiter.check(2)
 
 
 def test_rejected_request_does_not_extend_the_wait():

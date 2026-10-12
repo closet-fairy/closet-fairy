@@ -31,15 +31,27 @@ class RequestRateLimiter:
         self._window_s = window_s
         self._clock = clock
         self._requests: dict[int, deque[float]] = {}
+        self._last_sweep = clock()
 
     def check(self, member_id: int) -> None:
         now = self._clock()
+        if now - self._last_sweep >= self._window_s:
+            self._sweep(now)
         requests = self._requests.setdefault(member_id, deque())
         while requests and requests[0] <= now - self._window_s:
             requests.popleft()
         if len(requests) >= self._limit:
             raise TooManyClothingRequestsError()
         requests.append(now)
+
+    def _sweep(self, now: float) -> None:
+        cutoff = now - self._window_s
+        self._requests = {
+            member_id: requests
+            for member_id, requests in self._requests.items()
+            if requests and requests[-1] > cutoff
+        }
+        self._last_sweep = now
 
 
 @lru_cache
