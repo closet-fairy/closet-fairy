@@ -35,6 +35,10 @@ const findScrollParent = (element: HTMLElement) => {
   return null;
 };
 
+/*
+ * scrollIntoView는 시트가 열리는 동안 스크롤이 잠긴 바깥 문서까지 움직일 수 있어서,
+ * 가장 가까운 스크롤 부모의 scrollTop만 직접 계산해 선택한 항목을 가운데로 맞춘다.
+ */
 const scrollToCenter = (element: HTMLElement | null) => {
   if (!element) {
     return;

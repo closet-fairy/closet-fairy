@@ -6,6 +6,7 @@ import {
   useCallback,
   useEffect,
   useEffectEvent,
+  useRef,
   useState,
   useSyncExternalStore,
 } from 'react';
@@ -70,15 +71,26 @@ const Carousel = (props: CarouselProps) => {
   );
   const canScrollPrev = useSyncExternalStore(
     subscribe,
-    () => emblaApi?.canScrollPrev() ?? slideCount > 1,
+    () =>
+      emblaApi?.canScrollPrev() ??
+      (isLooped ? slideCount > 1 : initialIndex > 0),
   );
   const canScrollNext = useSyncExternalStore(
     subscribe,
-    () => emblaApi?.canScrollNext() ?? slideCount > 1,
+    () =>
+      emblaApi?.canScrollNext() ??
+      (isLooped ? slideCount > 1 : initialIndex < slideCount - 1),
   );
 
+  const lastNotifiedIndexRef = useRef(initialIndex);
+
   const notifyIndexChange = useEffectEvent((api: EmblaApi) => {
-    onIndexChange?.(api.selectedScrollSnap());
+    const nextIndex = api.selectedScrollSnap();
+
+    if (nextIndex === lastNotifiedIndexRef.current) return;
+
+    lastNotifiedIndexRef.current = nextIndex;
+    onIndexChange?.(nextIndex);
   });
 
   useEffect(() => {
@@ -88,10 +100,10 @@ const Carousel = (props: CarouselProps) => {
       notifyIndexChange(emblaApi);
     };
 
-    emblaApi.on('select', handleSelect);
+    emblaApi.on('select', handleSelect).on('reInit', handleSelect);
 
     return () => {
-      emblaApi.off('select', handleSelect);
+      emblaApi.off('select', handleSelect).off('reInit', handleSelect);
     };
   }, [emblaApi]);
 

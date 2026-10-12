@@ -17,14 +17,6 @@ const getSlideOffset = (element: HTMLElement) => {
 
 beforeAll(() => {
   vi.stubGlobal(
-    'ResizeObserver',
-    class {
-      observe() {}
-      unobserve() {}
-      disconnect() {}
-    },
-  );
-  vi.stubGlobal(
     'IntersectionObserver',
     class {
       observe() {}

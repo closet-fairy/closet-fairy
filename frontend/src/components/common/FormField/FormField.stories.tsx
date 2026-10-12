@@ -79,7 +79,7 @@ export const WithHint: Story = {
   },
 };
 
-export const Group: Story = {
+export const OutingTimeExample: Story = {
   args: {
     label: '외출 시간',
     hint: '30분 단위',
