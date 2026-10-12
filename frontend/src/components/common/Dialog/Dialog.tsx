@@ -1,8 +1,8 @@
 import { Dialog as BaseDialog } from '@base-ui/react/dialog';
 import { useRef } from 'react';
 import type { ReactNode, RefObject } from 'react';
-import useInitialFocusByInteraction from '@/hooks/useInitialFocusByInteraction';
 import useKeyboardScrollableRegion from '@/hooks/useKeyboardScrollableRegion';
+import resolveInitialFocus from '@/utils/resolveInitialFocus';
 import * as S from './Dialog.styled';
 
 interface DialogProps {
@@ -31,7 +31,8 @@ const Dialog = (props: DialogProps) => {
   } = props;
   const popupRef = useRef<HTMLDivElement>(null);
   const bodyRef = useKeyboardScrollableRegion();
-  const getInitialFocus = useInitialFocusByInteraction(popupRef);
+  const getInitialFocus = (openType: string) =>
+    resolveInitialFocus(openType, popupRef.current);
 
   const handleOpenChange = (
     nextIsOpen: boolean,

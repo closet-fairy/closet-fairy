@@ -1,8 +1,8 @@
 import { Drawer } from '@base-ui/react/drawer';
 import { useRef } from 'react';
 import type { ReactNode, RefObject } from 'react';
-import useInitialFocusByInteraction from '@/hooks/useInitialFocusByInteraction';
 import useKeyboardScrollableRegion from '@/hooks/useKeyboardScrollableRegion';
+import resolveInitialFocus from '@/utils/resolveInitialFocus';
 import * as S from './BottomSheet.styled';
 
 interface BottomSheetProps {
@@ -31,7 +31,8 @@ const BottomSheet = (props: BottomSheetProps) => {
   } = props;
   const popupRef = useRef<HTMLDivElement>(null);
   const contentRef = useKeyboardScrollableRegion();
-  const getInitialFocus = useInitialFocusByInteraction(popupRef);
+  const getInitialFocus = (openType: string) =>
+    resolveInitialFocus(openType, popupRef.current);
 
   const handleOpenChange = (
     nextIsOpen: boolean,

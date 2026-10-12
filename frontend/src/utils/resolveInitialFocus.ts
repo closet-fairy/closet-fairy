@@ -1,5 +1,3 @@
-import type { RefObject } from 'react';
-
 let lastInteractionType = '';
 
 /*
@@ -21,14 +19,10 @@ document.addEventListener(
   true,
 );
 
-const useInitialFocusByInteraction = (
-  popupRef: RefObject<HTMLElement | null>,
-) => {
-  return (openType: string) => {
-    const interactionType = openType || lastInteractionType;
+const resolveInitialFocus = (openType: string, popup: HTMLElement | null) => {
+  const interactionType = openType || lastInteractionType;
 
-    return interactionType === 'touch' ? popupRef.current : true;
-  };
+  return interactionType === 'touch' ? popup : true;
 };
 
-export default useInitialFocusByInteraction;
+export default resolveInitialFocus;

@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createRef } from 'react';
-import { describe, expect, test, vi } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import Dialog from './Dialog';
 
 describe('다이얼로그 닫기', () => {
@@ -161,7 +161,21 @@ describe('열 때 마운트하는 경우', () => {
 });
 
 describe('본문 키보드 스크롤', () => {
-  test('본문에 포커스할 요소가 없으면 본문 자체가 포커스 대상이어야 한다.', () => {
+  const mockBodyHeight = (scrollHeight: number, clientHeight: number) => {
+    vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockReturnValue(
+      scrollHeight,
+    );
+    vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(
+      clientHeight,
+    );
+  };
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  test('본문이 넘치는데 포커스할 요소가 없으면 본문 자체가 포커스 대상이어야 한다.', () => {
+    mockBodyHeight(500, 100);
     render(
       <Dialog isOpen onOpenChange={vi.fn()} title="안내">
         긴 본문
@@ -169,5 +183,16 @@ describe('본문 키보드 스크롤', () => {
     );
 
     expect(screen.getByText('긴 본문')).toHaveAttribute('tabindex', '0');
+  });
+
+  test('본문이 넘치지 않으면 포커스할 요소가 없어도 본문은 포커스 대상이 아니어야 한다.', () => {
+    mockBodyHeight(100, 100);
+    render(
+      <Dialog isOpen onOpenChange={vi.fn()} title="안내">
+        짧은 본문
+      </Dialog>,
+    );
+
+    expect(screen.getByText('짧은 본문')).not.toHaveAttribute('tabindex');
   });
 });
