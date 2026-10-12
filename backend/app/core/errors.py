@@ -61,6 +61,12 @@ class ConflictError(AppError):
     message = "요청을 처리할 수 없는 상태입니다."
 
 
+class TooManyRequestsError(AppError):
+    code = "TOO_MANY_REQUESTS"
+    status_code = status.HTTP_429_TOO_MANY_REQUESTS
+    message = "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요."
+
+
 VALUE_ERROR_PREFIX = "Value error, "
 
 HTTP_ERRORS: dict[int, tuple[str, str]] = {
@@ -71,6 +77,7 @@ HTTP_ERRORS: dict[int, tuple[str, str]] = {
         NotFoundError,
         MethodNotAllowedError,
         ConflictError,
+        TooManyRequestsError,
     )
 }
 

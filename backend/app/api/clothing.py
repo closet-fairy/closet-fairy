@@ -1,18 +1,21 @@
 from fastapi import APIRouter, Depends, File, Query, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_bg_removal_worker, get_current_member_id
+from app.api.deps import get_bg_removal_worker, get_current_member_id, limit_clothing_requests
 from app.core.db import get_db
 from app.schemas.clothing import (
     ClothingDetail,
     ClothingEditUpdate,
     ClothingPage,
+    ClothingProgress,
     ClothingStatusList,
     ClothingUpdate,
     ClothingUploadResult,
 )
+from app.services import clothing_delete as delete_service
 from app.services import clothing_edit as edit_service
 from app.services import clothing_query as query_service
+from app.services import clothing_retry as retry_service
 from app.services import clothing_upload as upload_service
 from app.services.storage import ImageStorage, get_image_storage
 from app.workers.bg_removal_worker import BgRemovalWorker
@@ -20,7 +23,13 @@ from app.workers.bg_removal_worker import BgRemovalWorker
 router = APIRouter(prefix="/clothing", tags=["clothing"])
 
 
-@router.post("", status_code=status.HTTP_202_ACCEPTED, response_model=ClothingUploadResult)
+@router.post(
+    "",
+    status_code=status.HTTP_202_ACCEPTED,
+    response_model=ClothingUploadResult,
+    dependencies=[Depends(limit_clothing_requests)],
+    responses={429: {"description": "등록·재시도 요청이 너무 잦음"}},
+)
 async def upload_clothing(
     files: list[UploadFile] = File(description="옷 사진. 사진 1장 = 옷 1벌"),
     db: AsyncSession = Depends(get_db),
@@ -160,3 +169,43 @@ async def reset_clothing_edit(
 ) -> ClothingDetail:
     """편집값 초기화. 회전·원근·마스크를 모두 지워 원래 이미지로 돌아간다 (FR-EDIT-06)."""
     return await edit_service.reset_edit(db, storage, member_id, clothing_id)
+
+
+@router.delete(
+    "/{clothing_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={404: {"description": "없는 옷이거나 본인 옷이 아님"}},
+)
+async def delete_clothing(
+    clothing_id: int,
+    db: AsyncSession = Depends(get_db),
+    member_id: int = Depends(get_current_member_id),
+    storage: ImageStorage = Depends(get_image_storage),
+) -> None:
+    """옷 영구 삭제 (FR-DEL). 처리 중·실패한 옷도 지울 수 있고, 진행 중이던 처리 결과는 버린다.
+
+    별점을 준 코디에 쓰인 이미지는 추천 내역에 남긴다.
+    """
+    await delete_service.delete_clothing(db, storage, member_id, clothing_id)
+
+
+@router.post(
+    "/{clothing_id}/retry",
+    status_code=status.HTTP_202_ACCEPTED,
+    response_model=ClothingProgress,
+    dependencies=[Depends(limit_clothing_requests)],
+    responses={
+        404: {"description": "없는 옷이거나 본인 옷이 아님"},
+        409: {"description": "실패한 옷이 아님 (CLOTHING_NOT_RETRYABLE)"},
+        429: {"description": "등록·재시도 요청이 너무 잦음"},
+    },
+)
+async def retry_clothing(
+    clothing_id: int,
+    db: AsyncSession = Depends(get_db),
+    member_id: int = Depends(get_current_member_id),
+    storage: ImageStorage = Depends(get_image_storage),
+    worker: BgRemovalWorker | None = Depends(get_bg_removal_worker),
+) -> ClothingProgress:
+    """실패한 옷을 배경 제거부터 다시 처리한다 (FR-REG-24). 업로드 직후처럼 상태를 폴링한다."""
+    return await retry_service.retry_clothing(db, storage, member_id, clothing_id, worker)
