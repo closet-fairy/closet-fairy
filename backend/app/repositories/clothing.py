@@ -501,3 +501,37 @@ async def upsert_edit_mask(db: AsyncSession, clothing_id: int, brush_mask_url: s
 
 async def delete_clothing_edit(db: AsyncSession, clothing_id: int) -> None:
     await db.execute(DELETE_EDIT_SQL, {"clothing_id": clothing_id})
+
+
+RATED_SNAPSHOT_KEYS_SQL = text(
+    """
+    SELECT DISTINCT i.image_url_snapshot
+    FROM outfit_item i
+    JOIN outfit_feedback f ON f.outfit_id = i.outfit_id AND f.feedback_type_cd = 'rated'
+    WHERE i.clothing_id = :clothing_id AND i.image_url_snapshot IS NOT NULL
+    """
+)
+
+DELETE_CLOTHING_SQL = text("DELETE FROM clothing WHERE clothing_id = :clothing_id")
+
+RESET_FOR_RETRY_SQL = text(
+    """
+    UPDATE clothing SET processing_status_cd = 'processing', cutout_image_url = NULL
+    WHERE clothing_id = :clothing_id
+    """
+)
+
+
+async def get_rated_snapshot_keys(db: AsyncSession, clothing_id: int) -> set[str]:
+    """별점을 받은 코디가 이 옷의 이미지로 남겨 둔 저장소 키 (E-8)."""
+    rows = (await db.execute(RATED_SNAPSHOT_KEYS_SQL, {"clothing_id": clothing_id})).all()
+    return {row.image_url_snapshot for row in rows}
+
+
+async def delete_clothing(db: AsyncSession, clothing_id: int) -> None:
+    await db.execute(DELETE_CLOTHING_SQL, {"clothing_id": clothing_id})
+
+
+async def reset_for_retry(db: AsyncSession, clothing_id: int) -> None:
+    await db.execute(RESET_FOR_RETRY_SQL, {"clothing_id": clothing_id})
+    await job_repo.enqueue_job(db, clothing_id, STAGE_BG_REMOVAL)

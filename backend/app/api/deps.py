@@ -2,9 +2,10 @@
 
 from datetime import datetime
 
-from fastapi import Request
+from fastapi import Depends, Request
 
 from app.core.config import get_settings
+from app.services.clothing_rate_limit import RequestRateLimiter, get_clothing_rate_limiter
 from app.services.weather.base_time import KST
 from app.workers.bg_removal_worker import BgRemovalWorker
 
@@ -22,3 +23,11 @@ def get_now() -> datetime:
 def get_bg_removal_worker(request: Request) -> BgRemovalWorker | None:
     """배경 제거를 끈 환경(테스트 등)에서는 워커가 없어 None이다."""
     return getattr(request.app.state, "bg_removal_worker", None)
+
+
+def limit_clothing_requests(
+    member_id: int = Depends(get_current_member_id),
+    limiter: RequestRateLimiter = Depends(get_clothing_rate_limiter),
+) -> None:
+    """옷 등록·재시도 요청 빈도를 회원별로 제한한다. 넘으면 429."""
+    limiter.check(member_id)

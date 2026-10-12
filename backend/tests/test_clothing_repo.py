@@ -373,3 +373,37 @@ async def test_delete_clothing_edit_removes_row():
     assert db.executed == [
         ("DELETE FROM clothing_edit WHERE clothing_id = :clothing_id", {"clothing_id": 5})
     ]
+
+
+async def test_rated_snapshot_keys_come_only_from_rated_outfits():
+    db = _QueryDb([_Row(image_url_snapshot="clothing/7/a_cutout.webp")])
+
+    keys = await clothing_repo.get_rated_snapshot_keys(db, 5)
+
+    assert keys == {"clothing/7/a_cutout.webp"}
+    [(sql, params)] = db.executed
+    assert "feedback_type_cd = 'rated'" in sql
+    assert params == {"clothing_id": 5}
+
+
+async def test_reset_for_retry_reopens_clothing_and_queues_bg_removal():
+    db = _InsertDb()
+
+    await clothing_repo.reset_for_retry(db, 5)
+
+    (reset_sql, reset_params), (job_sql, job_params) = db.executed
+    assert "processing_status_cd = 'processing'" in reset_sql
+    assert "cutout_image_url = NULL" in reset_sql
+    assert reset_params == {"clothing_id": 5}
+    assert "INSERT INTO clothing_job" in job_sql
+    assert job_params == {"clothing_id": 5, "stage_cd": "bg_removal"}
+
+
+async def test_delete_clothing_removes_row():
+    db = _InsertDb()
+
+    await clothing_repo.delete_clothing(db, 5)
+
+    assert db.executed == [
+        ("DELETE FROM clothing WHERE clothing_id = :clothing_id", {"clothing_id": 5})
+    ]
