@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { ICON_NAMES } from '../../../../.storybook/storyIconNames';
 import { useArgs } from 'storybook/preview-api';
 import { fn } from 'storybook/test';
+import { ICON_NAMES } from '../../../../.storybook/storyIconNames';
 import TextField from './TextField';
 
 const meta = {
@@ -42,7 +42,7 @@ const meta = {
     },
     errorMessage: {
       description:
-        '에러 문구입니다. 있으면 테두리와 문구가 에러 색으로 바뀌고 입력창이 `aria-invalid`가 됩니다.',
+        '에러 문구입니다. 있으면 테두리와 문구가 에러 색으로 바뀌고 입력창이 `aria-invalid`가 됩니다. 문구는 나타나는 순간 스크린리더가 읽도록 알림 영역(`role="alert"`)으로 그립니다.',
       control: 'text',
     },
     isDisabled: {

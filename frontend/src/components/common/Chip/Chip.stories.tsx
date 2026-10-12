@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { ICON_NAMES } from '../../../../.storybook/storyIconNames';
 import { fn } from 'storybook/test';
+import { ICON_NAMES } from '../../../../.storybook/storyIconNames';
 import ChipGroup from '@/components/common/ChipGroup';
 import Chip from './Chip';
 

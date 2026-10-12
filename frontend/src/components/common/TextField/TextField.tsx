@@ -201,7 +201,11 @@ const TextField = (props: TextFieldProps) => {
           </S.ClearButton>
         )}
       </S.Field>
-      {hasError && <S.ErrorMessage id={errorId}>{errorMessage}</S.ErrorMessage>}
+      {hasError && (
+        <S.ErrorMessage id={errorId} role="alert">
+          {errorMessage}
+        </S.ErrorMessage>
+      )}
     </S.Container>
   );
 };

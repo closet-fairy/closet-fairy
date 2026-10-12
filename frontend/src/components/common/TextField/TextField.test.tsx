@@ -340,4 +340,23 @@ describe('에러 표시', () => {
     expect(input).toBeInvalid();
     expect(input).toHaveAccessibleDescription('다시 확인해 주세요.');
   });
+
+  test('입력 중에 에러 문구가 새로 나타나면 스크린리더가 바로 읽도록 알림 영역이어야 한다.', () => {
+    const { rerender } = render(
+      <TextField value="값" onChange={vi.fn()} aria-label="입력" />,
+    );
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+
+    rerender(
+      <TextField
+        value="값"
+        onChange={vi.fn()}
+        errorMessage="다시 확인해 주세요."
+        aria-label="입력"
+      />,
+    );
+
+    expect(screen.getByRole('alert')).toHaveTextContent('다시 확인해 주세요.');
+  });
 });
