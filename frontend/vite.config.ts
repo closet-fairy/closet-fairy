@@ -4,6 +4,7 @@ import { tanstackRouter } from '@tanstack/router-plugin/vite';
 import react from '@vitejs/plugin-react';
 import { loadEnv } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import svgr from 'vite-plugin-svgr';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig(({ mode }) => {
@@ -15,6 +16,12 @@ export default defineConfig(({ mode }) => {
       tanstackRouter({ target: 'react', autoCodeSplitting: true }),
       react(),
       babel({ cwd: import.meta.dirname, plugins: ['@emotion/babel-plugin'] }),
+      svgr({
+        svgrOptions: {
+          icon: true,
+          svgProps: { fill: 'currentColor' },
+        },
+      }),
       VitePWA({
         disable: process.env.STORYBOOK === 'true',
         registerType: 'prompt',

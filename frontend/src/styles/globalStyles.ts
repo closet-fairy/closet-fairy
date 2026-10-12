@@ -1,4 +1,5 @@
 import { css } from '@emotion/react';
+import { bg, border, colorVariables, fg } from '@/styles/tokens';
 
 export const globalStyles = css`
   *,
@@ -7,6 +8,10 @@ export const globalStyles = css`
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+  }
+
+  :root {
+    ${colorVariables}
   }
 
   html {
@@ -24,6 +29,8 @@ export const globalStyles = css`
       'Noto Sans KR',
       'Malgun Gothic',
       sans-serif;
+    color: ${fg.neutral.strong};
+    background-color: ${bg.white};
     word-break: keep-all;
     overflow-wrap: break-word;
     -webkit-tap-highlight-color: transparent;
@@ -88,6 +95,11 @@ export const globalStyles = css`
   input[type='number'] {
     -moz-appearance: textfield;
     appearance: textfield;
+  }
+
+  :focus-visible {
+    outline: 2px solid ${border.neutral.strong};
+    outline-offset: 2px;
   }
 
   @media (prefers-reduced-motion: reduce) {

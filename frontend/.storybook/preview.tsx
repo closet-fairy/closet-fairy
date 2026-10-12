@@ -9,7 +9,9 @@ import StoryRouterProvider from './StoryRouterProvider';
 import '@fontsource-variable/asta-sans';
 
 const storyRootStyles = css`
-  .sb-main-fullscreen #storybook-root {
+  .sb-main-fullscreen #storybook-root:not([hidden]) {
+    display: flex;
+    flex-direction: column;
     min-height: 100dvh;
   }
 `;

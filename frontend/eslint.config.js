@@ -12,6 +12,7 @@ import tseslint from 'typescript-eslint';
 
 const AXIOS_ALLOWED_FILES = ['src/apis/httpClient.ts', 'src/apis/apiError.ts'];
 const HEADLESS_ALLOWED_FILES = ['src/components/common/**'];
+const PALETTE_ALLOWED_FILES = ['src/styles/tokens/**'];
 
 const AXIOS_RESTRICTION = {
   name: 'axios',
@@ -19,9 +20,15 @@ const AXIOS_RESTRICTION = {
 };
 
 const HEADLESS_RESTRICTION = {
-  group: ['@radix-ui/*', 'radix-ui', 'vaul', 'sonner'],
+  group: ['@base-ui/*', 'embla-carousel-react', 'sonner'],
   message:
     '헤드리스 라이브러리는 src/components/common/에서 감싼 컴포넌트를 통해서만 사용하세요.',
+};
+
+const PALETTE_RESTRICTION = {
+  group: ['**/tokens/palette'],
+  message:
+    '원시 팔레트는 src/styles/tokens/ 안에서만 쓰고, 그 밖에서는 시맨틱 토큰을 쓰세요.',
 };
 
 export default defineConfig([
@@ -75,24 +82,46 @@ export default defineConfig([
   },
   {
     files: ['**/*.{ts,tsx}'],
-    ignores: [...AXIOS_ALLOWED_FILES, ...HEADLESS_ALLOWED_FILES],
+    ignores: [
+      ...AXIOS_ALLOWED_FILES,
+      ...HEADLESS_ALLOWED_FILES,
+      ...PALETTE_ALLOWED_FILES,
+    ],
     rules: {
       'no-restricted-imports': [
         'error',
-        { paths: [AXIOS_RESTRICTION], patterns: [HEADLESS_RESTRICTION] },
+        {
+          paths: [AXIOS_RESTRICTION],
+          patterns: [HEADLESS_RESTRICTION, PALETTE_RESTRICTION],
+        },
       ],
     },
   },
   {
     files: AXIOS_ALLOWED_FILES,
     rules: {
-      'no-restricted-imports': ['error', { patterns: [HEADLESS_RESTRICTION] }],
+      'no-restricted-imports': [
+        'error',
+        { patterns: [HEADLESS_RESTRICTION, PALETTE_RESTRICTION] },
+      ],
     },
   },
   {
     files: HEADLESS_ALLOWED_FILES,
     rules: {
-      'no-restricted-imports': ['error', { paths: [AXIOS_RESTRICTION] }],
+      'no-restricted-imports': [
+        'error',
+        { paths: [AXIOS_RESTRICTION], patterns: [PALETTE_RESTRICTION] },
+      ],
+    },
+  },
+  {
+    files: PALETTE_ALLOWED_FILES,
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        { paths: [AXIOS_RESTRICTION], patterns: [HEADLESS_RESTRICTION] },
+      ],
     },
   },
   {
