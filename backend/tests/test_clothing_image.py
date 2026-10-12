@@ -8,7 +8,10 @@ from PIL import Image
 from app.services.clothing_image import (
     ImageRejectedError,
     ImageRejectReason,
+    image_executor,
+    image_size,
     normalize_image,
+    normalize_mask,
 )
 
 GPS_IFD = 0x8825
@@ -167,3 +170,44 @@ def test_webp_encoding_failure_is_unreadable(monkeypatch):
         _normalize(data)
 
     assert e.value.reason is ImageRejectReason.UNREADABLE
+
+
+def test_mask_becomes_grayscale_png():
+    data = _encode(Image.new("RGBA", (30, 20), "white"), "PNG")
+
+    mask = _open(normalize_mask(data, expected_size=(30, 20)))
+
+    assert (mask.format, mask.mode, mask.size) == ("PNG", "L", (30, 20))
+
+
+@pytest.mark.parametrize(
+    ("data", "reason"),
+    [
+        (_encode(Image.new("L", (30, 20)), "JPEG"), ImageRejectReason.UNSUPPORTED_FORMAT),
+        (b"not an image", ImageRejectReason.UNREADABLE),
+        (_encode(Image.new("L", (20, 30)), "PNG"), ImageRejectReason.SIZE_MISMATCH),
+    ],
+)
+def test_bad_mask_is_rejected(data, reason):
+    with pytest.raises(ImageRejectedError) as error:
+        normalize_mask(data, expected_size=(30, 20))
+
+    assert error.value.reason is reason
+
+
+def test_mask_size_is_checked_before_decoding(monkeypatch):
+    def fail_convert(self, *args, **kwargs):
+        raise AssertionError("크기가 다르면 디코딩하지 않아야 한다")
+
+    monkeypatch.setattr(Image.Image, "convert", fail_convert)
+
+    with pytest.raises(ImageRejectedError):
+        normalize_mask(_encode(Image.new("L", (20, 30)), "PNG"), expected_size=(30, 20))
+
+
+def test_image_executor_is_shared_per_size():
+    assert image_executor(4) is image_executor(4)
+
+
+def test_image_size_reads_dimensions():
+    assert image_size(_encode(Image.new("RGB", (12, 34)), "WEBP")) == (12, 34)

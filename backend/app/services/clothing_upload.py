@@ -10,9 +10,7 @@ DB 저장이 실패하면 이미 저장한 이미지를 지운다.
 import asyncio
 import logging
 from collections.abc import Sequence
-from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
-from functools import lru_cache
 from typing import BinaryIO, Protocol
 from uuid import uuid4
 
@@ -22,7 +20,12 @@ from app.core.config import Settings, get_settings
 from app.core.errors import ValidationError
 from app.repositories import clothing as clothing_repo
 from app.schemas.clothing import ClothingUploadResult, RejectedUpload, UploadedClothing
-from app.services.clothing_image import ImageRejectedError, ImageRejectReason, normalize_image
+from app.services.clothing_image import (
+    ImageRejectedError,
+    ImageRejectReason,
+    image_executor,
+    normalize_image,
+)
 from app.services.storage import ImageStorage
 
 logger = logging.getLogger(__name__)
@@ -64,11 +67,6 @@ def reject_message(reason: ImageRejectReason, settings: Settings) -> str:
     return "사진을 읽을 수 없습니다. 다른 사진으로 다시 올려 주세요."
 
 
-@lru_cache
-def _image_executor(max_workers: int) -> ThreadPoolExecutor:
-    return ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="clothing-image")
-
-
 async def upload_clothing(
     db: AsyncSession,
     storage: ImageStorage,
@@ -85,7 +83,7 @@ async def upload_clothing(
         )
 
     loop = asyncio.get_running_loop()
-    executor = _image_executor(settings.CLOTHING_IMAGE_NORMALIZE_CONCURRENCY)
+    executor = image_executor(settings.CLOTHING_IMAGE_NORMALIZE_CONCURRENCY)
     outcomes = await asyncio.gather(
         *(loop.run_in_executor(executor, _read_and_normalize, f.file, settings) for f in files),
         return_exceptions=True,
