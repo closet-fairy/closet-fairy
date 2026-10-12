@@ -164,7 +164,7 @@ const Picker = (props: PickerProps) => {
             return (
               <S.Option
                 key={option.value}
-                ref={isSelected ? scrollToCenter : undefined}
+                ref={isSelected && isOpen ? scrollToCenter : undefined}
                 role="option"
                 aria-selected={isSelected}
                 tabIndex={option.value === tabbableValue ? 0 : -1}

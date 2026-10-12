@@ -10,7 +10,7 @@ import {
   useState,
   useSyncExternalStore,
 } from 'react';
-import type { KeyboardEvent, ReactNode } from 'react';
+import type { KeyboardEvent, ReactNode, RefObject } from 'react';
 import IconButton from '@/components/common/IconButton';
 import type { IconButtonVariant } from '@/components/common/IconButton/IconButton';
 import * as S from './Carousel.styled';
@@ -33,6 +33,16 @@ interface CarouselProps {
   hasArrows?: boolean;
   arrowVariant?: IconButtonVariant;
 }
+
+/*
+ * 끝에 닿은 화살표는 비활성되면서 포커스를 잃으므로 반대쪽 화살표로 포커스를 옮긴다.
+ * 반대쪽 화살표도 방금 전까지 비활성이었을 수 있어서, 다시 그려진 다음 프레임에 옮긴다.
+ */
+const focusAfterRender = (ref: RefObject<HTMLButtonElement | null>) => {
+  requestAnimationFrame(() => {
+    ref.current?.focus();
+  });
+};
 
 const Carousel = (props: CarouselProps) => {
   const {
@@ -114,12 +124,27 @@ const Carousel = (props: CarouselProps) => {
     emblaApi.scrollTo(index, isReducedMotion());
   }, [emblaApi, index]);
 
+  const prevArrowRef = useRef<HTMLButtonElement>(null);
+  const nextArrowRef = useRef<HTMLButtonElement>(null);
+
   const scrollPrev = () => {
-    emblaApi?.scrollPrev(isReducedMotion());
+    if (!emblaApi) return;
+
+    emblaApi.scrollPrev(isReducedMotion());
+
+    if (!emblaApi.canScrollPrev()) {
+      focusAfterRender(nextArrowRef);
+    }
   };
 
   const scrollNext = () => {
-    emblaApi?.scrollNext(isReducedMotion());
+    if (!emblaApi) return;
+
+    emblaApi.scrollNext(isReducedMotion());
+
+    if (!emblaApi.canScrollNext()) {
+      focusAfterRender(prevArrowRef);
+    }
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
@@ -168,6 +193,7 @@ const Carousel = (props: CarouselProps) => {
           <S.ArrowSlot $side="prev">
             <IconButton
               icon="chevron_left"
+              ref={prevArrowRef}
               aria-label="이전 슬라이드"
               variant={arrowVariant}
               isDisabled={!canScrollPrev}
@@ -177,6 +203,7 @@ const Carousel = (props: CarouselProps) => {
           <S.ArrowSlot $side="next">
             <IconButton
               icon="chevron_right"
+              ref={nextArrowRef}
               aria-label="다음 슬라이드"
               variant={arrowVariant}
               isDisabled={!canScrollNext}

@@ -101,6 +101,28 @@ describe('화살표로 넘기기', () => {
     });
     expect(screen.getByRole('button', { name: '다음 슬라이드' })).toBeEnabled();
   });
+
+  test('순환을 끈 상태에서 끝에 닿으면 포커스가 반대쪽 화살표로 옮겨가야 한다.', async () => {
+    const user = userEvent.setup();
+    render(
+      <Carousel aria-label="추천 코디" isLooped={false}>
+        <p>첫 번째 코디</p>
+        <p>두 번째 코디</p>
+      </Carousel>,
+    );
+
+    const nextArrow = screen.getByRole('button', { name: '다음 슬라이드' });
+    await waitFor(() => {
+      expect(nextArrow).toBeEnabled();
+    });
+    await user.click(nextArrow);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: '이전 슬라이드' }),
+      ).toHaveFocus();
+    });
+  });
 });
 
 describe('제어형 index', () => {
