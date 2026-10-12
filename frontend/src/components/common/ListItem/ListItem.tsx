@@ -1,4 +1,4 @@
-import type { MouseEvent } from 'react';
+import type { MouseEventHandler } from 'react';
 import type { IconName } from '@/assets/icons';
 import Icon from '@/components/common/Icon';
 import * as S from './ListItem.styled';
@@ -12,7 +12,7 @@ interface ListItemProps {
   description?: string;
   hasChevron?: boolean;
   isDisabled?: boolean;
-  onClick?: (event: MouseEvent<HTMLButtonElement>) => void;
+  onClick?: MouseEventHandler<HTMLButtonElement>;
 }
 
 const ListItem = (props: ListItemProps) => {
