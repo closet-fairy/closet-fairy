@@ -19,7 +19,7 @@ const AXIOS_RESTRICTION = {
 };
 
 const HEADLESS_RESTRICTION = {
-  group: ['@radix-ui/*', 'radix-ui', 'vaul', 'sonner'],
+  group: ['@base-ui/*', 'embla-carousel-react', 'sonner'],
   message:
     '헤드리스 라이브러리는 src/components/common/에서 감싼 컴포넌트를 통해서만 사용하세요.',
 };

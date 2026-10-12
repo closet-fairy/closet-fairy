@@ -79,6 +79,7 @@ ClothCard/
 
 - 컴포넌트는 화살표 함수로 정의하고 default export한다.
 - props 타입은 `interface <컴포넌트명>Props`로 정의한다.
+  모드에 따라 받는 props가 달라지는 경우처럼 유니언이 필요하면 `type <컴포넌트명>Props`로 정의한다.
 - props는 매개변수에서 구조 분해하지 않고, 함수 본문 첫 줄에서 구조 분해한다.
   - ✅ `const ClothCard = (props: ClothCardProps) => { const { cloth, onSelect } = props; ... }`
   - ❌ `const ClothCard = ({ cloth, onSelect }: ClothCardProps) => { ... }`
@@ -109,7 +110,7 @@ ClothCard/
 - 스타일에만 쓰는 props는 `$` 접두사를 붙인다. (`$isActive`, `$size`)
 - 컴포넌트를 `styled()`로 감쌀 때는 `$` props가 DOM으로 넘어가지 않도록 `styles/transientOptions.ts`의 옵션을 넘긴다.
   HTML 태그(`styled.div` 등)를 감쌀 때는 넘기지 않아도 된다.
-  - ✅ `styled(Dialog.Content, transientOptions)<{ $size: Size }>`
+  - ✅ `styled(Dialog.Popup, transientOptions)<{ $size: Size }>`
 - 전역 스타일은 `styles/globalStyles.ts`에만 둔다. 컴포넌트에서 전역 선택자(`body`, `#root` 등)를 스타일링하지 않는다.
   Storybook 캔버스에만 필요한 전역 스타일은 `.storybook/preview.tsx`에 둔다.
 - 폰트는 `@fontsource-variable/asta-sans` 패키지에서 불러온다. 글꼴은 `styles/globalStyles.ts`의 `body`에서만 지정한다.
@@ -126,10 +127,10 @@ ClothCard/
 ### 헤드리스 컴포넌트
 
 - 동작이 까다로운 컴포넌트(모달, 확인 대화상자, Select, 팝오버, 탭, 토글 그룹, 바텀시트, 토스트)는
-  Radix 등 헤드리스 라이브러리를 감싸 `components/common/`에 만든다.
+  Base UI(`@base-ui/react`) 등 헤드리스 라이브러리를 감싸 `components/common/`에 만든다.
 - 헤드리스 라이브러리는 `components/common/` 안에서만 import한다. 화면과 다른 컴포넌트는 감싼 컴포넌트를 쓴다.
   - ✅ `import Dialog from '@/components/common/Dialog';`
-  - ❌ `import * as Dialog from '@radix-ui/react-dialog';` (`components/common/` 밖에서)
+  - ❌ `import { Dialog } from '@base-ui/react/dialog';` (`components/common/` 밖에서)
 
 ### 모바일
 
@@ -158,6 +159,7 @@ ClothCard/
   - ❌ `import { type Cloth, getCloth } from ...`
 - `enum`을 쓰지 않는다. 문자열 리터럴 유니언이나 `as const` 객체를 쓴다.
 - 객체 형태는 `interface`로, 유니언과 별칭 등 나머지는 `type`으로 정의한다.
+  단, 객체라도 판별 유니언처럼 `type`이 훨씬 적합한 경우에는 `type`을 쓸 수 있다.
 - 외부에서 들어오는 데이터(API 응답, localStorage, URL 파라미터)는 zod로 검증한 뒤 쓴다.
   내부 값의 타입을 좁힐 때는 `data is X` 형태의 타입 가드를 써도 된다.
 
