@@ -20,6 +20,7 @@ from app.schemas.clothing import ClothingDetail, ClothingEditUpdate, ClothingUpd
 from app.services.clothing_image import (
     ImageRejectedError,
     ImageRejectReason,
+    image_executor,
     image_size,
     normalize_mask,
 )
@@ -49,6 +50,23 @@ class InvalidMaskError(ValidationError):
 class MaskSizeMismatchError(ValidationError):
     code = "CLOTHING_MASK_SIZE_MISMATCH"
     message = "브러시 마스크는 옷 이미지와 크기가 같아야 합니다."
+
+
+class MaskTooLargeError(ValidationError):
+    code = "CLOTHING_MASK_TOO_LARGE"
+
+
+def _mask_error(reason: ImageRejectReason) -> ValidationError:
+    if reason is ImageRejectReason.TOO_LARGE:
+        max_mb = get_settings().CLOTHING_UPLOAD_MAX_BYTES // (1024 * 1024)
+        return MaskTooLargeError(
+            f"브러시 마스크 용량이 너무 큽니다. {max_mb}MB 이하로 올려 주세요."
+        )
+    if reason in (ImageRejectReason.SIZE_MISMATCH, ImageRejectReason.RESOLUTION_TOO_HIGH):
+        return MaskSizeMismatchError()
+    if reason is ImageRejectReason.UNREADABLE:
+        return InvalidMaskError("브러시 마스크를 읽을 수 없습니다. 다시 그려서 올려 주세요.")
+    return InvalidMaskError()
 
 
 async def update_clothing(
@@ -106,13 +124,13 @@ async def save_mask(
     async with db.begin():
         clothing = await clothing_repo.get_clothing_for_edit(db, member_id, clothing_id)
     _ensure_editable(clothing)
-    try:
-        mask, mask_size = await asyncio.to_thread(_read_mask, file)
-    except ImageRejectedError as e:
-        raise InvalidMaskError() from e
     base = await storage.read(clothing.cutout_image_url or clothing.origin_image_url)
-    if await asyncio.to_thread(image_size, base) != mask_size:
-        raise MaskSizeMismatchError()
+    loop = asyncio.get_running_loop()
+    executor = image_executor(get_settings().CLOTHING_IMAGE_NORMALIZE_CONCURRENCY)
+    try:
+        mask = await loop.run_in_executor(executor, _read_mask, file, base)
+    except ImageRejectedError as e:
+        raise _mask_error(e.reason) from e
 
     key = f"clothing/{member_id}/{uuid4().hex}_mask.png"
     await storage.save(key, mask)
@@ -192,12 +210,12 @@ def _unique(codes: list[str] | None) -> tuple[str, ...]:
     return tuple(dict.fromkeys(codes or ()))
 
 
-def _read_mask(file: BinaryIO) -> tuple[bytes, tuple[int, int]]:
-    settings = get_settings()
-    data = file.read(settings.CLOTHING_UPLOAD_MAX_BYTES + 1)
-    if len(data) > settings.CLOTHING_UPLOAD_MAX_BYTES:
+def _read_mask(file: BinaryIO, base_image: bytes) -> bytes:
+    max_bytes = get_settings().CLOTHING_UPLOAD_MAX_BYTES
+    data = file.read(max_bytes + 1)
+    if len(data) > max_bytes:
         raise ImageRejectedError(ImageRejectReason.TOO_LARGE)
-    return normalize_mask(data, max_pixels=settings.CLOTHING_IMAGE_MAX_PIXELS)
+    return normalize_mask(data, expected_size=image_size(base_image))
 
 
 async def _delete_quietly(storage: ImageStorage, key: str) -> None:

@@ -6,7 +6,9 @@ EXIF 회전을 적용하고 GPS 등 메타데이터를 버린다. 색 표현이 
 """
 
 import io
+from concurrent.futures import ThreadPoolExecutor
 from enum import StrEnum
+from functools import lru_cache
 
 import pillow_heif
 from PIL import Image, ImageOps, UnidentifiedImageError
@@ -23,6 +25,12 @@ class ImageRejectReason(StrEnum):
     TOO_LARGE = "too_large"
     RESOLUTION_TOO_HIGH = "resolution_too_high"
     UNREADABLE = "unreadable"
+    SIZE_MISMATCH = "size_mismatch"
+
+
+@lru_cache
+def image_executor(max_workers: int) -> ThreadPoolExecutor:
+    return ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="clothing-image")
 
 
 class ImageRejectedError(Exception):
@@ -57,15 +65,14 @@ def normalize_image(data: bytes, *, quality: int, max_pixels: int) -> bytes:
     return out.getvalue()
 
 
-def normalize_mask(data: bytes, *, max_pixels: int) -> tuple[bytes, tuple[int, int]]:
-    """브러시 마스크를 흑백 PNG로 다시 저장하고 (PNG, (가로, 세로))를 돌려준다."""
+def normalize_mask(data: bytes, *, expected_size: tuple[int, int]) -> bytes:
+    """브러시 마스크를 흑백 PNG로 다시 저장한다. 크기는 디코딩 전에 헤더로 확인한다."""
     try:
         with Image.open(io.BytesIO(data)) as image:
             if image.format != "PNG":
                 raise ImageRejectedError(ImageRejectReason.UNSUPPORTED_FORMAT)
-            width, height = image.size
-            if width * height > max_pixels:
-                raise ImageRejectedError(ImageRejectReason.RESOLUTION_TOO_HIGH)
+            if image.size != expected_size:
+                raise ImageRejectedError(ImageRejectReason.SIZE_MISMATCH)
             mask = image.convert("L")
         out = io.BytesIO()
         mask.save(out, format="PNG", optimize=True)
@@ -73,7 +80,7 @@ def normalize_mask(data: bytes, *, max_pixels: int) -> tuple[bytes, tuple[int, i
         raise ImageRejectedError(ImageRejectReason.RESOLUTION_TOO_HIGH) from e
     except (UnidentifiedImageError, OSError, ValueError) as e:
         raise ImageRejectedError(ImageRejectReason.UNREADABLE) from e
-    return out.getvalue(), (width, height)
+    return out.getvalue()
 
 
 def image_size(data: bytes) -> tuple[int, int]:

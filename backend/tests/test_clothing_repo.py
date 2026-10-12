@@ -351,3 +351,25 @@ async def test_upsert_edit_transform_stores_perspective_as_json_text():
         {"clothing_id": 5, "rotation_angle": Decimal(0), "perspective_param": None},
     ]
     assert "brush_mask_url" not in db.executed[0][0]
+
+
+async def test_upsert_edit_mask_relies_on_default_rotation():
+    db = _InsertDb()
+
+    await clothing_repo.upsert_edit_mask(db, 5, "clothing/7/m_mask.png")
+
+    [(sql, params)] = db.executed
+    assert "INSERT INTO clothing_edit (clothing_id, brush_mask_url)" in sql
+    assert "ON DUPLICATE KEY UPDATE brush_mask_url = new.brush_mask_url" in " ".join(sql.split())
+    assert "rotation_angle" not in sql
+    assert params == {"clothing_id": 5, "brush_mask_url": "clothing/7/m_mask.png"}
+
+
+async def test_delete_clothing_edit_removes_row():
+    db = _InsertDb()
+
+    await clothing_repo.delete_clothing_edit(db, 5)
+
+    assert db.executed == [
+        ("DELETE FROM clothing_edit WHERE clothing_id = :clothing_id", {"clothing_id": 5})
+    ]

@@ -1,6 +1,7 @@
 """옷 수정 서비스 테스트. 리포지토리·상세 조회는 가짜로 바꿔 끼운다."""
 
 import io
+import threading
 from decimal import Decimal
 from types import SimpleNamespace
 
@@ -17,6 +18,7 @@ from app.services.clothing_edit import (
     ClothingNotEditableError,
     InvalidMaskError,
     MaskSizeMismatchError,
+    MaskTooLargeError,
 )
 from app.services.clothing_query import ClothingNotFoundError
 from app.services.storage import LocalImageStorage
@@ -331,3 +333,40 @@ async def test_reset_without_edit_is_harmless(repo, storage):
     await edit.reset_edit(_FakeDb(), storage, MEMBER_ID, 5)
 
     assert repo.deleted_edits == [5]
+
+
+async def test_too_large_mask_says_so(repo, storage, monkeypatch):
+    monkeypatch.setattr(edit.get_settings(), "CLOTHING_UPLOAD_MAX_BYTES", 10)
+
+    with pytest.raises(MaskTooLargeError) as error:
+        await edit.save_mask(_FakeDb(), storage, MEMBER_ID, 5, _png((40, 60)))
+
+    assert "용량" in error.value.message
+
+
+async def test_unreadable_mask_says_so(repo, storage):
+    with pytest.raises(InvalidMaskError) as error:
+        await edit.save_mask(_FakeDb(), storage, MEMBER_ID, 5, io.BytesIO(b"not an image"))
+
+    assert "읽을 수 없습니다" in error.value.message
+
+
+async def test_mask_is_decoded_on_the_shared_image_pool(repo, storage, monkeypatch):
+    threads = []
+    original = edit.normalize_mask
+
+    def spy(data, *, expected_size):
+        threads.append(threading.current_thread().name)
+        return original(data, expected_size=expected_size)
+
+    monkeypatch.setattr(edit, "normalize_mask", spy)
+
+    await edit.save_mask(_FakeDb(), storage, MEMBER_ID, 5, _png((40, 60)))
+
+    assert threads[0].startswith("clothing-image")
+
+
+def test_update_fields_match_editable_columns():
+    fields = set(ClothingUpdate.model_fields)
+
+    assert fields == set(clothing_repo.EDITABLE_ATTRIBUTE_COLUMNS) | {"style_cds", "season_cds"}
