@@ -2,14 +2,9 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { fn } from 'storybook/test';
 import StoryLabeled from '../../../../.storybook/StoryLabeled';
 import StoryStack from '../../../../.storybook/StoryStack';
-import type { IconName } from '@/assets/icons';
-import { icons } from '@/assets/icons';
+import { ICON_NAMES } from '../../../../.storybook/storyIconNames';
 import Button from '@/components/common/Button';
 import Notice from './Notice';
-
-const ICON_NAMES = Object.keys(icons).filter(
-  (name): name is IconName => name in icons,
-);
 
 const actionExample = (
   <Button

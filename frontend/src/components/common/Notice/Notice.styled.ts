@@ -39,6 +39,10 @@ export const Main = styled.div`
   gap: ${spacing[8]};
 `;
 
+/*
+ * 아이콘을 제목 첫 줄의 세로 가운데에 맞추려고 제목과 같은 글자 스타일을 주고 높이를 1lh로 잡는다.
+ * 제목이 여러 줄이 되어도 아이콘은 첫 줄 옆에 남는다.
+ */
 export const IconWrapper = styled.span<{ $variant: NoticeVariant }>`
   ${({ $variant }) => TITLE_TYPOGRAPHY[$variant]}
   display: flex;

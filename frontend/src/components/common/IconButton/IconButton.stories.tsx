@@ -2,13 +2,8 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { fn } from 'storybook/test';
 import StoryLabeled from '../../../../.storybook/StoryLabeled';
 import StoryStack from '../../../../.storybook/StoryStack';
-import type { IconName } from '@/assets/icons';
-import { icons } from '@/assets/icons';
+import { ICON_NAMES } from '../../../../.storybook/storyIconNames';
 import IconButton from './IconButton';
-
-const ICON_NAMES = Object.keys(icons).filter(
-  (name): name is IconName => name in icons,
-);
 
 const meta = {
   component: IconButton,
@@ -32,7 +27,7 @@ const meta = {
     },
     iconSize: {
       description:
-        '아이콘의 크기입니다. xs 16px, sm 18px, md 20px, lg 24px, xl 36px입니다. 보이는 크기와 상관없이 누를 수 있는 영역은 44×44px 이상으로 잡습니다.',
+        '아이콘의 크기입니다. xs 16px, sm 18px, md 20px, lg 24px, xl 36px입니다. 버튼 박스는 아이콘 크기와 상관없이 44×44px 이상이고, 레이아웃에서도 그만큼 자리를 차지합니다. circle의 흰 원은 38px입니다.',
       control: 'inline-radio',
       options: ['xs', 'sm', 'md', 'lg', 'xl'],
       table: { defaultValue: { summary: 'lg' } },

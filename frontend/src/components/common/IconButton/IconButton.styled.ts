@@ -22,35 +22,38 @@ const variantStyles: Record<IconButtonVariant, SerializedStyles> = {
     background-color: transparent;
   `,
   circle: css`
-    width: ${CIRCLE_SIZE}px;
-    height: ${CIRCLE_SIZE}px;
-    border: 1px solid ${border.neutral.default};
-    border-radius: ${radius.full};
-    background-color: ${bg.white};
     color: ${fg.neutral.strong};
-    box-shadow: ${shadow.sm};
+
+    &::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      z-index: -1;
+      width: ${CIRCLE_SIZE}px;
+      height: ${CIRCLE_SIZE}px;
+      border: 1px solid ${border.neutral.default};
+      border-radius: ${radius.full};
+      background-color: ${bg.white};
+      box-shadow: ${shadow.sm};
+      transform: translate(-50%, -50%);
+    }
   `,
 };
 
 export const Button = styled.button<{ $variant: IconButtonVariant }>`
   position: relative;
+  isolation: isolate;
   display: inline-flex;
   flex: none;
   align-items: center;
   justify-content: center;
+  min-width: ${MIN_TOUCH_SIZE}px;
+  min-height: ${MIN_TOUCH_SIZE}px;
+  border-radius: ${radius.full};
   transition: transform ${duration.fast} ${easing.standard};
 
   ${({ $variant }) => variantStyles[$variant]}
-
-  &::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: max(100%, ${MIN_TOUCH_SIZE}px);
-    height: max(100%, ${MIN_TOUCH_SIZE}px);
-    transform: translate(-50%, -50%);
-  }
 
   &:active:not(:disabled) {
     transform: scale(${PRESSED_SCALE});
