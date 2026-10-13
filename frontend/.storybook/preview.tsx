@@ -30,11 +30,17 @@ const withQueryClient: Decorator = (Story) => (
   </StoryQueryClientProvider>
 );
 
-const withRouter: Decorator = (Story) => (
-  <StoryRouterProvider>
-    <Story />
-  </StoryRouterProvider>
-);
+const withRouter: Decorator = (Story, context) => {
+  const initialPath: unknown = context.parameters.initialPath;
+
+  return (
+    <StoryRouterProvider
+      initialPath={typeof initialPath === 'string' ? initialPath : '/'}
+    >
+      <Story />
+    </StoryRouterProvider>
+  );
+};
 
 const preview: Preview = {
   tags: ['autodocs'],

@@ -31,7 +31,7 @@ frontend/src/
 
 - `routes/`에는 라우트 정의와 페이지 연결만 둔다. 화면 구현은 `pages/`에 둔다.
   - 라우트 파일은 `Route`만 export하고, 화면 컴포넌트는 `pages/`에서 가져와 연결한다.
-  - ✅ `export const Route = createFileRoute('/')({ component: HomePage });`
+  - ✅ `export const Route = createFileRoute('/closet')({ component: ClosetPage });`
 - `src/routeTree.gen.ts`는 TanStack Router가 자동 생성하는 파일이다. 직접 수정하지 않는다.
 - 한 파일에서만 쓰는 상수, 타입, 헬퍼는 그 파일 안에 export 없이 둔다.
   파일이 길어지면 같은 폴더에 `X.constants.ts`, `X.types.ts`처럼 분리한다.
@@ -224,7 +224,9 @@ ClothCard/
   - ✅ `parameters: { docs: { story: { inline: false, height: '400px' } } }`
 - 모든 스토리는 전역 스타일, 스토리마다 새로 만드는 QueryClient(재시도 없음, `apis/queryClient.ts`의 인스턴스와 별개), 메모리 라우터 안에서 렌더링된다.
   스토리에서 이 Provider들을 다시 감싸지 않는다.
-  - 라우터는 `.storybook/StoryRouterProvider.tsx`의 메모리 라우터(주소 `/`)가 제공한다. 라우트 매칭 없이 context만 제공하므로 `Link`, `useNavigate`, `useLocation`은 쓸 수 있고, 라우트 파라미터나 loader에 의존하는 훅은 쓸 수 없다.
+  - 라우터는 `.storybook/StoryRouterProvider.tsx`의 메모리 라우터(기본 주소 `/`)가 제공한다. 라우트 매칭 없이 context만 제공하므로 `Link`, `useNavigate`, `useLocation`은 쓸 수 있고, 라우트 파라미터나 loader에 의존하는 훅은 쓸 수 없다.
+  - 현재 주소에 따라 모습이 달라지는 컴포넌트는 스토리의 `parameters.initialPath`로 시작 주소를 바꾼다.
+  - ✅ `parameters: { initialPath: '/closet' }`
 - 문서 페이지(autodocs)는 모든 컴포넌트에 자동으로 생성된다.
 
 ### 테스트

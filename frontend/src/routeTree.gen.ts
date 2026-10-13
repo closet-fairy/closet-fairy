@@ -10,33 +10,81 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ClosetRouteImport } from './routes/closet'
+import { Route as MyInfoRouteImport } from './routes/my-info'
+import { Route as RecommendationRouteImport } from './routes/recommendation'
+import { Route as RecommendationHistoryRouteImport } from './routes/recommendation-history'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ClosetRoute = ClosetRouteImport.update({
+  id: '/closet',
+  path: '/closet',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MyInfoRoute = MyInfoRouteImport.update({
+  id: '/my-info',
+  path: '/my-info',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RecommendationRoute = RecommendationRouteImport.update({
+  id: '/recommendation',
+  path: '/recommendation',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RecommendationHistoryRoute = RecommendationHistoryRouteImport.update({
+  id: '/recommendation-history',
+  path: '/recommendation-history',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/closet': typeof ClosetRoute
+  '/my-info': typeof MyInfoRoute
+  '/recommendation': typeof RecommendationRoute
+  '/recommendation-history': typeof RecommendationHistoryRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/closet': typeof ClosetRoute
+  '/my-info': typeof MyInfoRoute
+  '/recommendation': typeof RecommendationRoute
+  '/recommendation-history': typeof RecommendationHistoryRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/closet': typeof ClosetRoute
+  '/my-info': typeof MyInfoRoute
+  '/recommendation': typeof RecommendationRoute
+  '/recommendation-history': typeof RecommendationHistoryRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    '/' | '/closet' | '/my-info' | '/recommendation' | '/recommendation-history'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    '/' | '/closet' | '/my-info' | '/recommendation' | '/recommendation-history'
+  id:
+    | '__root__'
+    | '/'
+    | '/closet'
+    | '/my-info'
+    | '/recommendation'
+    | '/recommendation-history'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ClosetRoute: typeof ClosetRoute
+  MyInfoRoute: typeof MyInfoRoute
+  RecommendationRoute: typeof RecommendationRoute
+  RecommendationHistoryRoute: typeof RecommendationHistoryRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +96,43 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/closet': {
+      id: '/closet'
+      path: '/closet'
+      fullPath: '/closet'
+      preLoaderRoute: typeof ClosetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/my-info': {
+      id: '/my-info'
+      path: '/my-info'
+      fullPath: '/my-info'
+      preLoaderRoute: typeof MyInfoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/recommendation': {
+      id: '/recommendation'
+      path: '/recommendation'
+      fullPath: '/recommendation'
+      preLoaderRoute: typeof RecommendationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/recommendation-history': {
+      id: '/recommendation-history'
+      path: '/recommendation-history'
+      fullPath: '/recommendation-history'
+      preLoaderRoute: typeof RecommendationHistoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ClosetRoute: ClosetRoute,
+  MyInfoRoute: MyInfoRoute,
+  RecommendationRoute: RecommendationRoute,
+  RecommendationHistoryRoute: RecommendationHistoryRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
