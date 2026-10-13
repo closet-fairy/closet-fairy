@@ -1,8 +1,18 @@
 import styled from '@emotion/styled';
 import { createLink } from '@tanstack/react-router';
-import { bg, border, fg, spacing, typography, zIndex } from '@/styles/tokens';
+import {
+  bg,
+  border,
+  duration,
+  easing,
+  fg,
+  spacing,
+  typography,
+  zIndex,
+} from '@/styles/tokens';
 
 const BAR_HEIGHT = 66;
+const PRESSED_SCALE = 0.94;
 
 export const Container = styled.nav`
   position: sticky;
@@ -16,13 +26,13 @@ export const Container = styled.nav`
 `;
 
 export const List = styled.ul`
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  display: flex;
   height: ${BAR_HEIGHT}px;
 `;
 
 export const Item = styled.li`
   display: flex;
+  flex: 1;
 `;
 
 const TabAnchor = styled.a`
@@ -33,9 +43,16 @@ const TabAnchor = styled.a`
   align-items: center;
   justify-content: center;
   color: ${fg.neutral.light};
+  transition:
+    color ${duration.fast} ${easing.standard},
+    transform ${duration.fast} ${easing.standard};
 
   &[aria-current='page'] {
     color: ${fg.neutral.strong};
+  }
+
+  &:active {
+    transform: scale(${PRESSED_SCALE});
   }
 `;
 
