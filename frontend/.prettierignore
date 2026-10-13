@@ -3,3 +3,4 @@ package-lock.json
 src/routeTree.gen.ts
 public/mockServiceWorker.js
 storybook-static
+openapi.json

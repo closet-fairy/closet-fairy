@@ -20,6 +20,9 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier . --write",
     "format:check": "prettier . --check",
+    "openapi:fetch": "node scripts/fetchOpenapi.ts",
+    "openapi:generate": "orval",
+    "openapi:update": "npm run openapi:fetch && npm run openapi:generate",
     "generate-pwa-assets": "pwa-assets-generator"
   },
   "dependencies": {
@@ -69,6 +72,7 @@
     "jsdom": "^29.1.1",
     "msw": "^2.15.0",
     "msw-storybook-addon": "^3.0.3",
+    "orval": "^8.42.0",
     "prettier": "^3.9.9",
     "storybook": "^10.6.0",
     "typescript": "~6.0.3",

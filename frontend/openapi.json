@@ -1,0 +1,2560 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Outfit Recommendation API",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Health",
+        "description": "서버 + DB 연결까지 확인한다.",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Health Health Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "입력값 검증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/recommendations/precheck": {
+      "get": {
+        "tags": [
+          "recommendation"
+        ],
+        "summary": "Precheck Recommendation",
+        "description": "추천 요청 화면 진입 시 의류 부족 사전 안내 (FR-REC-10, FR-REC-14).",
+        "operationId": "precheck_recommendation_recommendations_precheck_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClothingShortagePrecheckResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "입력값 검증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/recommendation-sessions": {
+      "post": {
+        "tags": [
+          "recommendation"
+        ],
+        "summary": "Create Recommendation Session",
+        "description": "추천 요청. 세션만 만들고 바로 202를 돌려준다. 결과는 폴링으로 조회.",
+        "operationId": "create_recommendation_session_recommendation_sessions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecommendationSessionCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecommendationSessionCreated"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "입력값 검증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/recommendation-sessions/{recommendation_session_id}": {
+      "get": {
+        "tags": [
+          "recommendation"
+        ],
+        "summary": "Get Recommendation Result",
+        "description": "추천 결과 조회(폴링). generation_status_cd가 processing이면 잠시 뒤 다시 조회한다.",
+        "operationId": "get_recommendation_result_recommendation_sessions__recommendation_session_id__get",
+        "parameters": [
+          {
+            "name": "recommendation_session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Recommendation Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecommendationResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "입력값 검증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "없는 세션이거나 본인 세션이 아님"
+          }
+        }
+      }
+    },
+    "/recommendation-sessions/{recommendation_session_id}/rating": {
+      "post": {
+        "tags": [
+          "recommendation"
+        ],
+        "summary": "Rate Recommendation",
+        "description": "코디 하나에 별점을 매기고 세션을 종료한다. 세션의 모든 코디가 함께 정산된다.",
+        "operationId": "rate_recommendation_recommendation_sessions__recommendation_session_id__rating_post",
+        "parameters": [
+          {
+            "name": "recommendation_session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Recommendation Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RatingCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RatingResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "입력값 검증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "없는 세션이거나 본인 세션이 아님, 또는 이 세션의 코디가 아님"
+          },
+          "409": {
+            "description": "이미 정산된 세션이거나 별점을 매길 수 없는 상태"
+          }
+        }
+      }
+    },
+    "/recommendation-sessions/{recommendation_session_id}/cancel": {
+      "post": {
+        "tags": [
+          "recommendation"
+        ],
+        "summary": "Cancel Recommendation Session",
+        "description": "조건 입력 화면으로 돌아갈 때 세션을 취소한다. 점수는 반영하지 않고 추천 결과는 지운다.\n\n생성 중에도 취소할 수 있다. 이미 취소·이탈된 세션이면 상태만 그대로 돌려준다.",
+        "operationId": "cancel_recommendation_session_recommendation_sessions__recommendation_session_id__cancel_post",
+        "parameters": [
+          {
+            "name": "recommendation_session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Recommendation Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CancelResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "입력값 검증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "없는 세션이거나 본인 세션이 아님"
+          },
+          "409": {
+            "description": "이미 별점을 매겨 끝난 세션"
+          }
+        }
+      }
+    },
+    "/weather/preview": {
+      "get": {
+        "tags": [
+          "weather"
+        ],
+        "summary": "Preview Weather",
+        "description": "추천 요청 전 현재 날씨 미리보기 (FR-REC-01-1). 결과는 저장하지 않는다.",
+        "operationId": "preview_weather_weather_preview_get",
+        "parameters": [
+          {
+            "name": "sido_nm",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 20,
+              "examples": [
+                "서울특별시"
+              ],
+              "title": "Sido Nm"
+            }
+          },
+          {
+            "name": "sigungu_nm",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 30,
+              "examples": [
+                "성동구"
+              ],
+              "title": "Sigungu Nm"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeatherPreview"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "입력값 검증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/clothing": {
+      "post": {
+        "tags": [
+          "clothing"
+        ],
+        "summary": "Upload Clothing",
+        "description": "옷 사진 업로드 (FR-REG). 배경 제거·태깅은 기다리지 않고 바로 응답한다.\n\n형식·용량이 맞지 않는 사진은 제외하고 rejected에 사유를 담는다. 모두 제외돼도 202다.",
+        "operationId": "upload_clothing_clothing_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_clothing_clothing_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClothingUploadResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "입력값 검증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "등록·재시도 요청이 너무 잦음"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "clothing"
+        ],
+        "summary": "List Clothing",
+        "description": "내 옷장 목록. 최근 등록한 옷부터 limit벌씩 나눠 준다 (무한 스크롤).",
+        "operationId": "list_clothing_clothing_get",
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "이전 응답의 next_cursor",
+              "title": "Cursor"
+            },
+            "description": "이전 응답의 next_cursor"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClothingPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "입력값 검증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/clothing/status": {
+      "get": {
+        "tags": [
+          "clothing"
+        ],
+        "summary": "Get Clothing Status",
+        "description": "처리 상태 폴링. 처리 중인 옷만 모아 1초 간격으로 부르고, 모두 끝나면 멈춘다.",
+        "operationId": "get_clothing_status_clothing_status_get",
+        "parameters": [
+          {
+            "name": "ids",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]*(,[1-9][0-9]*)*$",
+              "description": "처리 중인 옷 id를 쉼표로 이어 보낸다. 최대 50개",
+              "examples": [
+                "31,32,33"
+              ],
+              "title": "Ids"
+            },
+            "description": "처리 중인 옷 id를 쉼표로 이어 보낸다. 최대 50개"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClothingStatusList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "입력값 검증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/clothing/{clothing_id}": {
+      "get": {
+        "tags": [
+          "clothing"
+        ],
+        "summary": "Get Clothing",
+        "description": "옷 상세. 속성·스타일·계절·편집값과 처리 상태를 함께 준다.",
+        "operationId": "get_clothing_clothing__clothing_id__get",
+        "parameters": [
+          {
+            "name": "clothing_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Clothing Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClothingDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "입력값 검증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "없는 옷이거나 본인 옷이 아님"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "clothing"
+        ],
+        "summary": "Update Clothing",
+        "description": "속성 수정 (FR-EDIT-07~09). 보낸 필드만 바뀌고 null은 값을 비운다. 신규 표시도 끈다.\n\n분류를 악세서리가 아닌 값으로 바꾸면 악세서리 종류는 자동으로 비워진다.",
+        "operationId": "update_clothing_clothing__clothing_id__patch",
+        "parameters": [
+          {
+            "name": "clothing_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Clothing Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClothingUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClothingDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "입력값 검증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "없는 옷이거나 본인 옷이 아님"
+          },
+          "409": {
+            "description": "처리 중이거나 실패한 옷 (CLOTHING_NOT_EDITABLE)"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "clothing"
+        ],
+        "summary": "Delete Clothing",
+        "description": "옷 영구 삭제 (FR-DEL). 처리 중·실패한 옷도 지울 수 있고, 진행 중이던 처리 결과는 버린다.\n\n별점을 준 코디에 쓰인 이미지는 추천 내역에 남긴다.",
+        "operationId": "delete_clothing_clothing__clothing_id__delete",
+        "parameters": [
+          {
+            "name": "clothing_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Clothing Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "입력값 검증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "없는 옷이거나 본인 옷이 아님"
+          }
+        }
+      }
+    },
+    "/clothing/{clothing_id}/reviewed": {
+      "post": {
+        "tags": [
+          "clothing"
+        ],
+        "summary": "Mark Clothing Reviewed",
+        "description": "상세 화면에 들어갈 때 부른다. 신규 표시를 끈다 (FR-REG-16). 여러 번 불러도 같다.",
+        "operationId": "mark_clothing_reviewed_clothing__clothing_id__reviewed_post",
+        "parameters": [
+          {
+            "name": "clothing_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Clothing Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "입력값 검증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "없는 옷이거나 본인 옷이 아님"
+          }
+        }
+      }
+    },
+    "/clothing/{clothing_id}/edit": {
+      "put": {
+        "tags": [
+          "clothing"
+        ],
+        "summary": "Save Clothing Edit",
+        "description": "회전·원근 보정값 저장 (FR-EDIT-04·05). 원본 이미지와 브러시 마스크는 그대로 둔다.",
+        "operationId": "save_clothing_edit_clothing__clothing_id__edit_put",
+        "parameters": [
+          {
+            "name": "clothing_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Clothing Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClothingEditUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClothingDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "입력값 검증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "없는 옷이거나 본인 옷이 아님"
+          },
+          "409": {
+            "description": "처리 중이거나 실패한 옷 (CLOTHING_NOT_EDITABLE)"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "clothing"
+        ],
+        "summary": "Reset Clothing Edit",
+        "description": "편집값 초기화. 회전·원근·마스크를 모두 지워 원래 이미지로 돌아간다 (FR-EDIT-06).",
+        "operationId": "reset_clothing_edit_clothing__clothing_id__edit_delete",
+        "parameters": [
+          {
+            "name": "clothing_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Clothing Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClothingDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "입력값 검증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "없는 옷이거나 본인 옷이 아님"
+          },
+          "409": {
+            "description": "처리 중이거나 실패한 옷 (CLOTHING_NOT_EDITABLE)"
+          }
+        }
+      }
+    },
+    "/clothing/{clothing_id}/edit/mask": {
+      "put": {
+        "tags": [
+          "clothing"
+        ],
+        "summary": "Save Clothing Mask",
+        "description": "브러시 마스크 저장 (FR-EDIT-03). 이전 마스크 파일은 지운다.",
+        "operationId": "save_clothing_mask_clothing__clothing_id__edit_mask_put",
+        "parameters": [
+          {
+            "name": "clothing_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Clothing Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_save_clothing_mask_clothing__clothing_id__edit_mask_put"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClothingDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "PNG가 아님 (CLOTHING_MASK_INVALID), 옷 이미지와 크기가 다름 (CLOTHING_MASK_SIZE_MISMATCH), 용량 초과 (CLOTHING_MASK_TOO_LARGE)"
+          },
+          "404": {
+            "description": "없는 옷이거나 본인 옷이 아님"
+          },
+          "409": {
+            "description": "처리 중이거나 실패한 옷 (CLOTHING_NOT_EDITABLE)"
+          }
+        }
+      }
+    },
+    "/clothing/{clothing_id}/retry": {
+      "post": {
+        "tags": [
+          "clothing"
+        ],
+        "summary": "Retry Clothing",
+        "description": "실패한 옷을 배경 제거부터 다시 처리한다 (FR-REG-24). 업로드 직후처럼 상태를 폴링한다.",
+        "operationId": "retry_clothing_clothing__clothing_id__retry_post",
+        "parameters": [
+          {
+            "name": "clothing_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Clothing Id"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClothingProgress"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "입력값 검증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "없는 옷이거나 본인 옷이 아님"
+          },
+          "409": {
+            "description": "실패한 옷이 아님 (CLOTHING_NOT_RETRYABLE)"
+          },
+          "429": {
+            "description": "등록·재시도 요청이 너무 잦음"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Body_save_clothing_mask_clothing__clothing_id__edit_mask_put": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "description": "흑백 PNG. 흰색은 보이게, 검은색은 지우게. 크기는 옷 이미지와 같아야 한다."
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_save_clothing_mask_clothing__clothing_id__edit_mask_put"
+      },
+      "Body_upload_clothing_clothing_post": {
+        "properties": {
+          "files": {
+            "items": {
+              "type": "string",
+              "contentMediaType": "application/octet-stream"
+            },
+            "type": "array",
+            "title": "Files",
+            "description": "옷 사진. 사진 1장 = 옷 1벌"
+          }
+        },
+        "type": "object",
+        "required": [
+          "files"
+        ],
+        "title": "Body_upload_clothing_clothing_post"
+      },
+      "CancelResult": {
+        "properties": {
+          "recommendation_session_id": {
+            "type": "integer",
+            "title": "Recommendation Session Id"
+          },
+          "session_status_cd": {
+            "type": "string",
+            "enum": [
+              "canceled",
+              "abandoned"
+            ],
+            "title": "Session Status Cd",
+            "description": "canceled면 이번 요청으로 취소됐거나 이미 취소된 세션이다. abandoned면 오래 활동이 없어 이미 종료된 세션이다. 어느 쪽이든 점수는 반영되지 않았으므로 조건 입력 화면으로 이동하면 된다."
+          }
+        },
+        "type": "object",
+        "required": [
+          "recommendation_session_id",
+          "session_status_cd"
+        ],
+        "title": "CancelResult"
+      },
+      "CategoryCounts": {
+        "properties": {
+          "top": {
+            "type": "integer",
+            "title": "Top"
+          },
+          "bottom": {
+            "type": "integer",
+            "title": "Bottom"
+          },
+          "shoes": {
+            "type": "integer",
+            "title": "Shoes"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "top",
+          "bottom",
+          "shoes"
+        ],
+        "title": "CategoryCounts"
+      },
+      "ClothingCard": {
+        "properties": {
+          "clothing_id": {
+            "type": "integer",
+            "title": "Clothing Id"
+          },
+          "processing_status_cd": {
+            "type": "string",
+            "enum": [
+              "processing",
+              "completed",
+              "failed"
+            ],
+            "title": "Processing Status Cd"
+          },
+          "is_queued": {
+            "type": "boolean",
+            "title": "Is Queued",
+            "description": "처리 중인데 아직 차례를 기다리면 true. 처리가 시작됐거나 끝났으면 false."
+          },
+          "image_url": {
+            "type": "string",
+            "title": "Image Url",
+            "description": "카드에 보여줄 이미지. 배경 제거본이 있으면 그것, 없으면 원본이다.",
+            "examples": [
+              "/media/clothing/1/3f2a9c0e8b1d4e6f.webp"
+            ]
+          },
+          "failure_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure Reason",
+            "description": "failed일 때만 값이 있다. 화면에 그대로 보여줘도 되는 문구다."
+          },
+          "is_new": {
+            "type": "boolean",
+            "title": "Is New",
+            "description": "회원이 아직 확인하지 않은 옷이면 true. 신규 표시에 쓴다."
+          },
+          "category_cd": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "outer",
+                  "top",
+                  "bottom",
+                  "shoes",
+                  "socks",
+                  "accessories"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Cd",
+            "description": "태깅 전이거나 실패하면 null이다."
+          },
+          "item_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Item Name"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "description": "등록 시각 (KST)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "clothing_id",
+          "processing_status_cd",
+          "is_queued",
+          "image_url",
+          "failure_reason",
+          "is_new",
+          "category_cd",
+          "item_name",
+          "created_at"
+        ],
+        "title": "ClothingCard"
+      },
+      "ClothingDetail": {
+        "properties": {
+          "clothing_id": {
+            "type": "integer",
+            "title": "Clothing Id"
+          },
+          "processing_status_cd": {
+            "type": "string",
+            "enum": [
+              "processing",
+              "completed",
+              "failed"
+            ],
+            "title": "Processing Status Cd"
+          },
+          "is_queued": {
+            "type": "boolean",
+            "title": "Is Queued",
+            "description": "처리 중인데 아직 차례를 기다리면 true. 처리가 시작됐거나 끝났으면 false."
+          },
+          "image_url": {
+            "type": "string",
+            "title": "Image Url",
+            "description": "카드에 보여줄 이미지. 배경 제거본이 있으면 그것, 없으면 원본이다.",
+            "examples": [
+              "/media/clothing/1/3f2a9c0e8b1d4e6f.webp"
+            ]
+          },
+          "failure_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure Reason",
+            "description": "failed일 때만 값이 있다. 화면에 그대로 보여줘도 되는 문구다."
+          },
+          "is_new": {
+            "type": "boolean",
+            "title": "Is New",
+            "description": "회원이 아직 확인하지 않은 옷이면 true. 신규 표시에 쓴다."
+          },
+          "category_cd": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "outer",
+                  "top",
+                  "bottom",
+                  "shoes",
+                  "socks",
+                  "accessories"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Cd",
+            "description": "태깅 전이거나 실패하면 null이다."
+          },
+          "item_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Item Name"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "description": "등록 시각 (KST)"
+          },
+          "origin_image_url": {
+            "type": "string",
+            "title": "Origin Image Url"
+          },
+          "cutout_image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cutout Image Url",
+            "description": "배경 제거 전이면 null이다."
+          },
+          "accessory_type_cd": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "hat",
+                  "bag",
+                  "belt",
+                  "watch",
+                  "scarf",
+                  "eyewear",
+                  "jewelry",
+                  "etc"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accessory Type Cd"
+          },
+          "color_cd": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "black",
+                  "white",
+                  "gray",
+                  "beige",
+                  "brown",
+                  "navy",
+                  "blue",
+                  "sky_blue",
+                  "green",
+                  "khaki",
+                  "yellow",
+                  "orange",
+                  "red",
+                  "pink"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Color Cd"
+          },
+          "color_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Color Text",
+            "description": "색상 표시용 원문"
+          },
+          "thickness_cd": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "thin",
+                  "medium",
+                  "thick"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thickness Cd"
+          },
+          "is_waterproof": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Waterproof",
+            "description": "null이면 모름"
+          },
+          "style_cds": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "minimal",
+                "casual",
+                "street",
+                "classic",
+                "formal",
+                "sporty",
+                "romantic",
+                "vintage",
+                "bohemian",
+                "preppy",
+                "chic",
+                "unique",
+                "feminine"
+              ]
+            },
+            "type": "array",
+            "title": "Style Cds"
+          },
+          "season_cds": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "spring",
+                "summer",
+                "fall",
+                "winter"
+              ]
+            },
+            "type": "array",
+            "title": "Season Cds"
+          },
+          "edit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ClothingEdit"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "편집한 적이 없으면 null이다."
+          }
+        },
+        "type": "object",
+        "required": [
+          "clothing_id",
+          "processing_status_cd",
+          "is_queued",
+          "image_url",
+          "failure_reason",
+          "is_new",
+          "category_cd",
+          "item_name",
+          "created_at",
+          "origin_image_url",
+          "cutout_image_url",
+          "accessory_type_cd",
+          "color_cd",
+          "color_text",
+          "thickness_cd",
+          "is_waterproof",
+          "style_cds",
+          "season_cds",
+          "edit"
+        ],
+        "title": "ClothingDetail"
+      },
+      "ClothingEdit": {
+        "properties": {
+          "rotation_angle": {
+            "type": "number",
+            "title": "Rotation Angle",
+            "description": "평면 회전 각도 -180~180"
+          },
+          "perspective_param": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Perspective Param",
+            "description": "원근 보정 파라미터. 미적용이면 null"
+          },
+          "brush_mask_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brush Mask Url",
+            "description": "브러시 마스크 이미지. 미보정이면 null"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rotation_angle",
+          "perspective_param",
+          "brush_mask_url"
+        ],
+        "title": "ClothingEdit"
+      },
+      "ClothingEditUpdate": {
+        "properties": {
+          "rotation_angle": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 180.0,
+                "minimum": -180.0
+              },
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,3}|(?=[\\d.]{1,6}0*$)\\d{0,3}\\.\\d{0,2}0*$)"
+              }
+            ],
+            "title": "Rotation Angle"
+          },
+          "perspective_param": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PerspectiveParam"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null이면 원근 보정을 적용하지 않는다."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "rotation_angle"
+        ],
+        "title": "ClothingEditUpdate"
+      },
+      "ClothingPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ClothingCard"
+            },
+            "type": "array",
+            "title": "Items",
+            "description": "등록 역순"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor",
+            "description": "다음 페이지를 받을 때 cursor로 보낸다. 더 없으면 null이다."
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "title": "ClothingPage"
+      },
+      "ClothingProgress": {
+        "properties": {
+          "clothing_id": {
+            "type": "integer",
+            "title": "Clothing Id"
+          },
+          "processing_status_cd": {
+            "type": "string",
+            "enum": [
+              "processing",
+              "completed",
+              "failed"
+            ],
+            "title": "Processing Status Cd"
+          },
+          "is_queued": {
+            "type": "boolean",
+            "title": "Is Queued",
+            "description": "처리 중인데 아직 차례를 기다리면 true. 처리가 시작됐거나 끝났으면 false."
+          },
+          "image_url": {
+            "type": "string",
+            "title": "Image Url",
+            "description": "카드에 보여줄 이미지. 배경 제거본이 있으면 그것, 없으면 원본이다.",
+            "examples": [
+              "/media/clothing/1/3f2a9c0e8b1d4e6f.webp"
+            ]
+          },
+          "failure_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure Reason",
+            "description": "failed일 때만 값이 있다. 화면에 그대로 보여줘도 되는 문구다."
+          }
+        },
+        "type": "object",
+        "required": [
+          "clothing_id",
+          "processing_status_cd",
+          "is_queued",
+          "image_url",
+          "failure_reason"
+        ],
+        "title": "ClothingProgress"
+      },
+      "ClothingShortagePrecheckResponse": {
+        "properties": {
+          "is_clothing_shortage": {
+            "type": "boolean",
+            "title": "Is Clothing Shortage",
+            "description": "상의·하의·신발 중 하나라도 완료 상태 옷이 2벌 미만이면 true."
+          },
+          "category_counts": {
+            "$ref": "#/components/schemas/CategoryCounts",
+            "description": "카테고리별 완료 상태 옷 개수. 처리 중·실패 옷과 분류가 없는 옷은 세지 않는다.",
+            "examples": [
+              {
+                "bottom": 0,
+                "shoes": 0,
+                "top": 3
+              }
+            ]
+          },
+          "shortage_categories": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "top",
+                "bottom",
+                "shoes"
+              ]
+            },
+            "type": "array",
+            "title": "Shortage Categories",
+            "description": "2벌 미만인 카테고리. top, bottom, shoes 순서로 준다.",
+            "examples": [
+              [
+                "bottom",
+                "shoes"
+              ]
+            ]
+          },
+          "notice_cd": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "clothing_shortage"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notice Cd",
+            "description": "안내 문구 코드. 부족하면 clothing_shortage, 아니면 null. 문구는 프론트가 정하며, 추천 결과 화면에서도 같은 코드를 쓴다."
+          }
+        },
+        "type": "object",
+        "required": [
+          "is_clothing_shortage",
+          "category_counts",
+          "shortage_categories",
+          "notice_cd"
+        ],
+        "title": "ClothingShortagePrecheckResponse"
+      },
+      "ClothingStatusList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ClothingProgress"
+            },
+            "type": "array",
+            "title": "Items",
+            "description": "요청한 id 중 회원의 옷만 담는다. 없는 옷·다른 회원의 옷은 빠진다."
+          }
+        },
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "ClothingStatusList"
+      },
+      "ClothingUpdate": {
+        "properties": {
+          "category_cd": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "outer",
+                  "top",
+                  "bottom",
+                  "shoes",
+                  "socks",
+                  "accessories"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Cd"
+          },
+          "accessory_type_cd": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "hat",
+                  "bag",
+                  "belt",
+                  "watch",
+                  "scarf",
+                  "eyewear",
+                  "jewelry",
+                  "etc"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accessory Type Cd",
+            "description": "category_cd가 accessories일 때만 값을 가질 수 있다."
+          },
+          "item_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Item Name"
+          },
+          "color_cd": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "black",
+                  "white",
+                  "gray",
+                  "beige",
+                  "brown",
+                  "navy",
+                  "blue",
+                  "sky_blue",
+                  "green",
+                  "khaki",
+                  "yellow",
+                  "orange",
+                  "red",
+                  "pink"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Color Cd",
+            "description": "바꾸면서 color_text를 보내지 않으면 color_text는 비워진다."
+          },
+          "color_text": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 30
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Color Text"
+          },
+          "style_cds": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "minimal",
+                    "casual",
+                    "street",
+                    "classic",
+                    "formal",
+                    "sporty",
+                    "romantic",
+                    "vintage",
+                    "bohemian",
+                    "preppy",
+                    "chic",
+                    "unique",
+                    "feminine"
+                  ]
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Style Cds",
+            "description": "목록 전체를 바꾼다."
+          },
+          "season_cds": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "spring",
+                    "summer",
+                    "fall",
+                    "winter"
+                  ]
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Season Cds",
+            "description": "목록 전체를 바꾼다."
+          },
+          "thickness_cd": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "thin",
+                  "medium",
+                  "thick"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thickness Cd"
+          },
+          "is_waterproof": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Waterproof"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ClothingUpdate",
+        "description": "보낸 필드만 바꾼다. null을 보내면 그 값을 비운다."
+      },
+      "ClothingUploadResult": {
+        "properties": {
+          "accepted": {
+            "items": {
+              "$ref": "#/components/schemas/UploadedClothing"
+            },
+            "type": "array",
+            "title": "Accepted",
+            "description": "옷으로 등록된 사진. 배경 제거·태깅은 이후 비동기로 진행된다."
+          },
+          "rejected": {
+            "items": {
+              "$ref": "#/components/schemas/RejectedUpload"
+            },
+            "type": "array",
+            "title": "Rejected",
+            "description": "형식·용량·해상도 때문에 제외된 사진과 사유"
+          }
+        },
+        "type": "object",
+        "required": [
+          "accepted",
+          "rejected"
+        ],
+        "title": "ClothingUploadResult"
+      },
+      "ErrorResponse": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code",
+            "examples": [
+              "VALIDATION_ERROR"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "examples": [
+              "외출 시간은 30분 단위로 입력해 주세요."
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ErrorResponse"
+      },
+      "OutfitItemResult": {
+        "properties": {
+          "slot_cd": {
+            "type": "string",
+            "enum": [
+              "outer",
+              "top",
+              "bottom",
+              "shoes",
+              "socks",
+              "accessories"
+            ],
+            "title": "Slot Cd",
+            "description": "착용 슬롯. 아이템은 outer → top → bottom → shoes → socks → accessories 순으로 온다."
+          },
+          "accessory_type_cd": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "hat",
+                  "bag",
+                  "belt",
+                  "watch",
+                  "scarf",
+                  "eyewear",
+                  "jewelry",
+                  "etc"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accessory Type Cd",
+            "description": "악세서리 세부 종류. slot_cd가 accessories일 때만 값이 있다. 회원이 그 옷을 지우면 accessories여도 null일 수 있다."
+          },
+          "item_source_cd": {
+            "type": "string",
+            "enum": [
+              "owned",
+              "essential"
+            ],
+            "title": "Item Source Cd",
+            "description": "owned면 회원이 등록한 옷, essential이면 옷장을 보충하려고 넣은 기본 아이템이다."
+          },
+          "item_name": {
+            "type": "string",
+            "title": "Item Name",
+            "description": "추천 당시 이름. 옷을 나중에 지워도 그대로 남는다."
+          },
+          "image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Url",
+            "description": "추천 당시 이미지. 보유 옷은 배경 제거본이 있으면 그것, 없으면 원본이다."
+          },
+          "style_cds": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "minimal",
+                "casual",
+                "street",
+                "classic",
+                "formal",
+                "sporty",
+                "romantic",
+                "vintage",
+                "bohemian",
+                "preppy",
+                "chic",
+                "unique",
+                "feminine"
+              ]
+            },
+            "type": "array",
+            "title": "Style Cds",
+            "description": "스타일 태그. 없으면 빈 배열이다."
+          }
+        },
+        "type": "object",
+        "required": [
+          "slot_cd",
+          "accessory_type_cd",
+          "item_source_cd",
+          "item_name",
+          "image_url",
+          "style_cds"
+        ],
+        "title": "OutfitItemResult"
+      },
+      "OutfitResult": {
+        "properties": {
+          "outfit_id": {
+            "type": "integer",
+            "title": "Outfit Id",
+            "description": "별점을 매길 때 이 값을 보낸다."
+          },
+          "outfit_seq": {
+            "type": "integer",
+            "maximum": 4.0,
+            "minimum": 1.0,
+            "title": "Outfit Seq",
+            "description": "화면에 보여줄 순서."
+          },
+          "outfit_type_cd": {
+            "type": "string",
+            "enum": [
+              "preferred",
+              "exploratory"
+            ],
+            "title": "Outfit Type Cd",
+            "description": "preferred는 선호 스타일 코디, exploratory는 새 스타일을 시도해보는 탐색 코디(최대 1벌)."
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason",
+            "description": "추천 사유."
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/OutfitItemResult"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "outfit_id",
+          "outfit_seq",
+          "outfit_type_cd",
+          "reason",
+          "items"
+        ],
+        "title": "OutfitResult"
+      },
+      "PerspectiveParam": {
+        "properties": {
+          "corners": {
+            "prefixItems": [
+              {
+                "prefixItems": [
+                  {
+                    "type": "number",
+                    "maximum": 1.0,
+                    "minimum": 0.0
+                  },
+                  {
+                    "type": "number",
+                    "maximum": 1.0,
+                    "minimum": 0.0
+                  }
+                ],
+                "type": "array",
+                "maxItems": 2,
+                "minItems": 2
+              },
+              {
+                "prefixItems": [
+                  {
+                    "type": "number",
+                    "maximum": 1.0,
+                    "minimum": 0.0
+                  },
+                  {
+                    "type": "number",
+                    "maximum": 1.0,
+                    "minimum": 0.0
+                  }
+                ],
+                "type": "array",
+                "maxItems": 2,
+                "minItems": 2
+              },
+              {
+                "prefixItems": [
+                  {
+                    "type": "number",
+                    "maximum": 1.0,
+                    "minimum": 0.0
+                  },
+                  {
+                    "type": "number",
+                    "maximum": 1.0,
+                    "minimum": 0.0
+                  }
+                ],
+                "type": "array",
+                "maxItems": 2,
+                "minItems": 2
+              },
+              {
+                "prefixItems": [
+                  {
+                    "type": "number",
+                    "maximum": 1.0,
+                    "minimum": 0.0
+                  },
+                  {
+                    "type": "number",
+                    "maximum": 1.0,
+                    "minimum": 0.0
+                  }
+                ],
+                "type": "array",
+                "maxItems": 2,
+                "minItems": 2
+              }
+            ],
+            "type": "array",
+            "maxItems": 4,
+            "minItems": 4,
+            "title": "Corners",
+            "description": "좌상·우상·우하·좌하 꼭짓점. 이미지 크기에 대한 0~1 비율 좌표 [x, y]",
+            "examples": [
+              [
+                [
+                  0.02,
+                  0.05
+                ],
+                [
+                  0.97,
+                  0.01
+                ],
+                [
+                  0.99,
+                  0.96
+                ],
+                [
+                  0.03,
+                  0.99
+                ]
+              ]
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "corners"
+        ],
+        "title": "PerspectiveParam"
+      },
+      "RatingCreate": {
+        "properties": {
+          "outfit_id": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Outfit Id"
+          },
+          "rating": {
+            "type": "integer",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Rating"
+          }
+        },
+        "type": "object",
+        "required": [
+          "outfit_id",
+          "rating"
+        ],
+        "title": "RatingCreate"
+      },
+      "RatingResult": {
+        "properties": {
+          "recommendation_session_id": {
+            "type": "integer",
+            "title": "Recommendation Session Id"
+          },
+          "outfit_id": {
+            "type": "integer",
+            "title": "Outfit Id"
+          },
+          "rating": {
+            "type": "integer",
+            "title": "Rating"
+          },
+          "session_status_cd": {
+            "type": "string",
+            "title": "Session Status Cd"
+          }
+        },
+        "type": "object",
+        "required": [
+          "recommendation_session_id",
+          "outfit_id",
+          "rating",
+          "session_status_cd"
+        ],
+        "title": "RatingResult"
+      },
+      "RecommendationResult": {
+        "properties": {
+          "recommendation_session_id": {
+            "type": "integer",
+            "title": "Recommendation Session Id"
+          },
+          "generation_status_cd": {
+            "type": "string",
+            "enum": [
+              "processing",
+              "completed",
+              "failed"
+            ],
+            "title": "Generation Status Cd",
+            "description": "processing이면 아직 만드는 중이라 outfits가 빈 배열이다. 잠시 뒤 다시 조회한다. completed면 outfits가 채워져 있다. 단, 끝난 세션은 정리되므로 completed여도 1벌이거나 빈 배열일 수 있다(outfits 설명 참고). failed면 추천을 만들지 못한 것이므로 폴링을 멈추고 다시 시도를 안내한다. 생성 중에 취소·이탈된 세션도 failed가 된다."
+          },
+          "session_status_cd": {
+            "type": "string",
+            "enum": [
+              "active",
+              "completed",
+              "canceled",
+              "abandoned"
+            ],
+            "title": "Session Status Cd",
+            "description": "active는 별점을 아직 안 매긴 상태, completed는 별점을 매겨 끝난 상태, canceled는 조건 입력으로 돌아가 취소한 상태, abandoned는 오래 활동이 없어 종료된 상태다."
+          },
+          "is_clothing_shortage": {
+            "type": "boolean",
+            "title": "Is Clothing Shortage",
+            "description": "true면 옷장에 추천할 옷이 부족한 상태다. 결과 화면에 등록 유도 안내를 띄운다. 에센셜 아이템이 섞였는지는 items[].item_source_cd로 판단한다."
+          },
+          "condition": {
+            "$ref": "#/components/schemas/SessionCondition"
+          },
+          "weather": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SessionWeather"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "추천 시점 날씨. 날씨를 아직 조회하기 전이면 null이다."
+          },
+          "outfits": {
+            "items": {
+              "$ref": "#/components/schemas/OutfitResult"
+            },
+            "type": "array",
+            "title": "Outfits",
+            "description": "outfit_seq 순. 세션이 active이고 generation_status_cd가 completed면 1~4벌이다. 보통 4벌이지만 옷장 사정에 따라 더 적을 수 있다. 세션이 끝나면 정리되므로 session_status_cd가 completed면 별점을 매긴 1벌만, canceled·abandoned면 빈 배열이다."
+          }
+        },
+        "type": "object",
+        "required": [
+          "recommendation_session_id",
+          "generation_status_cd",
+          "session_status_cd",
+          "is_clothing_shortage",
+          "condition",
+          "weather",
+          "outfits"
+        ],
+        "title": "RecommendationResult",
+        "examples": [
+          {
+            "condition": {
+              "going_out_end_at": "2026-10-08T19:00:00+09:00",
+              "going_out_start_at": "2026-10-08T08:00:00+09:00",
+              "season_cd": "fall",
+              "tpo_cd": "work"
+            },
+            "generation_status_cd": "completed",
+            "is_clothing_shortage": true,
+            "outfits": [
+              {
+                "items": [
+                  {
+                    "image_url": "/media/clothing/7/1042_cutout.webp",
+                    "item_name": "네이비 블레이저",
+                    "item_source_cd": "owned",
+                    "slot_cd": "outer",
+                    "style_cds": [
+                      "minimal",
+                      "classic"
+                    ]
+                  },
+                  {
+                    "image_url": "/media/clothing/7/2001_cutout.webp",
+                    "item_name": "화이트 옥스퍼드 셔츠",
+                    "item_source_cd": "owned",
+                    "slot_cd": "top",
+                    "style_cds": [
+                      "classic",
+                      "preppy"
+                    ]
+                  },
+                  {
+                    "image_url": "/media/clothing/7/3001_cutout.webp",
+                    "item_name": "블랙 슬랙스",
+                    "item_source_cd": "owned",
+                    "slot_cd": "bottom",
+                    "style_cds": [
+                      "minimal"
+                    ]
+                  },
+                  {
+                    "image_url": "/media/essential/21.png",
+                    "item_name": "블랙 로퍼",
+                    "item_source_cd": "essential",
+                    "slot_cd": "shoes",
+                    "style_cds": [
+                      "classic"
+                    ]
+                  }
+                ],
+                "outfit_id": 101,
+                "outfit_seq": 1,
+                "outfit_type_cd": "preferred",
+                "reason": "아침이 쌀쌀해 블레이저를 걸치고 슬랙스로 맞췄어요."
+              }
+            ],
+            "recommendation_session_id": 12,
+            "session_status_cd": "active",
+            "weather": {
+              "feels_like_temperature": 12.8,
+              "is_fallback": false,
+              "temperature": 14.2,
+              "weather_condition_cd": "cloudy"
+            }
+          },
+          {
+            "condition": {
+              "going_out_end_at": "2026-10-09T01:00:00+09:00",
+              "going_out_start_at": "2026-10-08T18:00:00+09:00",
+              "season_cd": "fall",
+              "tpo_cd": "custom",
+              "tpo_text": "친구 결혼식 2부 파티"
+            },
+            "generation_status_cd": "processing",
+            "is_clothing_shortage": false,
+            "outfits": [],
+            "recommendation_session_id": 13,
+            "session_status_cd": "active"
+          }
+        ]
+      },
+      "RecommendationSessionCreate": {
+        "properties": {
+          "sido_nm": {
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 1,
+            "title": "Sido Nm",
+            "examples": [
+              "서울특별시"
+            ]
+          },
+          "sigungu_nm": {
+            "type": "string",
+            "maxLength": 30,
+            "minLength": 1,
+            "title": "Sigungu Nm",
+            "examples": [
+              "성동구"
+            ]
+          },
+          "location_input_type_cd": {
+            "type": "string",
+            "enum": [
+              "current",
+              "manual"
+            ],
+            "title": "Location Input Type Cd"
+          },
+          "tpo_cd": {
+            "type": "string",
+            "enum": [
+              "daily",
+              "work",
+              "formal",
+              "exercise",
+              "rainy",
+              "midwinter",
+              "custom"
+            ],
+            "title": "Tpo Cd"
+          },
+          "tpo_text": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tpo Text"
+          },
+          "going_out_start_time": {
+            "type": "string",
+            "format": "time",
+            "title": "Going Out Start Time",
+            "examples": [
+              "15:00"
+            ]
+          },
+          "going_out_end_time": {
+            "type": "string",
+            "format": "time",
+            "title": "Going Out End Time",
+            "examples": [
+              "21:30"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "sido_nm",
+          "sigungu_nm",
+          "location_input_type_cd",
+          "tpo_cd",
+          "going_out_start_time",
+          "going_out_end_time"
+        ],
+        "title": "RecommendationSessionCreate"
+      },
+      "RecommendationSessionCreated": {
+        "properties": {
+          "recommendation_session_id": {
+            "type": "integer",
+            "title": "Recommendation Session Id"
+          },
+          "session_status_cd": {
+            "type": "string",
+            "title": "Session Status Cd"
+          }
+        },
+        "type": "object",
+        "required": [
+          "recommendation_session_id",
+          "session_status_cd"
+        ],
+        "title": "RecommendationSessionCreated"
+      },
+      "RejectedUpload": {
+        "properties": {
+          "file_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Name",
+            "examples": [
+              "a.gif"
+            ]
+          },
+          "reason_cd": {
+            "type": "string",
+            "enum": [
+              "unsupported_format",
+              "too_large",
+              "resolution_too_high",
+              "unreadable"
+            ],
+            "title": "Reason Cd"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "examples": [
+              "JPG, PNG, WEBP, HEIC 사진만 올릴 수 있습니다."
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "file_name",
+          "reason_cd",
+          "message"
+        ],
+        "title": "RejectedUpload"
+      },
+      "SessionCondition": {
+        "properties": {
+          "tpo_cd": {
+            "type": "string",
+            "enum": [
+              "daily",
+              "work",
+              "formal",
+              "exercise",
+              "rainy",
+              "midwinter",
+              "custom"
+            ],
+            "title": "Tpo Cd"
+          },
+          "tpo_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tpo Text",
+            "description": "tpo_cd가 custom일 때 회원이 직접 입력한 상황."
+          },
+          "season_cd": {
+            "type": "string",
+            "enum": [
+              "spring",
+              "summer",
+              "fall",
+              "winter"
+            ],
+            "title": "Season Cd",
+            "description": "요청 시점의 기온 추세로 판정한 계절."
+          },
+          "going_out_start_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Going Out Start At",
+            "description": "외출 시작 시각 (KST, +09:00)."
+          },
+          "going_out_end_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Going Out End At",
+            "description": "외출 종료 시각 (KST, +09:00). 자정을 넘기면 다음 날짜로 온다."
+          }
+        },
+        "type": "object",
+        "required": [
+          "tpo_cd",
+          "tpo_text",
+          "season_cd",
+          "going_out_start_at",
+          "going_out_end_at"
+        ],
+        "title": "SessionCondition"
+      },
+      "SessionWeather": {
+        "properties": {
+          "temperature": {
+            "type": "number",
+            "title": "Temperature"
+          },
+          "feels_like_temperature": {
+            "type": "number",
+            "title": "Feels Like Temperature"
+          },
+          "weather_condition_cd": {
+            "type": "string",
+            "enum": [
+              "clear",
+              "cloudy",
+              "overcast",
+              "rain",
+              "sleet",
+              "snow"
+            ],
+            "title": "Weather Condition Cd"
+          },
+          "is_fallback": {
+            "type": "boolean",
+            "title": "Is Fallback",
+            "description": "true면 기상청 조회에 실패해 대체값으로 추천한 것이다. 날씨가 추정값임을 표시한다."
+          }
+        },
+        "type": "object",
+        "required": [
+          "temperature",
+          "feels_like_temperature",
+          "weather_condition_cd",
+          "is_fallback"
+        ],
+        "title": "SessionWeather"
+      },
+      "UploadedClothing": {
+        "properties": {
+          "clothing_id": {
+            "type": "integer",
+            "title": "Clothing Id"
+          },
+          "processing_status_cd": {
+            "type": "string",
+            "const": "processing",
+            "title": "Processing Status Cd"
+          },
+          "image_url": {
+            "type": "string",
+            "title": "Image Url",
+            "examples": [
+              "/media/clothing/1/3f2a9c0e8b1d4e6f.webp"
+            ]
+          },
+          "file_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Name",
+            "examples": [
+              "IMG_0001.HEIC"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "clothing_id",
+          "processing_status_cd",
+          "image_url",
+          "file_name"
+        ],
+        "title": "UploadedClothing"
+      },
+      "WeatherPreview": {
+        "properties": {
+          "temperature": {
+            "type": "number",
+            "title": "Temperature"
+          },
+          "feels_like_temperature": {
+            "type": "number",
+            "title": "Feels Like Temperature"
+          },
+          "weather_condition_cd": {
+            "type": "string",
+            "enum": [
+              "clear",
+              "cloudy",
+              "overcast",
+              "rain",
+              "sleet",
+              "snow"
+            ],
+            "title": "Weather Condition Cd",
+            "description": "강수가 있으면 강수형태(rain 비, sleet 비/눈, snow 눈)를 우선하고, 없으면 하늘상태(clear 맑음, cloudy 구름많음, overcast 흐림)를 준다."
+          },
+          "is_fallback": {
+            "type": "boolean",
+            "title": "Is Fallback",
+            "description": "true면 기상청 조회에 실패해 대체값을 준 것이다. 이때 기온은 지역과 무관한 서울 월평년값이고, weather_condition_cd는 실제 하늘상태가 아니다."
+          },
+          "is_sky_missing": {
+            "type": "boolean",
+            "title": "Is Sky Missing",
+            "description": "true면 하늘상태(SKY) 예보가 없어 weather_condition_cd를 clear로 가정한 것이다. 기온·체감온도는 실제 조회값이므로, 하늘상태 표시만 숨기고 기온은 그대로 보여주면 된다. is_fallback이 true면 날씨 전체가 대체값이며, 이때 이 값은 false로 온다."
+          }
+        },
+        "type": "object",
+        "required": [
+          "temperature",
+          "feels_like_temperature",
+          "weather_condition_cd",
+          "is_fallback",
+          "is_sky_missing"
+        ],
+        "title": "WeatherPreview"
+      }
+    }
+  }
+}
