@@ -55,6 +55,40 @@ const hasUntypedJsonBody = (operation: Operation) =>
     );
   });
 
+const hasNonJsonBody = (operation: Operation) =>
+  getSuccessResponses(operation).some(
+    (response) =>
+      response.content !== undefined &&
+      response.content['application/json'] === undefined,
+  );
+
+const hasMixedBody = (operation: Operation) => {
+  const responses = getSuccessResponses(operation);
+
+  return (
+    responses.some((response) => response.content !== undefined) &&
+    responses.some((response) => response.content === undefined)
+  );
+};
+
+const UNSUPPORTED_RESPONSE_RULES = [
+  {
+    message:
+      '응답 스키마가 비어 있어 응답을 검증할 수 없습니다. BE에 response_model 지정을 요청하세요.',
+    isMatched: hasUntypedJsonBody,
+  },
+  {
+    message:
+      '성공 응답 본문이 JSON이 아니라 fetcher로 검증할 수 없습니다. 이 API에 맞는 mutator를 추가하세요.',
+    isMatched: hasNonJsonBody,
+  },
+  {
+    message:
+      '본문이 있는 성공 응답과 없는 성공 응답이 섞여 있습니다. 이 API에 맞는 mutator를 추가하세요.',
+    isMatched: hasMixedBody,
+  },
+];
+
 const spec = specSchema.parse(JSON.parse(readFileSync(SPEC_PATH, 'utf-8')));
 
 const operations = Object.values(spec.paths).flatMap((pathItem) =>
@@ -63,14 +97,18 @@ const operations = Object.values(spec.paths).flatMap((pathItem) =>
     .map(([, operation]) => operationSchema.parse(operation)),
 );
 
-const untypedOperationIds = operations
-  .filter(hasUntypedJsonBody)
-  .map((operation) => operation.operationId);
+const unsupportedResponseErrors = UNSUPPORTED_RESPONSE_RULES.flatMap((rule) => {
+  const operationIds = operations
+    .filter(rule.isMatched)
+    .map((operation) => operation.operationId);
 
-if (untypedOperationIds.length > 0) {
-  throw new Error(
-    `응답 스키마가 비어 있어 응답을 검증할 수 없는 API가 있습니다. BE에 response_model 지정을 요청하세요: ${untypedOperationIds.join(', ')}`,
-  );
+  return operationIds.length > 0
+    ? [`${rule.message} ${operationIds.join(', ')}`]
+    : [];
+});
+
+if (unsupportedResponseErrors.length > 0) {
+  throw new Error(unsupportedResponseErrors.join('\n'));
 }
 
 const noContentOperations = Object.fromEntries(
