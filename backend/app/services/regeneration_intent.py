@@ -76,7 +76,6 @@ def to_regeneration_intent(output: RegenerationIntentOutput) -> RegenerationInte
         name = clean_item_name(item.item_name)
         if name is None and replace_items.get(item.slot) is not None:
             continue
-        replace_items.pop(item.slot, None)
         replace_items[item.slot] = name
 
     intent = RegenerationIntent(

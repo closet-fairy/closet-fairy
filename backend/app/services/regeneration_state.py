@@ -11,6 +11,7 @@ from app.services.preference_score import ClassificationResult, select_explorati
 from app.services.regeneration_intent import RegenerationIntent
 
 
+# intents는 request_seq 오름차순(오래된 요청 먼저)으로 넘긴다. 뒤 요청이 앞 요청을 덮는다
 def merge_session_preferences(
     style_result: ClassificationResult,
     color_result: ClassificationResult,
@@ -22,6 +23,7 @@ def merge_session_preferences(
     return merged_style, merged_color
 
 
+# 반환값은 최저 체감온도에 더한다. lighter가 +라서 체감을 높게 보고 얇은 옷 쪽으로 간다
 def feels_like_offset(intents: Sequence[RegenerationIntent], settings: Settings) -> Decimal:
     _require_ok(intents)
     limit = settings.REGENERATION_FEELS_LIKE_MAX_STEPS
