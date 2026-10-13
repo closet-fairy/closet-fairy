@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
@@ -24,6 +24,83 @@ beforeEach(() => {
 afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
+});
+
+describe('기본 외출 시간 갱신', () => {
+  const startTrigger = (time: string) =>
+    screen.getByRole('button', { name: `외출 시간 나가는 시간 ${time}` });
+
+  test('화면을 연 채 다음 슬롯이 되면 손대지 않은 나가는 시간이 현재 슬롯으로 바뀌어야 한다.', () => {
+    vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] });
+    vi.setSystemTime(new Date('2026-10-14T09:10:00+09:00'));
+    renderPage();
+
+    expect(startTrigger('09:00')).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(20 * 60 * 1000);
+    });
+
+    expect(startTrigger('09:30')).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(30 * 60 * 1000);
+    });
+
+    expect(startTrigger('10:00')).toBeInTheDocument();
+  });
+
+  test('화면이 다시 보이면 손대지 않은 나가는 시간이 현재 슬롯으로 바뀌어야 한다.', () => {
+    renderPage();
+
+    vi.setSystemTime(new Date('2026-10-14T09:40:00+09:00'));
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+
+    expect(startTrigger('09:30')).toBeInTheDocument();
+  });
+
+  test('직접 고른 나가는 시간은 슬롯이 바뀌어도 그대로 남아야 한다.', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(startTrigger('09:00'));
+    await user.click(await screen.findByRole('option', { name: '12:00' }));
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+    vi.setSystemTime(new Date('2026-10-14T09:40:00+09:00'));
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+
+    expect(startTrigger('12:00')).toBeInTheDocument();
+  });
+
+  test('나가는 시간만 고르면 돌아오는 시간은 고른 시간의 5시간 뒤가 되고, 슬롯이 바뀌어도 그대로여야 한다.', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(startTrigger('09:00'));
+    await user.click(await screen.findByRole('option', { name: '14:30' }));
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    expect(
+      screen.getByRole('button', { name: '외출 시간 돌아오는 시간 19:30' }),
+    ).toBeInTheDocument();
+
+    vi.setSystemTime(new Date('2026-10-14T09:40:00+09:00'));
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+
+    expect(
+      screen.getByRole('button', { name: '외출 시간 돌아오는 시간 19:30' }),
+    ).toBeInTheDocument();
+  });
 });
 
 describe('추천 요청 보내기', () => {
@@ -166,9 +243,16 @@ describe('오류 안내', () => {
     renderPage();
 
     await user.click(
+      screen.getByRole('button', { name: '외출 시간 돌아오는 시간 14:00' }),
+    );
+    await user.click(await screen.findByRole('option', { name: '15:00' }));
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+    await user.click(
       screen.getByRole('button', { name: '외출 시간 나가는 시간 09:00' }),
     );
-    await user.click(await screen.findByRole('option', { name: '14:00' }));
+    await user.click(await screen.findByRole('option', { name: '15:00' }));
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });

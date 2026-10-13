@@ -1,9 +1,13 @@
 import { describe, expect, test } from 'vitest';
 import {
+  createEndTimeSlots,
+  createStartTimeSlots,
   createTimeSlots,
   getCurrentTimeSlot,
-  getDefaultGoingOutTime,
+  getDefaultEndTime,
+  getMillisecondsUntilNextTimeSlot,
   isNextDayReturn,
+  isPastTimeSlot,
   validateGoingOutTime,
 } from './goingOutTime';
 
@@ -34,19 +38,57 @@ describe('현재 시각이 속한 슬롯', () => {
   });
 });
 
-describe('외출 시간 기본값', () => {
-  test('나가는 시간은 현재 슬롯, 돌아오는 시간은 그 5시간 뒤여야 한다.', () => {
-    expect(getDefaultGoingOutTime(at('09:10'))).toEqual({
-      start: '09:00',
-      end: '14:00',
-    });
+describe('지난 슬롯 판정', () => {
+  test('현재 슬롯보다 이른 슬롯은 지난 슬롯이어야 한다.', () => {
+    expect(isPastTimeSlot('13:30', at('14:10'))).toBe(true);
+  });
+
+  test('현재 슬롯은 지난 슬롯이 아니어야 한다.', () => {
+    expect(isPastTimeSlot('14:00', at('14:10'))).toBe(false);
+  });
+});
+
+describe('나가는 시간 선택지', () => {
+  test('현재 슬롯부터 23:30까지만 고를 수 있어야 한다.', () => {
+    const slots = createStartTimeSlots(at('14:10'));
+
+    expect(slots.at(0)).toBe('14:00');
+    expect(slots.at(-1)).toBe('23:30');
+    expect(slots).toHaveLength(20);
+  });
+});
+
+describe('돌아오는 시간 선택지', () => {
+  test('나가는 시간 다음 슬롯부터 하루를 한 바퀴 도는 순서여야 한다.', () => {
+    const slots = createEndTimeSlots('09:00');
+
+    expect(slots.at(0)).toBe('09:30');
+    expect(slots.at(-1)).toBe('08:30');
+    expect(slots).toHaveLength(47);
+  });
+
+  test('나가는 시간과 같은 슬롯은 들어가지 않아야 한다.', () => {
+    expect(createEndTimeSlots('09:00')).not.toContain('09:00');
+  });
+});
+
+describe('다음 슬롯까지 남은 시간', () => {
+  test('14:10이면 14:30까지 20분이 남아야 한다.', () => {
+    expect(getMillisecondsUntilNextTimeSlot(at('14:10'))).toBe(20 * 60 * 1000);
+  });
+
+  test('슬롯 경계 정각이면 다음 경계까지 30분이 남아야 한다.', () => {
+    expect(getMillisecondsUntilNextTimeSlot(at('14:30'))).toBe(30 * 60 * 1000);
+  });
+});
+
+describe('돌아오는 시간 기본값', () => {
+  test('나가는 시간의 5시간 뒤여야 한다.', () => {
+    expect(getDefaultEndTime('09:00')).toBe('14:00');
   });
 
   test('5시간 뒤가 자정을 넘으면 다음 날 시각으로 넘어가야 한다.', () => {
-    expect(getDefaultGoingOutTime(at('21:40'))).toEqual({
-      start: '21:30',
-      end: '02:30',
-    });
+    expect(getDefaultEndTime('21:30')).toBe('02:30');
   });
 });
 

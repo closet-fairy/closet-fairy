@@ -1,5 +1,5 @@
 import type { FormEvent } from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Button from '@/components/common/Button';
 import Chip from '@/components/common/Chip';
 import ChipGroup from '@/components/common/ChipGroup';
@@ -10,17 +10,19 @@ import Notice from '@/components/common/Notice';
 import Picker from '@/components/common/Picker';
 import TopBar from '@/components/common/TopBar';
 import {
-  createTimeSlots,
+  createEndTimeSlots,
+  createStartTimeSlots,
   getCurrentTimeSlot,
-  getDefaultGoingOutTime,
+  getDefaultEndTime,
+  getMillisecondsUntilNextTimeSlot,
   isNextDayReturn,
+  isPastTimeSlot,
   validateGoingOutTime,
 } from '@/domains/recommendation/goingOutTime';
 import { toRecommendationSessionCreate } from '@/domains/recommendation/toRecommendationSessionCreate';
 import type { TpoPresetCd } from '@/domains/recommendation/tpoPresets';
 import { TPO_PRESETS } from '@/domains/recommendation/tpoPresets';
 import { useCreateRecommendationSessionRecommendationSessionsPost } from '@/generated/endpoints/recommendation/recommendation';
-import { parseTimeToMinutes } from '@/utils/parseTimeToMinutes';
 import * as S from './RecommendationPage.styled';
 
 const TEMPORARY_LOCATION = {
@@ -29,13 +31,41 @@ const TEMPORARY_LOCATION = {
   label: '서울 성동구',
 };
 
-const TIME_SLOTS = createTimeSlots();
+const useTimeSlotNow = () => {
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setNow(new Date());
+    }, getMillisecondsUntilNextTimeSlot(now));
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [now]);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        setNow(new Date());
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
+  return now;
+};
 
 const RecommendationPage = () => {
+  const now = useTimeSlotNow();
   const [tpoCd, setTpoCd] = useState<TpoPresetCd>('daily');
-  const [goingOutTime, setGoingOutTime] = useState(() =>
-    getDefaultGoingOutTime(new Date()),
-  );
+  const [selectedStart, setSelectedStart] = useState<string | null>(null);
+  const [selectedEnd, setSelectedEnd] = useState<string | null>(null);
   const [validationMessage, setValidationMessage] = useState<string | null>(
     null,
   );
@@ -46,14 +76,17 @@ const RecommendationPage = () => {
     reset,
   } = useCreateRecommendationSessionRecommendationSessionsPost();
 
-  const { start, end } = goingOutTime;
-  const currentSlotMinutes = parseTimeToMinutes(getCurrentTimeSlot(new Date()));
-  const startOptions = TIME_SLOTS.filter(
-    (slot) => slot === start || parseTimeToMinutes(slot) >= currentSlotMinutes,
-  ).map((slot) => ({ value: slot, label: slot }));
-  const endOptions = TIME_SLOTS.filter(
-    (slot) => slot !== start || slot === end,
-  ).map((slot) => ({
+  const start = selectedStart ?? getCurrentTimeSlot(now);
+  const end = selectedEnd ?? getDefaultEndTime(start);
+  const startSlots = isPastTimeSlot(start, now)
+    ? [start, ...createStartTimeSlots(now)]
+    : createStartTimeSlots(now);
+  const endSlots =
+    end === start
+      ? [end, ...createEndTimeSlots(start)]
+      : createEndTimeSlots(start);
+  const startOptions = startSlots.map((slot) => ({ value: slot, label: slot }));
+  const endOptions = endSlots.map((slot) => ({
     value: slot,
     label: isNextDayReturn(start, slot) ? `다음 날 ${slot}` : slot,
   }));
@@ -77,12 +110,12 @@ const RecommendationPage = () => {
   };
 
   const handleStartChange = (value: string) => {
-    setGoingOutTime((previous) => ({ ...previous, start: value }));
+    setSelectedStart(value);
     clearErrors();
   };
 
   const handleEndChange = (value: string) => {
-    setGoingOutTime((previous) => ({ ...previous, end: value }));
+    setSelectedEnd(value);
     clearErrors();
   };
 

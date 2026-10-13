@@ -3,6 +3,7 @@ import { parseTimeToMinutes } from '@/utils/parseTimeToMinutes';
 
 const SLOT_MINUTES = 30;
 const SLOTS_PER_DAY = (24 * 60) / SLOT_MINUTES;
+const SLOT_MILLISECONDS = SLOT_MINUTES * 60 * 1000;
 const DEFAULT_GOING_OUT_MINUTES = 5 * 60;
 
 // BE가 외출 시간을 KST 기준 오늘로 해석하므로, 기기 시간대와 상관없이 KST 시각을 쓴다.
@@ -32,14 +33,26 @@ export const getCurrentTimeSlot = (now: Date) => {
   return formatMinutesToTime(minutes - (minutes % SLOT_MINUTES));
 };
 
-export const getDefaultGoingOutTime = (now: Date) => {
-  const start = getCurrentTimeSlot(now);
-  const end = formatMinutesToTime(
-    parseTimeToMinutes(start) + DEFAULT_GOING_OUT_MINUTES,
-  );
+export const getDefaultEndTime = (start: string) =>
+  formatMinutesToTime(parseTimeToMinutes(start) + DEFAULT_GOING_OUT_MINUTES);
 
-  return { start, end };
+export const isPastTimeSlot = (time: string, now: Date) =>
+  parseTimeToMinutes(time) < parseTimeToMinutes(getCurrentTimeSlot(now));
+
+export const createStartTimeSlots = (now: Date) =>
+  createTimeSlots().filter((slot) => !isPastTimeSlot(slot, now));
+
+export const createEndTimeSlots = (start: string) => {
+  const startMinutes = parseTimeToMinutes(start);
+
+  return Array.from({ length: SLOTS_PER_DAY - 1 }, (_, index) =>
+    formatMinutesToTime(startMinutes + (index + 1) * SLOT_MINUTES),
+  );
 };
+
+// KST는 UTC와 정시 단위로 차이 나므로, KST의 30분 경계는 epoch 기준 30분 경계와 같다.
+export const getMillisecondsUntilNextTimeSlot = (now: Date) =>
+  SLOT_MILLISECONDS - (now.getTime() % SLOT_MILLISECONDS);
 
 export const isNextDayReturn = (start: string, end: string) =>
   parseTimeToMinutes(end) < parseTimeToMinutes(start);
@@ -57,7 +70,7 @@ export const validateGoingOutTime = (params: ValidateGoingOutTimeParams) => {
     return '외출 시작과 종료 시각이 같습니다.';
   }
 
-  if (parseTimeToMinutes(start) < parseTimeToMinutes(getCurrentTimeSlot(now))) {
+  if (isPastTimeSlot(start, now)) {
     return '외출 시작 시각이 이미 지났습니다.';
   }
 
