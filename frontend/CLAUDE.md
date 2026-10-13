@@ -53,7 +53,7 @@ frontend/src/
 - `utils/`에는 도메인 용어가 없는 범용 함수만 둔다. 도메인 용어가 들어가면 `domains/`에 둔다.
   - ✅ `utils/formatDate.ts`
   - ❌ `utils/getClothLabel.ts`
-- `generated/`는 직접 수정하지 않는다. 바꿔야 하면 orval 설정이나 API 스펙을 고친 뒤 다시 생성한다.
+- `generated/`는 직접 수정하지 않는다. 바꿔야 하면 orval 설정을 고치거나 BE 스펙을 다시 받아 생성한다.
 
 ## 컴포넌트
 
@@ -176,6 +176,7 @@ ClothCard/
 ### API 요청
 
 - API 요청은 orval이 생성한 훅과 함수를 쓴다. 요청 함수, 응답 타입, Query 키를 직접 만들지 않는다.
+- API 스펙은 BE 코드에서 뽑아 `openapi.json`으로 커밋한다. BE API가 바뀌면 `npm run openapi:update`로 스펙과 생성물을 함께 갱신한다.
 - axios 요청은 `apis/httpClient.ts`의 공용 인스턴스로만 보낸다.
   axios를 직접 import하는 파일은 `apis/httpClient.ts`와 `apis/apiError.ts`뿐이다.
 - `QueryClient`는 `apis/queryClient.ts`의 인스턴스 하나만 쓴다.
@@ -184,7 +185,9 @@ ClothCard/
 ### 응답 검증
 
 - 모든 API 응답은 Query 캐시에 들어가기 전에 zod로 검증한다.
+  - 생성된 요청 함수가 응답 zod 스키마를 `apis/fetcher.ts`에 넘기고, `fetcher`가 검증한다. 화면에서 다시 검증하지 않는다.
 - 검증에 실패하면 Query의 에러로 처리한다. 잘못된 데이터를 그대로 화면에 넘기지 않는다.
+  - `fetcher`는 검증 실패를 `INVALID_RESPONSE` 코드의 `ApiError`로 던진다.
 
 ### 에러
 

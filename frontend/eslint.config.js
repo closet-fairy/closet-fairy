@@ -36,6 +36,7 @@ export default defineConfig([
     'dist',
     'storybook-static',
     'src/routeTree.gen.ts',
+    'src/generated',
     'public/mockServiceWorker.js',
   ]),
   {
