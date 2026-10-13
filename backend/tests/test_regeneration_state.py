@@ -4,7 +4,6 @@ from decimal import Decimal
 import pytest
 
 from app.core.config import Settings
-from app.repositories.preference_score import PreferenceRow
 from app.services.preference_score import ClassificationResult, classify
 from app.services.regeneration_intent import RegenerationIntent
 from app.services.regeneration_state import (
@@ -12,22 +11,13 @@ from app.services.regeneration_state import (
     merge_session_preferences,
     select_session_exploration_style,
 )
-from tests.test_preference_score import COLORS, STYLES
+from tests.test_preference_score import COLORS, STYLES, make_rows
 
 SETTINGS = Settings(_env_file=None)
 
 
-def rows(values: list[str], scores: dict[str, tuple[str, str]]) -> list[PreferenceRow]:
-    return [
-        PreferenceRow(
-            v, Decimal(scores.get(v, ("0", "0"))[0]), Decimal(scores.get(v, ("0", "0"))[1]), i
-        )
-        for i, v in enumerate(values, start=1)
-    ]
-
-
 # casual·minimal 선호, sporty 기피, 나머지 저선호(노출 있음)
-STYLE_ROWS = rows(
+STYLE_ROWS = make_rows(
     STYLES,
     {
         "casual": ("20", "5"),
@@ -46,7 +36,7 @@ STYLE_ROWS = rows(
     },
 )
 # black 기피, white·navy 등 선호
-COLOR_ROWS = rows(
+COLOR_ROWS = make_rows(
     COLORS,
     {
         "black": ("-5", "5"),
@@ -61,8 +51,8 @@ COLOR_ROWS = rows(
 )
 STYLE_RESULT = classify("style", STYLE_ROWS, SETTINGS)
 COLOR_RESULT = classify("color", COLOR_ROWS, SETTINGS)
-NEW_MEMBER_STYLE = classify("style", rows(STYLES, {}), SETTINGS)
-NEW_MEMBER_COLOR = classify("color", rows(COLORS, {}), SETTINGS)
+NEW_MEMBER_STYLE = classify("style", make_rows(STYLES), SETTINGS)
+NEW_MEMBER_COLOR = classify("color", make_rows(COLORS), SETTINGS)
 
 
 def intent(**fields) -> RegenerationIntent:
