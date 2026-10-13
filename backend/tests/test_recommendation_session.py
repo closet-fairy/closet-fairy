@@ -107,6 +107,21 @@ def test_custom_harmful_422(client):
     assert res.json()["message"] == "입력할 수 없는 내용이 포함되어 있습니다."
 
 
+def test_custom_abusive_422(client):
+    res = client.post("/recommendation-sessions", json=body(tpo_cd="custom", tpo_text="씨발 회식"))
+    assert res.status_code == 422
+    assert res.json()["message"] == "입력할 수 없는 내용이 포함되어 있습니다."
+    assert client.calls == []
+
+
+def test_custom_normal_text_is_saved_as_is(client):
+    res = client.post(
+        "/recommendation-sessions", json=body(tpo_cd="custom", tpo_text="친구 결혼식 2부 파티")
+    )
+    assert res.status_code == 202
+    assert client.calls[0]["tpo_text"] == "친구 결혼식 2부 파티"
+
+
 def test_end_before_start_goes_next_day(client):
     res = client.post(
         "/recommendation-sessions",
