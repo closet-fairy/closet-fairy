@@ -29,3 +29,14 @@ def test_tuned_preference_score_defaults():
 
 def test_reviewer_model_defaults_to_haiku():
     assert Settings(_env_file=None).LLM_REVIEWER_MODEL == "claude-haiku-4-5"
+
+
+def test_intent_model_defaults_to_haiku():
+    assert Settings(_env_file=None).LLM_INTENT_MODEL == "claude-haiku-4-5"
+
+
+def test_regeneration_feels_like_defaults():
+    settings = Settings(_env_file=None)
+
+    assert settings.REGENERATION_FEELS_LIKE_STEP == Decimal("3.0")
+    assert settings.REGENERATION_FEELS_LIKE_MAX_STEPS == 2

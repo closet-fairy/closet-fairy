@@ -58,6 +58,9 @@ class Settings(BaseSettings):
 
     MAX_RETRY_PER_VALIDATION_STAGE: int = 2
 
+    REGENERATION_FEELS_LIKE_STEP: Decimal = Decimal("3.0")
+    REGENERATION_FEELS_LIKE_MAX_STEPS: int = 2
+
     SESSION_ABANDON_TIMEOUT_MINUTES: int = 30
 
     MEDIA_ROOT: Path = Path("media")
@@ -92,9 +95,10 @@ class Settings(BaseSettings):
     # 용도(call_name)별 모델 덮어쓰기. .env에 JSON으로 적는다.
     # 예: LLM_MODEL_OVERRIDES={"outfit_generation": "claude-haiku-4-5"}
     LLM_MODEL_OVERRIDES: dict[str, str] = {}
-    # 리뷰어는 이 값을 LLMCallConfig.model로 넘겨 LLM_MODEL_OVERRIDES보다 우선한다.
+    # 리뷰어·의도 파싱은 이 값을 LLMCallConfig.model로 넘겨 LLM_MODEL_OVERRIDES보다 우선한다.
     # overrides에 기본값을 두면 .env에서 dict를 지정할 때 통째로 덮여 사라지므로 따로 둔다
     LLM_REVIEWER_MODEL: str = "claude-haiku-4-5"
+    LLM_INTENT_MODEL: str = "claude-haiku-4-5"
     LLM_MAX_ATTEMPTS: int = 3
     LLM_BACKOFF_BASE_S: float = 0.5
     LLM_BACKOFF_MAX_S: float = 8.0
