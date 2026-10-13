@@ -60,9 +60,10 @@ def read_patterns(path: Path, flags: int = 0) -> list[re.Pattern[str]]:
 
 def is_harmful(text: str) -> bool:
     patterns = load_input_guard()
-    if any(p.search(text) for p in patterns.raw):
+    composed = unicodedata.normalize("NFC", text)
+    if any(p.search(composed) for p in patterns.raw):
         return True
-    normalized = normalize(text)
+    normalized = normalize(composed)
     return any(p.search(normalized) for p in patterns.normalized)
 
 
