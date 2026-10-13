@@ -70,6 +70,29 @@ describe('요청 전달', () => {
     expect(receivedContentType).toBe('application/json');
     expect(receivedBody).toEqual({ name: '바지' });
   });
+
+  test('FormData 본문은 boundary가 붙은 multipart 요청으로 보내야 한다.', async () => {
+    let receivedContentType: string | null = null;
+    let receivedName: FormDataEntryValue | null = null;
+    server.use(
+      http.post('/api/items', async ({ request }) => {
+        receivedContentType = request.headers.get('Content-Type');
+        receivedName = (await request.formData()).get('name');
+        return HttpResponse.json({ id: 3, name: '모자' }, { status: 201 });
+      }),
+    );
+    const formData = new FormData();
+    formData.append('name', '모자');
+
+    await fetcher('/items', {
+      method: 'POST',
+      body: formData,
+      schema: itemSchema,
+    });
+
+    expect(receivedContentType).toMatch(/^multipart\/form-data; boundary=/);
+    expect(receivedName).toBe('모자');
+  });
 });
 
 describe('서버 에러', () => {
