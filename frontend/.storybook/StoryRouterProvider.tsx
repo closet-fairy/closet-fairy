@@ -8,15 +8,16 @@ import { useState } from 'react';
 import type { ReactNode } from 'react';
 
 interface StoryRouterProviderProps {
+  initialPath: string;
   children: ReactNode;
 }
 
 const StoryRouterProvider = (props: StoryRouterProviderProps) => {
-  const { children } = props;
+  const { initialPath, children } = props;
   const [router] = useState(() =>
     createRouter({
       routeTree: createRootRoute(),
-      history: createMemoryHistory({ initialEntries: ['/'] }),
+      history: createMemoryHistory({ initialEntries: [initialPath] }),
     }),
   );
 

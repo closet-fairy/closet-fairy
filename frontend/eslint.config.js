@@ -62,6 +62,23 @@ export default defineConfig([
         { assertionStyle: 'never' },
       ],
       '@typescript-eslint/no-non-null-assertion': 'error',
+      '@typescript-eslint/only-throw-error': [
+        'error',
+        {
+          allow: [
+            {
+              from: 'package',
+              package: '@tanstack/router-core',
+              name: 'Redirect',
+            },
+            {
+              from: 'package',
+              package: '@tanstack/router-core',
+              name: 'NotFoundError',
+            },
+          ],
+        },
+      ],
       '@typescript-eslint/consistent-type-definitions': ['error', 'interface'],
       '@typescript-eslint/consistent-type-imports': [
         'error',
