@@ -20,7 +20,7 @@ from app.services.storage import ImageStorage
 
 
 class RecommendationSessionNotFoundError(NotFoundError):
-    message = "추천 세션을 찾을 수 없습니다."
+    message = "추천 결과를 찾을 수 없습니다."
 
 
 async def get_recommendation_result(
