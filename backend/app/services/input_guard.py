@@ -18,6 +18,7 @@ _NON_LETTER = re.compile(r"[^a-z가-힣ㄱ-ㅎㅏ-ㅣ]+")
 _ZERO_WIDTH = (0x200B, 0x200C, 0x200D, 0x2060, 0xFEFF)
 
 
+# NFKC는 호환 자모(ㅅ)를 조합용 자모로 바꿔 자모 패턴이 깨지므로, 전각·반각만 골라 바꾼다
 def _build_width_table() -> dict[int, str | None]:
     table: dict[int, str | None] = {0x3000: " "}
     table.update({c: chr(c - 0xFEE0) for c in range(0xFF01, 0xFF5F)})
