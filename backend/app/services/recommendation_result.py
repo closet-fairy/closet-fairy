@@ -20,6 +20,7 @@ from app.services.storage import ImageStorage
 
 
 class RecommendationSessionNotFoundError(NotFoundError):
+    code = "SESSION_NOT_FOUND"
     message = "추천 결과를 찾을 수 없습니다."
 
 

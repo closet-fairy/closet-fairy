@@ -40,7 +40,7 @@ def test_result_endpoint_returns_not_found_in_error_format(client, fake_db, monk
     response = client.get("/recommendation-sessions/1")
 
     assert response.status_code == 404
-    assert response.json()["code"] == "NOT_FOUND"
+    assert response.json()["code"] == "SESSION_NOT_FOUND"
 
 
 def test_result_endpoint_returns_service_result(client, fake_db, monkeypatch):
