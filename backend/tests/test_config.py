@@ -40,3 +40,12 @@ def test_regeneration_feels_like_defaults():
 
     assert settings.REGENERATION_FEELS_LIKE_STEP == Decimal("3.0")
     assert settings.REGENERATION_FEELS_LIKE_MAX_STEPS == 2
+
+
+def test_regeneration_request_defaults():
+    settings = Settings(_env_file=None)
+
+    assert settings.REGENERATION_REQUEST_MAX_LENGTH == 300
+    assert settings.REGENERATION_PROCESSING_TIMEOUT_SECONDS == 180
+    assert settings.REGENERATION_INTENT_TIMEOUT_S == 10.0
+    assert settings.REGENERATION_INTENT_MAX_ATTEMPTS == 2

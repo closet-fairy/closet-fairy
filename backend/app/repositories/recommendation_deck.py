@@ -115,6 +115,46 @@ async def find_session_outfit_ids(db: AsyncSession, recommendation_session_id: i
     return [int(r.outfit_id) for r in result]
 
 
+@dataclass(frozen=True)
+class OutfitDeckPosition:
+    deck_seq: int
+    latest_deck_seq: int
+
+    @property
+    def is_latest(self) -> bool:
+        return self.deck_seq == self.latest_deck_seq
+
+
+SELECT_OUTFIT_DECK_POSITION_SQL = text(
+    """
+    SELECT d.deck_seq,
+           (SELECT MAX(d2.deck_seq)
+            FROM outfit o2
+            JOIN recommendation_deck d2 ON d2.recommendation_deck_id = o2.recommendation_deck_id
+            WHERE d2.recommendation_session_id = d.recommendation_session_id
+              AND o2.outfit_seq = o.outfit_seq) AS latest_deck_seq
+    FROM outfit o
+    JOIN recommendation_deck d ON d.recommendation_deck_id = o.recommendation_deck_id
+    WHERE o.outfit_id = :outfit_id
+      AND d.recommendation_session_id = :recommendation_session_id
+    """
+)
+
+
+async def get_outfit_deck_position(
+    db: AsyncSession, recommendation_session_id: int, outfit_id: int
+) -> OutfitDeckPosition | None:
+    row = (
+        await db.execute(
+            SELECT_OUTFIT_DECK_POSITION_SQL,
+            {"recommendation_session_id": recommendation_session_id, "outfit_id": outfit_id},
+        )
+    ).first()
+    if row is None:
+        return None
+    return OutfitDeckPosition(deck_seq=row.deck_seq, latest_deck_seq=row.latest_deck_seq)
+
+
 DELETE_OUTFITS_EXCEPT_SQL = text(
     """
     DELETE o FROM outfit o

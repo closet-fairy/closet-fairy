@@ -15,7 +15,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings, get_settings
-from app.core.errors import ConflictError, NotFoundError
+from app.core.errors import ConflictError
 from app.core.logging import Event
 from app.repositories import outfit_feedback as feedback_repo
 from app.repositories import preference_score as score_repo
@@ -26,18 +26,17 @@ from app.repositories.preference_score import ScoreRow, ScoreUpdate
 from app.services.preference_score import decay_ema, update_ema
 from app.services.recommendation_session import to_db_utc
 from app.services.session_cleanup import cleanup_ended_session
-from app.services.session_errors import SessionAlreadySettledError, SessionNotFoundError
+from app.services.session_errors import (
+    OutfitNotInSessionError,
+    SessionAlreadySettledError,
+    SessionNotFoundError,
+)
 
 logger = logging.getLogger(__name__)
 
 AttributeKey = tuple[str, str]
 
 MYSQL_DUPLICATE_ENTRY = 1062
-
-
-class OutfitNotInSessionError(NotFoundError):
-    code = "OUTFIT_NOT_FOUND"
-    message = "이 세션에서 추천한 코디가 아닙니다."
 
 
 class SessionNotRatableError(ConflictError):

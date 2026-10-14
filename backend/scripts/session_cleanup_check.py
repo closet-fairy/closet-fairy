@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -40,6 +41,7 @@ from app.services import rating_settlement as settlement  # noqa: E402
 from app.services import recommendation_result as result_service  # noqa: E402
 from app.services import session_cleanup, session_end  # noqa: E402
 from app.services.recommendation_session import to_db_utc  # noqa: E402
+from app.services.regeneration_intent import RegenerationIntent  # noqa: E402
 from app.services.storage import get_image_storage  # noqa: E402
 from app.services.weather.base_time import KST  # noqa: E402
 from scripts.settlement_concurrency import (  # noqa: E402
@@ -61,6 +63,7 @@ from scripts.settlement_concurrency import (  # noqa: E402
 )
 
 RATING = 4
+INTENT_JSON = json.dumps(RegenerationIntent(status="ok", clothing_warmth="lighter").to_dict())
 
 
 async def seed_member(factory, member_ids: list[int]) -> tuple[int, Wardrobe]:
@@ -114,12 +117,12 @@ async def insert_regeneration_requests(factory, session_id: int) -> None:
             text(
                 """
                 INSERT INTO regeneration_request (recommendation_session_id, request_seq,
-                    target_scope_cd, target_outfit_id, result_deck_id, request_text)
-                VALUES (:s, 1, 'single', :o, :d, '검증 single'),
-                       (:s, 2, 'all', NULL, :d, '검증 all')
+                    target_scope_cd, target_outfit_id, result_deck_id, request_text, parsed_intent)
+                VALUES (:s, 1, 'single', :o, :d, '검증 single', :intent),
+                       (:s, 2, 'all', NULL, :d, '검증 all', :intent)
                 """
             ),
-            {"s": session_id, "o": unrated.outfit_id, "d": second_deck},
+            {"s": session_id, "o": unrated.outfit_id, "d": second_deck, "intent": INTENT_JSON},
         )
 
 

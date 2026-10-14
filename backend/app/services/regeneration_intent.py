@@ -59,6 +59,8 @@ async def parse_regeneration_intent(llm: LLMClient, request_text: str) -> Regene
             model=settings.LLM_INTENT_MODEL,
             max_tokens=512,
             temperature=0.0,
+            timeout_s=settings.REGENERATION_INTENT_TIMEOUT_S,
+            max_attempts=settings.REGENERATION_INTENT_MAX_ATTEMPTS,
         ),
         system=prompt.system,
         messages=[{"role": "user", "content": prompt.user}],
