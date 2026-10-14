@@ -15,6 +15,21 @@ RAW_PATTERN_FILES = ("injection_patterns.txt", "abusive_raw_patterns.txt")
 NORMALIZED_PATTERN_FILES = ("abusive_patterns.txt",)
 
 _NON_LETTER = re.compile(r"[^a-z가-힣ㄱ-ㅎㅏ-ㅣ]+")
+_ZERO_WIDTH = (0x200B, 0x200C, 0x200D, 0x2060, 0xFEFF)
+
+
+def _build_width_table() -> dict[int, str | None]:
+    table: dict[int, str | None] = {0x3000: " "}
+    table.update({c: chr(c - 0xFEE0) for c in range(0xFF01, 0xFF5F)})
+    for c in range(0xFFA0, 0xFFDD):
+        name = unicodedata.name(chr(c), "")
+        if name.startswith("HALFWIDTH HANGUL"):
+            table[c] = unicodedata.lookup(name.removeprefix("HALFWIDTH "))
+    table.update(dict.fromkeys(_ZERO_WIDTH))
+    return table
+
+
+_WIDTH_TABLE = _build_width_table()
 
 
 class InputGuardConfigError(RuntimeError):
@@ -60,7 +75,7 @@ def read_patterns(path: Path, flags: int = 0) -> list[re.Pattern[str]]:
 
 def is_harmful(text: str) -> bool:
     patterns = load_input_guard()
-    composed = unicodedata.normalize("NFC", text)
+    composed = unicodedata.normalize("NFC", text.translate(_WIDTH_TABLE))
     if any(p.search(composed) for p in patterns.raw):
         return True
     normalized = normalize(composed)

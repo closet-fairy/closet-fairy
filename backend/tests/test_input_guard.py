@@ -299,6 +299,32 @@ def test_decomposed_hangul_is_harmful(text):
     assert is_harmful(unicodedata.normalize("NFD", text))
 
 
+@pytest.mark.parametrize(
+    "text",
+    [
+        "ｓｙｓｔｅｍ ｐｒｏｍｐｔ",
+        "ＳＹＳＴＥＭ　ＰＲＯＭＰＴ",
+        "＜ｓｃｒｉｐｔ＞",
+        "ｆｕｃｋ",
+        "ｐｏｒｎ",
+        "ﾵﾲ",
+        "ﾶﾲ",
+    ],
+)
+def test_fullwidth_and_halfwidth_forms_are_harmful(text):
+    assert is_harmful(text)
+
+
+@pytest.mark.parametrize("text", ["sys​tem prompt", "fu​ck", "f﻿uck"])
+def test_zero_width_characters_are_ignored(text):
+    assert is_harmful(text)
+
+
+@pytest.mark.parametrize("text", ["친구 결혼식 ２부 파티", "ｓｅｘｙ한 느낌"])
+def test_fullwidth_normal_sentence_is_not_harmful(text):
+    assert not is_harmful(text)
+
+
 @pytest.mark.parametrize("text", ["시 발", "시.발", "시1발"])
 def test_spaced_si_bal_is_left_to_intent_parsing(text):
     assert not is_harmful(text)
