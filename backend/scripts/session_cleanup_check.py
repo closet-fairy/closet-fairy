@@ -40,6 +40,7 @@ from app.services import rating_settlement as settlement  # noqa: E402
 from app.services import recommendation_result as result_service  # noqa: E402
 from app.services import session_cleanup, session_end  # noqa: E402
 from app.services.recommendation_session import to_db_utc  # noqa: E402
+from app.services.storage import get_image_storage  # noqa: E402
 from app.services.weather.base_time import KST  # noqa: E402
 from scripts.settlement_concurrency import (  # noqa: E402
     SeededSession,
@@ -179,7 +180,9 @@ async def session_row(factory, session_id: int):
 
 async def result_outfit_ids(factory, session_id: int, member_id: int) -> list[int]:
     async with factory() as db:
-        result = await result_service.get_recommendation_result(db, session_id, member_id)
+        result = await result_service.get_recommendation_result(
+            db, get_image_storage(), session_id, member_id
+        )
     return [o.outfit_id for o in result.outfits]
 
 
