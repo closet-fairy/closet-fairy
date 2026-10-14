@@ -24,6 +24,7 @@ from app.services.llm.errors import (
     LLMError,
     LLMOutputTruncatedError,
     LLMRateLimitError,
+    LLMRefusalError,
     LLMRequestError,
     LLMSchemaError,
     LLMTimeoutError,
@@ -50,6 +51,7 @@ class LLMCallConfig:
     temperature: float | None = None
     timeout_s: float = 60.0
     thinking: dict[str, Any] | None = None
+    max_attempts: int | None = None
 
 
 class LLMClient:
@@ -107,7 +109,7 @@ class LLMClient:
         request_id: str | None = None
         outcome = "success"
         try:
-            response, attempts = await self._create_with_retry(request)
+            response, attempts = await self._create_with_retry(request, config.max_attempts)
             request_id = response._request_id
             return _parse_output(response, output_model)
         except LLMError as e:
@@ -140,8 +142,12 @@ class LLMClient:
                 },
             )
 
-    async def _create_with_retry(self, request: dict[str, Any]) -> tuple[Message, int]:
-        max_attempts = max(1, self._settings.LLM_MAX_ATTEMPTS)
+    async def _create_with_retry(
+        self, request: dict[str, Any], max_attempts: int | None
+    ) -> tuple[Message, int]:
+        if max_attempts is None:
+            max_attempts = self._settings.LLM_MAX_ATTEMPTS
+        max_attempts = max(1, max_attempts)
         attempt = 0
         while True:
             attempt += 1
@@ -215,7 +221,7 @@ def _parse_output(response: Message, output_model: type[T]) -> T:
     if response.stop_reason == "max_tokens":
         raise LLMOutputTruncatedError("LLM output truncated (max_tokens)", raw_output=raw)
     if response.stop_reason == "refusal":
-        raise LLMSchemaError("LLM refused to answer", raw_output=raw)
+        raise LLMRefusalError("LLM refused to answer", raw_output=raw)
     try:
         data = json.loads(raw)
     except json.JSONDecodeError as e:

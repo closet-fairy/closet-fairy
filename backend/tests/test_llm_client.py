@@ -17,6 +17,7 @@ from app.services.llm import (
     LLMCallConfig,
     LLMClient,
     LLMOutputTruncatedError,
+    LLMRefusalError,
     LLMRequestError,
     LLMSchemaError,
     LLMTimeoutError,
@@ -162,6 +163,29 @@ async def test_max_tokens_stop_reason_raises_truncated_error():
         await _call(llm)
 
     assert exc.value.raw_output == '{"answer": "cut'
+
+
+async def test_refusal_stop_reason_raises_refusal_error_without_retry(caplog):
+    llm, create = _make([_message("", stop_reason="refusal")])
+
+    with caplog.at_level(logging.INFO), pytest.raises(LLMSchemaError) as exc:
+        await _call(llm)
+
+    assert type(exc.value) is LLMRefusalError
+    assert create.await_count == 1
+    (record,) = _llm_records(caplog)
+    assert record.outcome == "LLMRefusalError"
+
+
+async def test_max_attempts_in_config_overrides_setting():
+    llm, create = _make([anthropic.APITimeoutError(request=_REQUEST)] * 3)
+    config = LLMCallConfig(call_name="test_call", prompt_version="test/v1", max_attempts=2)
+
+    with pytest.raises(LLMTimeoutError) as exc:
+        await _call(llm, config)
+
+    assert create.await_count == 2
+    assert exc.value.attempts == 2
 
 
 async def test_temperature_none_is_omitted_from_request():

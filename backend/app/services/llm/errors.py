@@ -36,3 +36,7 @@ class LLMSchemaError(LLMError):
 
 class LLMOutputTruncatedError(LLMSchemaError):
     """stop_reason == "max_tokens"로 출력이 잘림."""
+
+
+class LLMRefusalError(LLMSchemaError):
+    """stop_reason == "refusal"로 모델이 답을 거부함."""
