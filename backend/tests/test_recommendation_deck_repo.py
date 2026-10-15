@@ -2,6 +2,8 @@
 
 from types import SimpleNamespace
 
+import pytest
+
 from app.repositories import recommendation_deck as deck_repo
 from app.repositories.recommendation_deck import OutfitItemRow
 
@@ -14,6 +16,9 @@ class _Result:
 
     def __iter__(self):
         return iter(self._rows)
+
+    def first(self):
+        return self._rows[0] if self._rows else None
 
 
 class _FakeDb:
@@ -138,3 +143,29 @@ async def test_delete_session_decks_removes_every_deck_of_session():
     assert params == {"recommendation_session_id": 7}
     assert deleted == 2
     assert not db.committed
+
+
+@pytest.mark.parametrize(
+    ("deck_seq", "latest_deck_seq", "is_latest"),
+    [(2, 2, True), (1, 2, False)],
+    ids=["latest", "previous_deck"],
+)
+async def test_get_outfit_deck_position_compares_with_latest_deck(
+    deck_seq, latest_deck_seq, is_latest
+):
+    db = _FakeDb(rows=[{"deck_seq": deck_seq, "latest_deck_seq": latest_deck_seq}])
+
+    position = await deck_repo.get_outfit_deck_position(db, 7, 101)
+
+    sql, params = db.executed[0]
+    assert "WHERE o.outfit_id = :outfit_id" in sql
+    assert "AND d.recommendation_session_id = :recommendation_session_id" in sql
+    assert "o2.outfit_seq = o.outfit_seq" in sql
+    assert "MAX(d2.deck_seq)" in sql
+    assert params == {"recommendation_session_id": 7, "outfit_id": 101}
+    assert position == deck_repo.OutfitDeckPosition(deck_seq, latest_deck_seq)
+    assert position.is_latest is is_latest
+
+
+async def test_get_outfit_deck_position_returns_none_for_other_session_outfit():
+    assert await deck_repo.get_outfit_deck_position(_FakeDb(), 7, 101) is None
