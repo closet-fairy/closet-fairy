@@ -4,7 +4,7 @@ from datetime import datetime
 
 import pytest
 
-from app.repositories.recommendation_session import LockedSessionRow
+from app.repositories.recommendation_session import SessionStateRow
 from app.services import session_end, session_errors
 from app.services.session_cleanup import CleanupResult
 from app.services.weather.base_time import KST
@@ -37,7 +37,7 @@ class _FakeDb:
 
 
 def _session(status="active", generation="completed", member_id=1, settled_at=None):
-    return LockedSessionRow(member_id, status, generation, settled_at)
+    return SessionStateRow(member_id, status, generation, settled_at)
 
 
 def _patch_repos(monkeypatch, *, session=None, has_activity=False):

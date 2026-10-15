@@ -96,7 +96,7 @@ async def test_lock_session_locks_row():
     sql, params = db.executed[0]
     assert "FOR UPDATE" in sql
     assert params == {"recommendation_session_id": 7}
-    assert row == session_repo.LockedSessionRow(1, "active", "completed", None)
+    assert row == session_repo.SessionStateRow(1, "active", "completed", None)
 
 
 async def test_lock_session_returns_none_when_missing():
@@ -121,7 +121,7 @@ async def test_get_session_state_reads_without_lock():
     assert "FROM recommendation_session" in sql
     assert "FOR UPDATE" not in sql
     assert params == {"recommendation_session_id": 7}
-    assert row == session_repo.LockedSessionRow(1, "active", "completed", None)
+    assert row == session_repo.SessionStateRow(1, "active", "completed", None)
 
 
 async def test_get_session_state_returns_none_when_missing():

@@ -18,7 +18,7 @@ from app.core.logging import Event
 from app.repositories import recommendation_deck as deck_repo
 from app.repositories import recommendation_session as session_repo
 from app.repositories import regeneration_request as regeneration_repo
-from app.repositories.recommendation_session import LockedSessionRow
+from app.repositories.recommendation_session import SessionStateRow
 from app.schemas.regeneration_request import RegenerationCreate
 from app.services.input_guard import is_harmful
 from app.services.llm import LLMClient, LLMError, LLMRefusalError
@@ -163,7 +163,7 @@ async def request_regeneration(
     return AcceptedRegeneration(regeneration_request_id, request_seq)
 
 
-def ensure_regeneratable(session: LockedSessionRow | None, member_id: int) -> None:
+def ensure_regeneratable(session: SessionStateRow | None, member_id: int) -> None:
     if session is None or session.member_id != member_id:
         raise SessionNotFoundError()
     if session.settled_at is not None or session.session_status_cd == "completed":

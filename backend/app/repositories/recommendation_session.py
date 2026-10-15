@@ -162,7 +162,7 @@ async def mark_generation_failed(
 
 
 @dataclass(frozen=True)
-class LockedSessionRow:
+class SessionStateRow:
     member_id: int
     session_status_cd: str
     generation_status_cd: str
@@ -188,24 +188,24 @@ SELECT_SESSION_STATE_SQL = text(
 )
 
 
-async def lock_session(db: AsyncSession, recommendation_session_id: int) -> LockedSessionRow | None:
+async def lock_session(db: AsyncSession, recommendation_session_id: int) -> SessionStateRow | None:
     return await _fetch_session_state(db, LOCK_SESSION_SQL, recommendation_session_id)
 
 
 async def get_session_state(
     db: AsyncSession, recommendation_session_id: int
-) -> LockedSessionRow | None:
+) -> SessionStateRow | None:
     return await _fetch_session_state(db, SELECT_SESSION_STATE_SQL, recommendation_session_id)
 
 
 async def _fetch_session_state(
     db: AsyncSession, sql: TextClause, recommendation_session_id: int
-) -> LockedSessionRow | None:
+) -> SessionStateRow | None:
     result = await db.execute(sql, {"recommendation_session_id": recommendation_session_id})
     row = result.first()
     if row is None:
         return None
-    return LockedSessionRow(
+    return SessionStateRow(
         member_id=row.member_id,
         session_status_cd=row.session_status_cd,
         generation_status_cd=row.generation_status_cd,

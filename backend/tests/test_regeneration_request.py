@@ -9,7 +9,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.core.logging import Event
 from app.repositories.recommendation_deck import OutfitDeckPosition
-from app.repositories.recommendation_session import LockedSessionRow
+from app.repositories.recommendation_session import SessionStateRow
 from app.schemas.regeneration_request import RegenerationCreate
 from app.services import regeneration_request as service
 from app.services import session_errors
@@ -49,7 +49,7 @@ class _FakeDb:
 
 
 def _session(status="active", generation="completed", member_id=MEMBER_ID, settled_at=None):
-    return LockedSessionRow(member_id, status, generation, settled_at)
+    return SessionStateRow(member_id, status, generation, settled_at)
 
 
 def _single(text="좀 더 캐주얼하게", outfit_id=101, slot=None) -> RegenerationCreate:

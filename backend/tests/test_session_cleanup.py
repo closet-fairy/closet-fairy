@@ -4,7 +4,7 @@ from datetime import datetime
 
 import pytest
 
-from app.repositories.recommendation_session import LockedSessionRow
+from app.repositories.recommendation_session import SessionStateRow
 from app.services import session_cleanup as cleanup
 from app.services.session_cleanup import CleanupResult
 
@@ -29,9 +29,9 @@ class _FakeDb:
         return _FakeTransaction(self)
 
 
-def _session(status: str) -> LockedSessionRow:
+def _session(status: str) -> SessionStateRow:
     settled_at = datetime(2026, 10, 9, 12, 0) if status == "completed" else None
-    return LockedSessionRow(1, status, "completed", settled_at)
+    return SessionStateRow(1, status, "completed", settled_at)
 
 
 def _patch_repos(monkeypatch, *, session=None, rated_outfit_id=102, outfit_ids=(101, 102, 201)):
