@@ -74,6 +74,7 @@ def fake(monkeypatch):
         processing_after_lock = False
         stale_count = 0
         position = OutfitDeckPosition(deck_seq=2, latest_deck_seq=2)
+        position_after_lock = "same"
         next_seq = 1
         intent = OK_INTENT
         intent_error = None
@@ -101,7 +102,10 @@ def fake(monkeypatch):
         return state.stale_count
 
     async def get_outfit_deck_position(db_, session_id, outfit_id):
-        state.calls.append(("outfit_position", session_id, outfit_id))
+        state.calls.append(("outfit_position", session_id, outfit_id, db_.in_transaction))
+        locked = any(c[0] == "lock_session" for c in state.calls)
+        if locked and state.position_after_lock != "same":
+            return state.position_after_lock
         return state.position
 
     async def next_request_seq(db_, session_id):
@@ -161,6 +165,7 @@ async def test_accepts_request_and_records_processing_row(fake):
     assert _call_names(fake) == [
         "get_session_state",
         "has_processing",
+        "outfit_position",
         "parse",
         "lock_session",
         "fail_stale",
@@ -453,17 +458,18 @@ async def test_other_integrity_error_is_propagated(fake):
 # ---------- 대상 코디 ----------
 
 
-async def test_outfit_from_other_session_is_404(fake):
+async def test_outfit_from_other_session_is_404_without_parse(fake):
     fake.position = None
 
     with pytest.raises(session_errors.OutfitNotInSessionError) as e:
         await _request(fake)
 
     assert e.value.status_code == 404
+    assert _call_names(fake) == ["get_session_state", "has_processing", "outfit_position"]
     assert _inserted(fake) is None
 
 
-async def test_outfit_from_previous_deck_is_422(fake):
+async def test_outfit_from_previous_deck_is_422_without_parse(fake):
     fake.position = OutfitDeckPosition(deck_seq=1, latest_deck_seq=2)
 
     with pytest.raises(service.RegenerationTargetNotLatestError) as e:
@@ -471,4 +477,24 @@ async def test_outfit_from_previous_deck_is_422(fake):
 
     assert e.value.status_code == 422
     assert e.value.code == "REGENERATION_TARGET_NOT_LATEST"
+    assert _call_names(fake) == ["get_session_state", "has_processing", "outfit_position"]
     assert _inserted(fake) is None
+
+
+async def test_target_outfit_is_checked_in_both_transactions(fake):
+    await _request(fake)
+
+    checks = [c for c in fake.calls if c[0] == "outfit_position"]
+    assert [in_tx for *_, in_tx in checks] == [True, True]
+    assert _call_names(fake).index("parse") == 3
+
+
+async def test_target_outfit_replaced_during_parse_is_rejected_after_lock(fake):
+    fake.position_after_lock = OutfitDeckPosition(deck_seq=1, latest_deck_seq=2)
+
+    with pytest.raises(service.RegenerationTargetNotLatestError):
+        await _request(fake)
+
+    assert "parse" in _call_names(fake)
+    assert _inserted(fake) is None
+    assert fake.db.events[-1] == "rollback"

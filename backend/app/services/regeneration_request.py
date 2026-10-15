@@ -100,6 +100,8 @@ async def request_regeneration(
         ):
             _log_rejected(recommendation_session_id, "in_progress", request_text)
             raise RegenerationInProgressError()
+        if req.target_outfit_id is not None:
+            await _ensure_latest_outfit(db, recommendation_session_id, req.target_outfit_id)
 
     validate_request_text(recommendation_session_id, request_text, settings)
     intent = await _parse_intent(llm, recommendation_session_id, request_text)
