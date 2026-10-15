@@ -8,6 +8,7 @@ from app.core.db import get_db
 from app.main import app
 from app.schemas.recommendation_result import RecommendationResult
 from app.services import recommendation_result as result_service
+from app.services.session_errors import SessionNotFoundError
 
 
 @pytest.fixture
@@ -33,7 +34,7 @@ def fake_db():
 
 def test_result_endpoint_returns_not_found_in_error_format(client, fake_db, monkeypatch):
     async def missing(db, storage, recommendation_session_id, member_id):
-        raise result_service.RecommendationSessionNotFoundError()
+        raise SessionNotFoundError()
 
     monkeypatch.setattr(result_service, "get_recommendation_result", missing)
 

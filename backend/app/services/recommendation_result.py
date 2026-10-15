@@ -4,7 +4,6 @@ from collections.abc import Mapping, Sequence
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.errors import NotFoundError
 from app.repositories import recommendation_result as result_repo
 from app.repositories.recommendation_result import OutfitItemResultRow, ResultSessionRow
 from app.schemas.recommendation_result import (
@@ -16,12 +15,8 @@ from app.schemas.recommendation_result import (
 )
 from app.services.prompt.outfit_generation import CATEGORY_ORDER
 from app.services.recommendation_session import from_db_utc
+from app.services.session_errors import SessionNotFoundError
 from app.services.storage import ImageStorage
-
-
-class RecommendationSessionNotFoundError(NotFoundError):
-    code = "SESSION_NOT_FOUND"
-    message = "추천 결과를 찾을 수 없습니다."
 
 
 async def get_recommendation_result(
@@ -29,7 +24,7 @@ async def get_recommendation_result(
 ) -> RecommendationResult:
     session = await result_repo.get_session(db, recommendation_session_id)
     if session is None or session.member_id != member_id:
-        raise RecommendationSessionNotFoundError()
+        raise SessionNotFoundError()
 
     outfits: list[OutfitResult] = []
     if session.generation_status_cd == "completed":
