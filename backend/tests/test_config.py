@@ -49,3 +49,4 @@ def test_regeneration_request_defaults():
     assert settings.REGENERATION_PROCESSING_TIMEOUT_SECONDS == 180
     assert settings.REGENERATION_INTENT_TIMEOUT_S == 10.0
     assert settings.REGENERATION_INTENT_MAX_ATTEMPTS == 2
+    assert settings.REGENERATION_INTENT_MAX_RETRY_WAIT_S == 2.0

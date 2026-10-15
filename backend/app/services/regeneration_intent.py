@@ -61,6 +61,7 @@ async def parse_regeneration_intent(llm: LLMClient, request_text: str) -> Regene
             temperature=0.0,
             timeout_s=settings.REGENERATION_INTENT_TIMEOUT_S,
             max_attempts=settings.REGENERATION_INTENT_MAX_ATTEMPTS,
+            max_retry_wait_s=settings.REGENERATION_INTENT_MAX_RETRY_WAIT_S,
         ),
         system=prompt.system,
         messages=[{"role": "user", "content": prompt.user}],

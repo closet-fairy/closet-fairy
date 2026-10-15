@@ -8,15 +8,15 @@ class LLMError(Exception):
 
 
 class LLMTimeoutError(LLMError):
-    """재시도를 모두 쓰고도 타임아웃(요청 타임아웃, 408)."""
+    """재시도를 모두 쓰고도, 또는 기다릴 시간이 상한을 넘어 타임아웃(요청 타임아웃, 408)."""
 
 
 class LLMRateLimitError(LLMError):
-    """재시도를 모두 쓰고도 429."""
+    """재시도를 모두 쓰고도, 또는 기다릴 시간이 상한을 넘어 429."""
 
 
 class LLMUnavailableError(LLMError):
-    """재시도를 모두 쓰고도 5xx·529·409·연결 오류."""
+    """재시도를 모두 쓰고도, 또는 기다릴 시간이 상한을 넘어 5xx·529·409·연결 오류."""
 
 
 class LLMRequestError(LLMError):

@@ -52,6 +52,7 @@ class LLMCallConfig:
     timeout_s: float = 60.0
     thinking: dict[str, Any] | None = None
     max_attempts: int | None = None
+    max_retry_wait_s: float | None = None
 
 
 class LLMClient:
@@ -109,7 +110,9 @@ class LLMClient:
         request_id: str | None = None
         outcome = "success"
         try:
-            response, attempts = await self._create_with_retry(request, config.max_attempts)
+            response, attempts = await self._create_with_retry(
+                request, config.max_attempts, config.max_retry_wait_s
+            )
             request_id = response._request_id
             return _parse_output(response, output_model)
         except LLMError as e:
@@ -143,7 +146,7 @@ class LLMClient:
             )
 
     async def _create_with_retry(
-        self, request: dict[str, Any], max_attempts: int | None
+        self, request: dict[str, Any], max_attempts: int | None, max_retry_wait_s: float | None
     ) -> tuple[Message, int]:
         if max_attempts is None:
             max_attempts = self._settings.LLM_MAX_ATTEMPTS
@@ -155,12 +158,14 @@ class LLMClient:
                 message = await self._client.messages.create(**request)
                 return message, attempt
             except anthropic.APIError as e:
-                if not _is_retryable(e) or attempt >= max_attempts:
+                delay = self._retry_delay(attempt, e)
+                too_long = max_retry_wait_s is not None and delay > max_retry_wait_s
+                if not _is_retryable(e) or attempt >= max_attempts or too_long:
                     err = _to_llm_error(e)
                     err.attempts = attempt
                     err.llm_request_id = getattr(e, "request_id", None)
                     raise err from e
-                await self._sleep(self._retry_delay(attempt, e))
+                await self._sleep(delay)
             except (anthropic.AnthropicError, TypeError) as e:
                 # 요청을 보내기 전에 SDK가 거절한 경우 (인증 수단 없음, 잘못된 인자 등)
                 err = LLMRequestError(f"LLM client rejected the request ({type(e).__name__})")
