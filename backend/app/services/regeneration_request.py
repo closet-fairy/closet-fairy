@@ -39,7 +39,6 @@ MYSQL_DUPLICATE_ENTRY = 1062
 
 class RegenerationRequestTooLongError(ValidationError):
     code = "REGENERATION_REQUEST_TOO_LONG"
-    message = "재추천 요청이 너무 깁니다."
 
     def __init__(self, max_length: int) -> None:
         super().__init__(
