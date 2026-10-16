@@ -128,6 +128,8 @@ class Event:
     REGENERATION_REQUESTED = "regeneration.requested"
     REGENERATION_REJECTED = "regeneration.rejected"
     REGENERATION_TIMED_OUT = "regeneration.timed_out"
+    REGENERATION_NO_ALTERNATIVE = "regeneration.no_alternative"
+    REGENERATION_ACCESSORY_REMOVED = "regeneration.accessory_removed"
     UCB_EXPLORE_PICK = "ucb.explore_pick"
     LLM_CALL = "llm.call"
     BG_REMOVAL_DONE = "bg_removal.done"

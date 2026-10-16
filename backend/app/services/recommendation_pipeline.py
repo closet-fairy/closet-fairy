@@ -6,6 +6,7 @@
 
 import logging
 import random
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -31,7 +32,6 @@ from app.services.outfit_generator import (
 from app.services.preference_score import (
     ClassificationResult,
     classify,
-    select_exploration_style,
 )
 from app.services.prompt.outfit_generation import (
     CandidateItem,
@@ -44,6 +44,11 @@ from app.services.recommendation_save import (
     GenerationNotProcessingError,
     mark_generation_failed,
     save_recommendation_result,
+)
+from app.services.regeneration_intent import RegenerationIntent
+from app.services.regeneration_state import (
+    merge_session_preferences,
+    select_session_exploration_style,
 )
 from app.services.rule_filter import filter_clothing
 from app.services.weather.weather_service import WeatherResult
@@ -139,16 +144,22 @@ async def recommend(
     )
 
 
-async def load_preferences(db: AsyncSession, member_id: int, rng: random.Random) -> Preferences:
+async def load_preferences(
+    db: AsyncSession,
+    member_id: int,
+    rng: random.Random,
+    intents: Sequence[RegenerationIntent] = (),
+) -> Preferences:
     settings = get_settings()
     rows = await preference_repo.find_preference_scores(db, member_id)
-    style_result = classify("style", rows["style"], settings)
-    color_result = classify("color", rows["color"], settings)
-    if not style_result.preference_injected:
+    base_style = classify("style", rows["style"], settings)
+    base_color = classify("color", rows["color"], settings)
+    style_result, color_result = merge_session_preferences(base_style, base_color, intents)
+    if not base_style.preference_injected:
         return Preferences(style_result, color_result, exploration_style=None)
     n_sessions = await preference_repo.count_settled_sessions(db, member_id)
-    exploration_style = select_exploration_style(
-        style_result, rows["style"], n_sessions, settings, rng
+    exploration_style = select_session_exploration_style(
+        base_style, style_result, rows["style"], n_sessions, settings, rng
     )
     return Preferences(style_result, color_result, exploration_style)
 

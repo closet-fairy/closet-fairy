@@ -8,12 +8,15 @@
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.db import AsyncSessionLocal
 from app.repositories import clothing as clothing_repo
 from app.repositories import member_setting as member_setting_repo
 from app.repositories import recommendation_session as session_repo
 from app.repositories import weather_snapshot as weather_snapshot_repo
 from app.repositories.clothing import ClothingCandidate
+from app.repositories.recommendation_session import SessionRow
 from app.services.weather.base_time import KST
 from app.services.weather.weather_service import WeatherResult, get_weather
 
@@ -58,28 +61,33 @@ async def collect_context(recommendation_session_id: int) -> RecommendContext:
 
     async with AsyncSessionLocal() as db:
         await weather_snapshot_repo.insert_weather_snapshot(db, recommendation_session_id, weather)
+        return await load_context(db, recommendation_session_id, session, weather)
 
-        setting = await member_setting_repo.get_member_setting(db, session.member_id)
-        if setting is None:
-            birth_year = None
-            temperature_sensitivity_cd = None
-            gender_cd = "unisex"
-            preferred_styles: list[str] = []
-        else:
-            birth_year = setting.birth_year
-            temperature_sensitivity_cd = setting.temperature_sensitivity_cd
-            gender_cd = setting.gender_cd
-            preferred_styles = await member_setting_repo.get_preferred_styles(
-                db, setting.member_setting_id
-            )
 
-        clothing = await clothing_repo.get_completed_clothing(db, session.member_id)
+async def load_context(
+    db: AsyncSession, recommendation_session_id: int, session: SessionRow, weather: WeatherResult
+) -> RecommendContext:
+    setting = await member_setting_repo.get_member_setting(db, session.member_id)
+    if setting is None:
+        birth_year = None
+        temperature_sensitivity_cd = None
+        gender_cd = "unisex"
+        preferred_styles: list[str] = []
+    else:
+        birth_year = setting.birth_year
+        temperature_sensitivity_cd = setting.temperature_sensitivity_cd
+        gender_cd = setting.gender_cd
+        preferred_styles = await member_setting_repo.get_preferred_styles(
+            db, setting.member_setting_id
+        )
+
+    clothing = await clothing_repo.get_completed_clothing(db, session.member_id)
 
     return RecommendContext(
         recommendation_session_id=recommendation_session_id,
         member_id=session.member_id,
-        going_out_start_at=going_out_start,
-        going_out_end_at=going_out_end,
+        going_out_start_at=_to_kst(session.going_out_start_at),
+        going_out_end_at=_to_kst(session.going_out_end_at),
         season_cd=session.season_cd,
         tpo_cd=session.tpo_cd,
         tpo_text=session.tpo_text,

@@ -48,6 +48,7 @@ class DraftOutfit:
     item_keys: tuple[str, ...]
     reason: str
     is_fallback: bool = False
+    removed_accessory_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -226,6 +227,7 @@ async def _generate(
             outfit_type=generated.outfit_type,
             item_keys=tuple(generated.item_ids),
             reason=generated.reason,
+            removed_accessory_id=generated.removed_accessory_id,
         )
         for seq, generated in zip(seqs, output.outfits, strict=False)
     ]

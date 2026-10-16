@@ -118,6 +118,7 @@ async def test_get_outfit_items_maps_every_column():
                     slot_cd="accessories",
                     item_source_cd="owned",
                     clothing_id=51,
+                    essential_item_id=None,
                     item_name_snapshot="실버 시계",
                     image_url_snapshot="http://a/51.png",
                     accessory_type_cd="watch",
@@ -140,6 +141,7 @@ async def test_get_outfit_items_maps_every_column():
             slot_cd="accessories",
             item_source_cd="owned",
             clothing_id=51,
+            essential_item_id=None,
             item_name_snapshot="실버 시계",
             image_url_snapshot="http://a/51.png",
             accessory_type_cd="watch",
@@ -147,3 +149,4 @@ async def test_get_outfit_items_maps_every_column():
         )
     ]
     assert db.executed[0][1] == {"recommendation_session_id": 7}
+    assert "i.essential_item_id" in db.executed[0][0]

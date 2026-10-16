@@ -28,7 +28,7 @@ _CATEGORY_OBJECTS = {
 _SEQ_WITH_PARTICLE = {1: "1과", 2: "2와", 3: "3과", 4: "4와"}
 # 후보에 없는 id는 LLM이 만든 임의 문자열이라, 이 형식일 때만 사유(다음 프롬프트·로그)에
 # 원문을 넣는다
-_DISPLAYABLE_KEY = re.compile(r"[A-Za-z0-9]{1,16}")
+DISPLAYABLE_KEY = re.compile(r"[A-Za-z0-9]{1,16}")
 
 
 class HardRuleTarget(Protocol):
@@ -183,7 +183,7 @@ def _check_outfit(
 
 
 def _unknown_reason(unknown: Collection[str]) -> str:
-    parts = sorted(key for key in unknown if _DISPLAYABLE_KEY.fullmatch(key))
+    parts = sorted(key for key in unknown if DISPLAYABLE_KEY.fullmatch(key))
     malformed = len(unknown) - len(parts)
     if malformed:
         parts.append(f"형식이 올바르지 않은 id {malformed}개")

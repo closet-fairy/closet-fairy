@@ -19,6 +19,7 @@ from app.services.prompt.outfit_generation import OutfitGenerationOutput
 from app.services.prompt.outfit_review import OutfitReviewOutput
 from app.services.recommend_context import RecommendContext
 from app.services.recommendation_save import GenerationNotProcessingError
+from app.services.regeneration_intent import RegenerationIntent
 from app.services.weather.base_time import KST
 from app.services.weather.weather_service import HourlyWeather, WeatherResult
 
@@ -186,6 +187,54 @@ async def test_exploration_style_is_picked_when_preference_exists(monkeypatch):
     assert preferences.style_result.preference_injected is True
     assert preferences.exploration_style not in preferences.style_result.preferred
     assert preferences.exploration_style is not None
+
+
+STYLED = [
+    _row("minimal", "6", "4", 1),
+    _row("casual", "3", "4", 2),
+    _row("street", "0", "1", 3),
+    _row("chic", "-1", "1", 4),
+]
+
+
+def _patch_scores(monkeypatch, styles):
+    async def fake_scores(db, member_id):
+        return {"style": styles, "color": NO_PREFERENCE["color"]}
+
+    async def fake_count(db, member_id):
+        return 5
+
+    monkeypatch.setattr(pipeline.preference_repo, "find_preference_scores", fake_scores)
+    monkeypatch.setattr(pipeline.preference_repo, "count_settled_sessions", fake_count)
+
+
+async def test_load_preferences_without_intents_matches_initial(monkeypatch):
+    _patch_scores(monkeypatch, STYLED)
+
+    without = await pipeline.load_preferences(_FakeDb(), 1, random.Random(3))
+    empty = await pipeline.load_preferences(_FakeDb(), 1, random.Random(3), ())
+
+    assert without == empty
+
+
+async def test_load_preferences_merges_session_intents(monkeypatch):
+    _patch_scores(monkeypatch, STYLED)
+    intents = [RegenerationIntent(status="ok", preferred_styles=("street",))]
+
+    preferences = await pipeline.load_preferences(_FakeDb(), 1, random.Random(0), intents)
+
+    assert preferences.style_result.preferred[0] == "street"
+    assert preferences.exploration_style != "street"
+
+
+async def test_new_member_gets_no_exploration_even_with_session_preference(monkeypatch):
+    _patch_scores(monkeypatch, NO_PREFERENCE["style"])
+    intents = [RegenerationIntent(status="ok", preferred_styles=("casual",))]
+
+    preferences = await pipeline.load_preferences(_FakeDb(), 1, random.Random(0), intents)
+
+    assert preferences.style_result.preference_injected is True
+    assert preferences.exploration_style is None
 
 
 # ---------- 연결 ----------
@@ -415,7 +464,15 @@ async def test_recommend_runs_real_loop_with_fake_llm(monkeypatch):
 
     async def fake_call(config, system, messages, output_model):
         if output_model is OutfitGenerationOutput:
-            outfits = [{"outfit_type": "preferred", "item_ids": c, "reason": "r"} for c in combos]
+            outfits = [
+                {
+                    "outfit_type": "preferred",
+                    "item_ids": c,
+                    "removed_accessory_id": None,
+                    "reason": "r",
+                }
+                for c in combos
+            ]
             return OutfitGenerationOutput.model_validate({"outfits": outfits})
         seqs = [int(n) for n in re.findall(r"^세트 (\d+)$", messages[0]["content"], re.M)]
         reviewed.append(seqs)
