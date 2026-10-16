@@ -12,7 +12,7 @@ from app.services.prompt.template import load_prompt_template, render
 from app.services.weather.base_time import KST
 
 PROMPT_NAME = "outfit_generation"
-PROMPT_VERSION = "v1.0"
+PROMPT_VERSION = "v2.0"
 
 ItemSource = Literal["owned", "essential"]
 OutfitType = Literal["preferred", "exploratory"]
@@ -147,6 +147,7 @@ class AssembledPrompt:
 class GeneratedOutfit(pydantic.BaseModel):
     outfit_type: OutfitType
     item_ids: list[str]
+    removed_accessory_id: str | None
     reason: str
 
 

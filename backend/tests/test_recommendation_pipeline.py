@@ -415,7 +415,15 @@ async def test_recommend_runs_real_loop_with_fake_llm(monkeypatch):
 
     async def fake_call(config, system, messages, output_model):
         if output_model is OutfitGenerationOutput:
-            outfits = [{"outfit_type": "preferred", "item_ids": c, "reason": "r"} for c in combos]
+            outfits = [
+                {
+                    "outfit_type": "preferred",
+                    "item_ids": c,
+                    "removed_accessory_id": None,
+                    "reason": "r",
+                }
+                for c in combos
+            ]
             return OutfitGenerationOutput.model_validate({"outfits": outfits})
         seqs = [int(n) for n in re.findall(r"^세트 (\d+)$", messages[0]["content"], re.M)]
         reviewed.append(seqs)
