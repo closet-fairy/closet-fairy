@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 INITIAL_DECK_SEQ = 1
 
-_CATEGORY_LABELS = {
+CATEGORY_LABELS = {
     "outer": "아우터",
     "top": "상의",
     "bottom": "하의",
@@ -169,5 +169,5 @@ def _fallback_name(candidate: SupplementedCandidate, clothing: ClothingSnapshot)
     if candidate.category_cd == "accessories" and candidate.accessory_type_cd is not None:
         label = _ACCESSORY_TYPE_LABELS[candidate.accessory_type_cd]
     else:
-        label = _CATEGORY_LABELS[candidate.category_cd]
+        label = CATEGORY_LABELS[candidate.category_cd]
     return f"{clothing.color_nm} {label}" if clothing.color_nm else label
