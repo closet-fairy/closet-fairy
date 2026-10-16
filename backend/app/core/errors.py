@@ -67,6 +67,12 @@ class TooManyRequestsError(AppError):
     message = "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요."
 
 
+class ServiceUnavailableError(AppError):
+    code = "SERVICE_UNAVAILABLE"
+    status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    message = "일시적으로 처리할 수 없습니다. 잠시 후 다시 시도해 주세요."
+
+
 VALUE_ERROR_PREFIX = "Value error, "
 
 HTTP_ERRORS: dict[int, tuple[str, str]] = {

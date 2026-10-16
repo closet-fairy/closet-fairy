@@ -214,6 +214,9 @@ async def test_call_config_and_prompt_are_passed():
     assert config.prompt_version == "regeneration_intent/v1.0"
     assert config.temperature == 0.0
     assert config.model == get_settings().LLM_INTENT_MODEL
+    assert config.timeout_s == get_settings().REGENERATION_INTENT_TIMEOUT_S
+    assert config.max_attempts == get_settings().REGENERATION_INTENT_MAX_ATTEMPTS
+    assert config.max_retry_wait_s == get_settings().REGENERATION_INTENT_MAX_RETRY_WAIT_S
     assert kwargs["system"] == prompt.system
     assert kwargs["messages"] == [{"role": "user", "content": prompt.user}]
     assert kwargs["output_model"] is RegenerationIntentOutput

@@ -7,6 +7,7 @@ import pytest
 
 from app.repositories.recommendation_result import OutfitItemResultRow, ResultSessionRow
 from app.services import recommendation_result as service
+from app.services.session_errors import SessionNotFoundError
 
 MEMBER_ID = 1
 
@@ -85,12 +86,12 @@ async def _get(member_id: int = MEMBER_ID):
 async def test_missing_session_is_not_found(fake_repo):
     fake_repo["session"] = None
 
-    with pytest.raises(service.RecommendationSessionNotFoundError):
+    with pytest.raises(SessionNotFoundError):
         await _get()
 
 
 async def test_other_members_session_is_not_found(fake_repo):
-    with pytest.raises(service.RecommendationSessionNotFoundError):
+    with pytest.raises(SessionNotFoundError):
         await _get(member_id=MEMBER_ID + 1)
 
 

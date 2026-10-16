@@ -9,7 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from app.core.config import Settings
 from app.repositories.outfit_feedback import AttributeFeedback, FeedbackRow
 from app.repositories.preference_score import ScoreRow, ScoreUpdate
-from app.repositories.recommendation_session import LockedSessionRow
+from app.repositories.recommendation_session import SessionStateRow
 from app.services import rating_settlement as settlement
 from app.services.weather.base_time import KST
 
@@ -199,7 +199,7 @@ class _ForeignKeyFailure(Exception):
         super().__init__(1452, "Cannot add or update a child row")
 
 
-ACTIVE = LockedSessionRow(
+ACTIVE = SessionStateRow(
     member_id=1, session_status_cd="active", generation_status_cd="completed", settled_at=None
 )
 SCORES = [
@@ -381,7 +381,7 @@ async def test_settled_event_is_not_logged_when_commit_fails(monkeypatch, caplog
 
 @pytest.mark.parametrize(
     "session",
-    [None, LockedSessionRow(2, "active", "completed", None)],
+    [None, SessionStateRow(2, "active", "completed", None)],
     ids=["missing", "other-member"],
 )
 async def test_missing_or_other_members_session_is_404(monkeypatch, session):
@@ -396,7 +396,7 @@ async def test_missing_or_other_members_session_is_404(monkeypatch, session):
 
 
 async def test_already_settled_session_is_409_and_writes_nothing(monkeypatch):
-    settled = LockedSessionRow(1, "completed", "completed", datetime(2026, 10, 9, 12, 0))
+    settled = SessionStateRow(1, "completed", "completed", datetime(2026, 10, 9, 12, 0))
     calls = _patch_repos(monkeypatch, session=settled)
 
     with pytest.raises(settlement.SessionAlreadySettledError):
@@ -416,7 +416,7 @@ async def test_already_settled_session_is_409_and_writes_nothing(monkeypatch):
     ],
 )
 async def test_unratable_session_is_409(monkeypatch, status, generation):
-    calls = _patch_repos(monkeypatch, session=LockedSessionRow(1, status, generation, None))
+    calls = _patch_repos(monkeypatch, session=SessionStateRow(1, status, generation, None))
 
     with pytest.raises(settlement.SessionNotRatableError):
         await _rate(_FakeDb())

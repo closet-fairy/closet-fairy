@@ -13,9 +13,11 @@ from app.schemas.recommendation_session import (
     RecommendationSessionCreate,
     RecommendationSessionCreated,
 )
+from app.schemas.regeneration_request import RegenerationCreate, RegenerationCreated
 from app.services import rating_settlement as settlement_service
 from app.services import recommendation_result as result_service
 from app.services import recommendation_session as session_service
+from app.services import regeneration_request as regeneration_service
 from app.services import session_end as session_end_service
 from app.services.llm import LLMClient, get_llm_client
 from app.services.recommendation_pipeline import run_recommendation_pipeline
@@ -108,4 +110,45 @@ async def cancel_recommendation_session(
     )
     return CancelResult(
         recommendation_session_id=recommendation_session_id, session_status_cd=session_status_cd
+    )
+
+
+@router.post(
+    "/{recommendation_session_id}/regenerations",
+    status_code=status.HTTP_202_ACCEPTED,
+    response_model=RegenerationCreated,
+    responses={
+        404: {"description": "없는 세션이거나 본인 세션이 아님, 또는 이 세션의 코디가 아님"},
+        409: {
+            "description": (
+                "첫 추천이 끝나지 않았거나 실패한 세션, 별점·취소·이탈로 끝난 세션, "
+                "또는 재추천을 만드는 중"
+            )
+        },
+        422: {
+            "description": (
+                "요청이 너무 김, 유해 입력, 이해하지 못한 요청, "
+                "지금 화면에 없는 코디를 대상으로 지정, 또는 대상 범위가 맞지 않음"
+            )
+        },
+        503: {"description": "요청 의도를 일시적으로 파악하지 못함. 다시 시도할 수 있음"},
+    },
+)
+async def request_regeneration(
+    recommendation_session_id: int,
+    body: RegenerationCreate,
+    db: AsyncSession = Depends(get_db),
+    member_id: int = Depends(get_current_member_id),
+    now: datetime = Depends(get_now),
+    llm: LLMClient = Depends(get_llm_client),
+) -> RegenerationCreated:
+    """재추천 요청. 요청을 검증하고 의도를 파악해 기록한 뒤 202를 돌려준다."""
+    accepted = await regeneration_service.request_regeneration(
+        db, llm, recommendation_session_id, member_id, body, now
+    )
+    return RegenerationCreated(
+        recommendation_session_id=recommendation_session_id,
+        regeneration_request_id=accepted.regeneration_request_id,
+        request_seq=accepted.request_seq,
+        regeneration_status_cd="processing",
     )

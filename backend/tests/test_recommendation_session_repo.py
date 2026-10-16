@@ -96,11 +96,36 @@ async def test_lock_session_locks_row():
     sql, params = db.executed[0]
     assert "FOR UPDATE" in sql
     assert params == {"recommendation_session_id": 7}
-    assert row == session_repo.LockedSessionRow(1, "active", "completed", None)
+    assert row == session_repo.SessionStateRow(1, "active", "completed", None)
 
 
 async def test_lock_session_returns_none_when_missing():
     assert await session_repo.lock_session(_FakeDb(), 7) is None
+
+
+async def test_get_session_state_reads_without_lock():
+    db = _FakeDb(
+        rows=[
+            {
+                "member_id": 1,
+                "session_status_cd": "active",
+                "generation_status_cd": "completed",
+                "settled_at": None,
+            }
+        ]
+    )
+
+    row = await session_repo.get_session_state(db, 7)
+
+    sql, params = db.executed[0]
+    assert "FROM recommendation_session" in sql
+    assert "FOR UPDATE" not in sql
+    assert params == {"recommendation_session_id": 7}
+    assert row == session_repo.SessionStateRow(1, "active", "completed", None)
+
+
+async def test_get_session_state_returns_none_when_missing():
+    assert await session_repo.get_session_state(_FakeDb(), 7) is None
 
 
 async def test_complete_settlement_only_updates_unsettled():

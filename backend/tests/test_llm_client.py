@@ -17,6 +17,8 @@ from app.services.llm import (
     LLMCallConfig,
     LLMClient,
     LLMOutputTruncatedError,
+    LLMRateLimitError,
+    LLMRefusalError,
     LLMRequestError,
     LLMSchemaError,
     LLMTimeoutError,
@@ -162,6 +164,80 @@ async def test_max_tokens_stop_reason_raises_truncated_error():
         await _call(llm)
 
     assert exc.value.raw_output == '{"answer": "cut'
+
+
+async def test_refusal_stop_reason_raises_refusal_error_without_retry(caplog):
+    llm, create = _make([_message("", stop_reason="refusal")])
+
+    with caplog.at_level(logging.INFO), pytest.raises(LLMSchemaError) as exc:
+        await _call(llm)
+
+    assert type(exc.value) is LLMRefusalError
+    assert create.await_count == 1
+    (record,) = _llm_records(caplog)
+    assert record.outcome == "LLMRefusalError"
+
+
+async def test_max_attempts_in_config_overrides_setting():
+    llm, create = _make([anthropic.APITimeoutError(request=_REQUEST)] * 3)
+    config = LLMCallConfig(call_name="test_call", prompt_version="test/v1", max_attempts=2)
+
+    with pytest.raises(LLMTimeoutError) as exc:
+        await _call(llm, config)
+
+    assert create.await_count == 2
+    assert exc.value.attempts == 2
+
+
+def _make_recording_sleep(side_effect: Any) -> tuple[LLMClient, AsyncMock, list[float]]:
+    create = AsyncMock(side_effect=side_effect)
+    sdk = MagicMock()
+    sdk.messages.create = create
+    slept: list[float] = []
+
+    async def record_sleep(seconds: float) -> None:
+        slept.append(seconds)
+
+    return LLMClient(sdk, Settings(_env_file=None), sleep=record_sleep), create, slept
+
+
+def _retry_wait_config(max_retry_wait_s: float | None) -> LLMCallConfig:
+    return LLMCallConfig(
+        call_name="test_call", prompt_version="test/v1", max_retry_wait_s=max_retry_wait_s
+    )
+
+
+async def test_retry_wait_over_limit_fails_without_waiting():
+    rate_limited = _status_error(anthropic.RateLimitError, 429, **{"retry-after": "60"})
+    llm, create, slept = _make_recording_sleep([rate_limited, _ok_message()])
+
+    with pytest.raises(LLMRateLimitError) as exc:
+        await _call(llm, _retry_wait_config(2.0))
+
+    assert create.await_count == 1
+    assert exc.value.attempts == 1
+    assert slept == []
+
+
+async def test_retry_wait_within_limit_retries():
+    rate_limited = _status_error(anthropic.RateLimitError, 429, **{"retry-after": "1"})
+    llm, create, slept = _make_recording_sleep([rate_limited, _ok_message()])
+
+    result = await _call(llm, _retry_wait_config(2.0))
+
+    assert result == Answer(answer=ANSWER_TEXT, confidence=0.9)
+    assert create.await_count == 2
+    assert slept == [1.0]
+
+
+async def test_retry_wait_without_limit_keeps_waiting_for_retry_after():
+    rate_limited = _status_error(anthropic.RateLimitError, 429, **{"retry-after": "60"})
+    llm, create, slept = _make_recording_sleep([rate_limited, _ok_message()])
+
+    await _call(llm, _retry_wait_config(None))
+
+    assert create.await_count == 2
+    assert slept == [60.0]
 
 
 async def test_temperature_none_is_omitted_from_request():
