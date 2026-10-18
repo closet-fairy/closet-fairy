@@ -17,6 +17,15 @@ class Settings(BaseSettings):
     KMA_TIMEOUT_SECONDS: float = 5.0
     DEV_MEMBER_ID: int = 1
 
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
+    OAUTH_REDIRECT_BASE_URL: str = "http://localhost:5173/api"
+    OAUTH_TIMEOUT_S: float = 10.0
+    FRONTEND_BASE_URL: str = "http://localhost:5173"
+    MEMBER_ID_ENCRYPTION_KEY: str = ""
+    SESSION_TTL_DAYS: int = 30
+    SESSION_COOKIE_SECURE: bool = False
+
     SEASON_MOVING_AVERAGE_WINDOW_DAYS: int = 9
     SEASON_DATA_MAX_STALENESS_DAYS: int = 2
     SUMMER_AVG_TEMPERATURE_THRESHOLD: Decimal = Decimal("20.0")

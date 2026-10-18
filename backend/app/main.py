@@ -4,7 +4,14 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from app.api import clothing, health, recommendation_precheck, recommendation_session, weather
+from app.api import (
+    auth,
+    clothing,
+    health,
+    recommendation_precheck,
+    recommendation_session,
+    weather,
+)
 from app.core.config import get_settings
 from app.core.errors import register_exception_handlers
 from app.core.logging import RequestIdMiddleware, setup_logging
@@ -37,6 +44,7 @@ app.include_router(recommendation_precheck.router)
 app.include_router(recommendation_session.router)
 app.include_router(weather.router)
 app.include_router(clothing.router)
+app.include_router(auth.router)
 
 settings = get_settings()
 settings.MEDIA_ROOT.mkdir(parents=True, exist_ok=True)
