@@ -132,8 +132,9 @@ def test_secure_cookie_in_deployment(client, monkeypatch):
         {"code": "c", "state": "forged"},
         {"code": "c"},
         {"state": "whatever"},
+        {"code": "c", "state": "가"},
     ],
-    ids=["mismatch", "no-state", "no-code"],
+    ids=["mismatch", "no-state", "no-code", "non-ascii"],
 )
 def test_bad_state_or_code_is_rejected(client, params):
     _start(client)
@@ -164,14 +165,21 @@ def test_provider_error_parameter_ends_login(client, error, reason):
     assert client.calls == []
 
 
-def test_provider_failure_redirects_with_failed(client):
-    client.outcome["error"] = OAuthProviderError("boom")
+@pytest.mark.parametrize(
+    ("error", "level"),
+    [(OAuthProviderError("boom"), "WARNING"), (ConnectionError("db gone"), "ERROR")],
+    ids=["provider", "unexpected"],
+)
+def test_login_failure_redirects_with_failed_and_is_logged(client, caplog, error, level):
+    client.outcome["error"] = error
     state = _start(client)
 
-    res = client.get("/auth/google/callback", params={"code": "c", "state": state})
+    with caplog.at_level("WARNING", logger="app.api.auth"):
+        res = client.get("/auth/google/callback", params={"code": "c", "state": state})
 
     assert res.headers["location"] == f"{FRONTEND}/login?error=failed"
     assert SESSION_COOKIE not in _set_cookies(res)
+    assert [r.levelname for r in caplog.records if r.name == "app.api.auth"] == [level]
 
 
 def test_unknown_provider_is_404(client):

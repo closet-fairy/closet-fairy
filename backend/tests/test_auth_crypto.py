@@ -39,7 +39,7 @@ def test_provider_id_hash_is_stable_sha256():
 
 @pytest.mark.parametrize(
     "key",
-    ["", "not base64!", base64.b64encode(b"short").decode()],
+    ["", "not base64!", "키", base64.b64encode(b"short").decode()],
 )
 def test_bad_encryption_key_is_rejected(monkeypatch, key):
     monkeypatch.setenv("MEMBER_ID_ENCRYPTION_KEY", key)

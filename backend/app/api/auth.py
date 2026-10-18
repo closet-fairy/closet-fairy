@@ -1,3 +1,4 @@
+import logging
 import secrets
 from urllib.parse import urlencode
 
@@ -12,6 +13,7 @@ from app.services.auth.crypto import new_oauth_state
 from app.services.auth.providers import OAuthProvider, OAuthProviderError, get_oauth_provider
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+logger = logging.getLogger(__name__)
 
 SESSION_COOKIE = "closet_fairy_session"
 OAUTH_STATE_COOKIE = "closet_fairy_oauth_state"
@@ -59,14 +61,23 @@ async def finish_login(
     if error is not None:
         return _login_failed(LOGIN_CANCELLED if error == "access_denied" else LOGIN_FAILED)
     saved_state = request.cookies.get(OAUTH_STATE_COOKIE)
-    if not code or not state or not saved_state or not secrets.compare_digest(state, saved_state):
+    if (
+        not code
+        or not state
+        or not saved_state
+        or not secrets.compare_digest(state.encode(), saved_state.encode())
+    ):
         return _login_failed(LOGIN_INVALID_STATE)
 
     try:
         result = await login_service.login_with_provider(
             db, provider, code, _redirect_uri(provider_cd)
         )
-    except OAuthProviderError:
+    except OAuthProviderError as e:
+        logger.warning("소셜 로그인 실패", extra={"provider_cd": provider_cd, "reason": str(e)})
+        return _login_failed(LOGIN_FAILED)
+    except Exception:
+        logger.exception("로그인 처리 중 오류", extra={"provider_cd": provider_cd})
         return _login_failed(LOGIN_FAILED)
 
     response = _redirect_to_frontend("/" if result.is_onboarded else "/onboarding")

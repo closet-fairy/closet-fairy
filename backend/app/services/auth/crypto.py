@@ -1,7 +1,6 @@
 """제공자 고유 ID 암호화·해시와 세션 토큰 (FR-LOGIN-04, E-13)."""
 
 import base64
-import binascii
 import hashlib
 import secrets
 
@@ -47,7 +46,7 @@ def new_oauth_state() -> str:
 def _encryption_key() -> bytes:
     try:
         key = base64.b64decode(get_settings().MEMBER_ID_ENCRYPTION_KEY, validate=True)
-    except binascii.Error as e:
+    except ValueError as e:
         raise EncryptionKeyError("MEMBER_ID_ENCRYPTION_KEY는 base64로 적어야 합니다.") from e
     if len(key) != KEY_BYTES:
         raise EncryptionKeyError("MEMBER_ID_ENCRYPTION_KEY는 32바이트(AES-256) 키여야 합니다.")
