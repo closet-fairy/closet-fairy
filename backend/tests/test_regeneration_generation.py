@@ -24,7 +24,7 @@ from app.services.llm import LLMClient, LLMTimeoutError
 from app.services.outfit_generator import DraftOutfit
 from app.services.outfit_validation import OutfitValidation
 from app.services.preference_score import classify
-from app.services.prompt.outfit_generation import OutfitGenerationOutput
+from app.services.prompt.outfit_generation import CandidateItem, OutfitGenerationOutput
 from app.services.recommend_context import RecommendContext
 from app.services.recommendation_pipeline import Preferences
 from app.services.regeneration_generation import (
@@ -35,6 +35,7 @@ from app.services.regeneration_generation import (
     ScreenOutfit,
 )
 from app.services.regeneration_intent import RegenerationIntent
+from app.services.regeneration_state import merge_session_preferences
 from app.services.weather.base_time import KST
 from app.services.weather.weather_service import HourlyWeather, WeatherResult, min_feels_like
 from tests.test_recommendation_pipeline import NO_PREFERENCE
@@ -54,6 +55,7 @@ def _clothing(
     thickness_cd: str = "medium",
     accessory_type_cd: str | None = None,
     item_name: str | None = None,
+    styles: list[str] | None = None,
 ) -> ClothingCandidate:
     return ClothingCandidate(
         clothing_id=clothing_id,
@@ -65,7 +67,7 @@ def _clothing(
         is_waterproof=False,
         origin_image_url=f"{clothing_id}.png",
         cutout_image_url=None,
-        styles=["minimal"],
+        styles=styles or ["minimal"],
     )
 
 
@@ -242,10 +244,13 @@ def wired(monkeypatch):
     async def fake_load(db, member_id, rng, intents=()):
         calls["preferences"].append({"rng": rng, "intents": list(intents)})
         settings = get_settings()
-        return Preferences(
+        style_result, color_result = merge_session_preferences(
             classify("style", NO_PREFERENCE["style"], settings),
             classify("color", NO_PREFERENCE["color"], settings),
-            exploration_style=calls.get("exploration_style", "street"),
+            intents,
+        )
+        return Preferences(
+            style_result, color_result, exploration_style=calls.get("exploration_style", "street")
         )
 
     def fake_reviewer(llm, prompt_input):
@@ -574,6 +579,8 @@ async def test_all_scope_requests_four_without_kept_and_bans_screen_combos(wired
     assert '모든 세트의 하의(bottom)는 이름이 "청바지"에 가장 가까운 후보로 고른다.' in _prompt(llm)
     assert "바꿔 달라고 한 이전 코디와 아이템 조합이 같다." in _prompt(llm, 1)
     assert [o.outfit_seq for o in outcome.generation.outfits] == [1, 2, 3, 4]
+    assert {"o4", "o5"} <= {c.key for c in outcome.prompt_input.candidates}
+    assert "이전 코디에 쓴 것" not in _prompt(llm)
 
 
 # ---------- 파츠 교체 (Q3) ----------
@@ -1075,3 +1082,248 @@ def test_instruction_seqs_are_unique():
 def test_unknown_target_outfit_raises():
     with pytest.raises(ValueError, match="대상 코디가 화면에 없습니다"):
         regen.plan_regeneration(_ctx(_request(outfit_id=999)), [], lambda item: "unavailable")
+
+
+# ---------- 아우터가 필수로 바뀐 파츠 재추천 ----------
+
+
+async def test_warmer_making_outer_required_adds_outer_with_note(wired):
+    request = _request(outfit_id=102, slot="bottom", intent=_intent(clothing_warmth="warmer"))
+    llm = _llm(_output(("preferred", ["o1", "o3", "o13", "o7"])))
+
+    outcome = await _run(_ctx(request, context=_context(min_feels=18.5)), llm)
+
+    assert outcome.prompt_input.is_outer_required is True
+    assert "아우터(outer)를 1개 더한다." in _prompt(llm)
+    assert outcome.generation.rounds == 1
+    assert outcome.generation.outfits[0].reason == (
+        "날씨에 맞췄어요. 따뜻하게 입고 싶다는 요청을 반영해 아우터도 함께 더했어요."
+    )
+
+
+async def test_outer_required_without_warmth_change_uses_weather_note(wired):
+    request = _request(outfit_id=102, slot="bottom")
+    llm = _llm(_output(("preferred", ["o1", "o3", "o13", "o7"])))
+
+    outcome = await _run(_ctx(request, context=_context(min_feels=15.0)), llm)
+
+    assert outcome.generation.outfits[0].reason == (
+        "날씨에 맞췄어요. 날씨에 맞춰 아우터도 함께 더했어요."
+    )
+
+
+async def test_outfit_without_added_outer_fails_hard_rule(wired):
+    request = _request(outfit_id=102, slot="bottom")
+    llm = _llm(
+        _output(("preferred", ["o3", "o13", "o7"])),
+        _output(("preferred", ["o1", "o3", "o13", "o7"])),
+    )
+
+    outcome = await _run(_ctx(request, context=_context(min_feels=15.0)), llm)
+
+    assert "아우터가 필수인데 outer가 없다." in _prompt(llm, 1)
+    assert outcome.generation.outfits[0].item_keys == ("o1", "o3", "o13", "o7")
+
+
+async def test_missing_outer_must_be_replaced_when_required(wired):
+    screen = [
+        ScreenOutfit(
+            101,
+            1,
+            "preferred",
+            (_item("outer", None), _item("top", "o2"), _item("bottom", "o4"), _item("shoes", "o6")),
+        ),
+    ]
+    request = _request(outfit_id=101, slot="bottom")
+    llm = _llm(_output(("preferred", ["o1", "o2", "o5", "o6"])))
+
+    outcome = await _run(_ctx(request, screen=screen, context=_context(min_feels=15.0)), llm)
+
+    prompt = _prompt(llm)
+    assert "아우터(outer)는 지금 쓸 수 없는 옷이 있어 다른 후보로 바꾼다." in prompt
+    assert "뺄 수 있다" not in prompt
+    assert outcome.generation.outfits[0].reason == (
+        "날씨에 맞췄어요. 옷장에서 지운 옷이 있어 아우터도 함께 바꿨어요."
+    )
+
+
+async def test_outer_as_replace_slot_is_not_instructed_twice(wired):
+    request = _request(outfit_id=102, slot="outer")
+    llm = _llm(_output(("preferred", ["o1", "o3", "o5", "o7"])))
+
+    outcome = await _run(_ctx(request, context=_context(min_feels=15.0)), llm)
+
+    assert _prompt(llm).count("아우터(outer)를 1개 더한다.") == 1
+    assert outcome.generation.outfits[0].reason == "날씨에 맞췄어요."
+
+
+# ---------- 탐색 코디 파츠 재추천의 고정 아이템 기피 ----------
+
+
+def _street_closet() -> list[ClothingCandidate]:
+    closet = [c for c in _closet() if c.clothing_id != 2]
+    return [_clothing(2, "top", styles=["street"]), *closet]
+
+
+AVOIDED_LOCKED_TEXT = "그대로 쓸 아이템은 기피 스타일이나 기피 색상이어도 바꾸지 않는다."
+
+
+async def test_exploratory_parts_swap_with_avoided_locked_item_becomes_preferred(wired):
+    request = _request(outfit_id=103, slot="shoes", intent=_intent(avoided_styles=("street",)))
+    llm = _llm(_output(("preferred", ["o2", "o5", "o7"])))
+
+    outcome = await _run(_ctx(request, context=_context(clothing=_street_closet())), llm)
+
+    assert outcome.prompt_input.exploration_style is None
+    prompt = _prompt(llm)
+    assert "preferred 1벌." in prompt
+    assert AVOIDED_LOCKED_TEXT in prompt
+    assert outcome.generation.rounds == 1
+    assert outcome.generation.outfits[0].item_keys == ("o2", "o5", "o7")
+    assert outcome.generation.outfits[0].reason == "날씨에 맞췄어요."
+
+
+async def test_earlier_avoided_style_on_locked_item_also_turns_off_exploration(wired):
+    earlier = _intent(avoided_styles=("street",))
+    request = _request(outfit_id=103, slot="shoes", intent=_intent(avoided_colors=("pink",)))
+    llm = _llm(_output(("preferred", ["o2", "o5", "o7"])))
+
+    outcome = await _run(
+        _ctx(request, earlier=[earlier], context=_context(clothing=_street_closet())), llm
+    )
+
+    assert outcome.prompt_input.exploration_style is None
+
+
+async def test_avoided_color_on_locked_item_turns_off_exploration(wired):
+    request = _request(outfit_id=103, slot="shoes", intent=_intent(avoided_colors=("black",)))
+    llm = _llm(_output(("preferred", ["o2", "o5", "o7"])))
+
+    outcome = await _run(_ctx(request), llm)
+
+    assert outcome.prompt_input.exploration_style is None
+    assert AVOIDED_LOCKED_TEXT in _prompt(llm)
+
+
+async def test_exploration_stays_when_locked_items_are_not_avoided(wired):
+    request = _request(outfit_id=103, slot="shoes", intent=_intent(avoided_styles=("romantic",)))
+    llm = _llm(_output(("exploratory", ["o2", "o5", "o7"])))
+
+    outcome = await _run(_ctx(request, context=_context(clothing=_street_closet())), llm)
+
+    assert outcome.prompt_input.exploration_style == "street"
+    assert AVOIDED_LOCKED_TEXT not in _prompt(llm)
+
+
+def test_locked_has_avoided_checks_styles_and_colors():
+    parts = _parts(original_accessories=())
+    by_key = {
+        "o2": CandidateItem("owned", 2, "top", None, "white", ["street"], None),
+        "o4": CandidateItem("owned", 4, "bottom", None, "navy", ["minimal"], None),
+        "o6": CandidateItem("owned", 6, "shoes", None, "black", ["minimal"], None),
+    }
+
+    assert regen.locked_has_avoided(parts, by_key, {"street"}, set()) is True
+    assert regen.locked_has_avoided(parts, by_key, set(), {"black"}) is True
+    assert regen.locked_has_avoided(parts, by_key, {"chic"}, {"pink"}) is False
+
+
+# ---------- 전체 재추천의 슬롯 지정 ----------
+
+
+async def test_all_scope_slot_only_request_bans_screen_items(wired):
+    request = _request(scope="all", intent=_intent(replace_items={"bottom": None}))
+    llm = _llm(
+        _output(
+            ("preferred", ["o2", "o13", "o6"]),
+            ("preferred", ["o3", "o13", "o6"]),
+            ("preferred", ["o2", "o13", "o7"]),
+            ("exploratory", ["o3", "o13", "o7"]),
+        )
+    )
+
+    outcome = await _run(_ctx(request), llm)
+
+    keys = {c.key for c in outcome.prompt_input.candidates}
+    assert {"o4", "o5"}.isdisjoint(keys)
+    assert "o13" in keys
+    assert (
+        "모든 세트의 하의(bottom)는 이전 코디에 쓴 것(o4, o5) 말고 다른 후보로 고른다."
+        in _prompt(llm)
+    )
+    assert len(outcome.generation.outfits) == 4
+
+
+async def test_all_scope_slot_only_request_keeps_items_without_alternative(wired):
+    clothing = [c for c in _closet() if c.clothing_id != 13]
+    request = _request(scope="all", intent=_intent(replace_items={"bottom": None}))
+    llm = _llm(
+        _output(
+            ("preferred", ["o2", "o4", "o7"]),
+            ("preferred", ["o3", "o5", "o6"]),
+            ("preferred", ["o1", "o2", "o4", "o6"]),
+            ("exploratory", ["o1", "o3", "o5", "o7"]),
+        )
+    )
+
+    outcome = await _run(_ctx(request, context=_context(clothing=clothing)), llm)
+
+    assert {"o4", "o5"} <= {c.key for c in outcome.prompt_input.candidates}
+    assert "이전 코디에 쓴 것" not in _prompt(llm)
+
+
+# ---------- 탐색 누락 로그 ----------
+
+
+def _dropped_events(caplog):
+    return [
+        r
+        for r in caplog.records
+        if getattr(r, "event", None) == Event.REGENERATION_EXPLORATION_DROPPED
+    ]
+
+
+async def test_exploration_dropped_is_logged_when_result_is_preferred(wired, caplog):
+    llm = _llm(_output(("preferred", ["o3", "o5", "o6"])))
+
+    with caplog.at_level(logging.INFO):
+        outcome = await _run(_ctx(_request(outfit_id=103)), llm)
+
+    assert outcome.prompt_input.exploration_style == "street"
+    events = _dropped_events(caplog)
+    assert len(events) == 1
+    assert events[0].recommendation_session_id == SESSION_ID
+    assert events[0].regeneration_request_id == 55
+    assert events[0].outfit_seqs == [3]
+
+
+async def test_exploration_turned_off_for_avoided_locked_item_is_not_logged(wired, caplog):
+    request = _request(outfit_id=103, slot="shoes", intent=_intent(avoided_styles=("street",)))
+    llm = _llm(_output(("preferred", ["o2", "o5", "o7"])))
+
+    with caplog.at_level(logging.INFO):
+        await _run(_ctx(request, context=_context(clothing=_street_closet())), llm)
+
+    assert _dropped_events(caplog) == []
+
+
+async def test_exploration_turned_off_by_generator_is_not_logged(wired, caplog):
+    screen = [_screen()[2]]
+    llm = _llm(_output(("preferred", ["o3", "o4", "o6"])))
+
+    with caplog.at_level(logging.INFO):
+        outcome = await _run(_ctx(_request(outfit_id=103), screen=screen), llm)
+
+    assert outcome.prompt_input.exploration_style == "street"
+    assert "preferred 1벌." in _prompt(llm)
+    assert _dropped_events(caplog) == []
+
+
+async def test_empty_result_is_not_logged_as_exploration_dropped(wired, caplog):
+    llm = MagicMock(spec=LLMClient)
+    llm.call_structured = AsyncMock(side_effect=LLMTimeoutError("timeout"))
+
+    with caplog.at_level(logging.INFO):
+        await _run(_ctx(_request(outfit_id=103)), llm)
+
+    assert _dropped_events(caplog) == []

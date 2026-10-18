@@ -3,8 +3,8 @@
 import logging
 import random
 from collections import defaultdict
-from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass, replace
+from collections.abc import Callable, Collection, Mapping, Sequence
+from dataclasses import dataclass, field, replace
 from datetime import datetime
 from decimal import Decimal
 from typing import Literal
@@ -27,6 +27,7 @@ from app.services.outfit_generator import (
     DraftOutfit,
     GenerationResult,
     HardRuleCheck,
+    count_possible_combos,
     generate_outfits,
     make_hard_rule_check,
     make_llm_reviewer,
@@ -61,12 +62,17 @@ logger = logging.getLogger(__name__)
 ACCESSORIES = "accessories"
 
 MissingCause = Literal["lighter", "warmer", "deleted", "unavailable"]
+OuterCause = Literal["warmer", "weather"]
 
 _NOTE_PREFIXES: dict[MissingCause, str] = {
     "lighter": "가볍게 입고 싶다는 요청을 반영해",
     "warmer": "따뜻하게 입고 싶다는 요청을 반영해",
     "deleted": "옷장에서 지운 옷이 있어",
     "unavailable": "지금 조건에 맞지 않는 옷이 있어",
+}
+_OUTER_ADDED_NOTES: dict[OuterCause, str] = {
+    "warmer": "따뜻하게 입고 싶다는 요청을 반영해 아우터도 함께 더했어요.",
+    "weather": "날씨에 맞춰 아우터도 함께 더했어요.",
 }
 
 
@@ -120,6 +126,8 @@ class PartsPlan:
     missing: tuple[MissingItem, ...]
     removed_keys: frozenset[str]
     no_alternative_slots: tuple[str, ...]
+    outer_required: bool = False
+    outer_to_add: OuterCause | None = None
 
     @property
     def accessory_missing(self) -> bool:
@@ -134,6 +142,8 @@ class RegenerationPlan:
     kept: tuple[KeptOutfit, ...]
     replaced_combos: tuple[frozenset[str], ...]
     parts: PartsPlan | None
+    removed_keys: frozenset[str] = frozenset()
+    banned_by_slot: Mapping[str, frozenset[str]] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -265,10 +275,14 @@ def plan_regeneration(
     ctx: RegenerationContext,
     candidates: Sequence[CandidateItem],
     classify: Callable[[ScreenItem], MissingCause],
+    *,
+    outer_required: bool = False,
+    outer_cause: OuterCause = "weather",
 ) -> RegenerationPlan:
     request = ctx.request
     replaced_combos = tuple(frozenset(o.keys) for o in ctx.screen if o.is_complete)
     if request.target_scope_cd == "all":
+        banned_by_slot = _ban_screen_items(ctx.screen, request.parsed_intent, candidates)
         return RegenerationPlan(
             scope="all",
             target_seqs=tuple(range(1, MAX_OUTFITS + 1)),
@@ -276,6 +290,8 @@ def plan_regeneration(
             kept=(),
             replaced_combos=replaced_combos,
             parts=None,
+            removed_keys=frozenset().union(*banned_by_slot.values()),
+            banned_by_slot=banned_by_slot,
         )
 
     target = next((o for o in ctx.screen if o.outfit_id == request.target_outfit_id), None)
@@ -284,14 +300,44 @@ def plan_regeneration(
     replace_slots = frozenset(
         {request.target_slot_cd} if request.target_slot_cd is not None else set()
     ) | frozenset(request.parsed_intent.replace_slots)
+    parts = (
+        plan_parts(
+            target,
+            replace_slots,
+            candidates,
+            classify,
+            outer_required=outer_required,
+            outer_cause=outer_cause,
+        )
+        if replace_slots
+        else None
+    )
     return RegenerationPlan(
         scope="single",
         target_seqs=(target.outfit_seq,),
         target_type=target.outfit_type,
         kept=tuple(to_kept_outfits(ctx.screen, (target.outfit_seq,))),
         replaced_combos=(frozenset(target.keys),) if target.is_complete else (),
-        parts=plan_parts(target, replace_slots, candidates, classify) if replace_slots else None,
+        parts=parts,
+        removed_keys=parts.removed_keys if parts is not None else frozenset(),
     )
+
+
+def _ban_screen_items(
+    screen: Sequence[ScreenOutfit],
+    intent: RegenerationIntent,
+    candidates: Sequence[CandidateItem],
+) -> dict[str, frozenset[str]]:
+    candidate_keys = {c.key for c in candidates}
+    banned: dict[str, frozenset[str]] = {}
+    for slot in CATEGORY_ORDER:
+        if slot not in intent.replace_items or intent.replace_items[slot] is not None:
+            continue
+        used = {i.key for o in screen for i in o.items if i.slot_cd == slot} & candidate_keys
+        others = [c for c in candidates if c.category_cd == slot and c.key not in used]
+        if used and others:
+            banned[slot] = frozenset(used)
+    return banned
 
 
 def plan_parts(
@@ -299,6 +345,9 @@ def plan_parts(
     replace_slots: frozenset[str],
     candidates: Sequence[CandidateItem],
     classify: Callable[[ScreenItem], MissingCause],
+    *,
+    outer_required: bool = False,
+    outer_cause: OuterCause = "weather",
 ) -> PartsPlan:
     candidate_keys = {c.key for c in candidates}
     missing = tuple(
@@ -314,10 +363,14 @@ def plan_parts(
     for item in target.items:
         if item.key in candidate_keys and item.key not in missing_keys:
             by_slot[item.slot_cd].add(item.key)
+    original_slots = frozenset(i.slot_cd for i in target.items)
+    adds_outer = outer_required and "outer" not in original_slots and "outer" not in replace_slots
     locked_by_slot = {
         slot: frozenset(by_slot.get(slot, ()))
         for slot in CATEGORY_ORDER
-        if slot not in replace_slots and slot not in freed_slots
+        if slot not in replace_slots
+        and slot not in freed_slots
+        and not (adds_outer and slot == "outer")
     }
     original_accessories = frozenset(by_slot.get(ACCESSORIES, ()))
 
@@ -337,7 +390,7 @@ def plan_parts(
     return PartsPlan(
         target_seq=target.outfit_seq,
         original_keys=target.keys,
-        original_slots=frozenset(i.slot_cd for i in target.items),
+        original_slots=original_slots,
         replace_slots=replace_slots,
         locked_by_slot=locked_by_slot,
         freed_slots=freed_slots,
@@ -345,6 +398,8 @@ def plan_parts(
         missing=missing,
         removed_keys=frozenset(removed_keys),
         no_alternative_slots=tuple(no_alternative),
+        outer_required=outer_required,
+        outer_to_add=outer_cause if adds_outer else None,
     )
 
 
@@ -372,26 +427,57 @@ def make_missing_classifier(
 
 
 def choose_exploration_style(
-    plan: RegenerationPlan, current_intent: RegenerationIntent, selected: str | None
+    plan: RegenerationPlan,
+    current_intent: RegenerationIntent,
+    selected: str | None,
+    *,
+    locked_avoided: bool = False,
 ) -> str | None:
     if current_intent.preferred_styles:
         return None
     if plan.scope == "all":
         return selected
+    if locked_avoided:
+        return None
     return selected if plan.target_type == "exploratory" else None
+
+
+def locked_has_avoided(
+    parts: PartsPlan,
+    candidates_by_key: Mapping[str, CandidateItem],
+    avoided_styles: Collection[str],
+    avoided_colors: Collection[str],
+) -> bool:
+    for keys in parts.locked_by_slot.values():
+        for key in keys:
+            item = candidates_by_key.get(key)
+            if item is None:
+                continue
+            if set(item.style_cds) & set(avoided_styles) or item.color_cd in avoided_colors:
+                return True
+    return False
 
 
 # ---------- 재추천 지시 ----------
 
 
 def build_regeneration_instructions(
-    plan: RegenerationPlan, intent: RegenerationIntent, offset: Decimal
+    plan: RegenerationPlan,
+    intent: RegenerationIntent,
+    offset: Decimal,
+    *,
+    locked_avoided: bool = False,
 ) -> list[RegenerationInstruction]:
     texts: list[str] = []
     if plan.scope == "all":
         if plan.replaced_combos:
             combos = " / ".join(", ".join(sorted(c)) for c in plan.replaced_combos)
             texts.append(f"이전 코디({combos})와 같은 조합을 쓰지 않는다.")
+        for slot, keys in plan.banned_by_slot.items():
+            texts.append(
+                f"모든 세트의 {_slot_text(slot)}{_eun_neun(slot)} 이전 코디에 쓴 것"
+                f"({', '.join(sorted(keys))}) 말고 다른 후보로 고른다."
+            )
         texts += _name_texts(intent, all_outfits=True)
     elif plan.parts is None:
         target_keys = ", ".join(sorted(next(iter(plan.replaced_combos), ())))
@@ -402,7 +488,7 @@ def build_regeneration_instructions(
         else:
             texts.append("이전 코디를 대신할 세트를 만든다.")
     else:
-        texts += _parts_texts(plan.parts)
+        texts += _parts_texts(plan.parts, locked_avoided=locked_avoided)
         texts += _name_texts(intent, all_outfits=False)
     texts += _warmth_texts(offset)
     return [RegenerationInstruction(seq, text) for seq, text in enumerate(texts, start=1)]
@@ -412,12 +498,14 @@ def _slot_text(slot: str) -> str:
     return f"{CATEGORY_LABELS[slot]}({slot})"
 
 
-def _parts_texts(parts: PartsPlan) -> list[str]:
+def _parts_texts(parts: PartsPlan, *, locked_avoided: bool = False) -> list[str]:
     original = ", ".join(sorted(parts.original_keys))
     kept = sorted(k for keys in parts.locked_by_slot.values() for k in keys)
     texts = [f"이전 코디({original})를 고쳐 새 세트를 만든다."]
     if kept:
         texts.append(f"그대로 쓸 아이템: {', '.join(kept)}.")
+        if locked_avoided:
+            texts.append("그대로 쓸 아이템은 기피 스타일이나 기피 색상이어도 바꾸지 않는다.")
 
     for slot in sorted(parts.replace_slots, key=CATEGORY_ORDER.index):
         if slot == ACCESSORIES:
@@ -426,12 +514,15 @@ def _parts_texts(parts: PartsPlan) -> list[str]:
             texts.append(f"{_slot_text(slot)}{_eun_neun(slot)} 다른 후보로 바꾼다.")
         else:
             texts.append(f"{_slot_text(slot)}{_eul_reul(slot)} 1개 더한다.")
+    if parts.outer_to_add:
+        texts.append(f"{_slot_text('outer')}{_eul_reul('outer')} 1개 더한다.")
 
     for slot in sorted(parts.freed_slots, key=CATEGORY_ORDER.index):
-        texts.append(
-            f"{_slot_text(slot)}{_eun_neun(slot)} 지금 쓸 수 없는 옷이 있어 다른 후보로 바꾸거나 "
-            "뺄 수 있다."
-        )
+        if slot == "outer" and parts.outer_required:
+            change = "다른 후보로 바꾼다."
+        else:
+            change = "다른 후보로 바꾸거나 뺄 수 있다."
+        texts.append(f"{_slot_text(slot)}{_eun_neun(slot)} 지금 쓸 수 없는 옷이 있어 {change}")
     if parts.accessory_missing and ACCESSORIES not in parts.replace_slots:
         texts.append(
             "악세서리(accessories)는 지금 쓸 수 없는 것이 있어 새 악세서리를 1개까지 넣을 수 있다."
@@ -596,7 +687,7 @@ def append_missing_notes(
     generation: GenerationResult, plan: RegenerationPlan, category_by_key: Mapping[str, str]
 ) -> GenerationResult:
     parts = plan.parts
-    if parts is None or not parts.missing:
+    if parts is None or not (parts.missing or parts.outer_to_add):
         return generation
     outfits = [
         replace(o, reason=_with_notes(o, parts, category_by_key))
@@ -634,6 +725,8 @@ def _with_notes(outfit: DraftOutfit, parts: PartsPlan, category_by_key: Mapping[
                 notes.append(f"{_NOTE_PREFIXES[cause]} {labels}도 함께 바꿨어요.")
             else:
                 notes.append(f"{_NOTE_PREFIXES[cause]} {labels}{_eun_neun(labels)} 뺐어요.")
+    if parts.outer_to_add and by_slot.get("outer"):
+        notes.append(_OUTER_ADDED_NOTES[parts.outer_to_add])
     return " ".join([outfit.reason.rstrip(), *notes])
 
 
@@ -680,26 +773,43 @@ async def regenerate_outfits(
     candidate_keys = {c.key for c in candidates}
 
     keys_before_offset = None
+    outer_cause: OuterCause = "weather"
+    outer_required = supplement.outer_requirement == "required"
     has_parts = ctx.request.target_slot_cd is not None or bool(current.replace_items)
     if offset and ctx.request.target_scope_cd == "single" and has_parts:
         before = await collect_essential_candidates(context, filter_clothing(context))
         keys_before_offset = frozenset(c.key for c in before.candidates)
+        if offset < 0 and outer_required and before.outer_requirement != "required":
+            outer_cause = "warmer"
     classify = make_missing_classifier(offset, keys_before_offset, candidate_keys)
-    plan = plan_regeneration(ctx, candidates, classify)
+    plan = plan_regeneration(
+        ctx, candidates, classify, outer_required=outer_required, outer_cause=outer_cause
+    )
 
-    if plan.parts is not None and plan.parts.removed_keys:
-        candidates = [c for c in candidates if c.key not in plan.parts.removed_keys]
+    candidates_by_key = {c.key: c for c in candidates}
+    if plan.removed_keys:
+        candidates = [c for c in candidates if c.key not in plan.removed_keys]
 
     async with AsyncSessionLocal() as db:
         preferences = await load_preferences(
             db, context.member_id, rng or random.Random(session_id), ctx.intents
         )
+    locked_avoided = plan.parts is not None and locked_has_avoided(
+        plan.parts,
+        candidates_by_key,
+        preferences.style_result.avoided,
+        preferences.color_result.avoided,
+    )
     prompt_input = replace(
         build_prompt_input(adjusted, supplement, preferences, _outfit_count(plan)),
         candidates=candidates,
-        exploration_style=choose_exploration_style(plan, current, preferences.exploration_style),
+        exploration_style=choose_exploration_style(
+            plan, current, preferences.exploration_style, locked_avoided=locked_avoided
+        ),
         kept_outfits=plan.kept,
-        regeneration_instructions=tuple(build_regeneration_instructions(plan, current, offset)),
+        regeneration_instructions=tuple(
+            build_regeneration_instructions(plan, current, offset, locked_avoided=locked_avoided)
+        ),
     )
 
     if plan.parts is not None and plan.parts.no_alternative_slots:
@@ -725,6 +835,7 @@ async def regenerate_outfits(
     category_by_key = {c.key: c.category_cd for c in prompt_input.candidates}
     generation = append_missing_notes(generation, plan, category_by_key)
     _log_removed_accessories(generation, plan, session_id)
+    _log_exploration_dropped(generation, prompt_input, session_id, ctx.request)
     return RegenerationOutcome(generation, supplement, prompt_input)
 
 
@@ -763,3 +874,35 @@ def _log_removed_accessories(
                     "removed_accessory_id": outfit.removed_accessory_id,
                 },
             )
+
+
+def _log_exploration_dropped(
+    generation: GenerationResult,
+    prompt_input: OutfitPromptInput,
+    session_id: int,
+    request: RegenerationRequestRow,
+) -> None:
+    if prompt_input.exploration_style is None or not generation.outfits:
+        return
+    if _generator_drops_exploration(prompt_input):
+        return
+    if any(o.outfit_type == "exploratory" for o in generation.outfits):
+        return
+    logger.info(
+        "regeneration exploration dropped",
+        extra={
+            "event": Event.REGENERATION_EXPLORATION_DROPPED,
+            "recommendation_session_id": session_id,
+            "regeneration_request_id": request.regeneration_request_id,
+            "outfit_seqs": [o.outfit_seq for o in generation.outfits],
+        },
+    )
+
+
+def _generator_drops_exploration(prompt_input: OutfitPromptInput) -> bool:
+    if any(k.outfit_type == "preferred" for k in prompt_input.kept_outfits):
+        return False
+    if prompt_input.outfit_count <= 1:
+        return True
+    possible = count_possible_combos(prompt_input.candidates, prompt_input.is_outer_required)
+    return not prompt_input.kept_outfits and possible <= 1
