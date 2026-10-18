@@ -137,7 +137,6 @@ class PartsPlan:
 @dataclass(frozen=True)
 class RegenerationPlan:
     scope: Literal["single", "all"]
-    target_seqs: tuple[int, ...]
     target_type: OutfitType | None
     kept: tuple[KeptOutfit, ...]
     replaced_combos: tuple[frozenset[str], ...]
@@ -285,7 +284,6 @@ def plan_regeneration(
         banned_by_slot = _ban_screen_items(ctx.screen, request.parsed_intent, candidates)
         return RegenerationPlan(
             scope="all",
-            target_seqs=tuple(range(1, MAX_OUTFITS + 1)),
             target_type=None,
             kept=(),
             replaced_combos=replaced_combos,
@@ -314,7 +312,6 @@ def plan_regeneration(
     )
     return RegenerationPlan(
         scope="single",
-        target_seqs=(target.outfit_seq,),
         target_type=target.outfit_type,
         kept=tuple(to_kept_outfits(ctx.screen, (target.outfit_seq,))),
         replaced_combos=(frozenset(target.keys),) if target.is_complete else (),

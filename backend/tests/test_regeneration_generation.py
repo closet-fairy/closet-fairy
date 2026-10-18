@@ -982,7 +982,6 @@ async def test_accessory_item_name_targets_new_accessory(wired):
 def _plan(scope="single", target_type="exploratory") -> RegenerationPlan:
     return RegenerationPlan(
         scope=scope,
-        target_seqs=(3,),
         target_type=target_type if scope == "single" else None,
         kept=(),
         replaced_combos=(),
