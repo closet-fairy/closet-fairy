@@ -896,6 +896,7 @@ async def test_filled_removed_id_is_ignored_outside_accessory_swap(wired, caplog
         outcome = await _run(_ctx(request), llm)
 
     assert outcome.generation.rounds == 1
+    assert outcome.generation.outfits[0].removed_accessory_id is None
     assert "removed_accessory_id는 null로 둔다." in _prompt(llm)
     assert not [
         r

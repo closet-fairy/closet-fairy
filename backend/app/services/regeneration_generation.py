@@ -833,6 +833,7 @@ async def regenerate_outfits(
         session_id=session_id,
     )
     category_by_key = {c.key: c.category_cd for c in prompt_input.candidates}
+    generation = _clear_unrequested_removed_ids(generation, plan)
     generation = append_missing_notes(generation, plan, category_by_key)
     _log_removed_accessories(generation, plan, session_id)
     _log_exploration_dropped(generation, prompt_input, session_id, ctx.request)
@@ -856,6 +857,18 @@ def _empty_generation() -> GenerationResult:
         shortfall_retries=0,
         fallback_count=0,
     )
+
+
+def _clear_unrequested_removed_ids(
+    generation: GenerationResult, plan: RegenerationPlan
+) -> GenerationResult:
+    parts = plan.parts
+    swap_seq = parts.target_seq if parts and ACCESSORIES in parts.replace_slots else None
+    outfits = [
+        o if o.outfit_seq == swap_seq else replace(o, removed_accessory_id=None)
+        for o in generation.outfits
+    ]
+    return replace(generation, outfits=outfits)
 
 
 def _log_removed_accessories(
