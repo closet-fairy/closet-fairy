@@ -17,6 +17,7 @@ from app.repositories import recommendation_session as session_repo
 from app.repositories import weather_snapshot as weather_snapshot_repo
 from app.repositories.clothing import ClothingCandidate
 from app.repositories.recommendation_session import SessionRow
+from app.services.recommendation_session import to_db_utc
 from app.services.weather.base_time import KST
 from app.services.weather.weather_service import WeatherResult, get_weather
 
@@ -60,7 +61,9 @@ async def collect_context(recommendation_session_id: int) -> RecommendContext:
     )
 
     async with AsyncSessionLocal() as db:
-        await weather_snapshot_repo.insert_weather_snapshot(db, recommendation_session_id, weather)
+        await weather_snapshot_repo.insert_weather_snapshot(
+            db, recommendation_session_id, weather, to_db_utc(now.replace(microsecond=0))
+        )
         return await load_context(db, recommendation_session_id, session, weather)
 
 

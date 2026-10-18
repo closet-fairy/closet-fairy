@@ -4,6 +4,7 @@ from datetime import datetime
 from decimal import Decimal
 
 from app.repositories import weather_snapshot as weather_snapshot_repo
+from app.services.weather.weather_service import WeatherResult
 
 
 class _Row:
@@ -27,6 +28,9 @@ class _FakeDb:
     async def execute(self, statement, params):
         self.executed.append((str(statement), params))
         return _Result(self._rows)
+
+    async def commit(self):
+        pass
 
 
 def _row(**overrides):
@@ -65,3 +69,23 @@ async def test_get_weather_snapshot_treats_null_hourly_as_empty():
 
 async def test_get_weather_snapshot_returns_none_when_missing():
     assert await weather_snapshot_repo.get_weather_snapshot(_FakeDb([]), 7) is None
+
+
+async def test_insert_weather_snapshot_stores_given_created_at():
+    db = _FakeDb([])
+    weather = WeatherResult(
+        temperature=17.5,
+        feels_like_temperature=16.2,
+        precipitation=0.0,
+        wind_speed=2.1,
+        weather_condition_cd="clear",
+        min_feels_like_temperature=15.0,
+    )
+
+    await weather_snapshot_repo.insert_weather_snapshot(
+        db, 7, weather, datetime(2026, 10, 16, 5, 59, 58)
+    )
+
+    sql, params = db.executed[0]
+    assert ":created_at" in sql
+    assert params["created_at"] == datetime(2026, 10, 16, 5, 59, 58)

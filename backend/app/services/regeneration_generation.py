@@ -187,8 +187,7 @@ async def load_regeneration_context(regeneration_request_id: int) -> Regeneratio
     )
 
 
-# created_at은 날씨를 조회한 시각이 아니라 INSERT 시각이고 현재 체감은 소수 한 자리로 저장돼서,
-# 현재 체감이 최솟값이었다면 첫 추천과 최대 0.05℃ 다를 수 있다
+# 현재 체감은 소수 한 자리로 저장돼서, 현재 체감이 최솟값이었다면 첫 추천과 최대 0.05℃ 다를 수 있다
 def restore_weather(
     row: WeatherSnapshotRow, going_out_start: datetime, going_out_end: datetime
 ) -> WeatherResult:

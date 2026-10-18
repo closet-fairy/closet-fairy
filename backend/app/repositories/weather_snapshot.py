@@ -14,17 +14,21 @@ INSERT_SQL = text(
     """
     INSERT INTO weather_snapshot (
         recommendation_session_id, temperature, feels_like_temperature,
-        precipitation, wind_speed, weather_condition_cd, hourly_forecast, is_fallback
+        precipitation, wind_speed, weather_condition_cd, hourly_forecast, is_fallback, created_at
     ) VALUES (
         :recommendation_session_id, :temperature, :feels_like_temperature,
-        :precipitation, :wind_speed, :weather_condition_cd, :hourly_forecast, :is_fallback
+        :precipitation, :wind_speed, :weather_condition_cd, :hourly_forecast, :is_fallback,
+        :created_at
     )
     """
 )
 
 
 async def insert_weather_snapshot(
-    db: AsyncSession, recommendation_session_id: int, weather: WeatherResult
+    db: AsyncSession,
+    recommendation_session_id: int,
+    weather: WeatherResult,
+    created_at: datetime,
 ) -> None:
     await db.execute(
         INSERT_SQL,
@@ -37,6 +41,7 @@ async def insert_weather_snapshot(
             "weather_condition_cd": weather.weather_condition_cd,
             "hourly_forecast": json.dumps(weather.hourly_json()),
             "is_fallback": weather.is_fallback,
+            "created_at": created_at,
         },
     )
     await db.commit()

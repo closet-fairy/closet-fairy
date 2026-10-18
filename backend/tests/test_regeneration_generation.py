@@ -27,6 +27,7 @@ from app.services.preference_score import classify
 from app.services.prompt.outfit_generation import CandidateItem, OutfitGenerationOutput
 from app.services.recommend_context import RecommendContext
 from app.services.recommendation_pipeline import Preferences
+from app.services.recommendation_session import to_db_utc
 from app.services.regeneration_generation import (
     PartsPlan,
     RegenerationContext,
@@ -397,6 +398,26 @@ def test_restored_min_uses_rounded_current_when_going_out_starts_this_hour():
 
     assert first.min_feels_like_temperature == 13.26
     assert restored.min_feels_like_temperature == 13.3
+
+
+def test_restored_min_matches_when_weather_call_crossed_the_hour():
+    start = datetime(2026, 10, 16, 15, 10, tzinfo=KST)
+    end = datetime(2026, 10, 16, 17, 0, tzinfo=KST)
+    hourly = [
+        HourlyWeather(datetime(2026, 10, 16, 15 + i, tzinfo=KST), 20.0, f, 0.0, 1.5, "clear")
+        for i, f in enumerate([16.5, 17.0, 18.0])
+    ]
+    now = datetime(2026, 10, 16, 14, 59, 58, tzinfo=KST)
+    first_min = min_feels_like(hourly, 12.0, start, end, now)
+    first = replace(_first_weather(hourly, 12.0, now), min_feels_like_temperature=first_min)
+
+    restored = regen.restore_weather(_snapshot(first, to_db_utc(now)), start, end)
+    old_restored = regen.restore_weather(
+        _snapshot(first, datetime(2026, 10, 16, 6, 0, 1)), start, end
+    )
+
+    assert restored.min_feels_like_temperature == first.min_feels_like_temperature == 16.5
+    assert old_restored.min_feels_like_temperature == 12.0
 
 
 def test_restored_fallback_weather_uses_feels_like():
