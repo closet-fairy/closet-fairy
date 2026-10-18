@@ -735,3 +735,52 @@ def test_removed_accessory_id_is_required_in_output():
         OutfitGenerationOutput.model_validate(
             {"outfits": [{"outfit_type": "preferred", "item_ids": GOOD, "reason": "이유"}]}
         )
+
+
+# ---------- 탐색 요청 여부 ----------
+
+
+async def test_exploration_requested_when_style_is_sent():
+    llm = fake_llm(generation(*[("preferred", GOOD)] * 3, ("exploratory", GOOD)))
+
+    result = await run(llm)
+
+    assert result.exploration_requested is True
+
+
+async def test_exploration_not_requested_without_style():
+    llm = fake_llm(generation(*[("preferred", GOOD)] * 4))
+
+    result = await run(llm, exploration_style=None)
+
+    assert result.exploration_requested is False
+
+
+async def test_exploration_not_requested_when_single_outfit_turns_it_off():
+    llm = fake_llm(generation(("preferred", GOOD)))
+
+    result = await run(llm, outfit_count=1)
+
+    assert "exploratory" not in prompt_data(llm, 0).split("## 생성 요청")[1]
+    assert result.exploration_requested is False
+
+
+async def test_exploration_not_requested_when_kept_outfit_is_exploratory():
+    llm = fake_llm(generation(("preferred", GOOD), ("preferred", OTHER)))
+
+    result = await run(
+        llm,
+        outfit_count=2,
+        kept_outfits=[KeptOutfit(3, ["o2002", "e12", "e21"], "exploratory")],
+    )
+
+    assert result.exploration_requested is False
+
+
+async def test_exploration_requested_even_if_first_call_fails():
+    llm = fake_llm(LLMTimeoutError("timeout"))
+
+    result = await run(llm)
+
+    assert result.outfits == []
+    assert result.exploration_requested is True

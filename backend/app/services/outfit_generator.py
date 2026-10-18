@@ -59,6 +59,7 @@ class GenerationResult:
     reviewer_retries: int
     shortfall_retries: int
     fallback_count: int
+    exploration_requested: bool = False
 
 
 HardRuleCheck = Callable[[Sequence[DraftOutfit], Sequence[KeptOutfit]], list[OutfitValidation]]
@@ -97,6 +98,7 @@ async def generate_outfits(
     rejected: set[frozenset[str]] = set()
     failure_reasons: list[FailureReason] = []
     hard_retries = reviewer_retries = shortfall_retries = rounds = 0
+    exploration_requested = False
     log_extra = {"recommendation_session_id": session_id}
     if target < prompt_input.outfit_count:
         logger.info(
@@ -121,6 +123,7 @@ async def generate_outfits(
             failure_reasons=tuple(failure_reasons),
             exploration_style=_exploration_style(prompt_input, kept, accepted),
         )
+        exploration_requested = exploration_requested or data.exploration_style is not None
         rounds += 1
         try:
             drafts = await _generate(llm, data, seqs)
@@ -204,6 +207,7 @@ async def generate_outfits(
         reviewer_retries=reviewer_retries,
         shortfall_retries=shortfall_retries,
         fallback_count=len(fallback_outfits),
+        exploration_requested=exploration_requested,
     )
 
 

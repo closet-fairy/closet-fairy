@@ -27,7 +27,6 @@ from app.services.outfit_generator import (
     DraftOutfit,
     GenerationResult,
     HardRuleCheck,
-    count_possible_combos,
     generate_outfits,
     make_hard_rule_check,
     make_llm_reviewer,
@@ -832,7 +831,7 @@ async def regenerate_outfits(
     generation = _clear_unrequested_removed_ids(generation, plan)
     generation = append_missing_notes(generation, plan, category_by_key)
     _log_removed_accessories(generation, plan, session_id)
-    _log_exploration_dropped(generation, prompt_input, session_id, ctx.request)
+    _log_exploration_dropped(generation, session_id, ctx.request)
     return RegenerationOutcome(generation, supplement, prompt_input)
 
 
@@ -887,13 +886,10 @@ def _log_removed_accessories(
 
 def _log_exploration_dropped(
     generation: GenerationResult,
-    prompt_input: OutfitPromptInput,
     session_id: int,
     request: RegenerationRequestRow,
 ) -> None:
-    if prompt_input.exploration_style is None or not generation.outfits:
-        return
-    if _generator_drops_exploration(prompt_input):
+    if not generation.exploration_requested or not generation.outfits:
         return
     if any(o.outfit_type == "exploratory" for o in generation.outfits):
         return
@@ -906,12 +902,3 @@ def _log_exploration_dropped(
             "outfit_seqs": [o.outfit_seq for o in generation.outfits],
         },
     )
-
-
-def _generator_drops_exploration(prompt_input: OutfitPromptInput) -> bool:
-    if any(k.outfit_type == "preferred" for k in prompt_input.kept_outfits):
-        return False
-    if prompt_input.outfit_count <= 1:
-        return True
-    possible = count_possible_combos(prompt_input.candidates, prompt_input.is_outer_required)
-    return not prompt_input.kept_outfits and possible <= 1

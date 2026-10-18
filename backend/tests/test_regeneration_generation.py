@@ -1311,6 +1311,7 @@ async def test_exploration_dropped_is_logged_when_result_is_preferred(wired, cap
         outcome = await _run(_ctx(_request(outfit_id=103)), llm)
 
     assert outcome.prompt_input.exploration_style == "street"
+    assert outcome.generation.exploration_requested is True
     events = _dropped_events(caplog)
     assert len(events) == 1
     assert events[0].recommendation_session_id == SESSION_ID
@@ -1336,6 +1337,7 @@ async def test_exploration_turned_off_by_generator_is_not_logged(wired, caplog):
         outcome = await _run(_ctx(_request(outfit_id=103), screen=screen), llm)
 
     assert outcome.prompt_input.exploration_style == "street"
+    assert outcome.generation.exploration_requested is False
     assert "preferred 1벌." in _prompt(llm)
     assert _dropped_events(caplog) == []
 
