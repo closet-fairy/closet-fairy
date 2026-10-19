@@ -1350,3 +1350,45 @@ async def test_empty_result_is_not_logged_as_exploration_dropped(wired, caplog):
         await _run(_ctx(_request(outfit_id=103)), llm)
 
     assert _dropped_events(caplog) == []
+
+
+# ---------- 빠진 옷 자리의 지시 ----------
+
+
+async def test_missing_required_slot_must_be_replaced_not_removed(wired):
+    screen = [
+        ScreenOutfit(
+            101,
+            1,
+            "preferred",
+            (_item("top", None), _item("bottom", "o4"), _item("shoes", "o6")),
+        ),
+    ]
+    request = _request(outfit_id=101, slot="bottom")
+    llm = _llm(_output(("preferred", ["o2", "o5", "o6"])))
+
+    await _run(_ctx(request, screen=screen), llm)
+
+    prompt = _prompt(llm)
+    assert "상의(top)는 지금 쓸 수 없는 옷이 있어 다른 후보로 바꾼다." in prompt
+    assert "뺄 수 있다" not in prompt
+
+
+async def test_missing_socks_may_be_removed(wired):
+    screen = [
+        ScreenOutfit(
+            101,
+            1,
+            "preferred",
+            (_item("top", "o2"), _item("bottom", "o4"), _item("shoes", "o6"), _item("socks", None)),
+        ),
+    ]
+    request = _request(outfit_id=101, slot="bottom")
+    llm = _llm(_output(("preferred", ["o2", "o5", "o6"])))
+
+    outcome = await _run(_ctx(request, screen=screen), llm)
+
+    assert "양말(socks)은 지금 쓸 수 없는 옷이 있어 다른 후보로 바꾸거나 뺄 수 있다." in _prompt(
+        llm
+    )
+    assert outcome.generation.outfits[0].reason.endswith("옷장에서 지운 옷이 있어 양말은 뺐어요.")

@@ -513,10 +513,10 @@ def _parts_texts(parts: PartsPlan, *, locked_avoided: bool = False) -> list[str]
         texts.append(f"{_slot_text('outer')}{_eul_reul('outer')} 1개 더한다.")
 
     for slot in sorted(parts.freed_slots, key=CATEGORY_ORDER.index):
-        if slot == "outer" and parts.outer_required:
-            change = "다른 후보로 바꾼다."
-        else:
+        if slot == "socks" or (slot == "outer" and not parts.outer_required):
             change = "다른 후보로 바꾸거나 뺄 수 있다."
+        else:
+            change = "다른 후보로 바꾼다."
         texts.append(f"{_slot_text(slot)}{_eun_neun(slot)} 지금 쓸 수 없는 옷이 있어 {change}")
     if parts.accessory_missing and ACCESSORIES not in parts.replace_slots:
         texts.append(
