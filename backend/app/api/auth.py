@@ -2,13 +2,15 @@ import logging
 import secrets
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, Request, Response, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.db import get_db
+from app.core.errors import NotFoundError
 from app.services.auth import login as login_service
+from app.services.auth import session as session_service
 from app.services.auth.crypto import new_oauth_state
 from app.services.auth.providers import OAuthProvider, OAuthProviderError, get_oauth_provider
 
@@ -88,6 +90,30 @@ async def finish_login(
         get_settings().SESSION_TTL_DAYS * SECONDS_PER_DAY,
     )
     response.delete_cookie(OAUTH_STATE_COOKIE, path="/")
+    return response
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+async def logout(request: Request, db: AsyncSession = Depends(get_db)) -> Response:
+    await session_service.logout(db, request.cookies.get(SESSION_COOKIE))
+    response = Response(status_code=status.HTTP_204_NO_CONTENT)
+    response.delete_cookie(SESSION_COOKIE, path="/")
+    return response
+
+
+@router.get(
+    "/dev-login",
+    status_code=status.HTTP_302_FOUND,
+    response_class=RedirectResponse,
+    responses={404: {"description": "DEV_AUTH가 꺼져 있음"}},
+)
+async def dev_login(db: AsyncSession = Depends(get_db)) -> RedirectResponse:
+    settings = get_settings()
+    if not settings.DEV_AUTH:
+        raise NotFoundError()
+    token = await session_service.issue_session(db, settings.DEV_MEMBER_ID)
+    response = _redirect_to_frontend("/")
+    _set_cookie(response, SESSION_COOKIE, token, settings.SESSION_TTL_DAYS * SECONDS_PER_DAY)
     return response
 
 

@@ -21,6 +21,9 @@ class LocalImageStorage:
     def url(self, key: str) -> str:
         return f"{self.url_prefix}/{key}"
 
+    def path(self, key: str) -> Path:
+        return self._path(key)
+
     def _path(self, key: str) -> Path:
         path = (self.root / key).resolve()
         if not path.is_relative_to(self.root) or path == self.root:

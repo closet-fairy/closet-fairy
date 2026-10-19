@@ -3,12 +3,14 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from app.core.config import get_settings
+from app.api.deps import get_current_member_id
 from app.core.db import get_db
 from app.main import app
 from app.schemas.recommendation_result import RecommendationResult
 from app.services import recommendation_result as result_service
 from app.services.session_errors import SessionNotFoundError
+
+MEMBER_ID = 7
 
 
 @pytest.fixture
@@ -28,8 +30,10 @@ def fake_db():
         yield object()
 
     app.dependency_overrides[get_db] = override
+    app.dependency_overrides[get_current_member_id] = lambda: MEMBER_ID
     yield
     app.dependency_overrides.pop(get_db, None)
+    app.dependency_overrides.pop(get_current_member_id, None)
 
 
 def test_result_endpoint_returns_not_found_in_error_format(client, fake_db, monkeypatch):
@@ -58,7 +62,7 @@ def test_result_endpoint_returns_service_result(client, fake_db, monkeypatch):
 
     assert response.status_code == 200
     assert response.json()["outfits"][0]["outfit_id"] == example["outfits"][0]["outfit_id"]
-    assert captured == {"session_id": 12, "member_id": get_settings().DEV_MEMBER_ID}
+    assert captured == {"session_id": 12, "member_id": MEMBER_ID}
 
 
 def test_result_schema_is_published_with_enum_values(client):

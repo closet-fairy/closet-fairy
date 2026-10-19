@@ -2,12 +2,12 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
 
 from app.api import (
     auth,
     clothing,
     health,
+    media,
     recommendation_precheck,
     recommendation_session,
     weather,
@@ -47,7 +47,7 @@ app.include_router(recommendation_session.router)
 app.include_router(weather.router)
 app.include_router(clothing.router)
 app.include_router(auth.router)
+app.include_router(media.router)
 
 settings = get_settings()
 settings.MEDIA_ROOT.mkdir(parents=True, exist_ok=True)
-app.mount(settings.MEDIA_URL_PREFIX, StaticFiles(directory=settings.MEDIA_ROOT), name="media")

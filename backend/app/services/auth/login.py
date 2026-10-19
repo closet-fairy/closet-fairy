@@ -6,17 +6,11 @@ from dataclasses import dataclass
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import get_settings
-from app.repositories import auth_session as session_repo
 from app.repositories import member as member_repo
 from app.repositories.member import MemberLogin
-from app.services.auth.crypto import (
-    encrypt_provider_user_id,
-    hash_provider_user_id,
-    hash_session_token,
-    new_session_token,
-)
+from app.services.auth.crypto import encrypt_provider_user_id, hash_provider_user_id
 from app.services.auth.providers import OAuthProvider, ProviderIdentity
+from app.services.auth.session import issue_session
 
 NICKNAME_MAX_LENGTH = 30
 DEFAULT_NICKNAME_PREFIX = "옷장요정"
@@ -34,11 +28,7 @@ async def login_with_provider(
 ) -> LoginResult:
     identity = await provider.fetch_identity(code, redirect_uri)
     member = await _find_or_sign_up(db, provider.provider_cd, identity)
-    token = new_session_token()
-    async with db.begin():
-        await session_repo.insert_session(
-            db, member.member_id, hash_session_token(token), get_settings().SESSION_TTL_DAYS
-        )
+    token = await issue_session(db, member.member_id)
     return LoginResult(session_token=token, is_onboarded=member.is_onboarded)
 
 
