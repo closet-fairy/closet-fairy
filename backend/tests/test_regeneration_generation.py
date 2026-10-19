@@ -1392,3 +1392,101 @@ async def test_missing_socks_may_be_removed(wired):
         llm
     )
     assert outcome.generation.outfits[0].reason.endswith("옷장에서 지운 옷이 있어 양말은 뺐어요.")
+
+
+# ---------- 지운 옷이 있는 코디의 같은 조합 ----------
+
+
+def _screen_with_deleted_bottom() -> list[ScreenOutfit]:
+    screen = _screen()
+    screen[1] = ScreenOutfit(
+        102, 2, "preferred", (_item("top", "o3"), _item("bottom", None), _item("shoes", "o7"))
+    )
+    return screen
+
+
+NEAR_COMBO_TEXT = (
+    "이전 코디에서 남은 o3, o7을 모두 그대로 쓰고 지운 옷 자리만 채운 조합은 만들지 않는다."
+)
+NEAR_COMBO_REASON = "이전 코디에서 지운 옷 자리만 채워 이전 코디와 사실상 같은 조합이다."
+
+
+async def test_filling_only_deleted_slot_fails_hard_rule(wired):
+    llm = _llm(
+        _output(("preferred", ["o3", "o13", "o7"])),
+        _output(("preferred", ["o2", "o13", "o7"])),
+    )
+
+    outcome = await _run(_ctx(screen=_screen_with_deleted_bottom()), llm)
+
+    assert NEAR_COMBO_TEXT in _prompt(llm)
+    assert NEAR_COMBO_REASON in _prompt(llm, 1)
+    assert outcome.generation.outfits[0].item_keys == ("o2", "o13", "o7")
+
+
+async def test_changing_another_slot_passes(wired):
+    llm = _llm(_output(("preferred", ["o3", "o13", "o6"])))
+
+    outcome = await _run(_ctx(screen=_screen_with_deleted_bottom()), llm)
+
+    assert outcome.generation.rounds == 1
+    assert outcome.generation.outfits[0].item_keys == ("o3", "o13", "o6")
+
+
+async def test_single_remaining_item_is_not_banned(wired):
+    screen = _screen()
+    screen[1] = ScreenOutfit(
+        102, 2, "preferred", (_item("top", "o3"), _item("bottom", None), _item("shoes", None))
+    )
+    llm = _llm(_output(("preferred", ["o3", "o13", "o7"])))
+
+    outcome = await _run(_ctx(screen=screen), llm)
+
+    assert "지운 옷 자리만 채운" not in _prompt(llm)
+    assert outcome.generation.rounds == 1
+
+
+async def test_parts_swap_does_not_use_near_combo_rule(wired):
+    request = _request(outfit_id=102, slot="shoes")
+    llm = _llm(_output(("preferred", ["o3", "o13", "o6"])))
+
+    outcome = await _run(_ctx(request, screen=_screen_with_deleted_bottom()), llm)
+
+    assert "지운 옷 자리만 채운" not in _prompt(llm)
+    assert outcome.generation.rounds == 1
+
+
+async def test_all_scope_bans_near_combo_of_screen_outfit(wired):
+    request = _request(scope="all")
+    llm = _llm(
+        _output(
+            ("preferred", ["o3", "o13", "o7"]),
+            ("preferred", ["o2", "o13", "o6"]),
+            ("preferred", ["o3", "o5", "o6"]),
+            ("exploratory", ["o2", "o4", "o7"]),
+        ),
+        _output(("preferred", ["o2", "o13", "o7"])),
+    )
+
+    outcome = await _run(_ctx(request, screen=_screen_with_deleted_bottom()), llm)
+
+    assert NEAR_COMBO_TEXT in _prompt(llm)
+    assert NEAR_COMBO_REASON in _prompt(llm, 1)
+    assert len(outcome.generation.outfits) == 4
+
+
+async def test_near_combo_text_uses_actual_remaining_ids(wired):
+    screen = _screen()
+    screen[0] = ScreenOutfit(
+        101, 1, "preferred", (_item("top", "o2"), _item("bottom", None), _item("shoes", "o6"))
+    )
+    llm = _llm(_output(("preferred", ["o3", "o13", "o7"])))
+
+    await _run(_ctx(_request(outfit_id=101), screen=screen), llm)
+
+    prompt = _prompt(llm)
+    assert (
+        "이전 코디에서 남은 o2, o6을 모두 그대로 쓰고 지운 옷 자리만 채운 조합은 만들지 않는다."
+        in prompt
+    )
+    assert "남은 o3, o7" not in prompt

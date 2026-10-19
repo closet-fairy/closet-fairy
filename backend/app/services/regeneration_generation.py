@@ -134,6 +134,12 @@ class PartsPlan:
 
 
 @dataclass(frozen=True)
+class NearCombo:
+    remaining: frozenset[str]
+    deleted_slots: frozenset[str]
+
+
+@dataclass(frozen=True)
 class RegenerationPlan:
     scope: Literal["single", "all"]
     target_type: OutfitType | None
@@ -142,6 +148,7 @@ class RegenerationPlan:
     parts: PartsPlan | None
     removed_keys: frozenset[str] = frozenset()
     banned_by_slot: Mapping[str, frozenset[str]] = field(default_factory=dict)
+    near_combos: tuple[NearCombo, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -288,6 +295,7 @@ def plan_regeneration(
             parts=None,
             removed_keys=frozenset().union(*banned_by_slot.values()),
             banned_by_slot=banned_by_slot,
+            near_combos=tuple(c for c in map(_near_combo, ctx.screen) if c is not None),
         )
 
     target = next((o for o in ctx.screen if o.outfit_id == request.target_outfit_id), None)
@@ -315,7 +323,22 @@ def plan_regeneration(
         replaced_combos=(frozenset(target.keys),) if target.is_complete else (),
         parts=parts,
         removed_keys=parts.removed_keys if parts is not None else frozenset(),
+        near_combos=_near_combos_for_whole_outfit(target) if parts is None else (),
     )
+
+
+def _near_combo(outfit: ScreenOutfit) -> NearCombo | None:
+    if outfit.is_complete or len(outfit.keys) < 2:
+        return None
+    return NearCombo(
+        remaining=frozenset(outfit.keys),
+        deleted_slots=frozenset(i.slot_cd for i in outfit.items if i.key is None),
+    )
+
+
+def _near_combos_for_whole_outfit(target: ScreenOutfit) -> tuple[NearCombo, ...]:
+    combo = _near_combo(target)
+    return (combo,) if combo is not None else ()
 
 
 def _ban_screen_items(
@@ -468,6 +491,7 @@ def build_regeneration_instructions(
         if plan.replaced_combos:
             combos = " / ".join(", ".join(sorted(c)) for c in plan.replaced_combos)
             texts.append(f"이전 코디({combos})와 같은 조합을 쓰지 않는다.")
+        texts += [_near_combo_text(c) for c in plan.near_combos]
         for slot, keys in plan.banned_by_slot.items():
             texts.append(
                 f"모든 세트의 {_slot_text(slot)}{_eun_neun(slot)} 이전 코디에 쓴 것"
@@ -482,11 +506,19 @@ def build_regeneration_instructions(
             )
         else:
             texts.append("이전 코디를 대신할 세트를 만든다.")
+        texts += [_near_combo_text(c) for c in plan.near_combos]
     else:
         texts += _parts_texts(plan.parts, locked_avoided=locked_avoided)
         texts += _name_texts(intent, all_outfits=False)
     texts += _warmth_texts(offset)
     return [RegenerationInstruction(seq, text) for seq, text in enumerate(texts, start=1)]
+
+
+def _near_combo_text(combo: NearCombo) -> str:
+    return (
+        f"이전 코디에서 남은 {', '.join(sorted(combo.remaining))}을 모두 그대로 쓰고 "
+        "지운 옷 자리만 채운 조합은 만들지 않는다."
+    )
 
 
 def _slot_text(slot: str) -> str:
@@ -581,6 +613,10 @@ def make_regeneration_hard_rule_check(
             reasons = list(result.reasons)
             if frozenset(draft.item_keys) in replaced:
                 reasons.append("바꿔 달라고 한 이전 코디와 아이템 조합이 같다.")
+            if any(_is_near_combo(draft, c, category_by_key) for c in plan.near_combos):
+                reasons.append(
+                    "이전 코디에서 지운 옷 자리만 채워 이전 코디와 사실상 같은 조합이다."
+                )
             if plan.parts is not None and draft.outfit_seq == plan.parts.target_seq:
                 reasons += check_locked_parts(draft, plan.parts, category_by_key)
                 if ACCESSORIES in plan.parts.replace_slots:
@@ -591,6 +627,15 @@ def make_regeneration_hard_rule_check(
         return results
 
     return check
+
+
+def _is_near_combo(
+    draft: DraftOutfit, combo: NearCombo, category_by_key: Mapping[str, str]
+) -> bool:
+    keys = set(draft.item_keys)
+    if not combo.remaining <= keys:
+        return False
+    return all(category_by_key.get(k) in combo.deleted_slots for k in keys - combo.remaining)
 
 
 def _keys_by_slot(draft: DraftOutfit, category_by_key: Mapping[str, str]) -> dict[str, set[str]]:
