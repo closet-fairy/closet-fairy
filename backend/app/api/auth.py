@@ -13,11 +13,11 @@ from app.services.auth import login as login_service
 from app.services.auth import session as session_service
 from app.services.auth.crypto import new_oauth_state
 from app.services.auth.providers import OAuthProvider, OAuthProviderError, get_oauth_provider
+from app.services.auth.session import SESSION_COOKIE
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 logger = logging.getLogger(__name__)
 
-SESSION_COOKIE = "closet_fairy_session"
 OAUTH_STATE_COOKIE = "closet_fairy_oauth_state"
 OAUTH_STATE_MAX_AGE_S = 10 * 60
 SECONDS_PER_DAY = 24 * 60 * 60

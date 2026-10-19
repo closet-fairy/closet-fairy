@@ -7,6 +7,8 @@ from app.core.errors import UnauthorizedError
 from app.repositories import auth_session as session_repo
 from app.services.auth.crypto import hash_session_token, new_session_token
 
+SESSION_COOKIE = "closet_fairy_session"
+
 
 class AuthRequiredError(UnauthorizedError):
     code = "AUTH_REQUIRED"

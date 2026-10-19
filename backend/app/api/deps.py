@@ -5,7 +5,6 @@ from datetime import datetime
 from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.auth import SESSION_COOKIE
 from app.core.db import get_db
 from app.services.auth import session as session_service
 from app.services.clothing_rate_limit import RequestRateLimiter, get_clothing_rate_limiter
@@ -14,7 +13,9 @@ from app.workers.bg_removal_worker import BgRemovalWorker
 
 
 async def get_current_member_id(request: Request, db: AsyncSession = Depends(get_db)) -> int:
-    return await session_service.authenticate(db, request.cookies.get(SESSION_COOKIE))
+    return await session_service.authenticate(
+        db, request.cookies.get(session_service.SESSION_COOKIE)
+    )
 
 
 def get_now() -> datetime:

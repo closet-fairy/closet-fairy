@@ -9,7 +9,8 @@
 --rate N이면 마지막 N회는 취소 대신 첫 코디에 별점을 매긴다. 별점은 선호 점수를 바꿔 뒤 회차에
 영향을 주므로 기본값은 0이다.
 
-API는 서버의 DEV_MEMBER_ID 회원으로만 동작한다. 회원(--member)마다 서버를 다시 띄워 따로 돌린다.
+API는 개발용 로그인(GET /auth/dev-login)으로 서버의 DEV_MEMBER_ID 회원 세션을 받아 호출한다.
+그래서 .env에 DEV_AUTH=true가 있어야 하고, 회원(--member)마다 서버를 다시 띄워 따로 돌린다.
 
 실행 순서 (backend/ 폴더):
   1. 부족테스터 시드. 처음 한 번, 또는 부족테스터를 시드 직후 상태로 되돌릴 때 (Git Bash):
@@ -252,6 +253,12 @@ async def preflight(
         ) from e
     if response.status_code != 200:
         raise PreflightError(f"GET /health가 {response.status_code}를 돌려줬습니다.")
+    response = await client.get("/auth/dev-login")
+    if response.status_code != 302 or not client.cookies:
+        raise PreflightError(
+            f"GET /auth/dev-login이 {response.status_code}를 돌려줬습니다. "
+            ".env에 DEV_AUTH=true를 넣고 서버를 다시 띄우세요."
+        )
     if not settings.KMA_SERVICE_KEY:
         print(
             "경고: .env의 KMA_SERVICE_KEY가 비어 있습니다. 날씨가 대체값으로 추천됩니다.",

@@ -2,10 +2,10 @@
 
 from app.core.config import get_settings
 
-DEV_SEED_PREFIX = "dev-seed/"
+DEV_SEED_PREFIXES = ("dev-seed/", "dev-seed-sparse/")
 
 
 def can_view(member_id: int, key: str) -> bool:
     if key.startswith(f"clothing/{member_id}/"):
         return True
-    return get_settings().DEV_AUTH and key.startswith(DEV_SEED_PREFIX)
+    return get_settings().DEV_AUTH and key.startswith(DEV_SEED_PREFIXES)
