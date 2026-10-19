@@ -25,6 +25,8 @@ async def issue_session(db: AsyncSession, member_id: int) -> str:
 async def authenticate(db: AsyncSession, token: str | None) -> int:
     if not token:
         raise AuthRequiredError()
+    # 요청의 DB 세션을 서비스와 함께 쓰므로,
+    # 확인을 따로 끝내 두어야 서비스의 db.begin()과 부딪히지 않는다
     async with db.begin():
         member_id = await session_repo.find_active_session_member(db, hash_session_token(token))
     if member_id is None:
