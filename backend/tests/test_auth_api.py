@@ -11,6 +11,7 @@ from app.core.config import get_settings
 from app.core.db import get_db
 from app.main import app
 from app.services.auth import login as login_service
+from app.services.auth import session as session_service
 from app.services.auth.login import LoginResult
 from app.services.auth.providers import (
     AuthProviderNotConfiguredError,
@@ -201,3 +202,59 @@ def test_unconfigured_provider_is_503(client):
 
     assert res.status_code == 503
     assert res.json()["code"] == "AUTH_PROVIDER_NOT_CONFIGURED"
+
+
+@pytest.fixture
+def session_calls(monkeypatch):
+    calls = []
+
+    async def logout(db, token):
+        calls.append(("logout", token))
+
+    async def issue_session(db, member_id):
+        calls.append(("issue", member_id))
+        return "dev-token"
+
+    monkeypatch.setattr(session_service, "logout", logout)
+    monkeypatch.setattr(session_service, "issue_session", issue_session)
+    return calls
+
+
+def test_logout_revokes_session_and_clears_cookie(client, session_calls):
+    client.cookies.set(SESSION_COOKIE, "token-abc")
+
+    res = client.post("/auth/logout")
+
+    assert res.status_code == 204
+    assert session_calls == [("logout", "token-abc")]
+    assert _set_cookies(res)[SESSION_COOKIE]["max-age"] == "0"
+
+
+def test_logout_without_cookie_still_succeeds(client, session_calls):
+    res = client.post("/auth/logout")
+
+    assert res.status_code == 204
+    assert session_calls == [("logout", None)]
+
+
+def test_dev_login_is_hidden_unless_enabled(client, session_calls, monkeypatch):
+    monkeypatch.setenv("DEV_AUTH", "false")
+    get_settings.cache_clear()
+
+    res = client.get("/auth/dev-login")
+
+    assert res.status_code == 404
+    assert session_calls == []
+
+
+def test_dev_login_issues_session_for_dev_member(client, session_calls, monkeypatch):
+    monkeypatch.setenv("DEV_AUTH", "true")
+    monkeypatch.setenv("DEV_MEMBER_ID", "5")
+    get_settings.cache_clear()
+
+    res = client.get("/auth/dev-login")
+
+    assert res.status_code == 302
+    assert res.headers["location"] == f"{FRONTEND}/"
+    assert _set_cookies(res)[SESSION_COOKIE].value == "dev-token"
+    assert session_calls == [("issue", 5)]

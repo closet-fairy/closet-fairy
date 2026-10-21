@@ -4,7 +4,6 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.api.deps import get_bg_removal_worker, get_current_member_id
-from app.core.config import get_settings
 from app.core.db import get_db
 from app.main import app
 from app.schemas.clothing import (
@@ -119,26 +118,6 @@ def test_service_validation_error_keeps_code_and_message(client):
         "code": "CLOTHING_TOO_MANY_FILES",
         "message": "사진은 한 번에 20장까지 올릴 수 있습니다.",
     }
-
-
-def test_media_files_are_served(client):
-    media_root = get_settings().MEDIA_ROOT
-    target = media_root / "test-served.txt"
-    target.write_bytes(b"hello")
-    try:
-        res = client.get("/media/test-served.txt")
-    finally:
-        target.unlink()
-
-    assert res.status_code == 200
-    assert res.content == b"hello"
-
-
-def test_missing_media_file_is_not_found_in_error_format(client):
-    res = client.get("/media/clothing/0/missing.webp")
-
-    assert res.status_code == 404
-    assert res.json()["code"] == "NOT_FOUND"
 
 
 def test_upload_passes_worker_to_service(client, monkeypatch):

@@ -5,7 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 import app.api.recommendation_session as session_api
-from app.api.deps import get_now
+from app.api.deps import get_current_member_id, get_now
 from app.core.db import get_db
 from app.main import app
 from app.repositories import recommendation_session as session_repo
@@ -45,6 +45,7 @@ def client(monkeypatch):
     monkeypatch.setattr(session_api, "run_recommendation_pipeline", fake_run_pipeline)
     app.dependency_overrides[get_db] = fake_db
     app.dependency_overrides[get_now] = lambda: FIXED_NOW
+    app.dependency_overrides[get_current_member_id] = lambda: 1
     with TestClient(app) as c:
         c.calls = calls
         yield c

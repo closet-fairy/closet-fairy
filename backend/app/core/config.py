@@ -10,7 +10,7 @@ class Settings(BaseSettings):
 
     APP_NAME: str = "Outfit Recommendation API"
     ENV: str = "development"
-    DEV_AUTH: bool = True
+    DEV_AUTH: bool = False
     DATABASE_URL: str = "mysql+aiomysql://root:dev@localhost:3306/fashion"
     ANTHROPIC_API_KEY: str = ""
     KMA_SERVICE_KEY: str = ""

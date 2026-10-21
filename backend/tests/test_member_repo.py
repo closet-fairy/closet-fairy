@@ -41,3 +41,12 @@ async def test_sign_up_creates_setting_and_preference_rows():
 
     assert member_id == 42
     assert db.params[1:] == [{"member_id": 42}, {"member_id": 42}]
+
+
+async def test_session_lookup_and_revoke_bind_hash_as_hex():
+    db = _FakeDb()
+
+    await session_repo.find_active_session_member(db, b"\xab\xcd")
+    await session_repo.revoke_session(db, b"\x01")
+
+    assert db.params == [{"session_token_hash": "abcd"}, {"session_token_hash": "01"}]

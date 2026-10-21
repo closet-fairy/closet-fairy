@@ -2,12 +2,12 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
 
 from app.api import (
     auth,
     clothing,
     health,
+    media,
     recommendation_precheck,
     recommendation_session,
     weather,
@@ -38,16 +38,18 @@ app = FastAPI(
     responses={422: {"model": ErrorResponse, "description": "입력값 검증 실패"}},
 )
 
+AUTH_REQUIRED_RESPONSES = {401: {"model": ErrorResponse, "description": "로그인 필요"}}
+
 app.add_middleware(RequestIdMiddleware)
 register_exception_handlers(app)
 
 app.include_router(health.router)
-app.include_router(recommendation_precheck.router)
-app.include_router(recommendation_session.router)
+app.include_router(recommendation_precheck.router, responses=AUTH_REQUIRED_RESPONSES)
+app.include_router(recommendation_session.router, responses=AUTH_REQUIRED_RESPONSES)
 app.include_router(weather.router)
-app.include_router(clothing.router)
+app.include_router(clothing.router, responses=AUTH_REQUIRED_RESPONSES)
 app.include_router(auth.router)
+app.include_router(media.router)
 
 settings = get_settings()
 settings.MEDIA_ROOT.mkdir(parents=True, exist_ok=True)
-app.mount(settings.MEDIA_URL_PREFIX, StaticFiles(directory=settings.MEDIA_ROOT), name="media")

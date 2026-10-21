@@ -3,16 +3,19 @@
 from datetime import datetime
 
 from fastapi import Depends, Request
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import get_settings
+from app.core.db import get_db
+from app.services.auth import session as session_service
 from app.services.clothing_rate_limit import RequestRateLimiter, get_clothing_rate_limiter
 from app.services.weather.base_time import KST
 from app.workers.bg_removal_worker import BgRemovalWorker
 
 
-def get_current_member_id() -> int:
-    """인증이 붙기 전까지는 개발용 고정 회원. 인증 작업 때 이 함수만 교체하면 된다."""
-    return get_settings().DEV_MEMBER_ID
+async def get_current_member_id(request: Request, db: AsyncSession = Depends(get_db)) -> int:
+    return await session_service.authenticate(
+        db, request.cookies.get(session_service.SESSION_COOKIE)
+    )
 
 
 def get_now() -> datetime:

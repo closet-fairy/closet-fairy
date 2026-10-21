@@ -1,4 +1,4 @@
-"""로컬 폴더 이미지 저장소. main.py가 같은 폴더를 MEDIA_URL_PREFIX 경로로 내보낸다."""
+"""로컬 폴더 이미지 저장소. app/api/media.py가 로그인한 회원 본인의 파일만 내보낸다."""
 
 import asyncio
 from pathlib import Path
@@ -20,6 +20,9 @@ class LocalImageStorage:
 
     def url(self, key: str) -> str:
         return f"{self.url_prefix}/{key}"
+
+    def path(self, key: str) -> Path:
+        return self._path(key)
 
     def _path(self, key: str) -> Path:
         path = (self.root / key).resolve()
