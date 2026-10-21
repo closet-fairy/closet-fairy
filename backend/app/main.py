@@ -8,6 +8,7 @@ from app.api import (
     clothing,
     health,
     media,
+    member,
     recommendation_precheck,
     recommendation_session,
     weather,
@@ -50,6 +51,7 @@ app.include_router(weather.router)
 app.include_router(clothing.router, responses=AUTH_REQUIRED_RESPONSES)
 app.include_router(auth.router)
 app.include_router(media.router)
+app.include_router(member.router, responses=AUTH_REQUIRED_RESPONSES)
 
 settings = get_settings()
 settings.MEDIA_ROOT.mkdir(parents=True, exist_ok=True)
