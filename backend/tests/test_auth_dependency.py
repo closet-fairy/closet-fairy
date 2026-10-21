@@ -67,3 +67,17 @@ def test_valid_session_reaches_the_api_as_its_member(client, monkeypatch):
 
     assert res.status_code == 200
     assert received == [3]
+
+
+def test_openapi_documents_401_only_on_member_apis():
+    from app.main import app
+
+    paths = app.openapi()["paths"]
+    for path, operations in paths.items():
+        needs_login = path.startswith(("/clothing", "/recommendation"))
+        for operation in operations.values():
+            assert ("401" in operation["responses"]) == needs_login, path
+    response = paths["/clothing"]["get"]["responses"]["401"]
+    assert response["content"]["application/json"]["schema"] == {
+        "$ref": "#/components/schemas/ErrorResponse"
+    }
