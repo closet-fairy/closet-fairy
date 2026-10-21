@@ -43,4 +43,4 @@ JOIN member_setting_style mss
 SET ps.score_sum          = 5.00,
     ps.initial_bonus_at   = UTC_TIMESTAMP()
 WHERE ps.member_id         = @dev_member_id
-  AND ps.attribute_type_cd = 'style';
+  AND ps.attribute_type_cd = 'style';

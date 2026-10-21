@@ -28,4 +28,4 @@ docker exec -i closet-fairy-db mysql -uroot -pdev fashion < db/migrations/007_re
 echo "8/8 온보딩 완료 조건을 출생연도로..."
 docker exec -i closet-fairy-db mysql -uroot -pdev fashion < db/migrations/008_member_setting_onboarding_birth_year.sql
 
-echo "완료"
+echo "완료"
