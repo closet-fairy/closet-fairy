@@ -147,8 +147,11 @@ async def test_member_already_gone_is_auth_required(env):
     assert ("delete_member", MEMBER_ID) not in env.events
 
 
-async def test_unlink_failure_is_logged_and_withdrawal_completes(env, caplog):
-    provider = _Provider(env.events, revoke_error=OAuthProviderError("401"))
+@pytest.mark.parametrize(
+    "error", [OAuthProviderError("401"), RuntimeError("unexpected")], ids=["provider", "other"]
+)
+async def test_unlink_failure_is_logged_and_withdrawal_completes(env, caplog, error):
+    provider = _Provider(env.events, revoke_error=error)
 
     with caplog.at_level(logging.WARNING, logger="app.services.auth.withdrawal"):
         await _withdraw(env, provider=provider)

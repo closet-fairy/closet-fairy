@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.repositories import clothing as clothing_repo
 from app.repositories import member as member_repo
 from app.services.auth.crypto import hash_provider_user_id
-from app.services.auth.providers import OAuthProvider, OAuthProviderError
+from app.services.auth.providers import OAuthProvider
 from app.services.auth.session import AuthRequiredError
 from app.services.storage import ImageStorage
 
@@ -49,10 +49,11 @@ async def withdraw(
 
     try:
         await provider.revoke(identity.access_token)
-    except OAuthProviderError as e:
+    except Exception:
         logger.warning(
             "탈퇴 후 소셜 연결 해제 실패",
-            extra={"member_id": member_id, "provider_cd": provider.provider_cd, "reason": str(e)},
+            exc_info=True,
+            extra={"member_id": member_id, "provider_cd": provider.provider_cd},
         )
 
     try:

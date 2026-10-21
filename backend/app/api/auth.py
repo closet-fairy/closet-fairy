@@ -10,6 +10,8 @@ from app.api.deps import get_current_member_id
 from app.core.config import get_settings
 from app.core.db import get_db
 from app.core.errors import NotFoundError
+from app.schemas.auth import WithdrawalStarted
+from app.schemas.error import ErrorResponse
 from app.services.auth import login as login_service
 from app.services.auth import session as session_service
 from app.services.auth import withdrawal as withdrawal_service
@@ -104,26 +106,28 @@ async def finish_login(
     return response
 
 
-@router.get(
+@router.post(
     "/withdraw",
-    status_code=status.HTTP_302_FOUND,
-    response_class=RedirectResponse,
-    responses={503: {"description": "키 미설정"}},
+    response_model=WithdrawalStarted,
+    responses={
+        401: {"model": ErrorResponse, "description": "로그인 필요"},
+        503: {"model": ErrorResponse, "description": "키 미설정"},
+    },
 )
 async def start_withdrawal(
+    response: Response,
     db: AsyncSession = Depends(get_db),
     member_id: int = Depends(get_current_member_id),
-) -> RedirectResponse:
-    """탈퇴 전 본인 확인. 가입한 제공자로 다시 로그인시키고, 결과는 콜백에서 처리한다."""
+) -> WithdrawalStarted:
+    """탈퇴 전 본인 확인을 시작한다. 받은 주소로 이동해 가입한 소셜 계정으로 다시 로그인하면
+    콜백에서 탈퇴를 마친다."""
     provider_cd = await withdrawal_service.provider_cd_of(db, member_id)
     provider = get_oauth_provider(provider_cd)
     state = WITHDRAW_STATE_PREFIX + new_oauth_state()
-    response = RedirectResponse(
-        provider.authorize_url(state, _redirect_uri(provider_cd), reauthenticate=True),
-        status_code=status.HTTP_302_FOUND,
-    )
     _set_cookie(response, OAUTH_STATE_COOKIE, state, OAUTH_STATE_MAX_AGE_S)
-    return response
+    return WithdrawalStarted(
+        authorize_url=provider.authorize_url(state, _redirect_uri(provider_cd), reauthenticate=True)
+    )
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
@@ -203,7 +207,7 @@ def _withdrawal_failed(reason: str) -> RedirectResponse:
     return response
 
 
-def _set_cookie(response: RedirectResponse, name: str, value: str, max_age: int) -> None:
+def _set_cookie(response: Response, name: str, value: str, max_age: int) -> None:
     response.set_cookie(
         name,
         value,

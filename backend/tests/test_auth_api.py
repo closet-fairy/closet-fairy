@@ -303,15 +303,15 @@ def withdrawal_calls(client, monkeypatch):
 
 
 def _start_withdrawal(client) -> str:
-    res = client.get("/auth/withdraw")
+    res = client.post("/auth/withdraw")
     return _set_cookies(res)[OAUTH_STATE_COOKIE].value
 
 
 def test_withdrawal_starts_with_forced_relogin_at_members_provider(client, withdrawal_calls):
-    res = client.get("/auth/withdraw")
+    res = client.post("/auth/withdraw")
 
-    assert res.status_code == 302
-    query = parse_qs(urlparse(res.headers["location"]).query)
+    assert res.status_code == 200
+    query = parse_qs(urlparse(res.json()["authorize_url"]).query)
     state = _set_cookies(res)[OAUTH_STATE_COOKIE].value
     assert state.startswith("w.")
     assert query["state"] == [state]
@@ -320,10 +320,17 @@ def test_withdrawal_starts_with_forced_relogin_at_members_provider(client, withd
 
 
 def test_withdrawal_needs_login(client):
-    res = client.get("/auth/withdraw")
+    res = client.post("/auth/withdraw")
 
     assert res.status_code == 401
     assert res.json()["code"] == "AUTH_REQUIRED"
+
+
+def test_withdrawal_cannot_be_started_by_navigation(client, withdrawal_calls):
+    res = client.get("/auth/withdraw")
+
+    assert res.status_code == 405
+    assert OAUTH_STATE_COOKIE not in _set_cookies(res)
 
 
 def test_same_account_relogin_withdraws_and_clears_session(client, withdrawal_calls):
