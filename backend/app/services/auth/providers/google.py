@@ -9,6 +9,7 @@ from app.services.auth.providers.base import OAuthProviderError, ProviderIdentit
 AUTHORIZE_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 TOKEN_URL = "https://oauth2.googleapis.com/token"
 USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo"
+REVOKE_URL = "https://oauth2.googleapis.com/revoke"
 SCOPE = "openid profile"
 
 
@@ -27,7 +28,7 @@ class GoogleProvider:
         self._timeout = timeout
         self._transport = transport
 
-    def authorize_url(self, state: str, redirect_uri: str) -> str:
+    def authorize_url(self, state: str, redirect_uri: str, *, reauthenticate: bool = False) -> str:
         query = {
             "response_type": "code",
             "client_id": self._client_id,
@@ -35,6 +36,8 @@ class GoogleProvider:
             "scope": SCOPE,
             "state": state,
         }
+        if reauthenticate:
+            query["prompt"] = "select_account"
         return f"{AUTHORIZE_URL}?{urlencode(query)}"
 
     async def fetch_identity(self, code: str, redirect_uri: str) -> ProviderIdentity:
@@ -62,4 +65,18 @@ class GoogleProvider:
                 provider_user_id = str(profile["sub"])
         except (httpx.HTTPError, ValueError, KeyError, TypeError) as e:
             raise OAuthProviderError(f"Google 로그인 실패: {type(e).__name__}") from e
-        return ProviderIdentity(provider_user_id=provider_user_id, nickname=profile.get("name"))
+        return ProviderIdentity(
+            provider_user_id=provider_user_id,
+            nickname=profile.get("name"),
+            access_token=access_token,
+        )
+
+    async def revoke(self, access_token: str) -> None:
+        try:
+            async with httpx.AsyncClient(
+                timeout=self._timeout, transport=self._transport
+            ) as client:
+                response = await client.post(REVOKE_URL, data={"token": access_token})
+                response.raise_for_status()
+        except httpx.HTTPError as e:
+            raise OAuthProviderError(f"Google 토큰 폐기 실패: {type(e).__name__}") from e

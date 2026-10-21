@@ -417,3 +417,14 @@ async def test_lock_clothing_jobs_locks_only_job_rows_of_members_clothing():
     [(sql, params)] = db.executed
     assert "FOR UPDATE OF j" in sql
     assert params == {"member_id": 7, "clothing_id": 5}
+
+
+async def test_lock_member_clothing_jobs_locks_every_job_of_member_in_id_order():
+    db = _InsertDb()
+
+    await clothing_repo.lock_member_clothing_jobs(db, 7)
+
+    [(sql, params)] = db.executed
+    assert "FOR UPDATE OF j" in sql
+    assert "ORDER BY j.clothing_job_id" in sql
+    assert params == {"member_id": 7}

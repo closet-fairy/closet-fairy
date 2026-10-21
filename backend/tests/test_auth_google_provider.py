@@ -12,7 +12,12 @@ from app.services.auth.providers import (
     OAuthProviderError,
     get_oauth_provider,
 )
-from app.services.auth.providers.google import TOKEN_URL, USERINFO_URL, GoogleProvider
+from app.services.auth.providers.google import (
+    REVOKE_URL,
+    TOKEN_URL,
+    USERINFO_URL,
+    GoogleProvider,
+)
 
 REDIRECT_URI = "http://localhost:5173/api/auth/google/callback"
 VALID_KEY = base64.b64encode(bytes(32)).decode()
@@ -49,6 +54,8 @@ async def test_fetch_identity_exchanges_code_and_reads_profile():
 
     assert identity.provider_user_id == "1234567890"
     assert identity.nickname == "은석"
+    assert identity.access_token == "at"
+    assert "access_token" not in repr(identity)
     token_form = parse_qs(requests[0].content.decode())
     assert token_form["code"] == ["the-code"]
     assert token_form["redirect_uri"] == [REDIRECT_URI]
@@ -121,3 +128,38 @@ def test_configured_google_provider_is_returned(settings_env):
 def test_unknown_provider_is_not_found():
     with pytest.raises(AuthProviderNotFoundError):
         get_oauth_provider("naver")
+
+
+def test_reauthentication_asks_to_pick_account_again():
+    url = GoogleProvider("client-id", "secret", 5).authorize_url(
+        "st", REDIRECT_URI, reauthenticate=True
+    )
+
+    assert parse_qs(urlparse(url).query)["prompt"] == ["select_account"]
+
+
+async def test_revoke_posts_token_to_google():
+    requests = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200)
+
+    await _provider(handler).revoke("at")
+
+    assert str(requests[0].url) == REVOKE_URL
+    assert requests[0].method == "POST"
+    assert parse_qs(requests[0].content.decode()) == {"token": ["at"]}
+
+
+@pytest.mark.parametrize(
+    "handler",
+    [
+        lambda r: httpx.Response(400, json={"error": "invalid_token"}),
+        lambda r: (_ for _ in ()).throw(httpx.ConnectTimeout("timeout", request=r)),
+    ],
+    ids=["rejected", "network"],
+)
+async def test_revoke_failure_becomes_provider_error(handler):
+    with pytest.raises(OAuthProviderError):
+        await _provider(handler).revoke("at")

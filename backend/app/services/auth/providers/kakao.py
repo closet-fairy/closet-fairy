@@ -9,6 +9,7 @@ from app.services.auth.providers.base import OAuthProviderError, ProviderIdentit
 AUTHORIZE_URL = "https://kauth.kakao.com/oauth/authorize"
 TOKEN_URL = "https://kauth.kakao.com/oauth/token"
 USERINFO_URL = "https://kapi.kakao.com/v2/user/me"
+UNLINK_URL = "https://kapi.kakao.com/v1/user/unlink"
 SCOPE = "profile_nickname"
 
 
@@ -27,7 +28,7 @@ class KakaoProvider:
         self._timeout = timeout
         self._transport = transport
 
-    def authorize_url(self, state: str, redirect_uri: str) -> str:
+    def authorize_url(self, state: str, redirect_uri: str, *, reauthenticate: bool = False) -> str:
         query = {
             "response_type": "code",
             "client_id": self._rest_api_key,
@@ -35,6 +36,8 @@ class KakaoProvider:
             "scope": SCOPE,
             "state": state,
         }
+        if reauthenticate:
+            query["prompt"] = "login"
         return f"{AUTHORIZE_URL}?{urlencode(query)}"
 
     async def fetch_identity(self, code: str, redirect_uri: str) -> ProviderIdentity:
@@ -64,4 +67,18 @@ class KakaoProvider:
                 nickname = (account.get("profile") or {}).get("nickname")
         except (httpx.HTTPError, ValueError, KeyError, TypeError, AttributeError) as e:
             raise OAuthProviderError(f"카카오 로그인 실패: {type(e).__name__}") from e
-        return ProviderIdentity(provider_user_id=provider_user_id, nickname=nickname)
+        return ProviderIdentity(
+            provider_user_id=provider_user_id, nickname=nickname, access_token=access_token
+        )
+
+    async def revoke(self, access_token: str) -> None:
+        try:
+            async with httpx.AsyncClient(
+                timeout=self._timeout, transport=self._transport
+            ) as client:
+                response = await client.post(
+                    UNLINK_URL, headers={"Authorization": f"Bearer {access_token}"}
+                )
+                response.raise_for_status()
+        except httpx.HTTPError as e:
+            raise OAuthProviderError(f"카카오 연결 끊기 실패: {type(e).__name__}") from e

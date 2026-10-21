@@ -548,6 +548,22 @@ LOCK_CLOTHING_JOBS_SQL = text(
 )
 
 
+LOCK_MEMBER_CLOTHING_JOBS_SQL = text(
+    """
+    SELECT j.clothing_job_id
+    FROM clothing_job j
+    JOIN clothing c ON c.clothing_id = j.clothing_id
+    WHERE c.member_id = :member_id
+    ORDER BY j.clothing_job_id
+    FOR UPDATE OF j
+    """
+)
+
+
+async def lock_member_clothing_jobs(db: AsyncSession, member_id: int) -> None:
+    await db.execute(LOCK_MEMBER_CLOTHING_JOBS_SQL, {"member_id": member_id})
+
+
 async def lock_clothing_jobs(db: AsyncSession, member_id: int, clothing_id: int) -> None:
     # 워커는 작업 행 → 옷 순서로 잠근다.
     # 옷을 먼저 잠그는 쪽이 있으면 워커·삭제·재시도끼리 교착 상태가 된다

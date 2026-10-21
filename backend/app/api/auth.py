@@ -6,14 +6,18 @@ from fastapi import APIRouter, Depends, Request, Response, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import get_current_member_id
 from app.core.config import get_settings
 from app.core.db import get_db
 from app.core.errors import NotFoundError
 from app.services.auth import login as login_service
 from app.services.auth import session as session_service
+from app.services.auth import withdrawal as withdrawal_service
 from app.services.auth.crypto import new_oauth_state
 from app.services.auth.providers import OAuthProvider, OAuthProviderError, get_oauth_provider
-from app.services.auth.session import SESSION_COOKIE
+from app.services.auth.session import SESSION_COOKIE, AuthRequiredError
+from app.services.auth.withdrawal import WithdrawalAccountMismatchError
+from app.services.storage import ImageStorage, get_image_storage
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 logger = logging.getLogger(__name__)
@@ -25,6 +29,8 @@ SECONDS_PER_DAY = 24 * 60 * 60
 LOGIN_CANCELLED = "cancelled"
 LOGIN_INVALID_STATE = "invalid_state"
 LOGIN_FAILED = "failed"
+WITHDRAW_ACCOUNT_MISMATCH = "account_mismatch"
+WITHDRAW_STATE_PREFIX = "w."
 
 
 @router.get(
@@ -59,9 +65,12 @@ async def finish_login(
     error: str | None = None,
     provider: OAuthProvider = Depends(get_oauth_provider),
     db: AsyncSession = Depends(get_db),
+    storage: ImageStorage = Depends(get_image_storage),
 ) -> RedirectResponse:
+    withdrawing = (state or "").startswith(WITHDRAW_STATE_PREFIX)
+    failed = _withdrawal_failed if withdrawing else _login_failed
     if error is not None:
-        return _login_failed(LOGIN_CANCELLED if error == "access_denied" else LOGIN_FAILED)
+        return failed(LOGIN_CANCELLED if error == "access_denied" else LOGIN_FAILED)
     saved_state = request.cookies.get(OAUTH_STATE_COOKIE)
     if (
         not code
@@ -69,7 +78,9 @@ async def finish_login(
         or not saved_state
         or not secrets.compare_digest(state.encode(), saved_state.encode())
     ):
-        return _login_failed(LOGIN_INVALID_STATE)
+        return failed(LOGIN_INVALID_STATE)
+    if withdrawing:
+        return await _finish_withdrawal(request, provider_cd, provider, code, db, storage)
 
     try:
         result = await login_service.login_with_provider(
@@ -90,6 +101,28 @@ async def finish_login(
         get_settings().SESSION_TTL_DAYS * SECONDS_PER_DAY,
     )
     response.delete_cookie(OAUTH_STATE_COOKIE, path="/")
+    return response
+
+
+@router.get(
+    "/withdraw",
+    status_code=status.HTTP_302_FOUND,
+    response_class=RedirectResponse,
+    responses={503: {"description": "키 미설정"}},
+)
+async def start_withdrawal(
+    db: AsyncSession = Depends(get_db),
+    member_id: int = Depends(get_current_member_id),
+) -> RedirectResponse:
+    """탈퇴 전 본인 확인. 가입한 제공자로 다시 로그인시키고, 결과는 콜백에서 처리한다."""
+    provider_cd = await withdrawal_service.provider_cd_of(db, member_id)
+    provider = get_oauth_provider(provider_cd)
+    state = WITHDRAW_STATE_PREFIX + new_oauth_state()
+    response = RedirectResponse(
+        provider.authorize_url(state, _redirect_uri(provider_cd), reauthenticate=True),
+        status_code=status.HTTP_302_FOUND,
+    )
+    _set_cookie(response, OAUTH_STATE_COOKIE, state, OAUTH_STATE_MAX_AGE_S)
     return response
 
 
@@ -117,6 +150,37 @@ async def dev_login(db: AsyncSession = Depends(get_db)) -> RedirectResponse:
     return response
 
 
+async def _finish_withdrawal(
+    request: Request,
+    provider_cd: str,
+    provider: OAuthProvider,
+    code: str,
+    db: AsyncSession,
+    storage: ImageStorage,
+) -> RedirectResponse:
+    try:
+        member_id = await session_service.authenticate(db, request.cookies.get(SESSION_COOKIE))
+        await withdrawal_service.withdraw(
+            db, storage, provider, member_id, code, _redirect_uri(provider_cd)
+        )
+    except AuthRequiredError:
+        return _withdrawal_failed(LOGIN_FAILED)
+    except WithdrawalAccountMismatchError:
+        logger.warning("탈퇴 본인 확인 불일치", extra={"provider_cd": provider_cd})
+        return _withdrawal_failed(WITHDRAW_ACCOUNT_MISMATCH)
+    except OAuthProviderError as e:
+        logger.warning("탈퇴 재로그인 실패", extra={"provider_cd": provider_cd, "reason": str(e)})
+        return _withdrawal_failed(LOGIN_FAILED)
+    except Exception:
+        logger.exception("탈퇴 처리 중 오류", extra={"provider_cd": provider_cd})
+        return _withdrawal_failed(LOGIN_FAILED)
+
+    response = _redirect_to_frontend(f"/login?{urlencode({'withdrawn': 1})}")
+    response.delete_cookie(SESSION_COOKIE, path="/")
+    response.delete_cookie(OAUTH_STATE_COOKIE, path="/")
+    return response
+
+
 def _redirect_uri(provider_cd: str) -> str:
     base = get_settings().OAUTH_REDIRECT_BASE_URL.rstrip("/")
     return f"{base}/auth/{provider_cd}/callback"
@@ -129,6 +193,12 @@ def _redirect_to_frontend(path: str) -> RedirectResponse:
 
 def _login_failed(reason: str) -> RedirectResponse:
     response = _redirect_to_frontend(f"/login?{urlencode({'error': reason})}")
+    response.delete_cookie(OAUTH_STATE_COOKIE, path="/")
+    return response
+
+
+def _withdrawal_failed(reason: str) -> RedirectResponse:
+    response = _redirect_to_frontend(f"/my-info?{urlencode({'withdraw_error': reason})}")
     response.delete_cookie(OAUTH_STATE_COOKIE, path="/")
     return response
 

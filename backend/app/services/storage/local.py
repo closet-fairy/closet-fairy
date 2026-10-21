@@ -1,6 +1,7 @@
 """로컬 폴더 이미지 저장소. app/api/media.py가 로그인한 회원 본인의 파일만 내보낸다."""
 
 import asyncio
+import shutil
 from pathlib import Path
 
 
@@ -17,6 +18,11 @@ class LocalImageStorage:
 
     async def delete(self, key: str) -> None:
         await asyncio.to_thread(self._path(key).unlink, missing_ok=True)
+
+    async def delete_prefix(self, prefix: str) -> None:
+        path = self._path(prefix.rstrip("/"))
+        if await asyncio.to_thread(path.is_dir):
+            await asyncio.to_thread(shutil.rmtree, path)
 
     def url(self, key: str) -> str:
         return f"{self.url_prefix}/{key}"
