@@ -6,7 +6,6 @@ from urllib.parse import parse_qs, urlparse
 import httpx
 import pytest
 
-from app.core.config import get_settings
 from app.services.auth.providers import (
     AuthProviderNotConfiguredError,
     OAuthProviderError,
@@ -124,17 +123,6 @@ async def test_network_failure_becomes_provider_error():
 
     with pytest.raises(OAuthProviderError):
         await _provider(handler).fetch_identity("c", REDIRECT_URI)
-
-
-@pytest.fixture
-def settings_env(monkeypatch):
-    def apply(**values):
-        for key, value in values.items():
-            monkeypatch.setenv(key, value)
-        get_settings.cache_clear()
-
-    yield apply
-    get_settings.cache_clear()
 
 
 @pytest.mark.parametrize(
