@@ -1,5 +1,10 @@
 """회원·세션 리포지토리 테스트. DB는 가짜로 바꿔 끼운다."""
 
+from datetime import datetime
+from types import SimpleNamespace
+
+import pytest
+
 from app.repositories import auth_session as session_repo
 from app.repositories import member as member_repo
 
@@ -7,17 +12,23 @@ from app.repositories import member as member_repo
 class _Result:
     lastrowid = 42
 
+    def __init__(self, row=None):
+        self._row = row
+
     def first(self):
-        return None
+        return self._row
 
 
 class _FakeDb:
-    def __init__(self):
+    def __init__(self, row=None):
+        self.row = row
+        self.statements = []
         self.params = []
 
     async def execute(self, stmt, params):
+        self.statements.append(stmt)
         self.params.append(params)
-        return _Result()
+        return _Result(self.row)
 
 
 async def test_binary_values_are_bound_as_hex_text():
@@ -50,3 +61,32 @@ async def test_session_lookup_and_revoke_bind_hash_as_hex():
     await session_repo.revoke_session(db, b"\x01")
 
     assert db.params == [{"session_token_hash": "abcd"}, {"session_token_hash": "01"}]
+
+
+@pytest.mark.parametrize(("flag", "expected"), [(1, True), (0, False)])
+async def test_member_profile_maps_row(flag, expected):
+    created_at = datetime(2026, 10, 21, 16, 50)
+    db = _FakeDb(
+        SimpleNamespace(
+            nickname="은석", provider_cd="kakao", created_at=created_at, is_onboarded=flag
+        )
+    )
+
+    profile = await member_repo.find_member_profile(db, 7)
+
+    assert profile == member_repo.MemberProfile("은석", "kakao", created_at, expected)
+    assert db.statements == [member_repo.FIND_MEMBER_PROFILE_SQL]
+    assert db.params == [{"member_id": 7}]
+
+
+async def test_missing_member_profile_is_none():
+    assert await member_repo.find_member_profile(_FakeDb(), 7) is None
+
+
+async def test_update_nickname_binds_member_and_nickname():
+    db = _FakeDb()
+
+    await member_repo.update_nickname(db, 7, "새 닉네임")
+
+    assert db.statements == [member_repo.UPDATE_NICKNAME_SQL]
+    assert db.params == [{"member_id": 7, "nickname": "새 닉네임"}]

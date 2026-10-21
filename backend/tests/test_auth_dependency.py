@@ -74,7 +74,7 @@ def test_openapi_documents_401_only_on_member_apis():
 
     paths = app.openapi()["paths"]
     for path, operations in paths.items():
-        needs_login = path.startswith(("/clothing", "/recommendation"))
+        needs_login = path.startswith(("/clothing", "/recommendation", "/members"))
         for operation in operations.values():
             assert ("401" in operation["responses"]) == needs_login, path
     response = paths["/clothing"]["get"]["responses"]["401"]

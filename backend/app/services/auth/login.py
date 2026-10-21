@@ -8,11 +8,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.repositories import member as member_repo
 from app.repositories.member import MemberLogin
+from app.schemas.member import NICKNAME_MAX_LENGTH
 from app.services.auth.crypto import encrypt_provider_user_id, hash_provider_user_id
 from app.services.auth.providers import OAuthProvider, ProviderIdentity
 from app.services.auth.session import issue_session
 
-NICKNAME_MAX_LENGTH = 30
 DEFAULT_NICKNAME_PREFIX = "옷장요정"
 MYSQL_DUPLICATE_ENTRY = 1062
 

@@ -1,6 +1,7 @@
 """회원 조회와 가입 (FR-LOGIN-04, E-3)."""
 
 from dataclasses import dataclass
+from datetime import datetime
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +13,14 @@ class MemberLogin:
     is_onboarded: bool
 
 
+@dataclass(frozen=True)
+class MemberProfile:
+    nickname: str
+    provider_cd: str
+    created_at: datetime
+    is_onboarded: bool
+
+
 FIND_MEMBER_BY_PROVIDER_SQL = text(
     """
     SELECT m.member_id, s.onboarded_at IS NOT NULL AS is_onboarded
@@ -19,6 +28,21 @@ FIND_MEMBER_BY_PROVIDER_SQL = text(
     LEFT JOIN member_setting s ON s.member_id = m.member_id
     WHERE m.provider_cd = :provider_cd
       AND m.provider_user_id_hash = UNHEX(:provider_user_id_hash)
+    """
+)
+
+FIND_MEMBER_PROFILE_SQL = text(
+    """
+    SELECT m.nickname, m.provider_cd, m.created_at, s.onboarded_at IS NOT NULL AS is_onboarded
+    FROM member m
+    LEFT JOIN member_setting s ON s.member_id = m.member_id
+    WHERE m.member_id = :member_id
+    """
+)
+
+UPDATE_NICKNAME_SQL = text(
+    """
+    UPDATE member SET nickname = :nickname WHERE member_id = :member_id
     """
 )
 
@@ -78,3 +102,20 @@ async def insert_member(
     await db.execute(INSERT_MEMBER_SETTING_SQL, {"member_id": member_id})
     await db.execute(INSERT_INITIAL_PREFERENCE_SCORES_SQL, {"member_id": member_id})
     return member_id
+
+
+async def find_member_profile(db: AsyncSession, member_id: int) -> MemberProfile | None:
+    result = await db.execute(FIND_MEMBER_PROFILE_SQL, {"member_id": member_id})
+    row = result.first()
+    if row is None:
+        return None
+    return MemberProfile(
+        nickname=row.nickname,
+        provider_cd=row.provider_cd,
+        created_at=row.created_at,
+        is_onboarded=bool(row.is_onboarded),
+    )
+
+
+async def update_nickname(db: AsyncSession, member_id: int, nickname: str) -> None:
+    await db.execute(UPDATE_NICKNAME_SQL, {"member_id": member_id, "nickname": nickname})
