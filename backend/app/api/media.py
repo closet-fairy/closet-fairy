@@ -31,7 +31,7 @@ async def get_media(
         raise NotFoundError()
     try:
         stat_result = await asyncio.to_thread(path.stat)
-    except FileNotFoundError as e:
+    except OSError as e:
         raise NotFoundError() from e
     if not stat.S_ISREG(stat_result.st_mode):
         raise NotFoundError()

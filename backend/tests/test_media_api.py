@@ -73,15 +73,36 @@ def test_other_members_image_is_not_found(client):
         f"/media/clothing/{MEMBER_ID}/%2E%2E%2F99%2Ftest-other.webp",
         f"/media/clothing/{MEMBER_ID}/%2e%2e/%2e%2e/%2e%2e/etc/passwd",
         f"/media/clothing/{MEMBER_ID}/",
+        f"/media/clothing/{MEMBER_ID}/test-own.webp/child.webp",
+        f"/media/clothing/{MEMBER_ID}/{'a' * 300}.webp",
     ],
-    ids=["missing", "dot-dot", "encoded-dot-dot", "encoded-slash", "outside-root", "directory"],
+    ids=[
+        "missing",
+        "dot-dot",
+        "encoded-dot-dot",
+        "encoded-slash",
+        "outside-root",
+        "directory",
+        "under-a-file",
+        "name-too-long",
+    ],
 )
 def test_missing_or_escaping_paths_are_not_found(client, path):
     client.put_image("clothing/99/test-other.webp")
+    client.put_image(f"clothing/{MEMBER_ID}/test-own.webp")
 
     res = client.get(path)
 
     assert res.status_code == 404
+
+
+def test_essential_item_images_are_shared(client):
+    client.put_image("essential/test-21.png", b"shared")
+
+    res = client.get("/media/essential/test-21.png")
+
+    assert res.status_code == 200
+    assert res.content == b"shared"
 
 
 @pytest.mark.parametrize("folder", ["dev-seed", "dev-seed-sparse"])
