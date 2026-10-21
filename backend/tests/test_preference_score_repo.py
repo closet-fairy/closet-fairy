@@ -65,3 +65,19 @@ async def test_update_scores_skips_empty():
     await score_repo.update_scores(db, [])
 
     assert db.executed == []
+
+
+async def test_add_style_bonus_only_touches_given_styles_of_member():
+    db = _FakeDb()
+
+    await score_repo.add_style_bonus(db, 3, ("minimal", "chic"), Decimal("5.00"), Decimal("60.00"))
+
+    sql, params = db.executed[0]
+    assert "attribute_type_cd = 'style'" in sql
+    assert "LEAST(score_sum + :bonus, :max_score)" in sql
+    assert params == {
+        "member_id": 3,
+        "style_cds": ["minimal", "chic"],
+        "bonus": Decimal("5.00"),
+        "max_score": Decimal("60.00"),
+    }

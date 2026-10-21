@@ -11,12 +11,14 @@ SET @dev_member_id = LAST_INSERT_ID();
 
 
 INSERT INTO member_setting
-  (member_id, temperature_sensitivity_cd, birth_year, gender_cd, onboarded_at)
+  (member_id, temperature_sensitivity_cd, birth_year, gender_cd,
+   initial_style_bonus_at, onboarded_at)
 VALUES (
   @dev_member_id,
   'heat_sensitive',
   1999,
   'unisex',
+  UTC_TIMESTAMP(),
   UTC_TIMESTAMP()
 );
 
@@ -41,4 +43,4 @@ JOIN member_setting_style mss
 SET ps.score_sum          = 5.00,
     ps.initial_bonus_at   = UTC_TIMESTAMP()
 WHERE ps.member_id         = @dev_member_id
-  AND ps.attribute_type_cd = 'style';
+  AND ps.attribute_type_cd = 'style';

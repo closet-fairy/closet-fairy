@@ -2,7 +2,7 @@ from collections.abc import Sequence
 from decimal import Decimal
 from typing import NamedTuple
 
-from sqlalchemy import text
+from sqlalchemy import bindparam, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -105,3 +105,33 @@ async def update_scores(db: AsyncSession, updates: Sequence[ScoreUpdate]) -> Non
     if not updates:
         return
     await db.execute(UPDATE_SCORE_SQL, [u._asdict() for u in updates])
+
+
+ADD_STYLE_BONUS_SQL = text(
+    """
+    UPDATE preference_score
+    SET score_sum = LEAST(score_sum + :bonus, :max_score),
+        initial_bonus_at = UTC_TIMESTAMP()
+    WHERE member_id = :member_id
+      AND attribute_type_cd = 'style'
+      AND attribute_value IN :style_cds
+    """
+).bindparams(bindparam("style_cds", expanding=True))
+
+
+async def add_style_bonus(
+    db: AsyncSession,
+    member_id: int,
+    style_cds: Sequence[str],
+    bonus: Decimal,
+    max_score: Decimal,
+) -> None:
+    await db.execute(
+        ADD_STYLE_BONUS_SQL,
+        {
+            "member_id": member_id,
+            "style_cds": list(style_cds),
+            "bonus": bonus,
+            "max_score": max_score,
+        },
+    )

@@ -27,12 +27,14 @@ DELETE FROM member_setting WHERE member_id = @sparse_member_id;
 
 
 INSERT INTO member_setting
-  (member_id, temperature_sensitivity_cd, birth_year, gender_cd, onboarded_at)
+  (member_id, temperature_sensitivity_cd, birth_year, gender_cd,
+   initial_style_bonus_at, onboarded_at)
 VALUES (
   @sparse_member_id,
   'normal',
   2000,
   'unisex',
+  UTC_TIMESTAMP(),
   UTC_TIMESTAMP()
 );
 
