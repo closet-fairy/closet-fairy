@@ -19,6 +19,8 @@ class Settings(BaseSettings):
 
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
+    KAKAO_REST_API_KEY: str = ""
+    KAKAO_CLIENT_SECRET: str = ""
     OAUTH_REDIRECT_BASE_URL: str = "http://localhost:5173/api"
     OAUTH_TIMEOUT_S: float = 10.0
     FRONTEND_BASE_URL: str = "http://localhost:5173"
