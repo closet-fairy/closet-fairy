@@ -16,3 +16,16 @@ def _fresh_clothing_rate_limiter():
     get_clothing_rate_limiter.cache_clear()
     yield
     get_clothing_rate_limiter.cache_clear()
+
+
+@pytest.fixture
+def settings_env(monkeypatch):
+    from app.core.config import get_settings
+
+    def apply(**values):
+        for key, value in values.items():
+            monkeypatch.setenv(key, value)
+        get_settings.cache_clear()
+
+    yield apply
+    get_settings.cache_clear()

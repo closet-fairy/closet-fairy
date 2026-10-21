@@ -7,6 +7,7 @@ from app.core.errors import AppError, NotFoundError
 from app.services.auth.crypto import EncryptionKeyError, check_encryption_key
 from app.services.auth.providers.base import OAuthProvider, OAuthProviderError, ProviderIdentity
 from app.services.auth.providers.google import GoogleProvider
+from app.services.auth.providers.kakao import KakaoProvider
 
 __all__ = [
     "OAuthProvider",
@@ -39,6 +40,13 @@ def get_oauth_provider(provider_cd: str) -> OAuthProvider:
         _ensure_encryption_key()
         return GoogleProvider(
             settings.GOOGLE_CLIENT_ID, settings.GOOGLE_CLIENT_SECRET, settings.OAUTH_TIMEOUT_S
+        )
+    if provider_cd == KakaoProvider.provider_cd:
+        if not settings.KAKAO_REST_API_KEY or not settings.KAKAO_CLIENT_SECRET:
+            raise AuthProviderNotConfiguredError()
+        _ensure_encryption_key()
+        return KakaoProvider(
+            settings.KAKAO_REST_API_KEY, settings.KAKAO_CLIENT_SECRET, settings.OAUTH_TIMEOUT_S
         )
     raise AuthProviderNotFoundError()
 
