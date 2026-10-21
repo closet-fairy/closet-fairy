@@ -1,4 +1,4 @@
-"""개인 설정 조회 (REC-07). 온보딩 전이면 행이 없을 수 있다."""
+"""개인 설정 조회·저장 (REC-07). 가입 시 행이 함께 생기므로 회원이 있으면 행도 있다."""
 
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -34,9 +34,11 @@ SELECT_SETTING_SQL = text(
 
 SELECT_STYLES_SQL = text(
     """
-    SELECT style_cd
-    FROM member_setting_style
-    WHERE member_setting_id = :member_setting_id
+    SELECT mss.style_cd
+    FROM member_setting_style mss
+    JOIN style s ON s.style_cd = mss.style_cd
+    WHERE mss.member_setting_id = :member_setting_id
+    ORDER BY s.display_seq
     """
 )
 

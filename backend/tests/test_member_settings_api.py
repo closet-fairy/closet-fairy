@@ -1,8 +1,10 @@
 """개인 설정·온보딩 API 테스트. 리포지토리는 가짜로 바꿔 끼운다."""
 
+import logging
 from datetime import datetime
 from decimal import Decimal
 from types import SimpleNamespace
+from typing import get_args
 
 import pytest
 from fastapi.testclient import TestClient
@@ -13,11 +15,14 @@ from app.main import app
 from app.repositories import member_setting as setting_repo
 from app.repositories import preference_score as score_repo
 from app.repositories.member_setting import MemberSettingDetail
+from app.repositories.preference_score import ScoreRow
+from app.schemas.codes import StyleCd
 from app.services.weather.base_time import KST
 
 MEMBER_ID = 7
 SETTING_ID = 70
 NOW = datetime(2026, 10, 22, 2, 0, tzinfo=KST)
+STYLE_ORDER = list(get_args(StyleCd))
 
 
 class _Transaction:
@@ -45,6 +50,7 @@ def client(monkeypatch):
         bonus_claimed=False,
         locked=[],
         bonuses=[],
+        score_styles=list(STYLE_ORDER),
     )
 
     async def find_setting_detail(db, member_id):
@@ -56,7 +62,7 @@ def client(monkeypatch):
         )
 
     async def get_preferred_styles(db, member_setting_id):
-        return list(r.style_cds)
+        return sorted(r.style_cds, key=STYLE_ORDER.index)
 
     async def update_setting(db, member_setting_id, birth_year, temperature, gender):
         assert member_setting_id == SETTING_ID
@@ -74,7 +80,9 @@ def client(monkeypatch):
 
     async def lock_member_scores(db, member_id):
         r.locked.append(member_id)
-        return []
+        return [
+            ScoreRow(i, "style", cd, Decimal(0), Decimal(0)) for i, cd in enumerate(r.score_styles)
+        ]
 
     async def add_style_bonus(db, member_id, style_cds, bonus, max_score):
         r.bonuses.append((member_id, list(style_cds), bonus, max_score))
@@ -136,7 +144,7 @@ def test_all_fields_are_saved(client):
             "birth_year": 2000,
             "temperature_sensitivity_cd": "cold_sensitive",
             "gender_cd": "female",
-            "style_cds": ["minimal", "chic"],
+            "style_cds": ["chic", "minimal"],
         },
     )
 
@@ -211,6 +219,21 @@ def test_first_styles_get_bonus_once(client):
     client.put("/members/me/settings", json={"birth_year": 1999, "style_cds": ["chic"]})
 
     assert len(client.repo.bonuses) == 1
+
+
+def test_styles_without_score_row_are_logged_and_others_still_get_bonus(client, caplog):
+    client.repo.score_styles = ["minimal"]
+
+    with caplog.at_level(logging.WARNING, logger="app.services.member_settings"):
+        client.put(
+            "/members/me/settings", json={"birth_year": 1999, "style_cds": ["minimal", "chic"]}
+        )
+
+    [record] = [r for r in caplog.records if r.name == "app.services.member_settings"]
+    assert record.missing_styles == ["chic"]
+    assert client.repo.bonuses == [
+        (MEMBER_ID, ["minimal", "chic"], Decimal("5.00"), Decimal("60.00"))
+    ]
 
 
 def test_bonus_waits_until_styles_are_first_chosen(client):

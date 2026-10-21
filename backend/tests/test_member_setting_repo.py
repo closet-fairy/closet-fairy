@@ -97,3 +97,20 @@ async def test_style_bonus_is_claimed_only_when_row_changes(rowcount, claimed):
     statement, params = db.executed[0]
     assert "initial_style_bonus_at IS NULL" in str(statement)
     assert params == {"member_setting_id": 70}
+
+
+async def test_preferred_styles_follow_style_display_order():
+    class _Rows:
+        def all(self):
+            return [SimpleNamespace(style_cd="minimal"), SimpleNamespace(style_cd="chic")]
+
+    class _Db:
+        async def execute(self, statement, params):
+            self.statement, self.params = statement, params
+            return _Rows()
+
+    db = _Db()
+
+    assert await setting_repo.get_preferred_styles(db, 70) == ["minimal", "chic"]
+    assert "ORDER BY s.display_seq" in str(db.statement)
+    assert db.params == {"member_setting_id": 70}

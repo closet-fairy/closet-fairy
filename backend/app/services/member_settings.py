@@ -1,5 +1,6 @@
 """개인 설정과 온보딩 (FR-ONBOARD-05, FR-ONBOARD-09-1, FR-PREF-06, FR-PREF-09, NFR-ONBOARD-01)."""
 
+import logging
 from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,6 +12,8 @@ from app.repositories import preference_score as score_repo
 from app.repositories.member_setting import MemberSettingDetail
 from app.schemas.member import MemberSettings, MemberSettingsUpdate
 from app.services.auth.session import AuthRequiredError
+
+logger = logging.getLogger(__name__)
 
 MIN_AGE = 14
 DEFAULT_GENDER_CD = "unisex"
@@ -46,7 +49,15 @@ async def save_member_settings(
         await setting_repo.replace_styles(db, setting.member_setting_id, style_cds)
         if style_cds and await setting_repo.claim_style_bonus(db, setting.member_setting_id):
             settings = get_settings()
-            await score_repo.lock_member_scores(db, member_id)
+            scores = await score_repo.lock_member_scores(db, member_id)
+            missing = set(style_cds) - {
+                r.attribute_value for r in scores if r.attribute_type_cd == "style"
+            }
+            if missing:
+                logger.warning(
+                    "선호 점수 행이 없는 스타일은 초기 보너스에서 빠짐",
+                    extra={"member_id": member_id, "missing_styles": sorted(missing)},
+                )
             await score_repo.add_style_bonus(
                 db,
                 member_id,
