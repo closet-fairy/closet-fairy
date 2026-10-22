@@ -21,6 +21,12 @@ class MemberProfile:
     is_onboarded: bool
 
 
+@dataclass(frozen=True)
+class MemberAccount:
+    provider_cd: str
+    provider_user_id_hash: bytes
+
+
 FIND_MEMBER_BY_PROVIDER_SQL = text(
     """
     SELECT m.member_id, s.onboarded_at IS NOT NULL AS is_onboarded
@@ -37,6 +43,18 @@ FIND_MEMBER_PROFILE_SQL = text(
     FROM member m
     LEFT JOIN member_setting s ON s.member_id = m.member_id
     WHERE m.member_id = :member_id
+    """
+)
+
+FIND_MEMBER_ACCOUNT_SQL = text(
+    """
+    SELECT provider_cd, provider_user_id_hash FROM member WHERE member_id = :member_id
+    """
+)
+
+DELETE_MEMBER_SQL = text(
+    """
+    DELETE FROM member WHERE member_id = :member_id
     """
 )
 
@@ -119,3 +137,17 @@ async def find_member_profile(db: AsyncSession, member_id: int) -> MemberProfile
 
 async def update_nickname(db: AsyncSession, member_id: int, nickname: str) -> None:
     await db.execute(UPDATE_NICKNAME_SQL, {"member_id": member_id, "nickname": nickname})
+
+
+async def find_member_account(db: AsyncSession, member_id: int) -> MemberAccount | None:
+    result = await db.execute(FIND_MEMBER_ACCOUNT_SQL, {"member_id": member_id})
+    row = result.first()
+    if row is None:
+        return None
+    return MemberAccount(
+        provider_cd=row.provider_cd, provider_user_id_hash=bytes(row.provider_user_id_hash)
+    )
+
+
+async def delete_member(db: AsyncSession, member_id: int) -> None:
+    await db.execute(DELETE_MEMBER_SQL, {"member_id": member_id})

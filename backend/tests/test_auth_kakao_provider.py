@@ -11,7 +11,12 @@ from app.services.auth.providers import (
     OAuthProviderError,
     get_oauth_provider,
 )
-from app.services.auth.providers.kakao import TOKEN_URL, USERINFO_URL, KakaoProvider
+from app.services.auth.providers.kakao import (
+    TOKEN_URL,
+    UNLINK_URL,
+    USERINFO_URL,
+    KakaoProvider,
+)
 
 REDIRECT_URI = "http://localhost:5173/api/auth/kakao/callback"
 VALID_KEY = base64.b64encode(bytes(32)).decode()
@@ -56,6 +61,7 @@ async def test_fetch_identity_exchanges_code_with_secret_and_reads_member_number
 
     assert identity.provider_user_id == "4012345678"
     assert identity.nickname == "은석"
+    assert identity.access_token == "at"
     token_form = parse_qs(requests[0].content.decode())
     assert token_form == {
         "grant_type": ["authorization_code"],
@@ -156,3 +162,38 @@ def test_configured_kakao_provider_is_returned(settings_env):
     )
 
     assert get_oauth_provider("kakao").provider_cd == "kakao"
+
+
+def test_reauthentication_shows_kakao_login_again():
+    url = KakaoProvider("rest-key", "secret", 5).authorize_url(
+        "st", REDIRECT_URI, reauthenticate=True
+    )
+
+    assert parse_qs(urlparse(url).query)["prompt"] == ["login"]
+
+
+async def test_revoke_unlinks_with_access_token():
+    requests = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, json={"id": 4012345678})
+
+    await _provider(handler).revoke("at")
+
+    assert str(requests[0].url) == UNLINK_URL
+    assert requests[0].method == "POST"
+    assert requests[0].headers["Authorization"] == "Bearer at"
+
+
+@pytest.mark.parametrize(
+    "handler",
+    [
+        lambda r: httpx.Response(401, json={"code": -401}),
+        lambda r: (_ for _ in ()).throw(httpx.ConnectTimeout("timeout", request=r)),
+    ],
+    ids=["rejected", "network"],
+)
+async def test_revoke_failure_becomes_provider_error(handler):
+    with pytest.raises(OAuthProviderError):
+        await _provider(handler).revoke("at")

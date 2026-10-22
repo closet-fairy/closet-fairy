@@ -1,23 +1,29 @@
 """로그인 API 테스트. 제공자와 로그인 서비스는 가짜로 바꿔 끼운다."""
 
 from http.cookies import SimpleCookie
+from types import SimpleNamespace
 from urllib.parse import parse_qs, urlparse
 
 import pytest
 from fastapi.testclient import TestClient
 
+from app.api import auth as auth_api
 from app.api.auth import OAUTH_STATE_COOKIE, SESSION_COOKIE
+from app.api.deps import get_current_member_id
 from app.core.config import get_settings
 from app.core.db import get_db
 from app.main import app
 from app.services.auth import login as login_service
 from app.services.auth import session as session_service
+from app.services.auth import withdrawal as withdrawal_service
 from app.services.auth.login import LoginResult
 from app.services.auth.providers import (
     AuthProviderNotConfiguredError,
     OAuthProviderError,
     get_oauth_provider,
 )
+from app.services.auth.session import AuthRequiredError
+from app.services.auth.withdrawal import WithdrawalAccountMismatchError
 
 FRONTEND = "http://front.test"
 REDIRECT_BASE = "http://front.test/api"
@@ -258,3 +264,144 @@ def test_dev_login_issues_session_for_dev_member(client, session_calls, monkeypa
     assert res.headers["location"] == f"{FRONTEND}/"
     assert _set_cookies(res)[SESSION_COOKIE].value == "dev-token"
     assert session_calls == [("issue", 5)]
+
+
+class _WithdrawProvider:
+    provider_cd = "kakao"
+
+    def authorize_url(self, state, redirect_uri, *, reauthenticate=False):
+        return (
+            f"https://kauth.example/auth?state={state}&redirect_uri={redirect_uri}"
+            f"&reauth={reauthenticate}"
+        )
+
+
+@pytest.fixture
+def withdrawal_calls(client, monkeypatch):
+    calls = SimpleNamespace(withdrawn=[], member_id=3, error=None)
+
+    async def provider_cd_of(db, member_id):
+        return "kakao"
+
+    async def authenticate(db, token):
+        if token != "session-token":
+            raise AuthRequiredError()
+        return calls.member_id
+
+    async def withdraw(db, storage, provider, member_id, code, redirect_uri):
+        if calls.error:
+            raise calls.error
+        calls.withdrawn.append((provider.provider_cd, member_id, code, redirect_uri))
+
+    monkeypatch.setattr(withdrawal_service, "provider_cd_of", provider_cd_of)
+    monkeypatch.setattr(withdrawal_service, "withdraw", withdraw)
+    monkeypatch.setattr(session_service, "authenticate", authenticate)
+    monkeypatch.setattr(auth_api, "get_oauth_provider", lambda provider_cd: _WithdrawProvider())
+    app.dependency_overrides[get_oauth_provider] = _WithdrawProvider
+    app.dependency_overrides[get_current_member_id] = lambda: calls.member_id
+    return calls
+
+
+def _start_withdrawal(client) -> str:
+    res = client.post("/auth/withdraw")
+    return _set_cookies(res)[OAUTH_STATE_COOKIE].value
+
+
+def test_withdrawal_starts_with_forced_relogin_at_members_provider(client, withdrawal_calls):
+    res = client.post("/auth/withdraw")
+
+    assert res.status_code == 200
+    query = parse_qs(urlparse(res.json()["authorize_url"]).query)
+    state = _set_cookies(res)[OAUTH_STATE_COOKIE].value
+    assert state.startswith("w.")
+    assert query["state"] == [state]
+    assert query["redirect_uri"] == [f"{REDIRECT_BASE}/auth/kakao/callback"]
+    assert query["reauth"] == ["True"]
+
+
+def test_withdrawal_needs_login(client):
+    res = client.post("/auth/withdraw")
+
+    assert res.status_code == 401
+    assert res.json()["code"] == "AUTH_REQUIRED"
+
+
+def test_withdrawal_cannot_be_started_by_navigation(client, withdrawal_calls):
+    res = client.get("/auth/withdraw")
+
+    assert res.status_code == 405
+    assert OAUTH_STATE_COOKIE not in _set_cookies(res)
+
+
+def test_same_account_relogin_withdraws_and_clears_session(client, withdrawal_calls):
+    state = _start_withdrawal(client)
+    client.cookies.set(SESSION_COOKIE, "session-token")
+
+    res = client.get("/auth/kakao/callback", params={"code": "c1", "state": state})
+
+    assert res.headers["location"] == f"{FRONTEND}/login?withdrawn=1"
+    cookies = _set_cookies(res)
+    assert cookies[SESSION_COOKIE]["max-age"] == "0"
+    assert cookies[OAUTH_STATE_COOKIE]["max-age"] == "0"
+    assert withdrawal_calls.withdrawn == [
+        ("kakao", 3, "c1", f"{REDIRECT_BASE}/auth/kakao/callback")
+    ]
+    assert client.calls == []
+
+
+@pytest.mark.parametrize(
+    ("error", "reason"),
+    [
+        (WithdrawalAccountMismatchError(), "account_mismatch"),
+        (OAuthProviderError("boom"), "failed"),
+        (ConnectionError("db gone"), "failed"),
+    ],
+    ids=["other-account", "provider", "unexpected"],
+)
+def test_withdrawal_failure_keeps_account(client, withdrawal_calls, error, reason):
+    withdrawal_calls.error = error
+    state = _start_withdrawal(client)
+    client.cookies.set(SESSION_COOKIE, "session-token")
+
+    res = client.get("/auth/kakao/callback", params={"code": "c1", "state": state})
+
+    assert res.headers["location"] == f"{FRONTEND}/my-info?withdraw_error={reason}"
+    assert SESSION_COOKIE not in _set_cookies(res)
+
+
+def test_withdrawal_without_session_is_failed(client, withdrawal_calls):
+    state = _start_withdrawal(client)
+
+    res = client.get("/auth/kakao/callback", params={"code": "c1", "state": state})
+
+    assert res.headers["location"] == f"{FRONTEND}/my-info?withdraw_error=failed"
+    assert withdrawal_calls.withdrawn == []
+
+
+def test_cancelled_withdrawal_returns_to_my_info(client, withdrawal_calls):
+    state = _start_withdrawal(client)
+
+    res = client.get("/auth/kakao/callback", params={"error": "access_denied", "state": state})
+
+    assert res.headers["location"] == f"{FRONTEND}/my-info?withdraw_error=cancelled"
+    assert withdrawal_calls.withdrawn == []
+
+
+def test_forged_withdrawal_state_is_rejected(client, withdrawal_calls):
+    _start_withdrawal(client)
+    client.cookies.set(SESSION_COOKIE, "session-token")
+
+    res = client.get("/auth/kakao/callback", params={"code": "c1", "state": "w.forged"})
+
+    assert res.headers["location"] == f"{FRONTEND}/my-info?withdraw_error=invalid_state"
+    assert withdrawal_calls.withdrawn == []
+
+
+def test_normal_login_after_abandoned_withdrawal_is_still_login(client, withdrawal_calls):
+    _start_withdrawal(client)
+    state = _start(client)
+
+    res = client.get("/auth/google/callback", params={"code": "c", "state": state})
+
+    assert res.headers["location"] == f"{FRONTEND}/onboarding"
+    assert withdrawal_calls.withdrawn == []

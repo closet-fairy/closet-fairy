@@ -39,3 +39,21 @@ def test_url_joins_prefix_and_key(storage):
 async def test_keys_outside_root_are_refused(storage, key):
     with pytest.raises(ValueError):
         await storage.save(key, b"image")
+
+
+async def test_delete_prefix_removes_only_that_folder(storage, tmp_path):
+    await storage.save("clothing/3/a.webp", b"a")
+    await storage.save("clothing/3/b_mask.png", b"b")
+    await storage.save("clothing/30/c.webp", b"c")
+
+    await storage.delete_prefix("clothing/3/")
+    await storage.delete_prefix("clothing/3/")
+
+    assert not (tmp_path / "media/clothing/3").exists()
+    assert (tmp_path / "media/clothing/30/c.webp").read_bytes() == b"c"
+
+
+@pytest.mark.parametrize("prefix", ["", "/", "../", "clothing/../../"])
+async def test_delete_prefix_refuses_root_or_outside(storage, prefix):
+    with pytest.raises(ValueError):
+        await storage.delete_prefix(prefix)

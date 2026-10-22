@@ -90,3 +90,26 @@ async def test_update_nickname_binds_member_and_nickname():
 
     assert db.statements == [member_repo.UPDATE_NICKNAME_SQL]
     assert db.params == [{"member_id": 7, "nickname": "새 닉네임"}]
+
+
+async def test_member_account_maps_hash_as_bytes():
+    db = _FakeDb(SimpleNamespace(provider_cd="kakao", provider_user_id_hash=bytearray(b"\x01\x02")))
+
+    account = await member_repo.find_member_account(db, 7)
+
+    assert account == member_repo.MemberAccount("kakao", b"\x01\x02")
+    assert db.statements == [member_repo.FIND_MEMBER_ACCOUNT_SQL]
+    assert db.params == [{"member_id": 7}]
+
+
+async def test_missing_member_account_is_none():
+    assert await member_repo.find_member_account(_FakeDb(), 7) is None
+
+
+async def test_delete_member_deletes_by_id():
+    db = _FakeDb()
+
+    await member_repo.delete_member(db, 7)
+
+    assert db.statements == [member_repo.DELETE_MEMBER_SQL]
+    assert db.params == [{"member_id": 7}]
