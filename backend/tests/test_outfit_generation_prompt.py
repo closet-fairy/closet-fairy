@@ -5,12 +5,15 @@ import re
 from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
+from typing import get_args
 
 import anthropic
 import pytest
 
+from app.schemas.recommendation_session import TpoCd
 from app.services.preference_score import ClassificationResult
 from app.services.prompt.outfit_generation import (
+    _TPO_LABELS,
     PROMPT_NAME,
     PROMPT_VERSION,
     CandidateItem,
@@ -674,6 +677,10 @@ def test_preset_date_tpo_uses_label():
     user = assemble_outfit_generation_prompt(make_input(tpo_cd="date")).user
 
     assert "## TPO\n데이트 (date)\n" in user
+
+
+def test_tpo_labels_cover_every_preset_tpo():
+    assert set(_TPO_LABELS) == set(get_args(TpoCd)) - {"custom"}
 
 
 def test_custom_tpo_is_sanitized_and_quoted():
