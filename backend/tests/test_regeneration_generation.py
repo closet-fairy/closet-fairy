@@ -1552,3 +1552,94 @@ async def test_swap_of_fully_deleted_accessories_says_changed(wired):
     reason = outcome.generation.outfits[0].reason
     assert reason == "날씨에 맞췄어요. 옷장에서 지운 옷이 있어 악세서리도 함께 바꿨어요."
     assert "뺐어요" not in reason
+
+
+# ---------- 악세서리 교체의 기피 악세서리 ----------
+
+
+def _accessory_styled_closet(styles_by_id: dict[int, list[str]]) -> list[ClothingCandidate]:
+    return [
+        replace(c, styles=styles_by_id[c.clothing_id]) if c.clothing_id in styles_by_id else c
+        for c in _closet()
+    ]
+
+
+def _exploratory_with_accessories_screen() -> list[ScreenOutfit]:
+    screen = _screen()
+    screen[2] = ScreenOutfit(
+        103,
+        3,
+        "exploratory",
+        (
+            _item("top", "o2"),
+            _item("bottom", "o5"),
+            _item("shoes", "o6"),
+            _item("accessories", "o9"),
+            _item("accessories", "o10"),
+        ),
+    )
+    return screen
+
+
+def _accessory_swap_ctx(avoided_style: str, styles_by_id: dict[int, list[str]]):
+    request = _request(
+        outfit_id=103, slot="accessories", intent=_intent(avoided_styles=(avoided_style,))
+    )
+    return _ctx(
+        request,
+        screen=_exploratory_with_accessories_screen(),
+        context=_context(clothing=_accessory_styled_closet(styles_by_id)),
+    )
+
+
+async def test_two_avoided_accessories_turn_off_exploration(wired):
+    ctx = _accessory_swap_ctx("street", {9: ["street"], 10: ["street"]})
+    llm = _llm(_output(("preferred", ["o2", "o5", "o6", "o9", "o11"], "o10")))
+
+    outcome = await _run(ctx, llm)
+
+    assert outcome.prompt_input.exploration_style is None
+    prompt = _prompt(llm)
+    assert "preferred 1벌." in prompt
+    assert "악세서리는 기피 스타일이나 기피 색상이어도 1개만 뺀다." in prompt
+    assert outcome.generation.rounds == 1
+
+
+async def test_one_avoided_accessory_keeps_exploration_and_asks_to_remove_it(wired):
+    ctx = _accessory_swap_ctx("chic", {9: ["chic"]})
+    llm = _llm(_output(("exploratory", ["o2", "o5", "o6", "o10", "o11"], "o9")))
+
+    outcome = await _run(ctx, llm)
+
+    assert outcome.prompt_input.exploration_style == "street"
+    prompt = _prompt(llm)
+    assert "원래 악세서리 중 기피 스타일이나 기피 색상에 걸린 것(o9)을 뺀다." in prompt
+    assert "1개만 뺀다." not in prompt
+    assert outcome.generation.rounds == 1
+
+
+async def test_no_avoided_accessory_adds_no_accessory_avoid_text(wired):
+    ctx = _accessory_swap_ctx("romantic", {})
+    llm = _llm(_output(("exploratory", ["o2", "o5", "o6", "o9", "o11"], "o10")))
+
+    outcome = await _run(ctx, llm)
+
+    assert outcome.prompt_input.exploration_style == "street"
+    prompt = _prompt(llm)
+    assert "기피 스타일이나 기피 색상에 걸린 것" not in prompt
+    assert "1개만 뺀다." not in prompt
+
+
+def test_locked_has_avoided_counts_original_accessories_in_swap():
+    parts = _parts(original_accessories=("o9", "o10"))
+    by_key = {
+        "o2": CandidateItem("owned", 2, "top", None, "white", ["minimal"], None),
+        "o4": CandidateItem("owned", 4, "bottom", None, "white", ["minimal"], None),
+        "o6": CandidateItem("owned", 6, "shoes", None, "white", ["minimal"], None),
+        "o9": CandidateItem("owned", 9, "accessories", None, "black", ["street"], None),
+        "o10": CandidateItem("owned", 10, "accessories", None, "black", ["minimal"], None),
+    }
+
+    assert regen.locked_has_avoided(parts, by_key, {"street"}, set()) is False
+    assert regen.locked_has_avoided(parts, by_key, set(), {"black"}) is True
+    assert regen.avoided_accessories(parts, by_key, {"street"}, set()) == {"o9"}

@@ -471,11 +471,32 @@ def locked_has_avoided(
     for keys in parts.locked_by_slot.values():
         for key in keys:
             item = candidates_by_key.get(key)
-            if item is None:
-                continue
-            if set(item.style_cds) & set(avoided_styles) or item.color_cd in avoided_colors:
+            if item is not None and _is_avoided(item, avoided_styles, avoided_colors):
                 return True
-    return False
+    avoided = avoided_accessories(parts, candidates_by_key, avoided_styles, avoided_colors)
+    return len(avoided) >= 2
+
+
+def avoided_accessories(
+    parts: PartsPlan,
+    candidates_by_key: Mapping[str, CandidateItem],
+    avoided_styles: Collection[str],
+    avoided_colors: Collection[str],
+) -> frozenset[str]:
+    if ACCESSORIES not in parts.replace_slots:
+        return frozenset()
+    return frozenset(
+        key
+        for key in parts.original_accessories
+        if key in candidates_by_key
+        and _is_avoided(candidates_by_key[key], avoided_styles, avoided_colors)
+    )
+
+
+def _is_avoided(
+    item: CandidateItem, avoided_styles: Collection[str], avoided_colors: Collection[str]
+) -> bool:
+    return bool(set(item.style_cds) & set(avoided_styles)) or item.color_cd in avoided_colors
 
 
 # ---------- 재추천 지시 ----------
@@ -487,6 +508,7 @@ def build_regeneration_instructions(
     offset: Decimal,
     *,
     locked_avoided: bool = False,
+    avoided_accessory_keys: frozenset[str] = frozenset(),
 ) -> list[RegenerationInstruction]:
     texts: list[str] = []
     if plan.scope == "all":
@@ -510,7 +532,11 @@ def build_regeneration_instructions(
             texts.append("이전 코디를 대신할 세트를 만든다.")
         texts += [_near_combo_text(c) for c in plan.near_combos]
     else:
-        texts += _parts_texts(plan.parts, locked_avoided=locked_avoided)
+        texts += _parts_texts(
+            plan.parts,
+            locked_avoided=locked_avoided,
+            avoided_accessory_keys=avoided_accessory_keys,
+        )
         texts += _name_texts(intent, all_outfits=False)
     texts += _warmth_texts(offset)
     return [RegenerationInstruction(seq, text) for seq, text in enumerate(texts, start=1)]
@@ -527,7 +553,12 @@ def _slot_text(slot: str) -> str:
     return f"{CATEGORY_LABELS[slot]}({slot})"
 
 
-def _parts_texts(parts: PartsPlan, *, locked_avoided: bool = False) -> list[str]:
+def _parts_texts(
+    parts: PartsPlan,
+    *,
+    locked_avoided: bool = False,
+    avoided_accessory_keys: frozenset[str] = frozenset(),
+) -> list[str]:
     original = ", ".join(sorted(parts.original_keys))
     kept = sorted(k for keys in parts.locked_by_slot.values() for k in keys)
     texts = [f"이전 코디({original})를 고쳐 새 세트를 만든다."]
@@ -539,6 +570,7 @@ def _parts_texts(parts: PartsPlan, *, locked_avoided: bool = False) -> list[str]
     for slot in sorted(parts.replace_slots, key=CATEGORY_ORDER.index):
         if slot == ACCESSORIES:
             texts.append(_accessory_swap_text(parts.original_accessories))
+            texts += _avoided_accessory_texts(avoided_accessory_keys)
         elif slot in parts.original_slots:
             texts.append(f"{_slot_text(slot)}{_eun_neun(slot)} 다른 후보로 바꾼다.")
         else:
@@ -570,6 +602,17 @@ def _accessory_swap_text(original_accessories: frozenset[str]) -> str:
         f"악세서리(accessories)는 원래 악세서리({keys}) 중 1개만 빼고 새 악세서리 1개를 넣는다. "
         "뺀 악세서리의 id를 removed_accessory_id에 적는다."
     )
+
+
+def _avoided_accessory_texts(avoided_keys: frozenset[str]) -> list[str]:
+    if len(avoided_keys) == 1:
+        return [
+            "원래 악세서리 중 기피 스타일이나 기피 색상에 걸린 것"
+            f"({next(iter(avoided_keys))})을 뺀다."
+        ]
+    if len(avoided_keys) >= 2:
+        return ["악세서리는 기피 스타일이나 기피 색상이어도 1개만 뺀다."]
+    return []
 
 
 def _name_texts(intent: RegenerationIntent, *, all_outfits: bool) -> list[str]:
@@ -837,11 +880,15 @@ async def regenerate_outfits(
         preferences = await load_preferences(
             db, context.member_id, rng or random.Random(session_id), ctx.intents
         )
+    avoided_styles = preferences.style_result.avoided
+    avoided_colors = preferences.color_result.avoided
     locked_avoided = plan.parts is not None and locked_has_avoided(
-        plan.parts,
-        candidates_by_key,
-        preferences.style_result.avoided,
-        preferences.color_result.avoided,
+        plan.parts, candidates_by_key, avoided_styles, avoided_colors
+    )
+    avoided_accessory_keys = (
+        avoided_accessories(plan.parts, candidates_by_key, avoided_styles, avoided_colors)
+        if plan.parts is not None
+        else frozenset()
     )
     prompt_input = replace(
         build_prompt_input(adjusted, supplement, preferences, _outfit_count(plan)),
@@ -851,7 +898,13 @@ async def regenerate_outfits(
         ),
         kept_outfits=plan.kept,
         regeneration_instructions=tuple(
-            build_regeneration_instructions(plan, current, offset, locked_avoided=locked_avoided)
+            build_regeneration_instructions(
+                plan,
+                current,
+                offset,
+                locked_avoided=locked_avoided,
+                avoided_accessory_keys=avoided_accessory_keys,
+            )
         ),
     )
 
