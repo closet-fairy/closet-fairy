@@ -10,6 +10,7 @@ from app.repositories.clothing import ClothingCandidate
 from app.repositories.member_setting import MemberSettingRow
 from app.repositories.recommendation_session import SessionRow
 from app.services import recommend_context as ctx_service
+from app.services.weather.base_time import KST
 from app.services.weather.weather_service import WeatherResult
 
 FIXED_SESSION = SessionRow(
@@ -56,8 +57,8 @@ def common_mocks(monkeypatch):
     async def fake_get_weather(sido_nm, sigungu_nm, going_out_start, going_out_end, now):
         return FAKE_WEATHER
 
-    async def fake_insert_weather_snapshot(db, recommendation_session_id, weather):
-        saved_snapshots.append((recommendation_session_id, weather))
+    async def fake_insert_weather_snapshot(db, recommendation_session_id, weather, created_at):
+        saved_snapshots.append((recommendation_session_id, weather, created_at))
 
     monkeypatch.setattr(ctx_service, "AsyncSessionLocal", _fake_async_session_local)
     monkeypatch.setattr(session_repo, "get_session", fake_get_session)
@@ -94,7 +95,7 @@ async def test_context_filled_for_dev_member_without_setting(common_mocks, monke
     assert context.gender_cd == "unisex"
     assert context.preferred_styles == []
     assert context.clothing == []
-    assert common_mocks[0] == (123, FAKE_WEATHER)
+    assert common_mocks[0][:2] == (123, FAKE_WEATHER)
 
 
 async def test_context_filled_with_setting_and_clothing(common_mocks, monkeypatch):
@@ -139,3 +140,54 @@ async def test_context_filled_with_setting_and_clothing(common_mocks, monkeypatc
     assert context.gender_cd == "female"
     assert context.preferred_styles == ["casual", "street"]
     assert context.clothing == [candidate]
+
+
+def _freeze_clock(monkeypatch, start: datetime) -> type[datetime]:
+    class Clock(datetime):
+        current = start
+
+        @classmethod
+        def now(cls, tz=None):
+            return cls.current
+
+    monkeypatch.setattr(ctx_service, "datetime", Clock)
+    return Clock
+
+
+def _no_member_data(monkeypatch):
+    async def fake_get_member_setting(db, member_id):
+        return None
+
+    async def fake_get_completed_clothing(db, member_id):
+        return []
+
+    monkeypatch.setattr(member_setting_repo, "get_member_setting", fake_get_member_setting)
+    monkeypatch.setattr(clothing_repo, "get_completed_clothing", fake_get_completed_clothing)
+
+
+async def test_snapshot_keeps_weather_time_even_when_call_crosses_the_hour(
+    common_mocks, monkeypatch
+):
+    clock = _freeze_clock(monkeypatch, datetime(2026, 9, 27, 14, 59, 58, tzinfo=KST))
+
+    async def slow_get_weather(sido_nm, sigungu_nm, going_out_start, going_out_end, now):
+        clock.current = datetime(2026, 9, 27, 15, 0, 3, tzinfo=KST)
+        return FAKE_WEATHER
+
+    monkeypatch.setattr(ctx_service, "get_weather", slow_get_weather)
+    _no_member_data(monkeypatch)
+
+    await ctx_service.collect_context(recommendation_session_id=123)
+
+    assert common_mocks[0][2] == datetime(2026, 9, 27, 5, 59, 58)
+
+
+async def test_snapshot_time_drops_fraction_so_rounding_cannot_cross_the_hour(
+    common_mocks, monkeypatch
+):
+    _freeze_clock(monkeypatch, datetime(2026, 9, 27, 14, 59, 59, 600000, tzinfo=KST))
+    _no_member_data(monkeypatch)
+
+    await ctx_service.collect_context(recommendation_session_id=123)
+
+    assert common_mocks[0][2] == datetime(2026, 9, 27, 5, 59, 59)

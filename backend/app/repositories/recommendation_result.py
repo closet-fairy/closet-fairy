@@ -39,6 +39,7 @@ class OutfitItemResultRow:
     slot_cd: str
     item_source_cd: str
     clothing_id: int | None
+    essential_item_id: int | None
     item_name_snapshot: str
     image_url_snapshot: str | None
     accessory_type_cd: str | None
@@ -61,7 +62,7 @@ SESSION_SQL = text(
 OUTFIT_ITEMS_SQL = text(
     """
     SELECT d.deck_seq, o.outfit_id, o.outfit_seq, o.outfit_type_cd, o.reason,
-           i.outfit_item_id, i.slot_cd, i.item_source_cd, i.clothing_id,
+           i.outfit_item_id, i.slot_cd, i.item_source_cd, i.clothing_id, i.essential_item_id,
            i.item_name_snapshot, i.image_url_snapshot,
            COALESCE(c.accessory_type_cd, e.accessory_type_cd) AS accessory_type_cd,
            e.style_cd AS essential_style_cd
@@ -128,6 +129,7 @@ async def get_outfit_items(
             slot_cd=row.slot_cd,
             item_source_cd=row.item_source_cd,
             clothing_id=row.clothing_id,
+            essential_item_id=row.essential_item_id,
             item_name_snapshot=row.item_name_snapshot,
             image_url_snapshot=row.image_url_snapshot,
             accessory_type_cd=row.accessory_type_cd,

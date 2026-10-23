@@ -43,6 +43,7 @@ def _item(outfit_item_id: int, slot_cd: str, **overrides) -> OutfitItemResultRow
         slot_cd=slot_cd,
         item_source_cd="owned",
         clothing_id=outfit_item_id,
+        essential_item_id=None,
         item_name_snapshot=f"item-{outfit_item_id}",
         image_url_snapshot=None,
         accessory_type_cd=None,

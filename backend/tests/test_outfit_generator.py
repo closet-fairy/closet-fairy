@@ -33,7 +33,12 @@ BAD = ["o9999"]
 
 def generation(*outfits: tuple[str, list[str]]) -> OutfitGenerationOutput:
     return OutfitGenerationOutput.model_validate(
-        {"outfits": [{"outfit_type": t, "item_ids": ids, "reason": "이유"} for t, ids in outfits]}
+        {
+            "outfits": [
+                {"outfit_type": t, "item_ids": ids, "removed_accessory_id": None, "reason": "이유"}
+                for t, ids in outfits
+            ]
+        }
     )
 
 
@@ -91,7 +96,15 @@ def prompt_data(llm: MagicMock, call_index: int) -> str:
     return llm.call_structured.call_args_list[call_index].kwargs["messages"][0]["content"]
 
 
-async def run(llm, *, hard_rule=all_pass_rule, review=None, fallback=no_fallback, **input_kw):
+async def run(
+    llm,
+    *,
+    hard_rule=all_pass_rule,
+    review=None,
+    fallback=no_fallback,
+    outfit_seqs=None,
+    **input_kw,
+):
     return await generate_outfits(
         llm,
         make_input(**input_kw),
@@ -99,6 +112,7 @@ async def run(llm, *, hard_rule=all_pass_rule, review=None, fallback=no_fallback
         review=review or reviewer(),
         fallback=fallback,
         max_retry_per_stage=2,
+        outfit_seqs=outfit_seqs,
     )
 
 
@@ -673,3 +687,129 @@ async def test_generation_call_disables_thinking():
 
     config = llm.call_structured.call_args_list[0].args[0]
     assert config.thinking == {"type": "disabled"}
+
+
+async def test_removed_accessory_id_is_copied_to_draft():
+    output = OutfitGenerationOutput.model_validate(
+        {
+            "outfits": [
+                {
+                    "outfit_type": "preferred",
+                    "item_ids": GOOD,
+                    "removed_accessory_id": "o5001",
+                    "reason": "이유",
+                }
+            ]
+        }
+    )
+    llm = fake_llm(output)
+
+    result = await run(llm, outfit_count=1, exploration_style=None)
+
+    assert result.outfits[0].removed_accessory_id == "o5001"
+
+
+async def test_initial_generation_ignores_filled_removed_accessory_id():
+    filled = OutfitGenerationOutput.model_validate(
+        {
+            "outfits": [
+                {
+                    "outfit_type": "preferred",
+                    "item_ids": GOOD,
+                    "removed_accessory_id": "o5001",
+                    "reason": "이유",
+                }
+            ]
+        }
+    )
+    llm = fake_llm(filled)
+
+    data = make_input(outfit_count=1, exploration_style=None, is_outer_required=False)
+
+    result = await generate_outfits(
+        llm,
+        data,
+        hard_rule=make_hard_rule_check(data),
+        review=reviewer(),
+        fallback=no_fallback,
+        max_retry_per_stage=2,
+    )
+
+    assert result.rounds == 1
+    assert [o.item_keys for o in result.outfits] == [tuple(GOOD)]
+
+
+def test_removed_accessory_id_is_required_in_output():
+    with pytest.raises(ValueError):
+        OutfitGenerationOutput.model_validate(
+            {"outfits": [{"outfit_type": "preferred", "item_ids": GOOD, "reason": "이유"}]}
+        )
+
+
+# ---------- 탐색 요청 여부 ----------
+
+
+async def test_exploration_requested_when_style_is_sent():
+    llm = fake_llm(generation(*[("preferred", GOOD)] * 3, ("exploratory", GOOD)))
+
+    result = await run(llm)
+
+    assert result.exploration_requested is True
+
+
+async def test_exploration_not_requested_without_style():
+    llm = fake_llm(generation(*[("preferred", GOOD)] * 4))
+
+    result = await run(llm, exploration_style=None)
+
+    assert result.exploration_requested is False
+
+
+async def test_exploration_not_requested_when_single_outfit_turns_it_off():
+    llm = fake_llm(generation(("preferred", GOOD)))
+
+    result = await run(llm, outfit_count=1)
+
+    assert "exploratory" not in prompt_data(llm, 0).split("## 생성 요청")[1]
+    assert result.exploration_requested is False
+
+
+async def test_exploration_not_requested_when_kept_outfit_is_exploratory():
+    llm = fake_llm(generation(("preferred", GOOD), ("preferred", OTHER)))
+
+    result = await run(
+        llm,
+        outfit_count=2,
+        kept_outfits=[KeptOutfit(3, ["o2002", "e12", "e21"], "exploratory")],
+    )
+
+    assert result.exploration_requested is False
+
+
+async def test_exploration_requested_even_if_first_call_fails():
+    llm = fake_llm(LLMTimeoutError("timeout"))
+
+    result = await run(llm)
+
+    assert result.outfits == []
+    assert result.exploration_requested is True
+
+
+# ---------- 새 세트 번호 ----------
+
+
+async def test_outfit_seqs_limits_numbers_for_new_outfits():
+    llm = fake_llm(generation(("preferred", GOOD)))
+
+    result = await run(
+        llm,
+        outfit_count=1,
+        exploration_style=None,
+        kept_outfits=[
+            KeptOutfit(1, ["o2002", "e12", "e21"], "preferred"),
+            KeptOutfit(3, ["o2001", "e12", "e21"], "preferred"),
+        ],
+        outfit_seqs=(4,),
+    )
+
+    assert [o.outfit_seq for o in result.outfits] == [4]
