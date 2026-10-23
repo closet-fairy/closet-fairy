@@ -1526,3 +1526,29 @@ async def test_whole_outfit_keeps_target_seq_when_other_outfit_is_empty(wired):
     )
 
     assert [o.outfit_seq for o in outcome.generation.outfits] == [4]
+
+
+async def test_swap_of_fully_deleted_accessories_says_changed(wired):
+    screen = [
+        ScreenOutfit(
+            101,
+            1,
+            "preferred",
+            (
+                _item("outer", "o1"),
+                _item("top", "o2"),
+                _item("bottom", "o4"),
+                _item("shoes", "o6"),
+                _item("accessories", None),
+            ),
+        ),
+    ]
+    request = _request(outfit_id=101, slot="accessories")
+    llm = _llm(_output(("preferred", ["o1", "o2", "o4", "o6", "o11"])))
+
+    outcome = await _run(_ctx(request, screen=screen), llm)
+
+    assert "악세서리(accessories)를 1개 더한다." in _prompt(llm)
+    reason = outcome.generation.outfits[0].reason
+    assert reason == "날씨에 맞췄어요. 옷장에서 지운 옷이 있어 악세서리도 함께 바꿨어요."
+    assert "뺐어요" not in reason

@@ -747,9 +747,10 @@ def _with_notes(outfit: DraftOutfit, parts: PartsPlan, category_by_key: Mapping[
         slot = missing.slot_cd
         if slot == ACCESSORIES:
             locked = parts.locked_by_slot.get(ACCESSORIES, frozenset())
-            changed = ACCESSORIES not in parts.replace_slots and bool(
-                by_slot.get(ACCESSORIES, set()) - locked
-            )
+            if ACCESSORIES in parts.replace_slots:
+                changed = not parts.original_accessories and bool(by_slot.get(ACCESSORIES))
+            else:
+                changed = bool(by_slot.get(ACCESSORIES, set()) - locked)
         else:
             changed = bool(by_slot.get(slot))
         labels = groups[(missing.cause, changed)]
