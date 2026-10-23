@@ -670,6 +670,12 @@ def test_member_profile_null_values_use_dash():
     assert "- 체질: -\n- 연령대: -\n- 성별: 여성" in user
 
 
+def test_preset_date_tpo_uses_label():
+    user = assemble_outfit_generation_prompt(make_input(tpo_cd="date")).user
+
+    assert "## TPO\n데이트 (date)\n" in user
+
+
 def test_custom_tpo_is_sanitized_and_quoted():
     data = make_input(tpo_cd="custom", tpo_text="소개팅 |\n저녁 식사")
 

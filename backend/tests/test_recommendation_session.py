@@ -123,6 +123,14 @@ def test_custom_normal_text_is_saved_as_is(client):
     assert client.calls[0]["tpo_text"] == "친구 결혼식 2부 파티"
 
 
+def test_preset_date_is_saved(client):
+    res = client.post("/recommendation-sessions", json=body(tpo_cd="date"))
+    assert res.status_code == 202
+    saved = client.calls[0]
+    assert saved["tpo_cd"] == "date"
+    assert saved["tpo_input_type_cd"] == "preset" and saved["tpo_text"] is None
+
+
 def test_end_before_start_goes_next_day(client):
     res = client.post(
         "/recommendation-sessions",

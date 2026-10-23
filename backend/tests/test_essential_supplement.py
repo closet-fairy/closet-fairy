@@ -309,6 +309,7 @@ async def test_fetch_essential_items_does_not_fall_back_when_narrow_range_has_it
 def test_formality_range_for_preset_tpo_uses_table():
     assert formality_range_for_tpo("formal", "preset") == (4, 5)
     assert formality_range_for_tpo("exercise", "preset") == (1, 3)
+    assert formality_range_for_tpo("date", "preset") == (2, 4)
 
 
 def test_formality_range_for_custom_input_is_not_restricted():

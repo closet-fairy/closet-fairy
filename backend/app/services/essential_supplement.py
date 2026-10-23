@@ -36,6 +36,7 @@ FORMALITY_RANGE_BY_TPO: dict[str, tuple[int, int]] = {
     "exercise": (1, 3),
     "rainy": (1, 5),
     "midwinter": (1, 5),
+    "date": (2, 4),
 }
 DEFAULT_FORMALITY_RANGE = (1, 5)
 
