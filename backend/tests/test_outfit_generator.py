@@ -96,7 +96,15 @@ def prompt_data(llm: MagicMock, call_index: int) -> str:
     return llm.call_structured.call_args_list[call_index].kwargs["messages"][0]["content"]
 
 
-async def run(llm, *, hard_rule=all_pass_rule, review=None, fallback=no_fallback, **input_kw):
+async def run(
+    llm,
+    *,
+    hard_rule=all_pass_rule,
+    review=None,
+    fallback=no_fallback,
+    outfit_seqs=None,
+    **input_kw,
+):
     return await generate_outfits(
         llm,
         make_input(**input_kw),
@@ -104,6 +112,7 @@ async def run(llm, *, hard_rule=all_pass_rule, review=None, fallback=no_fallback
         review=review or reviewer(),
         fallback=fallback,
         max_retry_per_stage=2,
+        outfit_seqs=outfit_seqs,
     )
 
 
@@ -784,3 +793,23 @@ async def test_exploration_requested_even_if_first_call_fails():
 
     assert result.outfits == []
     assert result.exploration_requested is True
+
+
+# ---------- 새 세트 번호 ----------
+
+
+async def test_outfit_seqs_limits_numbers_for_new_outfits():
+    llm = fake_llm(generation(("preferred", GOOD)))
+
+    result = await run(
+        llm,
+        outfit_count=1,
+        exploration_style=None,
+        kept_outfits=[
+            KeptOutfit(1, ["o2002", "e12", "e21"], "preferred"),
+            KeptOutfit(3, ["o2001", "e12", "e21"], "preferred"),
+        ],
+        outfit_seqs=(4,),
+    )
+
+    assert [o.outfit_seq for o in result.outfits] == [4]

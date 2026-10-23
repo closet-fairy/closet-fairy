@@ -1490,3 +1490,39 @@ async def test_near_combo_text_uses_actual_remaining_ids(wired):
         in prompt
     )
     assert "남은 o3, o7" not in prompt
+
+
+# ---------- 화면에 빈 코디가 있을 때 새 세트 번호 ----------
+
+
+def _screen_with_empty_second_outfit() -> list[ScreenOutfit]:
+    screen = _screen()
+    screen[1] = ScreenOutfit(
+        102, 2, "preferred", (_item("top", None), _item("bottom", None), _item("shoes", None))
+    )
+    return screen
+
+
+async def test_parts_swap_keeps_target_seq_when_other_outfit_is_empty(wired):
+    request = _request(outfit_id=104, slot="bottom")
+    llm = _llm(
+        _output(("preferred", ["o2", "o13", "o7"])),
+        _output(("preferred", ["o3", "o13", "o7"])),
+    )
+
+    outcome = await _run(_ctx(request, screen=_screen_with_empty_second_outfit()), llm)
+
+    assert [k.outfit_seq for k in outcome.prompt_input.kept_outfits] == [1, 3]
+    assert "그대로 두기로 한 아이템이 바뀌었다: o3 빠짐, o2 추가." in _prompt(llm, 1)
+    assert [o.outfit_seq for o in outcome.generation.outfits] == [4]
+    assert outcome.generation.outfits[0].item_keys == ("o3", "o13", "o7")
+
+
+async def test_whole_outfit_keeps_target_seq_when_other_outfit_is_empty(wired):
+    llm = _llm(_output(("preferred", ["o2", "o13", "o7"])))
+
+    outcome = await _run(
+        _ctx(_request(outfit_id=104), screen=_screen_with_empty_second_outfit()), llm
+    )
+
+    assert [o.outfit_seq for o in outcome.generation.outfits] == [4]

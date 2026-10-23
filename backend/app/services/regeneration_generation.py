@@ -149,6 +149,7 @@ class RegenerationPlan:
     removed_keys: frozenset[str] = frozenset()
     banned_by_slot: Mapping[str, frozenset[str]] = field(default_factory=dict)
     near_combos: tuple[NearCombo, ...] = ()
+    target_seq: int | None = None
 
 
 @dataclass(frozen=True)
@@ -324,6 +325,7 @@ def plan_regeneration(
         parts=parts,
         removed_keys=parts.removed_keys if parts is not None else frozenset(),
         near_combos=_near_combos_for_whole_outfit(target) if parts is None else (),
+        target_seq=target.outfit_seq,
     )
 
 
@@ -871,6 +873,7 @@ async def regenerate_outfits(
         review=make_llm_reviewer(llm, prompt_input),
         fallback=_no_fallback,
         session_id=session_id,
+        outfit_seqs=(plan.target_seq,) if plan.target_seq is not None else None,
     )
     category_by_key = {c.key: c.category_cd for c in prompt_input.candidates}
     generation = _clear_unrequested_removed_ids(generation, plan)
