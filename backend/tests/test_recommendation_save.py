@@ -66,7 +66,7 @@ ESSENTIALS = {
 # ---------- 행 변환 ----------
 
 
-def test_rows_renumber_seq_and_order_items_by_slot():
+def test_rows_keep_generated_seq_and_order_items_by_slot():
     outfits = [
         DraftOutfit(1, "preferred", ("e31", "o12", "o11", "o10"), "사유1"),
         DraftOutfit(2, "exploratory", ("o11", "e32", "e31"), "사유2"),
@@ -75,7 +75,7 @@ def test_rows_renumber_seq_and_order_items_by_slot():
 
     rows = save.build_outfit_rows(outfits, BY_KEY, CLOTHING, ESSENTIALS)
 
-    assert [r.outfit_seq for r in rows] == [1, 2, 3]
+    assert [r.outfit_seq for r in rows] == [1, 2, 4]
     assert [r.outfit_type_cd for r in rows] == ["preferred", "exploratory", "preferred"]
     assert rows[2].reason == FALLBACK_REASON
     assert [i.slot_cd for i in rows[0].items] == ["outer", "top", "bottom", "shoes"]
@@ -284,9 +284,9 @@ async def test_save_writes_status_deck_outfits_items_in_one_transaction(monkeypa
         ("clothing", 1, [11, 12]),
         ("essential", [31, 32]),
         ("deck", 7, 1, "initial"),
-        ("outfit", 100, 1, "preferred", "사유1"),
+        ("outfit", 100, 2, "preferred", "사유1"),
         ("items", 101, ["화이트 상의", "슬랙스", "블랙 로퍼"]),
-        ("outfit", 100, 2, "exploratory", "사유2"),
+        ("outfit", 100, 4, "exploratory", "사유2"),
         ("items", 102, ["화이트 상의", "베이지 치노", "블랙 로퍼"]),
     ]
     assert [db.events for db in factory.sessions] == [["commit"]]
