@@ -3,6 +3,7 @@
 import random
 import re
 from contextlib import asynccontextmanager
+from dataclasses import replace
 from datetime import datetime, timedelta
 from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock
@@ -140,6 +141,16 @@ def test_weather_is_converted_with_hourly_forecast():
     assert weather.min_feels_like_temperature == 9.0
     assert [h.at for h in weather.hourly] == [START + timedelta(hours=h) for h in range(3)]
     assert weather.hourly[0].feels_like_temperature == 9.0
+
+
+def test_going_out_tomorrow_is_passed_to_prompt_input():
+    today = pipeline.build_prompt_input(_context(), _supplement(), _preferences())
+    tomorrow = pipeline.build_prompt_input(
+        replace(_context(), is_going_out_tomorrow=True), _supplement(), _preferences()
+    )
+
+    assert today.is_going_out_tomorrow is False
+    assert tomorrow.is_going_out_tomorrow is True
 
 
 # ---------- 선호도 ----------

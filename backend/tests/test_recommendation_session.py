@@ -140,6 +140,46 @@ def test_end_before_start_goes_next_day(client):
     assert client.calls[0]["going_out_end_at"] == datetime(2026, 9, 27, 17, 0)  # 익일 02:00 KST
 
 
+def test_explicit_today_still_rejects_past_start(client):
+    res = client.post(
+        "/recommendation-sessions",
+        json=body(going_out_date_cd="today", going_out_start_time="13:30"),
+    )
+    assert res.status_code == 422
+    assert res.json()["code"] == "PAST_GOING_OUT_TIME"
+
+
+def test_tomorrow_allows_earlier_clock_time_and_saves_next_day(client):
+    res = client.post(
+        "/recommendation-sessions",
+        json=body(going_out_date_cd="tomorrow", going_out_start_time="13:30"),
+    )
+    assert res.status_code == 202
+    saved = client.calls[0]
+    assert saved["going_out_start_at"] == datetime(2026, 9, 28, 4, 30)  # 9/28 13:30 KST
+    assert saved["going_out_end_at"] == datetime(2026, 9, 28, 9, 0)  # 9/28 18:00 KST
+
+
+def test_tomorrow_end_before_start_goes_day_after(client):
+    res = client.post(
+        "/recommendation-sessions",
+        json=body(
+            going_out_date_cd="tomorrow", going_out_start_time="22:00", going_out_end_time="02:00"
+        ),
+    )
+    assert res.status_code == 202
+    saved = client.calls[0]
+    assert saved["going_out_start_at"] == datetime(2026, 9, 28, 13, 0)  # 9/28 22:00 KST
+    assert saved["going_out_end_at"] == datetime(2026, 9, 28, 17, 0)  # 9/29 02:00 KST
+
+
+@pytest.mark.parametrize("value", ["yesterday", None])
+def test_invalid_going_out_date_422(client, value):
+    res = client.post("/recommendation-sessions", json=body(going_out_date_cd=value))
+    assert res.status_code == 422
+    assert client.calls == []
+
+
 def test_unknown_region_404(client):
     res = client.post("/recommendation-sessions", json=body(sido_nm="없는도"))
     assert res.status_code == 404

@@ -1,4 +1,5 @@
-from datetime import datetime
+from dataclasses import replace
+from datetime import datetime, timedelta
 
 import pytest
 
@@ -191,3 +192,47 @@ async def test_snapshot_time_drops_fraction_so_rounding_cannot_cross_the_hour(
     await ctx_service.collect_context(recommendation_session_id=123)
 
     assert common_mocks[0][2] == datetime(2026, 9, 27, 5, 59, 59)
+
+
+@pytest.mark.parametrize(
+    ("going_out_start_at", "now", "expected"),
+    [
+        pytest.param(
+            datetime(2026, 9, 27, 6, 0),
+            datetime(2026, 9, 27, 14, 10, tzinfo=KST),
+            False,
+            id="today",
+        ),
+        pytest.param(
+            datetime(2026, 9, 28, 4, 30),
+            datetime(2026, 9, 27, 14, 10, tzinfo=KST),
+            True,
+            id="tomorrow",
+        ),
+        pytest.param(
+            datetime(2026, 9, 28, 4, 30),
+            datetime(2026, 9, 28, 0, 0, 5, tzinfo=KST),
+            False,
+            id="weather-fetched-after-midnight",
+        ),
+    ],
+)
+async def test_going_out_tomorrow_compares_start_date_with_weather_time(
+    common_mocks, monkeypatch, going_out_start_at, now, expected
+):
+    session = replace(
+        FIXED_SESSION,
+        going_out_start_at=going_out_start_at,
+        going_out_end_at=going_out_start_at + timedelta(hours=3),
+    )
+
+    async def fake_get_session(db, recommendation_session_id):
+        return session
+
+    monkeypatch.setattr(session_repo, "get_session", fake_get_session)
+    _freeze_clock(monkeypatch, now)
+    _no_member_data(monkeypatch)
+
+    context = await ctx_service.collect_context(recommendation_session_id=123)
+
+    assert context.is_going_out_tomorrow is expected
