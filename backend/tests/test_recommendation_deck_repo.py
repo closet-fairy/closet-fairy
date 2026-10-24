@@ -20,6 +20,9 @@ class _Result:
     def first(self):
         return self._rows[0] if self._rows else None
 
+    def scalar_one(self):
+        return next(iter(vars(self._rows[0]).values()))
+
 
 class _FakeDb:
     def __init__(self, rows=(), rowcount=0):
@@ -101,6 +104,38 @@ async def test_find_session_outfit_ids_spans_every_deck():
     assert "d.recommendation_session_id = :recommendation_session_id" in sql
     assert "ORDER BY d.deck_seq, o.outfit_seq" in sql
     assert ids == [101, 201]
+
+
+async def test_next_deck_seq_follows_largest_deck_seq_of_session():
+    db = _FakeDb([{"next_seq": 3}])
+
+    seq = await deck_repo.next_deck_seq(db, 7)
+
+    sql, params = db.executed[0]
+    assert "COALESCE(MAX(deck_seq), 0) + 1" in sql
+    assert "WHERE recommendation_session_id = :recommendation_session_id" in sql
+    assert params == {"recommendation_session_id": 7}
+    assert seq == 3
+    assert not db.committed
+
+
+async def test_find_session_outfits_returns_deck_position_of_every_outfit():
+    db = _FakeDb(
+        [
+            {"outfit_id": 101, "recommendation_deck_id": 11, "deck_seq": 1, "outfit_seq": 1},
+            {"outfit_id": 201, "recommendation_deck_id": 12, "deck_seq": 2, "outfit_seq": 4},
+        ]
+    )
+
+    outfits = await deck_repo.find_session_outfits(db, 7)
+
+    sql, params = db.executed[0]
+    assert "d.recommendation_session_id = :recommendation_session_id" in sql
+    assert params == {"recommendation_session_id": 7}
+    assert outfits == [
+        deck_repo.SessionOutfit(101, 11, 1, 1),
+        deck_repo.SessionOutfit(201, 12, 2, 4),
+    ]
 
 
 async def test_delete_outfits_except_keeps_only_given_outfit_in_session():

@@ -102,6 +102,50 @@ async def test_insert_request_returns_new_id_without_commit():
     assert not db.committed
 
 
+@pytest.mark.parametrize(("rowcount", "expected"), [(1, True), (0, False)])
+async def test_complete_request_only_updates_processing(rowcount, expected):
+    db = _FakeDb(rowcount=rowcount)
+
+    completed = await regeneration_repo.complete_request(db, 55, 12)
+
+    sql, params = db.executed[0]
+    assert "SET regeneration_status_cd = 'completed', result_deck_id = :result_deck_id" in sql
+    assert "WHERE regeneration_request_id = :regeneration_request_id" in sql
+    assert "AND regeneration_status_cd = 'processing'" in sql
+    assert params == {"regeneration_request_id": 55, "result_deck_id": 12}
+    assert completed is expected
+    assert not db.committed
+
+
+@pytest.mark.parametrize(("rowcount", "expected"), [(1, True), (0, False)])
+async def test_fail_request_only_updates_processing(rowcount, expected):
+    db = _FakeDb(rowcount=rowcount)
+
+    failed = await regeneration_repo.fail_request(db, 55)
+
+    sql, params = db.executed[0]
+    assert "SET regeneration_status_cd = 'failed'" in sql
+    assert "WHERE regeneration_request_id = :regeneration_request_id" in sql
+    assert "AND regeneration_status_cd = 'processing'" in sql
+    assert params == {"regeneration_request_id": 55}
+    assert failed is expected
+    assert not db.committed
+
+
+async def test_delete_session_requests_removes_every_request_of_session():
+    db = _FakeDb(rowcount=3)
+
+    deleted = await regeneration_repo.delete_session_requests(db, 7)
+
+    sql, params = db.executed[0]
+    assert "DELETE FROM regeneration_request" in sql
+    assert "WHERE recommendation_session_id = :recommendation_session_id" in sql
+    assert "regeneration_status_cd" not in sql
+    assert params == {"recommendation_session_id": 7}
+    assert deleted == 3
+    assert not db.committed
+
+
 class _Row:
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
@@ -179,4 +223,25 @@ async def test_find_completed_intents_reads_only_earlier_completed_in_order():
     assert intents == [
         RegenerationIntent(status="ok", preferred_styles=("casual",)),
         RegenerationIntent(status="ok", clothing_warmth="lighter"),
+    ]
+
+
+async def test_find_session_requests_reads_every_status_in_order():
+    db = _RowsDb(
+        [
+            _Row(request_seq=1, target_scope_cd="single", target_outfit_id=101, result_deck_id=12),
+            _Row(request_seq=2, target_scope_cd="all", target_outfit_id=None, result_deck_id=None),
+        ]
+    )
+
+    rows = await regeneration_repo.find_session_requests(db, 7)
+
+    sql, params = db.executed[0]
+    assert "WHERE recommendation_session_id = :recommendation_session_id" in sql
+    assert "regeneration_status_cd" not in sql
+    assert "ORDER BY request_seq" in sql
+    assert params == {"recommendation_session_id": 7}
+    assert rows == [
+        regeneration_repo.RequestTargetRow(1, "single", 101, 12),
+        regeneration_repo.RequestTargetRow(2, "all", None, None),
     ]
