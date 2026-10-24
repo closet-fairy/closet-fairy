@@ -321,7 +321,7 @@ FIND_SESSIONS_TO_CLEAN_SQL = text(
     SELECT s.recommendation_session_id
     FROM recommendation_session s
     WHERE s.session_status_cd IN ('completed', 'canceled', 'abandoned')
-      AND EXISTS (
+      AND (EXISTS (
         SELECT 1
         FROM recommendation_deck d
         LEFT JOIN outfit o ON o.recommendation_deck_id = d.recommendation_deck_id
@@ -329,7 +329,10 @@ FIND_SESSIONS_TO_CLEAN_SQL = text(
           ON f.outfit_id = o.outfit_id AND f.feedback_type_cd = 'rated'
         WHERE d.recommendation_session_id = s.recommendation_session_id
           AND f.outfit_feedback_id IS NULL
-      )
+      ) OR EXISTS (
+        SELECT 1 FROM regeneration_request r
+        WHERE r.recommendation_session_id = s.recommendation_session_id
+      ))
     ORDER BY s.recommendation_session_id
     """
 )

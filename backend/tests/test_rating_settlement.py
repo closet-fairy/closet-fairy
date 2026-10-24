@@ -9,7 +9,9 @@ from sqlalchemy.exc import IntegrityError
 from app.core.config import Settings
 from app.repositories.outfit_feedback import AttributeFeedback, FeedbackRow
 from app.repositories.preference_score import ScoreRow, ScoreUpdate
+from app.repositories.recommendation_deck import SessionOutfit
 from app.repositories.recommendation_session import SessionStateRow
+from app.repositories.regeneration_request import RequestTargetRow
 from app.services import rating_settlement as settlement
 from app.services.weather.base_time import KST
 
@@ -217,11 +219,19 @@ ATTRIBUTE_FEEDBACKS = [
 ]
 
 
+OUTFITS = (
+    SessionOutfit(101, 1, 1, 1),
+    SessionOutfit(102, 1, 1, 2),
+    SessionOutfit(201, 2, 2, 1),
+)
+
+
 def _patch_repos(
     monkeypatch,
     *,
     session=ACTIVE,
-    outfit_ids=(101, 102, 201),
+    outfits=OUTFITS,
+    requests=(),
     scores=SCORES,
     attribute_feedbacks=ATTRIBUTE_FEEDBACKS,
     completed=True,
@@ -234,9 +244,13 @@ def _patch_repos(
         calls.append(("lock_session", session_id))
         return session
 
-    async def find_session_outfit_ids(db, session_id):
+    async def find_session_outfits(db, session_id):
         calls.append(("outfit_ids", session_id))
-        return list(outfit_ids)
+        return list(outfits)
+
+    async def find_session_requests(db, session_id):
+        calls.append(("requests", session_id))
+        return list(requests)
 
     async def insert_feedbacks(db, session_id, rows):
         calls.append(("insert_feedbacks", session_id, list(rows)))
@@ -259,7 +273,10 @@ def _patch_repos(
         return completed
 
     monkeypatch.setattr(settlement.session_repo, "lock_session", lock_session)
-    monkeypatch.setattr(settlement.deck_repo, "find_session_outfit_ids", find_session_outfit_ids)
+    monkeypatch.setattr(settlement.deck_repo, "find_session_outfits", find_session_outfits)
+    monkeypatch.setattr(
+        settlement.regeneration_repo, "find_session_requests", find_session_requests
+    )
     monkeypatch.setattr(settlement.feedback_repo, "insert_feedbacks", insert_feedbacks)
     monkeypatch.setattr(
         settlement.feedback_repo,
@@ -292,6 +309,7 @@ async def test_settles_whole_session_in_one_transaction_with_session_locked_firs
     assert [c[0] for c in calls] == [
         "lock_session",
         "outfit_ids",
+        "requests",
         "insert_feedbacks",
         "attribute_feedbacks",
         "lock_scores",
@@ -307,7 +325,7 @@ async def test_feedback_rows_cover_every_outfit_with_rated_and_auto_rejected(mon
 
     await _rate(_FakeDb(), outfit_id=102, rating=2)
 
-    _, session_id, rows = calls[2]
+    _, session_id, rows = calls[3]
     assert session_id == 7
     assert rows == [
         FeedbackRow(101, "auto_rejected", None, SETTINGS.SCORE_DELTA_AUTO_REJECTED),
@@ -321,8 +339,90 @@ async def test_outfit_from_earlier_deck_can_be_rated(monkeypatch):
 
     await _rate(_FakeDb(), outfit_id=101)
 
-    rows = calls[2][2]
+    rows = calls[3][2]
     assert [r.feedback_type_cd for r in rows] == ["rated", "auto_rejected", "auto_rejected"]
+
+
+async def test_regeneration_target_gets_regeneration_requested_delta(monkeypatch):
+    calls = _patch_repos(monkeypatch, requests=[RequestTargetRow(1, "single", 101, 2)])
+
+    await _rate(_FakeDb(), outfit_id=201)
+
+    assert calls[3][2] == [
+        FeedbackRow(101, "regeneration_requested", None, Decimal("-0.5")),
+        FeedbackRow(102, "auto_rejected", None, SETTINGS.SCORE_DELTA_AUTO_REJECTED),
+        FeedbackRow(201, "rated", 5, SETTINGS.SCORE_DELTA_RATING_5),
+    ]
+
+
+async def test_rated_outfit_stays_rated_even_if_regeneration_target(monkeypatch):
+    calls = _patch_repos(monkeypatch, requests=[RequestTargetRow(1, "single", 102, None)])
+
+    await _rate(_FakeDb(), outfit_id=102)
+
+    assert [r.feedback_type_cd for r in calls[3][2]] == ["auto_rejected", "rated", "auto_rejected"]
+
+
+async def test_settled_event_logs_regeneration_requested_count(monkeypatch, caplog):
+    _patch_repos(monkeypatch, requests=[RequestTargetRow(1, "all", None, None)])
+    caplog.set_level("INFO")
+
+    await _rate(_FakeDb(), outfit_id=201)
+
+    record = next(r for r in caplog.records if getattr(r, "event", None) == "preference.settled")
+    assert record.regeneration_requested_count == 1
+
+
+def _o(outfit_id, deck_id, outfit_seq) -> SessionOutfit:
+    return SessionOutfit(outfit_id, deck_id, deck_id, outfit_seq)
+
+
+def test_single_request_targets_its_outfit_only():
+    outfits = [_o(101, 1, 1), _o(102, 1, 2), _o(202, 2, 2)]
+    requests = [RequestTargetRow(1, "single", 102, 2)]
+
+    assert settlement.regeneration_target_outfit_ids(outfits, requests) == {102}
+
+
+def test_all_request_targets_latest_outfit_per_slot_before_it():
+    outfits = [_o(101, 1, 1), _o(102, 1, 2), _o(103, 1, 3), _o(202, 2, 2)]
+    requests = [RequestTargetRow(1, "single", 102, 2), RequestTargetRow(2, "all", None, None)]
+
+    assert settlement.regeneration_target_outfit_ids(outfits, requests) == {101, 102, 202, 103}
+
+
+def test_all_request_ignores_its_own_and_later_result_decks():
+    outfits = [
+        _o(101, 1, 1),
+        _o(102, 1, 2),
+        _o(201, 2, 1),
+        _o(202, 2, 2),
+        _o(301, 3, 1),
+    ]
+    requests = [RequestTargetRow(1, "all", None, 2), RequestTargetRow(2, "single", 201, 3)]
+
+    assert settlement.regeneration_target_outfit_ids(outfits, requests) == {101, 102, 201}
+
+
+@pytest.mark.parametrize("result_deck_id", [None, 2], ids=["failed-or-processing", "completed"])
+def test_all_request_targets_screen_regardless_of_result(result_deck_id):
+    outfits = [_o(101, 1, 1), _o(102, 1, 2), _o(104, 1, 4)]
+    if result_deck_id is not None:
+        outfits += [_o(201, 2, 1), _o(202, 2, 2)]
+    requests = [RequestTargetRow(1, "all", None, result_deck_id)]
+
+    assert settlement.regeneration_target_outfit_ids(outfits, requests) == {101, 102, 104}
+
+
+def test_two_all_requests_target_each_screen():
+    outfits = [_o(101, 1, 1), _o(102, 1, 2), _o(201, 2, 1), _o(202, 2, 2), _o(301, 3, 1)]
+    requests = [RequestTargetRow(1, "all", None, 2), RequestTargetRow(2, "all", None, 3)]
+
+    assert settlement.regeneration_target_outfit_ids(outfits, requests) == {101, 102, 201, 202}
+
+
+def test_no_requests_no_targets():
+    assert settlement.regeneration_target_outfit_ids([_o(101, 1, 1)], []) == set()
 
 
 async def test_score_updates_and_settled_time_are_written(monkeypatch):
@@ -330,8 +430,8 @@ async def test_score_updates_and_settled_time_are_written(monkeypatch):
 
     await _rate(_FakeDb())
 
-    assert calls[4] == ("lock_scores", 1)
-    assert calls[5] == (
+    assert calls[5] == ("lock_scores", 1)
+    assert calls[6] == (
         "update_scores",
         [
             ScoreUpdate(1, Decimal("4.90"), Decimal("1.95")),
@@ -340,7 +440,7 @@ async def test_score_updates_and_settled_time_are_written(monkeypatch):
             ScoreUpdate(15, Decimal("3.00"), Decimal("1.00")),
         ],
     )
-    assert calls[6] == ("complete", 7, datetime(2026, 10, 9, 12, 30))
+    assert calls[7] == ("complete", 7, datetime(2026, 10, 9, 12, 30))
 
 
 async def test_missing_score_row_is_skipped_with_warning(monkeypatch, caplog):
@@ -349,7 +449,7 @@ async def test_missing_score_row_is_skipped_with_warning(monkeypatch, caplog):
 
     await _rate(_FakeDb())
 
-    assert [u.preference_score_id for u in calls[5][1]] == [1, 2, 3, 15]
+    assert [u.preference_score_id for u in calls[6][1]] == [1, 2, 3, 15]
     warning = next(r for r in caplog.records if r.levelname == "WARNING")
     assert warning.missing_attributes == ["color:pink"]
 

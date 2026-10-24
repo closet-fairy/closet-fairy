@@ -5,6 +5,7 @@ from datetime import datetime
 import pytest
 from fastapi.testclient import TestClient
 
+from app.api import recommendation_session as session_api
 from app.api.deps import get_current_member_id, get_now
 from app.core.db import get_db
 from app.main import app
@@ -21,6 +22,7 @@ URL = "/recommendation-sessions/7/regenerations"
 @pytest.fixture
 def client(monkeypatch):
     calls = []
+    pipeline_calls = []
     outcome = {"error": None}
 
     async def fake_request_regeneration(db, llm, session_id, member_id, req, now):
@@ -29,16 +31,21 @@ def client(monkeypatch):
             raise outcome["error"]
         return service.AcceptedRegeneration(regeneration_request_id=55, request_seq=2)
 
+    async def fake_run_pipeline(regeneration_request_id, llm):
+        pipeline_calls.append((regeneration_request_id, llm))
+
     async def fake_db():
         yield None
 
     monkeypatch.setattr(service, "request_regeneration", fake_request_regeneration)
+    monkeypatch.setattr(session_api, "run_regeneration_pipeline", fake_run_pipeline)
     app.dependency_overrides[get_db] = fake_db
     app.dependency_overrides[get_now] = lambda: FIXED_NOW
     app.dependency_overrides[get_current_member_id] = lambda: 3
     app.dependency_overrides[get_llm_client] = lambda: FAKE_LLM
     with TestClient(app) as c:
         c.calls = calls
+        c.pipeline_calls = pipeline_calls
         c.outcome = outcome
         yield c
     app.dependency_overrides.clear()
@@ -69,6 +76,13 @@ def test_accepted_request_returns_202_with_processing_status(client):
         101,
         "shoes",
     )
+
+
+def test_accepted_request_starts_generation_in_background(client):
+    res = client.post(URL, json={"request_text": "전체 다시", "target_scope_cd": "all"})
+
+    assert res.status_code == 202
+    assert client.pipeline_calls == [(55, FAKE_LLM)]
 
 
 def test_all_scope_needs_no_target(client):

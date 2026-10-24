@@ -213,3 +213,14 @@ async def test_find_sessions_to_clean_looks_for_unrated_outfits_or_empty_decks()
     assert "f.feedback_type_cd = 'rated'" in sql
     assert "f.outfit_feedback_id IS NULL" in sql
     assert ids == [4]
+
+
+async def test_find_sessions_to_clean_also_picks_sessions_with_only_requests_left():
+    db = _FakeDb(rows=[])
+
+    await session_repo.find_sessions_to_clean(db)
+
+    sql, _ = db.executed[0]
+    normalized = " ".join(sql.split())
+    assert ") OR EXISTS ( SELECT 1 FROM regeneration_request r" in normalized
+    assert "r.recommendation_session_id = s.recommendation_session_id" in normalized

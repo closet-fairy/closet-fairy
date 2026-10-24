@@ -9,6 +9,8 @@ import logging
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.db import AsyncSessionLocal
 from app.repositories import clothing as clothing_repo
 from app.repositories import essential_item as essential_item_repo
@@ -63,11 +65,6 @@ async def save_recommendation_result(
     outfits: Sequence[DraftOutfit],
     supplement: SupplementResult,
 ) -> None:
-    candidates_by_key = {c.key: c for c in supplement.candidates}
-    used = [candidates_by_key[key] for o in outfits for key in o.item_keys]
-    clothing_ids = sorted({c.item_id for c in used if c.source_cd == "owned"})
-    essential_ids = sorted({c.item_id for c in used if c.source_cd == "essential"})
-
     async with AsyncSessionLocal() as db, db.begin():
         # 세션 행을 먼저 바꿔 잠가 둔다. 이미 끝난 세션이면 덱을 만들지 않고 롤백한다
         completed = await session_repo.complete_generation(
@@ -76,22 +73,42 @@ async def save_recommendation_result(
         if not completed:
             raise GenerationNotProcessingError(recommendation_session_id)
 
-        clothing_snapshots = await clothing_repo.get_clothing_snapshots(db, member_id, clothing_ids)
-        essential_snapshots = await essential_item_repo.get_essential_item_snapshots(
-            db, essential_ids
-        )
-        rows = build_outfit_rows(
-            outfits, candidates_by_key, clothing_snapshots, essential_snapshots
+        await insert_deck_outfits(
+            db,
+            recommendation_session_id,
+            INITIAL_DECK_SEQ,
+            "initial",
+            member_id,
+            outfits,
+            supplement,
         )
 
-        deck_id = await deck_repo.insert_deck(
-            db, recommendation_session_id, INITIAL_DECK_SEQ, "initial"
+
+async def insert_deck_outfits(
+    db: AsyncSession,
+    recommendation_session_id: int,
+    deck_seq: int,
+    deck_trigger_cd: str,
+    member_id: int,
+    outfits: Sequence[DraftOutfit],
+    supplement: SupplementResult,
+) -> int:
+    candidates_by_key = {c.key: c for c in supplement.candidates}
+    used = [candidates_by_key[key] for o in outfits for key in o.item_keys]
+    clothing_ids = sorted({c.item_id for c in used if c.source_cd == "owned"})
+    essential_ids = sorted({c.item_id for c in used if c.source_cd == "essential"})
+
+    clothing_snapshots = await clothing_repo.get_clothing_snapshots(db, member_id, clothing_ids)
+    essential_snapshots = await essential_item_repo.get_essential_item_snapshots(db, essential_ids)
+    rows = build_outfit_rows(outfits, candidates_by_key, clothing_snapshots, essential_snapshots)
+
+    deck_id = await deck_repo.insert_deck(db, recommendation_session_id, deck_seq, deck_trigger_cd)
+    for row in rows:
+        outfit_id = await deck_repo.insert_outfit(
+            db, deck_id, row.outfit_seq, row.outfit_type_cd, row.reason
         )
-        for row in rows:
-            outfit_id = await deck_repo.insert_outfit(
-                db, deck_id, row.outfit_seq, row.outfit_type_cd, row.reason
-            )
-            await deck_repo.insert_outfit_items(db, outfit_id, row.items)
+        await deck_repo.insert_outfit_items(db, outfit_id, row.items)
+    return deck_id
 
 
 async def mark_generation_failed(
@@ -116,19 +133,19 @@ def build_outfit_rows(
     clothing_snapshots: Mapping[int, ClothingSnapshot],
     essential_snapshots: Mapping[int, EssentialItemSnapshot],
 ) -> list[OutfitRow]:
-    """생성 결과를 저장할 행으로 바꾼다. outfit_seq는 생성 결과 순서대로 1부터 다시 매긴다."""
+    """생성 결과를 저장할 행으로 바꾼다."""
     exploratory_count = sum(o.outfit_type == "exploratory" for o in outfits)
     if exploratory_count > 1:
         raise ValueError(f"탐색 코디가 {exploratory_count}벌입니다 (최대 1벌)")
 
     rows = []
-    for seq, outfit in enumerate(outfits, start=1):
+    for outfit in outfits:
         candidates = sorted(
             (candidates_by_key[key] for key in outfit.item_keys),
             key=lambda c: CATEGORY_ORDER.index(c.category_cd),
         )
         items = tuple(_to_item_row(c, clothing_snapshots, essential_snapshots) for c in candidates)
-        rows.append(OutfitRow(seq, outfit.outfit_type, outfit.reason, items))
+        rows.append(OutfitRow(outfit.outfit_seq, outfit.outfit_type, outfit.reason, items))
     return rows
 
 

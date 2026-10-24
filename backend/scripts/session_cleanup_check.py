@@ -1,8 +1,7 @@
 """세션 취소·이탈·정리 검증 스크립트. 실제 MySQL에 붙고 LLM은 호출하지 않는다.
 
 검증용 회원·옷·세션·덱·코디를 SQL로 직접 넣고 서비스 함수를 호출한다.
-  (a) 별점 → 정산 직후 정리: 코디 1·덱 1·피드백 1, single 재추천 요청 삭제,
-      all 요청은 남고 result_deck_id만 NULL
+  (a) 별점 → 정산 직후 정리: 코디 1·덱 1·피드백 1, 재추천 요청(single·all) 모두 삭제
   (b) 취소: 덱·코디·피드백 0, settled_at NULL, ended_at 기록, 날씨 유지, 선호 점수 27행 S·N 그대로
   (c) 이탈: 무활동 세션만 abandoned + 정리, 최근 덱이 있거나 새 세션은 그대로, 선호 점수 그대로
       (배치 run()은 개발 회원 세션까지 건드리므로 부르지 않고,
@@ -260,7 +259,7 @@ async def check_rating_cleanup(factory, member_ids: list[int]) -> bool:
                 {"s": seeded.session_id},
             )
         ).all()
-    expect(failures, "재추천 요청", [tuple(r) for r in requests], [("all", None)])
+    expect(failures, "재추천 요청", [tuple(r) for r in requests], [])
     expect(
         failures,
         "결과 조회 코디",
@@ -469,8 +468,8 @@ async def check_leftover_cleanup(factory, member_ids: list[int]) -> bool:
         "첫 정리",
         first,
         {
-            rated.session_id: session_cleanup.CleanupResult(2, 1),
-            canceled.session_id: session_cleanup.CleanupResult(3, 2),
+            rated.session_id: session_cleanup.CleanupResult(2, 1, 0),
+            canceled.session_id: session_cleanup.CleanupResult(3, 2, 0),
         },
     )
     expect(
