@@ -16,7 +16,6 @@ interface SliderProps {
   step?: number;
   marks?: SliderMark[];
   fillOrigin?: number;
-  hasFill?: boolean;
   isDisabled?: boolean;
   onDraggingChange?: (isDragging: boolean) => void;
   getAriaValueText?: (value: number) => string;
@@ -33,7 +32,6 @@ const Slider = (props: SliderProps) => {
     step = 1,
     marks = [],
     fillOrigin = min,
-    hasFill = true,
     isDisabled = false,
     onDraggingChange,
     getAriaValueText,
@@ -119,14 +117,12 @@ const Slider = (props: SliderProps) => {
     >
       <S.Control onPointerDown={handlePointerDown}>
         <S.Track>
-          {hasFill && (
-            <S.Fill
-              style={{
-                left: `${fillStart}%`,
-                width: `${fillEnd - fillStart}%`,
-              }}
-            />
-          )}
+          <S.Fill
+            style={{
+              left: `${fillStart}%`,
+              width: `${fillEnd - fillStart}%`,
+            }}
+          />
           {tickMarks.map((mark) => (
             <S.Tick
               key={mark.value}

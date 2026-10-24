@@ -39,11 +39,6 @@ const meta = {
       control: 'number',
       table: { defaultValue: { summary: 'min' } },
     },
-    hasFill: {
-      description: '트랙 채움을 그릴지 정합니다.',
-      control: 'boolean',
-      table: { defaultValue: { summary: 'true' } },
-    },
     isDisabled: {
       description: '조작할 수 없게 하고 흐리게 보여 줍니다.',
       control: 'boolean',
