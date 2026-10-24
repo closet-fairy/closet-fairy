@@ -3,7 +3,6 @@ import { ToggleGroup } from '@base-ui/react/toggle-group';
 import styled from '@emotion/styled';
 import {
   bg,
-  border,
   duration,
   easing,
   fg,
@@ -62,11 +61,6 @@ export const Segment = styled(Toggle, transientOptions)`
     background-color: ${bg.white};
     color: ${fg.neutral.strong};
     box-shadow: ${shadow.sm};
-  }
-
-  &:focus-visible {
-    outline: 2px solid ${border.neutral.strong};
-    outline-offset: 2px;
   }
 `;
 
