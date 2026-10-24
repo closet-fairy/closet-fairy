@@ -12,7 +12,7 @@ from app.repositories.member_setting import MemberSettingRow
 from app.repositories.recommendation_session import SessionRow
 from app.services import recommend_context as ctx_service
 from app.services.weather.base_time import KST
-from app.services.weather.weather_service import WeatherResult
+from app.services.weather.weather_service import HourlyWeather, WeatherResult
 
 FIXED_SESSION = SessionRow(
     member_id=1,
@@ -236,3 +236,64 @@ async def test_going_out_tomorrow_compares_start_date_with_weather_time(
     context = await ctx_service.collect_context(recommendation_session_id=123)
 
     assert context.is_going_out_tomorrow is expected
+
+
+def _hour(at: datetime) -> HourlyWeather:
+    return HourlyWeather(
+        at=at,
+        temperature=15.0,
+        feels_like_temperature=14.0,
+        precipitation=0.0,
+        wind_speed=1.0,
+        weather_condition_cd="clear",
+    )
+
+
+@pytest.mark.parametrize(
+    ("going_out_start_at", "hourly", "expected"),
+    [
+        pytest.param(
+            datetime(2026, 9, 28, 4, 30),
+            [_hour(datetime(2026, 9, 28, 13, 0, tzinfo=KST))],
+            True,
+            id="tomorrow-with-forecast-in-window",
+        ),
+        pytest.param(datetime(2026, 9, 28, 4, 30), [], False, id="tomorrow-without-forecast"),
+        pytest.param(
+            datetime(2026, 9, 28, 4, 30),
+            [_hour(datetime(2026, 9, 28, 18, 0, tzinfo=KST))],
+            False,
+            id="tomorrow-with-forecast-outside-window",
+        ),
+        pytest.param(
+            datetime(2026, 9, 27, 6, 0),
+            [_hour(datetime(2026, 9, 27, 15, 0, tzinfo=KST))],
+            False,
+            id="today-with-forecast",
+        ),
+    ],
+)
+async def test_ignores_current_weather_only_when_tomorrow_forecast_covers_window(
+    common_mocks, monkeypatch, going_out_start_at, hourly, expected
+):
+    session = replace(
+        FIXED_SESSION,
+        going_out_start_at=going_out_start_at,
+        going_out_end_at=going_out_start_at + timedelta(hours=3),
+    )
+    weather = replace(FAKE_WEATHER, hourly=hourly)
+
+    async def fake_get_session(db, recommendation_session_id):
+        return session
+
+    async def fake_get_weather(sido_nm, sigungu_nm, going_out_start, going_out_end, now):
+        return weather
+
+    monkeypatch.setattr(session_repo, "get_session", fake_get_session)
+    monkeypatch.setattr(ctx_service, "get_weather", fake_get_weather)
+    _freeze_clock(monkeypatch, datetime(2026, 9, 27, 14, 10, tzinfo=KST))
+    _no_member_data(monkeypatch)
+
+    context = await ctx_service.collect_context(recommendation_session_id=123)
+
+    assert context.ignores_current_weather is expected

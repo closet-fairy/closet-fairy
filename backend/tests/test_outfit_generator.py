@@ -458,7 +458,7 @@ async def test_llm_reviewer_passes_prompt_input_and_outfits(monkeypatch):
         return [OutfitValidation(1, passed=True)]
 
     monkeypatch.setattr(outfit_generator, "review_outfits", fake_review_outfits)
-    prompt_input = make_input(is_going_out_tomorrow=True)
+    prompt_input = make_input(is_going_out_tomorrow=True, ignores_current_weather=True)
     llm = MagicMock(spec=LLMClient)
 
     await make_llm_reviewer(llm, prompt_input)([DraftOutfit(1, "preferred", tuple(GOOD), "이유")])
@@ -476,6 +476,7 @@ async def test_llm_reviewer_passes_prompt_input_and_outfits(monkeypatch):
         "is_outer_required",
         "candidates",
         "is_going_out_tomorrow",
+        "ignores_current_weather",
     ):
         assert getattr(data, field) == getattr(prompt_input, field), field
     assert [(o.outfit_seq, list(o.item_keys)) for o in data.outfits] == [(1, GOOD)]

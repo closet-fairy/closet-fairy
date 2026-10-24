@@ -371,6 +371,7 @@ def make_llm_reviewer(llm: LLMClient, prompt_input: OutfitPromptInput) -> Review
                 candidates=prompt_input.candidates,
                 outfits=[ReviewTarget(d.outfit_seq, list(d.item_keys)) for d in drafts],
                 is_going_out_tomorrow=prompt_input.is_going_out_tomorrow,
+                ignores_current_weather=prompt_input.ignores_current_weather,
             ),
         )
 

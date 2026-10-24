@@ -51,6 +51,7 @@ class OutfitReviewInput:
     candidates: Sequence[CandidateItem]
     outfits: Sequence[ReviewTarget]
     is_going_out_tomorrow: bool = False
+    ignores_current_weather: bool = False
 
 
 class OutfitReview(pydantic.BaseModel):
@@ -78,7 +79,7 @@ def assemble_outfit_review_prompt(data: OutfitReviewInput) -> AssembledPrompt:
     candidates = _sort_candidates(data.candidates)
 
     values = {
-        "weather": _format_weather(data.weather, data.is_going_out_tomorrow),
+        "weather": _format_weather(data.weather, data.ignores_current_weather),
         "hourly_forecast": _format_hourly(data.weather.hourly, start_at, end_at),
         "going_out_time": _format_going_out_time(start_at, end_at, data.is_going_out_tomorrow),
         "season": f"{_label(_SEASON_LABELS, data.season_cd)} ({data.season_cd})",

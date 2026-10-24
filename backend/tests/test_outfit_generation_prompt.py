@@ -657,7 +657,9 @@ def test_going_out_past_midnight():
 def test_going_out_tomorrow_drops_current_weather_and_prefixes_time():
     today = assemble_outfit_generation_prompt(make_input()).user
 
-    user = assemble_outfit_generation_prompt(make_input(is_going_out_tomorrow=True)).user
+    user = assemble_outfit_generation_prompt(
+        make_input(is_going_out_tomorrow=True, ignores_current_weather=True)
+    ).user
 
     assert "## 날씨\n- 외출 시간대 최저 체감온도 14.0℃\n\n## 외출 시간대 예보\n" in user
     assert "## 외출 시간\n내일 09:30~11:00\n" in user
@@ -686,6 +688,18 @@ def test_going_out_tomorrow_with_fallback_weather_keeps_today_weather_block():
         make_input(weather=weather, is_going_out_tomorrow=True)
     ).user
 
+    assert user == today.replace("## 외출 시간\n09:30~11:00\n", "## 외출 시간\n내일 09:30~11:00\n")
+
+
+def test_going_out_tomorrow_without_forecast_keeps_today_weather_block():
+    weather = dataclasses.replace(make_input().weather, hourly=())
+    today = assemble_outfit_generation_prompt(make_input(weather=weather)).user
+
+    user = assemble_outfit_generation_prompt(
+        make_input(weather=weather, is_going_out_tomorrow=True, ignores_current_weather=False)
+    ).user
+
+    assert "- 기온 17.5℃ (체감 16.2℃), 맑음\n" in user
     assert user == today.replace("## 외출 시간\n09:30~11:00\n", "## 외출 시간\n내일 09:30~11:00\n")
 
 

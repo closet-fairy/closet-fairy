@@ -146,11 +146,15 @@ def test_weather_is_converted_with_hourly_forecast():
 def test_going_out_tomorrow_is_passed_to_prompt_input():
     today = pipeline.build_prompt_input(_context(), _supplement(), _preferences())
     tomorrow = pipeline.build_prompt_input(
-        replace(_context(), is_going_out_tomorrow=True), _supplement(), _preferences()
+        replace(_context(), is_going_out_tomorrow=True, ignores_current_weather=True),
+        _supplement(),
+        _preferences(),
     )
 
     assert today.is_going_out_tomorrow is False
+    assert today.ignores_current_weather is False
     assert tomorrow.is_going_out_tomorrow is True
+    assert tomorrow.ignores_current_weather is True
 
 
 # ---------- 선호도 ----------

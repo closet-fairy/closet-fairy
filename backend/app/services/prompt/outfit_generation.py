@@ -137,6 +137,7 @@ class OutfitPromptInput:
     regeneration_instructions: Sequence[RegenerationInstruction] = ()
     failure_reasons: Sequence[FailureReason] = ()
     is_going_out_tomorrow: bool = False
+    ignores_current_weather: bool = False
 
 
 @dataclass(frozen=True)
@@ -221,7 +222,7 @@ def assemble_outfit_generation_prompt(data: OutfitPromptInput) -> AssembledPromp
     candidates = _sort_candidates(data.candidates)
 
     values = {
-        "weather": _format_weather(data.weather, data.is_going_out_tomorrow),
+        "weather": _format_weather(data.weather, data.ignores_current_weather),
         "hourly_forecast": _format_hourly(data.weather.hourly, start_at, end_at),
         "going_out_time": _format_going_out_time(start_at, end_at, data.is_going_out_tomorrow),
         "season": f"{_label(_SEASON_LABELS, data.season_cd)} ({data.season_cd})",
@@ -282,11 +283,11 @@ def _format_going_out_time(
     return f"{prefix}{start_at:%H:%M}~{_format_clock(end_at, start_at)}"
 
 
-def _format_weather(weather: WeatherInput, is_going_out_tomorrow: bool) -> str:
+def _format_weather(weather: WeatherInput, ignores_current_weather: bool) -> str:
     min_feels_like_line = (
         f"- 외출 시간대 최저 체감온도 {_format_number(weather.min_feels_like_temperature)}℃"
     )
-    if is_going_out_tomorrow and not weather.is_fallback:
+    if ignores_current_weather:
         return min_feels_like_line
     lines = [
         f"- 기온 {_format_number(weather.temperature)}℃ "

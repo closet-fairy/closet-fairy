@@ -124,6 +124,13 @@ def nearest_sky(fcst_items: list[dict], now: datetime) -> int | None:
     return sky
 
 
+def going_out_hours(
+    hourly: list[HourlyWeather], going_out_start: datetime, going_out_end: datetime
+) -> list[HourlyWeather]:
+    window_start = going_out_start.replace(minute=0, second=0, microsecond=0)
+    return [h for h in hourly if window_start <= h.at <= going_out_end]
+
+
 def min_feels_like(
     hourly: list[HourlyWeather],
     current_feels: float,

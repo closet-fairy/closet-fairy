@@ -57,6 +57,7 @@ def _context(
     going_out_start_at: datetime = NOW,
     going_out_end_at: datetime = NOW,
     is_going_out_tomorrow: bool = False,
+    ignores_current_weather: bool = False,
 ) -> RecommendContext:
     return RecommendContext(
         recommendation_session_id=1,
@@ -74,6 +75,7 @@ def _context(
         preferred_styles=[],
         clothing=clothing,
         is_going_out_tomorrow=is_going_out_tomorrow,
+        ignores_current_weather=ignores_current_weather,
     )
 
 
@@ -270,12 +272,28 @@ def test_current_rain_is_ignored_when_going_out_tomorrow():
         going_out_start_at=datetime(2026, 7, 16, 12, 0),
         going_out_end_at=datetime(2026, 7, 16, 14, 0),
         is_going_out_tomorrow=True,
+        ignores_current_weather=True,
     )
 
     result = filter_clothing(context)
 
     assert result.precipitation_expected is False
     assert [c.clothing_id for c in result.candidates] == [1, 2]
+
+
+def test_current_rain_counts_when_going_out_tomorrow_without_forecast():
+    context = _context(
+        [],
+        _weather(min_feels_like_temperature=20.0, weather_condition_cd="rain"),
+        going_out_start_at=datetime(2026, 7, 16, 12, 0),
+        going_out_end_at=datetime(2026, 7, 16, 14, 0),
+        is_going_out_tomorrow=True,
+        ignores_current_weather=False,
+    )
+
+    result = filter_clothing(context)
+
+    assert result.precipitation_expected is True
 
 
 def test_tomorrow_rain_in_going_out_window_triggers_precipitation():
