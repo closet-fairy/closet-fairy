@@ -680,17 +680,6 @@ def test_going_out_tomorrow_past_midnight():
     assert "## 외출 시간\n내일 22:00~익일 02:00\n" in user
 
 
-def test_going_out_tomorrow_with_fallback_weather_keeps_today_weather_block():
-    weather = WeatherInput(10.0, 8.0, 0.0, 0.0, "clear", 8.0, is_fallback=True)
-    today = assemble_outfit_generation_prompt(make_input(weather=weather)).user
-
-    user = assemble_outfit_generation_prompt(
-        make_input(weather=weather, is_going_out_tomorrow=True)
-    ).user
-
-    assert user == today.replace("## 외출 시간\n09:30~11:00\n", "## 외출 시간\n내일 09:30~11:00\n")
-
-
 def test_going_out_tomorrow_without_forecast_keeps_today_weather_block():
     weather = dataclasses.replace(make_input().weather, hourly=())
     today = assemble_outfit_generation_prompt(make_input(weather=weather)).user

@@ -114,7 +114,8 @@ async def load_context(
         is_going_out_tomorrow=is_going_out_tomorrow,
         # 외출 시간대 예보가 없으면 지금 날씨까지 빼면 볼 날씨가 없으므로
         # 오늘 외출처럼 지금 날씨를 쓴다.
-        # 대체값(is_fallback)은 예보가 항상 비어 있어 여기서 자동으로 False가 된다.
+        # 대체값(is_fallback)은 지금 날씨가 아니라 평년값이라 내일에도 맞으므로 빼지 않는다.
         ignores_current_weather=is_going_out_tomorrow
+        and not weather.is_fallback
         and bool(going_out_hours(weather.hourly, going_out_start, going_out_end)),
     )

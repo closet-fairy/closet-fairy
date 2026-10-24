@@ -250,18 +250,22 @@ def _hour(at: datetime) -> HourlyWeather:
 
 
 @pytest.mark.parametrize(
-    ("going_out_start_at", "hourly", "expected"),
+    ("going_out_start_at", "hourly", "is_fallback", "expected"),
     [
         pytest.param(
             datetime(2026, 9, 28, 4, 30),
             [_hour(datetime(2026, 9, 28, 13, 0, tzinfo=KST))],
+            False,
             True,
             id="tomorrow-with-forecast-in-window",
         ),
-        pytest.param(datetime(2026, 9, 28, 4, 30), [], False, id="tomorrow-without-forecast"),
+        pytest.param(
+            datetime(2026, 9, 28, 4, 30), [], False, False, id="tomorrow-without-forecast"
+        ),
         pytest.param(
             datetime(2026, 9, 28, 4, 30),
             [_hour(datetime(2026, 9, 28, 18, 0, tzinfo=KST))],
+            False,
             False,
             id="tomorrow-with-forecast-outside-window",
         ),
@@ -269,19 +273,27 @@ def _hour(at: datetime) -> HourlyWeather:
             datetime(2026, 9, 27, 6, 0),
             [_hour(datetime(2026, 9, 27, 15, 0, tzinfo=KST))],
             False,
+            False,
             id="today-with-forecast",
+        ),
+        pytest.param(
+            datetime(2026, 9, 28, 4, 30),
+            [_hour(datetime(2026, 9, 28, 13, 0, tzinfo=KST))],
+            True,
+            False,
+            id="tomorrow-fallback-with-forecast-in-window",
         ),
     ],
 )
 async def test_ignores_current_weather_only_when_tomorrow_forecast_covers_window(
-    common_mocks, monkeypatch, going_out_start_at, hourly, expected
+    common_mocks, monkeypatch, going_out_start_at, hourly, is_fallback, expected
 ):
     session = replace(
         FIXED_SESSION,
         going_out_start_at=going_out_start_at,
         going_out_end_at=going_out_start_at + timedelta(hours=3),
     )
-    weather = replace(FAKE_WEATHER, hourly=hourly)
+    weather = replace(FAKE_WEATHER, hourly=hourly, is_fallback=is_fallback)
 
     async def fake_get_session(db, recommendation_session_id):
         return session

@@ -179,17 +179,6 @@ def test_going_out_tomorrow_drops_current_weather_and_prefixes_time():
     ).replace("## 외출 시간\n11:30~13:00\n", "## 외출 시간\n내일 11:30~13:00\n")
 
 
-def test_going_out_tomorrow_with_fallback_weather_keeps_today_weather_block():
-    weather = WeatherInput(10.0, 8.0, 0.0, 0.0, "clear", 8.0, is_fallback=True)
-    today = assemble_outfit_review_prompt(make_input(weather=weather)).user
-
-    user = assemble_outfit_review_prompt(
-        make_input(weather=weather, is_going_out_tomorrow=True)
-    ).user
-
-    assert user == today.replace("## 외출 시간\n11:30~13:00\n", "## 외출 시간\n내일 11:30~13:00\n")
-
-
 def test_going_out_tomorrow_without_forecast_keeps_today_weather_block():
     weather = dataclasses.replace(make_input().weather, hourly=())
     today = assemble_outfit_review_prompt(make_input(weather=weather)).user
