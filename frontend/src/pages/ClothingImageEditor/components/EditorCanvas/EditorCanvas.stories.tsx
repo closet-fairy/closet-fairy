@@ -3,81 +3,13 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { DEFAULT_CORNERS } from '@/domains/clothingImageEdit/perspective';
 import { bg } from '@/styles/tokens';
 import type { Quad } from '@/domains/clothingImageEdit/types';
+import {
+  createStorySamples,
+  SAMPLE_SIZE,
+} from '@/pages/ClothingImageEditor/storySamples';
 import EditorCanvas from './EditorCanvas';
 
-const SIZE = { width: 480, height: 640 };
-
-const drawGarment = (context: CanvasRenderingContext2D) => {
-  context.beginPath();
-  context.moveTo(150, 120);
-  context.lineTo(330, 120);
-  context.lineTo(440, 260);
-  context.lineTo(390, 300);
-  context.lineTo(340, 250);
-  context.lineTo(340, 560);
-  context.lineTo(140, 560);
-  context.lineTo(140, 250);
-  context.lineTo(90, 300);
-  context.lineTo(40, 260);
-  context.closePath();
-};
-
-const createCanvas = () => {
-  const canvas = document.createElement('canvas');
-  canvas.width = SIZE.width;
-  canvas.height = SIZE.height;
-
-  return canvas;
-};
-
-// 레포에 사진 자산을 두지 않으려고, 배경이 있는 원본과 마스크를 직접 그린다.
-const createSamples = () => {
-  const base = createCanvas();
-  const baseContext = base.getContext('2d');
-  const mask = createCanvas();
-  const maskContext = mask.getContext('2d');
-
-  if (baseContext === null || maskContext === null) {
-    return { base, mask };
-  }
-
-  const background = baseContext.createLinearGradient(
-    0,
-    0,
-    SIZE.width,
-    SIZE.height,
-  );
-  background.addColorStop(0, '#d9c7a8');
-  background.addColorStop(1, '#8c7a5e');
-  baseContext.fillStyle = background;
-  baseContext.fillRect(0, 0, SIZE.width, SIZE.height);
-  baseContext.strokeStyle = 'rgba(255, 255, 255, 0.35)';
-  for (let y = 0; y < SIZE.height; y += 24) {
-    baseContext.beginPath();
-    baseContext.moveTo(0, y);
-    baseContext.lineTo(SIZE.width, y);
-    baseContext.stroke();
-  }
-  drawGarment(baseContext);
-  baseContext.fillStyle = '#3b5b8c';
-  baseContext.fill();
-  baseContext.fillStyle = '#f2f2f2';
-  baseContext.fillRect(150, 300, 180, 18);
-
-  maskContext.fillStyle = '#000';
-  maskContext.fillRect(0, 0, SIZE.width, SIZE.height);
-  drawGarment(maskContext);
-  maskContext.fillStyle = '#fff';
-  maskContext.fill();
-  maskContext.fillStyle = '#000';
-  maskContext.beginPath();
-  maskContext.arc(380, 280, 34, 0, Math.PI * 2);
-  maskContext.fill();
-
-  return { base, mask };
-};
-
-const SAMPLES = createSamples();
+const SAMPLES = createStorySamples();
 
 const TILTED_CORNERS: Quad = [
   [0.12, 0.1],
@@ -140,8 +72,8 @@ const meta = {
   },
   args: {
     base: SAMPLES.base,
-    size: SIZE,
-    mask: SAMPLES.mask,
+    size: SAMPLE_SIZE,
+    mask: SAMPLES.editedMask,
     corners: DEFAULT_CORNERS,
     angle: 0,
     faintOpacity: 0,
