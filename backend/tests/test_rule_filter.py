@@ -307,6 +307,7 @@ def test_tomorrow_rain_in_going_out_window_triggers_precipitation():
         going_out_start_at=datetime(2026, 7, 16, 12, 0),
         going_out_end_at=datetime(2026, 7, 16, 14, 0),
         is_going_out_tomorrow=True,
+        ignores_current_weather=True,
     )
 
     result = filter_clothing(context)
@@ -322,6 +323,7 @@ def test_rainy_tpo_triggers_precipitation_when_going_out_tomorrow():
         going_out_start_at=datetime(2026, 7, 16, 12, 0),
         going_out_end_at=datetime(2026, 7, 16, 14, 0),
         is_going_out_tomorrow=True,
+        ignores_current_weather=True,
     )
 
     result = filter_clothing(context)
