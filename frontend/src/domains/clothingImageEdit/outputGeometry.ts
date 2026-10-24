@@ -57,14 +57,17 @@ export const getOutputGeometry = (
   };
 };
 
+const EDGE_TOLERANCE = 1e-6;
+
 /*
- * 출력 픽셀 좌표(왼쪽 위 원점, y 아래로)를 원본 픽셀 좌표로 바꾼다.
+ * 출력 픽셀 좌표(왼쪽 위 원점, y 아래로)를 원본 픽셀 좌표로 바꾼다. 비어 있어야 할 자리면 null이다.
+ * 원근을 편 사각형 밖은 잘려 나간 부분이라, 회전으로 커진 귀퉁이에 비치지 않게 막는다.
  * 셰이더와 같은 계산이라, 셰이더를 고칠 때 이 함수와 테스트도 함께 맞춘다.
  */
 export const mapOutputToSource = (
   geometry: OutputGeometry,
   outputPoint: readonly [number, number],
-): readonly [number, number] => {
+): readonly [number, number] | null => {
   const { outputSize, perspectiveSize, inverseRotation, perspectiveToSource } =
     geometry;
   const [cos, sin] = inverseRotation;
@@ -72,8 +75,29 @@ export const mapOutputToSource = (
   const dy = outputPoint[1] - outputSize.height / 2;
   const x = cos * dx + sin * dy + perspectiveSize.width / 2;
   const y = -sin * dx + cos * dy + perspectiveSize.height / 2;
+
+  if (
+    x < -EDGE_TOLERANCE ||
+    y < -EDGE_TOLERANCE ||
+    x > perspectiveSize.width + EDGE_TOLERANCE ||
+    y > perspectiveSize.height + EDGE_TOLERANCE
+  ) {
+    return null;
+  }
+
   const [a, b, c, d, e, f, g, h, i] = perspectiveToSource;
   const w = g * x + h * y + i;
 
+  if (w <= 0) {
+    return null;
+  }
+
   return [(a * x + b * y + c) / w, (d * x + e * y + f) / w];
+};
+
+// GLSL의 mat3는 열 우선이라 행 우선 행렬을 전치해서 넘긴다.
+export const toColumnMajor = (matrix: Matrix3) => {
+  const [a, b, c, d, e, f, g, h, i] = matrix;
+
+  return new Float32Array([a, d, g, b, e, h, c, f, i]);
 };
