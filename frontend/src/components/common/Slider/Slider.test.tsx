@@ -72,6 +72,7 @@ describe('눈금 글자', () => {
 
 describe('잡는 동안 신호', () => {
   beforeEach(() => {
+    // jsdom에는 포인터 캡처가 없는데 Base UI가 누를 때 호출한다.
     Element.prototype.setPointerCapture = vi.fn();
     Element.prototype.hasPointerCapture = vi.fn(() => false);
     Element.prototype.releasePointerCapture = vi.fn();
@@ -117,5 +118,53 @@ describe('잡는 동안 신호', () => {
     fireEvent.pointerDown(slider, { button: 0, pointerId: 1 });
 
     expect(handleDraggingChange).not.toHaveBeenCalled();
+  });
+
+  test('다른 손가락을 뗐을 때는 놓았음을 알리지 않아야 한다.', () => {
+    const handleDraggingChange = vi.fn();
+    render(
+      <Slider
+        aria-label="붓 크기"
+        value={20}
+        onChange={vi.fn()}
+        min={4}
+        max={80}
+        onDraggingChange={handleDraggingChange}
+      />,
+    );
+
+    fireEvent.pointerDown(screen.getByRole('slider'), {
+      button: 0,
+      pointerId: 1,
+    });
+    fireEvent.pointerUp(window, { pointerId: 2 });
+
+    expect(handleDraggingChange.mock.calls).toEqual([[true]]);
+
+    fireEvent.pointerUp(window, { pointerId: 1 });
+
+    expect(handleDraggingChange.mock.calls).toEqual([[true], [false]]);
+  });
+
+  test('잡는 중에 사라지면 놓았음을 알려야 한다.', () => {
+    const handleDraggingChange = vi.fn();
+    const { unmount } = render(
+      <Slider
+        aria-label="붓 크기"
+        value={20}
+        onChange={vi.fn()}
+        min={4}
+        max={80}
+        onDraggingChange={handleDraggingChange}
+      />,
+    );
+
+    fireEvent.pointerDown(screen.getByRole('slider'), {
+      button: 0,
+      pointerId: 1,
+    });
+    unmount();
+
+    expect(handleDraggingChange.mock.calls).toEqual([[true], [false]]);
   });
 });

@@ -42,11 +42,11 @@ const Slider = (props: SliderProps) => {
   } = props;
 
   const formField = useContext(FormFieldContext);
-  const removeReleaseListenersRef = useRef<(() => void) | null>(null);
+  const endDragRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     return () => {
-      removeReleaseListenersRef.current?.();
+      endDragRef.current?.();
     };
   }, []);
 
@@ -70,35 +70,42 @@ const Slider = (props: SliderProps) => {
   };
 
   const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
-    if (isDisabled || !onDraggingChange || event.button !== 0) {
+    if (
+      isDisabled ||
+      !onDraggingChange ||
+      event.button !== 0 ||
+      endDragRef.current !== null
+    ) {
       return;
     }
 
-    removeReleaseListenersRef.current?.();
+    const { pointerId } = event;
     onDraggingChange(true);
 
-    const removeReleaseListeners = () => {
-      window.removeEventListener('pointerup', handleRelease);
-      window.removeEventListener('pointercancel', handleRelease);
-      window.removeEventListener('pointermove', handleMove);
-      removeReleaseListenersRef.current = null;
-    };
-
-    const handleRelease = () => {
-      removeReleaseListeners();
+    const endDrag = () => {
+      window.removeEventListener('pointerup', handlePointerEnd);
+      window.removeEventListener('pointercancel', handlePointerEnd);
+      window.removeEventListener('pointermove', handlePointerMove);
+      endDragRef.current = null;
       onDraggingChange(false);
     };
 
-    const handleMove = (moveEvent: globalThis.PointerEvent) => {
-      if (moveEvent.buttons === 0) {
-        handleRelease();
+    const handlePointerEnd = (endEvent: globalThis.PointerEvent) => {
+      if (endEvent.pointerId === pointerId) {
+        endDrag();
       }
     };
 
-    window.addEventListener('pointerup', handleRelease);
-    window.addEventListener('pointercancel', handleRelease);
-    window.addEventListener('pointermove', handleMove);
-    removeReleaseListenersRef.current = removeReleaseListeners;
+    const handlePointerMove = (moveEvent: globalThis.PointerEvent) => {
+      if (moveEvent.pointerId === pointerId && moveEvent.buttons === 0) {
+        endDrag();
+      }
+    };
+
+    window.addEventListener('pointerup', handlePointerEnd);
+    window.addEventListener('pointercancel', handlePointerEnd);
+    window.addEventListener('pointermove', handlePointerMove);
+    endDragRef.current = endDrag;
   };
 
   return (
