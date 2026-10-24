@@ -136,6 +136,8 @@ class OutfitPromptInput:
     kept_outfits: Sequence[KeptOutfit] = ()
     regeneration_instructions: Sequence[RegenerationInstruction] = ()
     failure_reasons: Sequence[FailureReason] = ()
+    is_going_out_tomorrow: bool = False
+    ignores_current_weather: bool = False
 
 
 @dataclass(frozen=True)
@@ -220,9 +222,9 @@ def assemble_outfit_generation_prompt(data: OutfitPromptInput) -> AssembledPromp
     candidates = _sort_candidates(data.candidates)
 
     values = {
-        "weather": _format_weather(data.weather),
+        "weather": _format_weather(data.weather, data.ignores_current_weather),
         "hourly_forecast": _format_hourly(data.weather.hourly, start_at, end_at),
-        "going_out_time": f"{start_at:%H:%M}~{_format_clock(end_at, start_at)}",
+        "going_out_time": _format_going_out_time(start_at, end_at, data.is_going_out_tomorrow),
         "season": f"{_label(_SEASON_LABELS, data.season_cd)} ({data.season_cd})",
         "tpo": _format_tpo(data.tpo_cd, data.tpo_text),
         "member_profile": _format_member_profile(data, start_at),
@@ -274,14 +276,26 @@ def _text_or_none(text: str) -> str | None:
     return text or None
 
 
-def _format_weather(weather: WeatherInput) -> str:
+def _format_going_out_time(
+    start_at: datetime, end_at: datetime, is_going_out_tomorrow: bool
+) -> str:
+    prefix = "내일 " if is_going_out_tomorrow else ""
+    return f"{prefix}{start_at:%H:%M}~{_format_clock(end_at, start_at)}"
+
+
+def _format_weather(weather: WeatherInput, ignores_current_weather: bool) -> str:
+    min_feels_like_line = (
+        f"- 외출 시간대 최저 체감온도 {_format_number(weather.min_feels_like_temperature)}℃"
+    )
+    if ignores_current_weather:
+        return min_feels_like_line
     lines = [
         f"- 기온 {_format_number(weather.temperature)}℃ "
         f"(체감 {_format_number(weather.feels_like_temperature)}℃), "
         f"{_label(_WEATHER_CONDITION_LABELS, weather.weather_condition_cd)}",
         f"- 강수 {_format_number(weather.precipitation)}mm, "
         f"풍속 {_format_number(weather.wind_speed)}m/s",
-        f"- 외출 시간대 최저 체감온도 {_format_number(weather.min_feels_like_temperature)}℃",
+        min_feels_like_line,
     ]
     if weather.is_fallback:
         lines.append("- 기상 정보를 받지 못해 월별 평년 기온으로 대체한 값이다.")

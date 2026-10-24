@@ -22,14 +22,17 @@ class PastGoingOutTimeError(ValidationError):
 def resolve_going_out_period(
     req: RecommendationSessionCreate, now: datetime
 ) -> tuple[datetime, datetime]:
-    """'오늘' 기준 시각(KST)으로 바꾼다. 종료가 시작보다 이르면 종료만 다음 날.
-    지금이 14:10이면 14:00 슬롯까지는 허용, 13:30은 거부."""
+    """외출 날짜(오늘/내일) 기준 시각(KST)으로 바꾼다. 종료가 시작보다 이르면 종료만 다음 날.
+    지난 시각 검사는 오늘 외출만 한다. 지금이 14:10이면 14:00 슬롯까지는 허용, 13:30은 거부."""
     now = now.astimezone(KST)
-    today = now.date()
-    start = datetime.combine(today, req.going_out_start_time, tzinfo=KST)
-    end = datetime.combine(today, req.going_out_end_time, tzinfo=KST)
+    is_tomorrow = req.going_out_date_cd == "tomorrow"
+    going_out_date = now.date() + timedelta(days=1 if is_tomorrow else 0)
+    start = datetime.combine(going_out_date, req.going_out_start_time, tzinfo=KST)
+    end = datetime.combine(going_out_date, req.going_out_end_time, tzinfo=KST)
     if end < start:
         end += timedelta(days=1)
+    if is_tomorrow:
+        return start, end
 
     current_slot = now.replace(minute=0 if now.minute < 30 else 30, second=0, microsecond=0)
     if start < current_slot:

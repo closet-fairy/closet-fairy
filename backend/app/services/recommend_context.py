@@ -19,7 +19,7 @@ from app.repositories.clothing import ClothingCandidate
 from app.repositories.recommendation_session import SessionRow
 from app.services.recommendation_session import to_db_utc
 from app.services.weather.base_time import KST
-from app.services.weather.weather_service import WeatherResult, get_weather
+from app.services.weather.weather_service import WeatherResult, get_weather, going_out_hours
 
 
 @dataclass
@@ -38,6 +38,8 @@ class RecommendContext:
     gender_cd: str
     preferred_styles: list[str]
     clothing: list[ClothingCandidate]
+    is_going_out_tomorrow: bool = False
+    ignores_current_weather: bool = False
 
 
 def _to_kst(dt: datetime) -> datetime:
@@ -64,11 +66,15 @@ async def collect_context(recommendation_session_id: int) -> RecommendContext:
         await weather_snapshot_repo.insert_weather_snapshot(
             db, recommendation_session_id, weather, to_db_utc(now.replace(microsecond=0))
         )
-        return await load_context(db, recommendation_session_id, session, weather)
+        return await load_context(db, recommendation_session_id, session, weather, now)
 
 
 async def load_context(
-    db: AsyncSession, recommendation_session_id: int, session: SessionRow, weather: WeatherResult
+    db: AsyncSession,
+    recommendation_session_id: int,
+    session: SessionRow,
+    weather: WeatherResult,
+    weather_observed_at: datetime,
 ) -> RecommendContext:
     setting = await member_setting_repo.get_member_setting(db, session.member_id)
     if setting is None:
@@ -85,12 +91,16 @@ async def load_context(
         )
 
     clothing = await clothing_repo.get_completed_clothing(db, session.member_id)
+    going_out_start = _to_kst(session.going_out_start_at)
+    going_out_end = _to_kst(session.going_out_end_at)
+    # 세션 생성 시각이 아니라 날씨 조회 시각과 비교한다. [날씨]가 외출 당일 값인지가 기준이라서
+    is_going_out_tomorrow = going_out_start.date() > weather_observed_at.astimezone(KST).date()
 
     return RecommendContext(
         recommendation_session_id=recommendation_session_id,
         member_id=session.member_id,
-        going_out_start_at=_to_kst(session.going_out_start_at),
-        going_out_end_at=_to_kst(session.going_out_end_at),
+        going_out_start_at=going_out_start,
+        going_out_end_at=going_out_end,
         season_cd=session.season_cd,
         tpo_cd=session.tpo_cd,
         tpo_text=session.tpo_text,
@@ -101,4 +111,11 @@ async def load_context(
         gender_cd=gender_cd,
         preferred_styles=preferred_styles,
         clothing=clothing,
+        is_going_out_tomorrow=is_going_out_tomorrow,
+        # 외출 시간대 예보가 없으면 지금 날씨까지 빼면 볼 날씨가 없으므로
+        # 오늘 외출처럼 지금 날씨를 쓴다.
+        # 대체값(is_fallback)은 지금 날씨가 아니라 평년값이라 내일에도 맞으므로 빼지 않는다.
+        ignores_current_weather=is_going_out_tomorrow
+        and not weather.is_fallback
+        and bool(going_out_hours(weather.hourly, going_out_start, going_out_end)),
     )

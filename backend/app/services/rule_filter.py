@@ -12,6 +12,7 @@ from app.core.config import get_settings
 from app.repositories.clothing import ClothingCandidate
 from app.repositories.essential_item import EssentialItemCandidate
 from app.services.recommend_context import RecommendContext
+from app.services.weather.weather_service import going_out_hours
 
 OuterRequirement = Literal["required", "optional", "excluded"]
 
@@ -62,15 +63,18 @@ def thickness_matches(
 
 def _is_precipitation_expected(context: RecommendContext) -> bool:
     weather = context.weather
-    if weather.weather_condition_cd in PRECIPITATION_CONDITION_CODES:
+    if (
+        not context.ignores_current_weather
+        and weather.weather_condition_cd in PRECIPITATION_CONDITION_CODES
+    ):
         return True
     if context.tpo_input_type_cd == "preset" and context.tpo_cd == RAINY_TPO_CD:
         return True
-    window_start = context.going_out_start_at.replace(minute=0, second=0, microsecond=0)
     return any(
         h.weather_condition_cd in PRECIPITATION_CONDITION_CODES
-        for h in weather.hourly
-        if window_start <= h.at <= context.going_out_end_at
+        for h in going_out_hours(
+            weather.hourly, context.going_out_start_at, context.going_out_end_at
+        )
     )
 
 

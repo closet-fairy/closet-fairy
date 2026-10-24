@@ -165,6 +165,32 @@ def test_preset_date_tpo_uses_label():
     assert section(assemble_outfit_review_prompt(data).user, "TPO") == "데이트 (date)"
 
 
+def test_going_out_tomorrow_drops_current_weather_and_prefixes_time():
+    today = assemble_outfit_review_prompt(make_input()).user
+
+    user = assemble_outfit_review_prompt(
+        make_input(is_going_out_tomorrow=True, ignores_current_weather=True)
+    ).user
+
+    assert section(user, "날씨") == "- 외출 시간대 최저 체감온도 15.1℃"
+    assert section(user, "외출 시간") == "내일 11:30~13:00"
+    assert user == today.replace(
+        "- 기온 18.0℃ (체감 17.2℃), 맑음\n- 강수 0.0mm, 풍속 2.4m/s\n", ""
+    ).replace("## 외출 시간\n11:30~13:00\n", "## 외출 시간\n내일 11:30~13:00\n")
+
+
+def test_going_out_tomorrow_without_forecast_keeps_today_weather_block():
+    weather = dataclasses.replace(make_input().weather, hourly=())
+    today = assemble_outfit_review_prompt(make_input(weather=weather)).user
+
+    user = assemble_outfit_review_prompt(
+        make_input(weather=weather, is_going_out_tomorrow=True, ignores_current_weather=False)
+    ).user
+
+    assert "- 기온 18.0℃ (체감 17.2℃), 맑음\n" in user
+    assert user == today.replace("## 외출 시간\n11:30~13:00\n", "## 외출 시간\n내일 11:30~13:00\n")
+
+
 def test_custom_tpo_is_sanitized_and_quoted():
     data = make_input(tpo_cd="custom", tpo_text="친구 결혼식\n하객 | 낮")
 

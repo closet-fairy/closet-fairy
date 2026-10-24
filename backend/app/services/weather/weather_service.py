@@ -124,6 +124,14 @@ def nearest_sky(fcst_items: list[dict], now: datetime) -> int | None:
     return sky
 
 
+def going_out_hours(
+    hourly: list[HourlyWeather], going_out_start: datetime, going_out_end: datetime
+) -> list[HourlyWeather]:
+    # 외출 시간대: 시작 시각이 속한 정시부터 종료 시각까지
+    window_start = going_out_start.replace(minute=0, second=0, microsecond=0)
+    return [h for h in hourly if window_start <= h.at <= going_out_end]
+
+
 def min_feels_like(
     hourly: list[HourlyWeather],
     current_feels: float,
@@ -131,14 +139,15 @@ def min_feels_like(
     going_out_end: datetime,
     now: datetime,
 ) -> float:
-    # 외출 시간대: 시작 시각이 속한 정시부터 종료 시각까지
-    window_start = going_out_start.replace(minute=0, second=0, microsecond=0)
-    in_window = [h.feels_like_temperature for h in hourly if window_start <= h.at <= going_out_end]
+    in_window = [
+        h.feels_like_temperature for h in going_out_hours(hourly, going_out_start, going_out_end)
+    ]
 
     # 외출 시작이 지금과 같은 정시일 때만 현재 관측값을 후보에 섞는다.
     # (아니면, 외출과 무관한 지금 기온이 미래 외출의 최저값으로 잘못 반영된다)
+    start_hour = going_out_start.replace(minute=0, second=0, microsecond=0)
     now_hour = now.replace(minute=0, second=0, microsecond=0)
-    candidates = in_window + [current_feels] if window_start == now_hour else in_window
+    candidates = in_window + [current_feels] if start_hour == now_hour else in_window
     return min(candidates) if candidates else current_feels
 
 

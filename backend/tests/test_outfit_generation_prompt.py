@@ -654,6 +654,44 @@ def test_going_out_past_midnight():
     assert "## 외출 시간\n22:00~익일 02:00\n" in user
 
 
+def test_going_out_tomorrow_drops_current_weather_and_prefixes_time():
+    today = assemble_outfit_generation_prompt(make_input()).user
+
+    user = assemble_outfit_generation_prompt(
+        make_input(is_going_out_tomorrow=True, ignores_current_weather=True)
+    ).user
+
+    assert "## 날씨\n- 외출 시간대 최저 체감온도 14.0℃\n\n## 외출 시간대 예보\n" in user
+    assert "## 외출 시간\n내일 09:30~11:00\n" in user
+    assert user == today.replace(
+        "- 기온 17.5℃ (체감 16.2℃), 맑음\n- 강수 0.0mm, 풍속 2.1m/s\n", ""
+    ).replace("## 외출 시간\n09:30~11:00\n", "## 외출 시간\n내일 09:30~11:00\n")
+
+
+def test_going_out_tomorrow_past_midnight():
+    data = make_input(
+        going_out_start_at=kst(22, day=3),
+        going_out_end_at=kst(2, day=4),
+        is_going_out_tomorrow=True,
+    )
+
+    user = assemble_outfit_generation_prompt(data).user
+
+    assert "## 외출 시간\n내일 22:00~익일 02:00\n" in user
+
+
+def test_going_out_tomorrow_without_forecast_keeps_today_weather_block():
+    weather = dataclasses.replace(make_input().weather, hourly=())
+    today = assemble_outfit_generation_prompt(make_input(weather=weather)).user
+
+    user = assemble_outfit_generation_prompt(
+        make_input(weather=weather, is_going_out_tomorrow=True, ignores_current_weather=False)
+    ).user
+
+    assert "- 기온 17.5℃ (체감 16.2℃), 맑음\n" in user
+    assert user == today.replace("## 외출 시간\n09:30~11:00\n", "## 외출 시간\n내일 09:30~11:00\n")
+
+
 def test_naive_datetime_is_rejected():
     with pytest.raises(ValueError, match="타임존"):
         assemble_outfit_generation_prompt(make_input(going_out_start_at=datetime(2026, 10, 2, 9)))
