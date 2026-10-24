@@ -1,8 +1,16 @@
 import { describe, expect, test } from 'vitest';
+import {
+  canUndoStroke,
+  EMPTY_BRUSH_HISTORY,
+  MAX_BRUSH_HISTORY,
+  pushStroke,
+  undoStroke,
+} from '@/domains/clothingImageEdit/brushHistory';
 import { DEFAULT_CORNERS } from '@/domains/clothingImageEdit/perspective';
 import type { Quad } from '@/domains/clothingImageEdit/types';
 import {
   createInitialEditorState,
+  getEditState,
   getSaveAngle,
   hasChanges,
   imageEditorReducer,
@@ -24,6 +32,20 @@ const createState = (rotationAngle = 0, corners: Quad | null = null) =>
 
 const reduce = (state: ImageEditorState, ...actions: ImageEditorAction[]) =>
   actions.reduce(imageEditorReducer, state);
+
+const withStrokes = (count: number) => {
+  let history = EMPTY_BRUSH_HISTORY;
+
+  for (let index = 0; index < count; index += 1) {
+    history = pushStroke(history, {
+      mode: 'erase',
+      radius: 4,
+      points: [[index, index]],
+    }).history;
+  }
+
+  return history;
+};
 
 describe('초기 상태 만들기', () => {
   test('저장된 각도를 방향과 기울기로 나누고 브러시 단계에서 시작해야 한다.', () => {
@@ -149,23 +171,49 @@ describe('전체 각도 설정', () => {
   });
 });
 
-describe('마스크 편집', () => {
-  test('붓질하면 마스크 상태가 편집됨이 되고 버전이 올라가야 한다.', () => {
-    const state = reduce(createState(), { type: 'editMask' });
+describe('붓질 기록과 합친 편집 상태', () => {
+  test('붓질하면 마스크 상태가 편집됨이 되고 비교용 번호가 올라가야 한다.', () => {
+    const editState = getEditState(createState(), {
+      history: withStrokes(1),
+      revision: 1,
+    });
 
-    expect(state.maskStatus).toBe('edited');
-    expect(state.maskVersion).toBe(1);
+    expect(editState.maskStatus).toBe('edited');
+    expect(editState.maskVersion).toBe(1);
   });
 
-  test('원래대로 뒤에 붓질하면 다시 편집됨이 되어야 한다.', () => {
-    const state = reduce(
-      createState(),
-      { type: 'reset' },
-      { type: 'editMask' },
-    );
+  test('붓질을 모두 실행 취소하면 바뀐 게 없어야 한다.', () => {
+    const initialState = createState();
+    const { history } = undoStroke(withStrokes(1));
+    const editState = getEditState(initialState, { history, revision: 2 });
 
-    expect(state.maskStatus).toBe('edited');
-    expect(state.maskVersion).toBe(2);
+    expect(editState.maskStatus).toBe('initial');
+    expect(hasChanges(editState, initialState, { hasSavedMask: false })).toBe(
+      false,
+    );
+  });
+
+  test('원래대로 뒤에 붓질을 모두 취소하면 기본 마스크 상태로 돌아가야 한다.', () => {
+    const state = reduce(createState(), { type: 'reset' });
+    const editState = getEditState(state, {
+      history: EMPTY_BRUSH_HISTORY,
+      revision: 3,
+    });
+
+    expect(editState.maskStatus).toBe('default');
+    expect(editState.maskVersion).toBe(4);
+  });
+
+  test('기록 한도를 넘겨 구워 넣은 획이 있으면 모두 취소해도 편집됨이어야 한다.', () => {
+    let history = withStrokes(MAX_BRUSH_HISTORY + 1);
+
+    while (canUndoStroke(history)) {
+      history = undoStroke(history).history;
+    }
+
+    expect(
+      getEditState(createState(), { history, revision: 1 }).maskStatus,
+    ).toBe('edited');
   });
 });
 
@@ -174,7 +222,6 @@ describe('원래대로', () => {
     const state = reduce(
       createState(84, TILTED_CORNERS),
       { type: 'setStep', step: 'rotation' },
-      { type: 'editMask' },
       { type: 'reset' },
     );
 
@@ -184,7 +231,7 @@ describe('원래대로', () => {
       tilt: 0,
       corners: DEFAULT_CORNERS,
       maskStatus: 'default',
-      maskVersion: 2,
+      maskVersion: 1,
     });
   });
 });
@@ -246,7 +293,10 @@ describe('바뀐 내용 확인', () => {
 
   test('붓질하면 바뀐 것이어야 한다.', () => {
     const initialState = createState();
-    const state = reduce(initialState, { type: 'editMask' });
+    const state = getEditState(initialState, {
+      history: withStrokes(1),
+      revision: 1,
+    });
 
     expect(hasChanges(state, initialState, noSavedMask)).toBe(true);
   });
@@ -286,7 +336,10 @@ describe('모두 기본값인지 확인', () => {
   });
 
   test('붓질했으면 기본값이 아니어야 한다.', () => {
-    const state = reduce(createState(), { type: 'editMask' });
+    const state = getEditState(createState(), {
+      history: withStrokes(1),
+      revision: 1,
+    });
 
     expect(isAllDefault(state, { hasSavedMask: false })).toBe(false);
   });

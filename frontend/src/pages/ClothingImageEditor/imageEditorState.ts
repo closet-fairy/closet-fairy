@@ -11,6 +11,8 @@ import {
   isValidQuad,
   snapCorners,
 } from '@/domains/clothingImageEdit/perspective';
+import { getBrushMaskStatus } from '@/domains/clothingImageEdit/brushHistory';
+import type { BrushHistory } from '@/domains/clothingImageEdit/brushHistory';
 import { isDefaultMask } from '@/domains/clothingImageEdit/saveRequests';
 import type { MaskStatus } from '@/domains/clothingImageEdit/saveRequests';
 import type { Quad, Size } from '@/domains/clothingImageEdit/types';
@@ -37,7 +39,6 @@ export type ImageEditorAction =
   | { type: 'setTilt'; tilt: number }
   | { type: 'setAngle'; angle: number }
   | { type: 'setCorners'; corners: Quad }
-  | { type: 'editMask' }
   | { type: 'reset' };
 
 export const createInitialEditorState = (
@@ -107,12 +108,6 @@ export const imageEditorReducer = (
     }
     case 'setCorners':
       return { ...state, corners: action.corners };
-    case 'editMask':
-      return {
-        ...state,
-        maskStatus: 'edited',
-        maskVersion: state.maskVersion + 1,
-      };
     case 'reset':
       return {
         ...state,
@@ -124,6 +119,28 @@ export const imageEditorReducer = (
       };
   }
 };
+
+interface BrushEdit {
+  history: BrushHistory;
+  // 붓질 기록이 바뀔 때마다 오르는 번호다.
+  revision: number;
+}
+
+/*
+ * 리듀서는 기준 마스크가 불러온 것인지 기본인지만 든다. 붓질 기록과 합쳐야 실제 마스크 상태가 된다.
+ * 붓질은 GPU에 바뀐 영역만 올리므로 리듀서의 maskVersion을 올리지 않고, 저장 비교용 번호에만 더한다.
+ */
+export const getEditState = (
+  state: ImageEditorState,
+  brush: BrushEdit,
+): ImageEditorState => ({
+  ...state,
+  maskStatus: getBrushMaskStatus(
+    brush.history,
+    state.maskStatus === 'default' ? 'default' : 'initial',
+  ),
+  maskVersion: state.maskVersion + brush.revision,
+});
 
 const isSameQuad = (a: Quad, b: Quad) =>
   a.every(

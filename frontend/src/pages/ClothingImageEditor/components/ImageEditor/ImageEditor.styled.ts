@@ -13,6 +13,9 @@ import {
 
 const CHECKER_SIZE = 16;
 const CHIP_HEIGHT = 32;
+// 그림은 [원래대로] 칩 줄 아래에서 시작한다. 원근 돋보기도 이 높이에 맞춰 띄운다.
+export const VIEWPORT_TOP =
+  parseFloat(spacing[12]) + CHIP_HEIGHT + parseFloat(spacing[8]);
 const MIN_TOUCH_SIZE = 44;
 const GRID_DIVISIONS = 6;
 // 브러시·원근·회전 패널의 높이를 비슷하게 맞춰, 단계를 오갈 때 캔버스 크기가 덜 흔들리게 한다.
@@ -74,14 +77,20 @@ export const Stage = styled.div`
   background-size: ${CHECKER_SIZE}px ${CHECKER_SIZE}px;
 `;
 
-// 칩 줄 아래에서 그림을 시작해, 그림의 위 귀퉁이와 원근 꼭짓점이 칩에 가려지지 않게 한다.
 export const Viewport = styled.div`
   position: absolute;
   inset: ${spacing[16]};
-  top: calc(${spacing[12]} + ${CHIP_HEIGHT}px + ${spacing[8]});
+  top: ${VIEWPORT_TOP}px;
   display: flex;
   align-items: center;
   justify-content: center;
+`;
+
+// 원근 오버레이가 캔버스와 같은 크기·자리에 겹치도록 캔버스를 감싼다.
+export const CanvasBox = styled.div`
+  position: relative;
+  display: flex;
+  flex: none;
 `;
 
 export const StageMessage = styled.p`
