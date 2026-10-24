@@ -28,6 +28,7 @@ import {
   ClothingUploadResult,
 } from '../../models';
 import type {
+  BodySaveClothingDisplayImageClothingClothingIdEditDisplayPut,
   BodySaveClothingMaskClothingClothingIdEditMaskPut,
   BodyUploadClothingClothingPost,
   ClothingEditUpdate,
@@ -575,7 +576,7 @@ export const getGetClothingClothingClothingIdGetQueryKey = (
 
 export const getGetClothingClothingClothingIdGetQueryOptions = <
   TData = Awaited<ReturnType<typeof getClothingClothingClothingIdGet>>,
-  TError = ErrorType<void | ErrorResponse>,
+  TError = ErrorType<ErrorResponse | void>,
 >(
   clothingId: number,
   options?: {
@@ -616,11 +617,11 @@ export type GetClothingClothingClothingIdGetQueryResult = NonNullable<
   Awaited<ReturnType<typeof getClothingClothingClothingIdGet>>
 >;
 export type GetClothingClothingClothingIdGetQueryError =
-  ErrorType<void | ErrorResponse>;
+  ErrorType<ErrorResponse | void>;
 
 export function useGetClothingClothingClothingIdGet<
   TData = Awaited<ReturnType<typeof getClothingClothingClothingIdGet>>,
-  TError = ErrorType<void | ErrorResponse>,
+  TError = ErrorType<ErrorResponse | void>,
 >(
   clothingId: number,
   options: {
@@ -647,7 +648,7 @@ export function useGetClothingClothingClothingIdGet<
 };
 export function useGetClothingClothingClothingIdGet<
   TData = Awaited<ReturnType<typeof getClothingClothingClothingIdGet>>,
-  TError = ErrorType<void | ErrorResponse>,
+  TError = ErrorType<ErrorResponse | void>,
 >(
   clothingId: number,
   options?: {
@@ -674,7 +675,7 @@ export function useGetClothingClothingClothingIdGet<
 };
 export function useGetClothingClothingClothingIdGet<
   TData = Awaited<ReturnType<typeof getClothingClothingClothingIdGet>>,
-  TError = ErrorType<void | ErrorResponse>,
+  TError = ErrorType<ErrorResponse | void>,
 >(
   clothingId: number,
   options?: {
@@ -697,7 +698,7 @@ export function useGetClothingClothingClothingIdGet<
 
 export function useGetClothingClothingClothingIdGet<
   TData = Awaited<ReturnType<typeof getClothingClothingClothingIdGet>>,
-  TError = ErrorType<void | ErrorResponse>,
+  TError = ErrorType<ErrorResponse | void>,
 >(
   clothingId: number,
   options?: {
@@ -784,7 +785,7 @@ export const getUpdateClothingClothingClothingIdPatchMutationKey = () =>
   ['updateClothingClothingClothingIdPatch'] as const;
 
 export const getUpdateClothingClothingClothingIdPatchMutationOptions = <
-  TError = ErrorType<void | ErrorResponse>,
+  TError = ErrorType<ErrorResponse | void>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -830,7 +831,7 @@ export type UpdateClothingClothingClothingIdPatchMutationResult = NonNullable<
 >;
 export type UpdateClothingClothingClothingIdPatchMutationBody = ClothingUpdate;
 export type UpdateClothingClothingClothingIdPatchMutationError =
-  ErrorType<void | ErrorResponse>;
+  ErrorType<ErrorResponse | void>;
 export type UpdateClothingClothingClothingIdPatchMutationVariables = {
   clothingId: number;
   data: ClothingUpdate;
@@ -840,7 +841,7 @@ export type UpdateClothingClothingClothingIdPatchMutationVariables = {
  * @summary Update Clothing
  */
 export const useUpdateClothingClothingClothingIdPatch = <
-  TError = ErrorType<void | ErrorResponse>,
+  TError = ErrorType<ErrorResponse | void>,
   TContext = unknown,
 >(
   options?: {
@@ -893,7 +894,7 @@ export const getDeleteClothingClothingClothingIdDeleteMutationKey = () =>
   ['deleteClothingClothingClothingIdDelete'] as const;
 
 export const getDeleteClothingClothingClothingIdDeleteMutationOptions = <
-  TError = ErrorType<void | ErrorResponse>,
+  TError = ErrorType<ErrorResponse | void>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -935,7 +936,7 @@ export type DeleteClothingClothingClothingIdDeleteMutationResult = NonNullable<
 >;
 
 export type DeleteClothingClothingClothingIdDeleteMutationError =
-  ErrorType<void | ErrorResponse>;
+  ErrorType<ErrorResponse | void>;
 export type DeleteClothingClothingClothingIdDeleteMutationVariables = {
   clothingId: number;
 };
@@ -944,7 +945,7 @@ export type DeleteClothingClothingClothingIdDeleteMutationVariables = {
  * @summary Delete Clothing
  */
 export const useDeleteClothingClothingClothingIdDelete = <
-  TError = ErrorType<void | ErrorResponse>,
+  TError = ErrorType<ErrorResponse | void>,
   TContext = unknown,
 >(
   options?: {
@@ -995,7 +996,7 @@ export const getMarkClothingReviewedClothingClothingIdReviewedPostMutationKey =
   () => ['markClothingReviewedClothingClothingIdReviewedPost'] as const;
 
 export const getMarkClothingReviewedClothingClothingIdReviewedPostMutationOptions =
-  <TError = ErrorType<void | ErrorResponse>, TContext = unknown>(options?: {
+  <TError = ErrorType<ErrorResponse | void>, TContext = unknown>(options?: {
     mutation?: UseMutationOptions<
       Awaited<
         ReturnType<typeof markClothingReviewedClothingClothingIdReviewedPost>
@@ -1048,7 +1049,7 @@ export type MarkClothingReviewedClothingClothingIdReviewedPostMutationResult =
   >;
 
 export type MarkClothingReviewedClothingClothingIdReviewedPostMutationError =
-  ErrorType<void | ErrorResponse>;
+  ErrorType<ErrorResponse | void>;
 export type MarkClothingReviewedClothingClothingIdReviewedPostMutationVariables =
   { clothingId: number };
 
@@ -1056,7 +1057,7 @@ export type MarkClothingReviewedClothingClothingIdReviewedPostMutationVariables 
  * @summary Mark Clothing Reviewed
  */
 export const useMarkClothingReviewedClothingClothingIdReviewedPost = <
-  TError = ErrorType<void | ErrorResponse>,
+  TError = ErrorType<ErrorResponse | void>,
   TContext = unknown,
 >(
   options?: {
@@ -1093,7 +1094,8 @@ export const getSaveClothingEditClothingClothingIdEditPutUrl = (
 };
 
 /**
- * 회전·원근 보정값 저장 (FR-EDIT-04·05). 원본 이미지와 브러시 마스크는 그대로 둔다.
+ * 회전·원근 보정값 저장 (FR-EDIT-04·05). 원본 이미지와 브러시 마스크는 그대로 두고,
+ * 표시 이미지는 비운다.
  * @summary Save Clothing Edit
  */
 export const saveClothingEditClothingClothingIdEditPut = async (
@@ -1141,7 +1143,7 @@ export const getSaveClothingEditClothingClothingIdEditPutMutationKey = () =>
   ['saveClothingEditClothingClothingIdEditPut'] as const;
 
 export const getSaveClothingEditClothingClothingIdEditPutMutationOptions = <
-  TError = ErrorType<void | ErrorResponse>,
+  TError = ErrorType<ErrorResponse | void>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1189,7 +1191,7 @@ export type SaveClothingEditClothingClothingIdEditPutMutationResult =
 export type SaveClothingEditClothingClothingIdEditPutMutationBody =
   ClothingEditUpdate;
 export type SaveClothingEditClothingClothingIdEditPutMutationError =
-  ErrorType<void | ErrorResponse>;
+  ErrorType<ErrorResponse | void>;
 export type SaveClothingEditClothingClothingIdEditPutMutationVariables = {
   clothingId: number;
   data: ClothingEditUpdate;
@@ -1199,7 +1201,7 @@ export type SaveClothingEditClothingClothingIdEditPutMutationVariables = {
  * @summary Save Clothing Edit
  */
 export const useSaveClothingEditClothingClothingIdEditPut = <
-  TError = ErrorType<void | ErrorResponse>,
+  TError = ErrorType<ErrorResponse | void>,
   TContext = unknown,
 >(
   options?: {
@@ -1230,7 +1232,8 @@ export const getResetClothingEditClothingClothingIdEditDeleteUrl = (
 };
 
 /**
- * 편집값 초기화. 회전·원근·마스크를 모두 지워 원래 이미지로 돌아간다 (FR-EDIT-06).
+ * 편집값 초기화. 회전·원근·마스크와 표시 이미지를 모두 지워 원래 이미지로 돌아간다
+ * (FR-EDIT-06).
  * @summary Reset Clothing Edit
  */
 export const resetClothingEditClothingClothingIdEditDelete = async (
@@ -1252,7 +1255,7 @@ export const getResetClothingEditClothingClothingIdEditDeleteMutationKey = () =>
   ['resetClothingEditClothingClothingIdEditDelete'] as const;
 
 export const getResetClothingEditClothingClothingIdEditDeleteMutationOptions = <
-  TError = ErrorType<void | ErrorResponse>,
+  TError = ErrorType<ErrorResponse | void>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1299,7 +1302,7 @@ export type ResetClothingEditClothingClothingIdEditDeleteMutationResult =
   >;
 
 export type ResetClothingEditClothingClothingIdEditDeleteMutationError =
-  ErrorType<void | ErrorResponse>;
+  ErrorType<ErrorResponse | void>;
 export type ResetClothingEditClothingClothingIdEditDeleteMutationVariables = {
   clothingId: number;
 };
@@ -1308,7 +1311,7 @@ export type ResetClothingEditClothingClothingIdEditDeleteMutationVariables = {
  * @summary Reset Clothing Edit
  */
 export const useResetClothingEditClothingClothingIdEditDelete = <
-  TError = ErrorType<void | ErrorResponse>,
+  TError = ErrorType<ErrorResponse | void>,
   TContext = unknown,
 >(
   options?: {
@@ -1339,7 +1342,7 @@ export const getSaveClothingMaskClothingClothingIdEditMaskPutUrl = (
 };
 
 /**
- * 브러시 마스크 저장 (FR-EDIT-03). 이전 마스크 파일은 지운다.
+ * 브러시 마스크 저장 (FR-EDIT-03). 이전 마스크 파일은 지우고 표시 이미지는 비운다.
  * @summary Save Clothing Mask
  */
 export const saveClothingMaskClothingClothingIdEditMaskPut = async (
@@ -1368,7 +1371,7 @@ export const getSaveClothingMaskClothingClothingIdEditMaskPutMutationKey = () =>
   ['saveClothingMaskClothingClothingIdEditMaskPut'] as const;
 
 export const getSaveClothingMaskClothingClothingIdEditMaskPutMutationOptions = <
-  TError = ErrorType<void>,
+  TError = ErrorType<ErrorResponse | void>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1417,7 +1420,7 @@ export type SaveClothingMaskClothingClothingIdEditMaskPutMutationResult =
 export type SaveClothingMaskClothingClothingIdEditMaskPutMutationBody =
   BodySaveClothingMaskClothingClothingIdEditMaskPut;
 export type SaveClothingMaskClothingClothingIdEditMaskPutMutationError =
-  ErrorType<void>;
+  ErrorType<ErrorResponse | void>;
 export type SaveClothingMaskClothingClothingIdEditMaskPutMutationVariables = {
   clothingId: number;
   data: BodySaveClothingMaskClothingClothingIdEditMaskPut;
@@ -1427,7 +1430,7 @@ export type SaveClothingMaskClothingClothingIdEditMaskPutMutationVariables = {
  * @summary Save Clothing Mask
  */
 export const useSaveClothingMaskClothingClothingIdEditMaskPut = <
-  TError = ErrorType<void>,
+  TError = ErrorType<ErrorResponse | void>,
   TContext = unknown,
 >(
   options?: {
@@ -1448,6 +1451,150 @@ export const useSaveClothingMaskClothingClothingIdEditMaskPut = <
 > => {
   return useMutation(
     getSaveClothingMaskClothingClothingIdEditMaskPutMutationOptions(options),
+    queryClient,
+  );
+};
+export const getSaveClothingDisplayImageClothingClothingIdEditDisplayPutUrl = (
+  clothingId: number,
+) => {
+  return `/clothing/${clothingId}/edit/display`;
+};
+
+/**
+ * 표시 이미지 저장 (FR-EDIT-04·06). 옷장 목록과 추천 결과에 이 이미지를 쓴다.
+ *
+ * 회전·원근이나 마스크를 저장하면 다시 비워지므로 편집을 저장한 뒤 마지막에 올린다.
+ * @summary Save Clothing Display Image
+ */
+export const saveClothingDisplayImageClothingClothingIdEditDisplayPut = async (
+  clothingId: number,
+  bodySaveClothingDisplayImageClothingClothingIdEditDisplayPut: BodySaveClothingDisplayImageClothingClothingIdEditDisplayPut,
+  options?: Parameters<typeof fetcher>[1],
+): Promise<ClothingDetail> => {
+  const formData = new FormData();
+  formData.append(
+    `file`,
+    bodySaveClothingDisplayImageClothingClothingIdEditDisplayPut.file,
+  );
+
+  return fetcher<ClothingDetail>(
+    getSaveClothingDisplayImageClothingClothingIdEditDisplayPutUrl(clothingId),
+    {
+      ...options,
+      method: 'PUT',
+      body: formData,
+      schema: ClothingDetail,
+    },
+  );
+};
+
+export const getSaveClothingDisplayImageClothingClothingIdEditDisplayPutMutationKey =
+  () => ['saveClothingDisplayImageClothingClothingIdEditDisplayPut'] as const;
+
+export const getSaveClothingDisplayImageClothingClothingIdEditDisplayPutMutationOptions =
+  <TError = ErrorType<ErrorResponse | void>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<
+      Awaited<
+        ReturnType<
+          typeof saveClothingDisplayImageClothingClothingIdEditDisplayPut
+        >
+      >,
+      TError,
+      SaveClothingDisplayImageClothingClothingIdEditDisplayPutMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof fetcher>;
+  }): UseMutationOptions<
+    Awaited<
+      ReturnType<
+        typeof saveClothingDisplayImageClothingClothingIdEditDisplayPut
+      >
+    >,
+    TError,
+    SaveClothingDisplayImageClothingClothingIdEditDisplayPutMutationVariables,
+    TContext
+  > => {
+    const mutationKey =
+      getSaveClothingDisplayImageClothingClothingIdEditDisplayPutMutationKey();
+    const { mutation: mutationOptions, request: requestOptions } = options
+      ? options.mutation &&
+        'mutationKey' in options.mutation &&
+        options.mutation.mutationKey
+        ? options
+        : { ...options, mutation: { ...options.mutation, mutationKey } }
+      : { mutation: { mutationKey }, request: undefined };
+
+    const mutationFn: MutationFunction<
+      Awaited<
+        ReturnType<
+          typeof saveClothingDisplayImageClothingClothingIdEditDisplayPut
+        >
+      >,
+      SaveClothingDisplayImageClothingClothingIdEditDisplayPutMutationVariables
+    > = (props) => {
+      const { clothingId, data } = props ?? {};
+
+      return saveClothingDisplayImageClothingClothingIdEditDisplayPut(
+        clothingId,
+        data,
+        requestOptions,
+      );
+    };
+
+    return { mutationFn, ...mutationOptions };
+  };
+
+export type SaveClothingDisplayImageClothingClothingIdEditDisplayPutMutationResult =
+  NonNullable<
+    Awaited<
+      ReturnType<
+        typeof saveClothingDisplayImageClothingClothingIdEditDisplayPut
+      >
+    >
+  >;
+export type SaveClothingDisplayImageClothingClothingIdEditDisplayPutMutationBody =
+  BodySaveClothingDisplayImageClothingClothingIdEditDisplayPut;
+export type SaveClothingDisplayImageClothingClothingIdEditDisplayPutMutationError =
+  ErrorType<ErrorResponse | void>;
+export type SaveClothingDisplayImageClothingClothingIdEditDisplayPutMutationVariables =
+  {
+    clothingId: number;
+    data: BodySaveClothingDisplayImageClothingClothingIdEditDisplayPut;
+  };
+
+/**
+ * @summary Save Clothing Display Image
+ */
+export const useSaveClothingDisplayImageClothingClothingIdEditDisplayPut = <
+  TError = ErrorType<ErrorResponse | void>,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<
+        ReturnType<
+          typeof saveClothingDisplayImageClothingClothingIdEditDisplayPut
+        >
+      >,
+      TError,
+      SaveClothingDisplayImageClothingClothingIdEditDisplayPutMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof fetcher>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<
+    ReturnType<typeof saveClothingDisplayImageClothingClothingIdEditDisplayPut>
+  >,
+  TError,
+  SaveClothingDisplayImageClothingClothingIdEditDisplayPutMutationVariables,
+  TContext
+> => {
+  return useMutation(
+    getSaveClothingDisplayImageClothingClothingIdEditDisplayPutMutationOptions(
+      options,
+    ),
     queryClient,
   );
 };
@@ -1480,7 +1627,7 @@ export const getRetryClothingClothingClothingIdRetryPostMutationKey = () =>
   ['retryClothingClothingClothingIdRetryPost'] as const;
 
 export const getRetryClothingClothingClothingIdRetryPostMutationOptions = <
-  TError = ErrorType<void | ErrorResponse>,
+  TError = ErrorType<ErrorResponse | void>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1523,7 +1670,7 @@ export type RetryClothingClothingClothingIdRetryPostMutationResult =
   >;
 
 export type RetryClothingClothingClothingIdRetryPostMutationError =
-  ErrorType<void | ErrorResponse>;
+  ErrorType<ErrorResponse | void>;
 export type RetryClothingClothingClothingIdRetryPostMutationVariables = {
   clothingId: number;
 };
@@ -1532,7 +1679,7 @@ export type RetryClothingClothingClothingIdRetryPostMutationVariables = {
  * @summary Retry Clothing
  */
 export const useRetryClothingClothingClothingIdRetryPost = <
-  TError = ErrorType<void | ErrorResponse>,
+  TError = ErrorType<ErrorResponse | void>,
   TContext = unknown,
 >(
   options?: {

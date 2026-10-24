@@ -20,7 +20,7 @@ export const ClothingPage = zod.object({
         image_url: zod
           .string()
           .describe(
-            '카드에 보여줄 이미지. 배경 제거본이 있으면 그것, 없으면 원본이다.',
+            '카드에 보여줄 이미지. 편집을 적용한 표시 이미지가 있으면 그것, 없으면 배경 제거본, 그것도 없으면 원본이다.',
           ),
         failure_reason: zod
           .union([zod.string(), zod.null()])

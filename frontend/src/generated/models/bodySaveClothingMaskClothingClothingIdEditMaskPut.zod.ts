@@ -10,7 +10,7 @@ export const BodySaveClothingMaskClothingClothingIdEditMaskPut = zod.object({
   file: zod
     .instanceof(Blob)
     .describe(
-      '흑백 PNG. 흰색은 보이게, 검은색은 지우게. 크기는 옷 이미지와 같아야 한다.',
+      '흑백 PNG. 크기는 배경 제거본(없으면 원본)과 같아야 한다. 흰색은 원본을 그 가로·세로에 정확히 맞춰 줄인 이미지의 픽셀을 보이게, 검은색은 투명하게 한다.',
     ),
 });
 

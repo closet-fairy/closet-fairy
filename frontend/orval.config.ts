@@ -37,6 +37,16 @@ const getSuccessResponses = (operation: Operation) =>
     .filter(([status]) => status.startsWith('2'))
     .map(([, response]) => response);
 
+const hasRedirectResponse = (operation: Operation) =>
+  Object.keys(operation.responses).some((status) => status.startsWith('3'));
+
+const isRedirectOnly = (operation: Operation) =>
+  getSuccessResponses(operation).length === 0 && hasRedirectResponse(operation);
+
+const hasNoSuccessResponse = (operation: Operation) =>
+  getSuccessResponses(operation).length === 0 &&
+  !hasRedirectResponse(operation);
+
 const hasSuccessBody = (operation: Operation) =>
   getSuccessResponses(operation).some(
     (response) => response.content !== undefined,
@@ -87,11 +97,32 @@ const UNSUPPORTED_RESPONSE_RULES = [
       '본문이 있는 성공 응답과 없는 성공 응답이 섞여 있습니다. 이 API에 맞는 mutator를 추가하세요.',
     isMatched: hasMixedBody,
   },
+  {
+    message:
+      '성공 응답과 리다이렉트 응답이 모두 없습니다. BE에 응답 정의를 요청하세요.',
+    isMatched: hasNoSuccessResponse,
+  },
 ];
 
-const spec = specSchema.parse(JSON.parse(readFileSync(SPEC_PATH, 'utf-8')));
+const rawSpec = z
+  .record(z.string(), z.unknown())
+  .parse(JSON.parse(readFileSync(SPEC_PATH, 'utf-8')));
+const spec = specSchema.parse(rawSpec);
 
-const operations = Object.values(spec.paths).flatMap((pathItem) =>
+// 리다이렉트만 하는 API는 브라우저가 직접 이동하는 주소라 fetch 클라이언트를 만들지 않는다.
+const isGeneratedEntry = ([key, value]: [string, unknown]) =>
+  !HTTP_METHODS.has(key) || !isRedirectOnly(operationSchema.parse(value));
+
+const generatedPaths = Object.fromEntries(
+  Object.entries(spec.paths).flatMap(([path, pathItem]) => {
+    const entries = Object.entries(pathItem).filter(isGeneratedEntry);
+    const hasOperation = entries.some(([key]) => HTTP_METHODS.has(key));
+
+    return hasOperation ? [[path, Object.fromEntries(entries)] as const] : [];
+  }),
+);
+
+const operations = Object.values(generatedPaths).flatMap((pathItem) =>
   Object.entries(pathItem)
     .filter(([key]) => HTTP_METHODS.has(key))
     .map(([, operation]) => operationSchema.parse(operation)),
@@ -123,7 +154,7 @@ const noContentOperations = Object.fromEntries(
 export default defineConfig({
   closetFairy: {
     input: {
-      target: SPEC_PATH,
+      target: { ...rawSpec, paths: generatedPaths },
     },
     output: {
       target: './src/generated/endpoints',

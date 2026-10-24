@@ -12,6 +12,7 @@ export const createRecommendationSessionRecommendationSessionsPostBodySigunguNmM
 
 export const createRecommendationSessionRecommendationSessionsPostBodyTpoTextOneMax = 100;
 
+export const createRecommendationSessionRecommendationSessionsPostBodyGoingOutDateCdDefault = `today`;
 export const CreateRecommendationSessionRecommendationSessionsPostBody =
   zod.object({
     sido_nm: zod
@@ -32,6 +33,7 @@ export const CreateRecommendationSessionRecommendationSessionsPostBody =
       'exercise',
       'rainy',
       'midwinter',
+      'date',
       'custom',
     ]),
     tpo_text: zod
@@ -46,6 +48,12 @@ export const CreateRecommendationSessionRecommendationSessionsPostBody =
       .optional(),
     going_out_start_time: zod.iso.time({}),
     going_out_end_time: zod.iso.time({}),
+    going_out_date_cd: zod
+      .enum(['today', 'tomorrow'])
+      .default(
+        createRecommendationSessionRecommendationSessionsPostBodyGoingOutDateCdDefault,
+      )
+      .describe('외출 날짜, 생략하면 today'),
   });
 
 export type CreateRecommendationSessionRecommendationSessionsPostBody =

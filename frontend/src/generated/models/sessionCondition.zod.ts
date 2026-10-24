@@ -14,6 +14,7 @@ export const SessionCondition = zod.object({
     'exercise',
     'rainy',
     'midwinter',
+    'date',
     'custom',
   ]),
   tpo_text: zod

@@ -33,6 +33,7 @@ export const RecommendationResult = zod.object({
       'exercise',
       'rainy',
       'midwinter',
+      'date',
       'custom',
     ]),
     tpo_text: zod
