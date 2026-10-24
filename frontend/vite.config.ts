@@ -81,6 +81,10 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api/, ''),
         },
+        '/media/': {
+          target: apiProxyTarget,
+          changeOrigin: true,
+        },
       },
     },
     test: {
