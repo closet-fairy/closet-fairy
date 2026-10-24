@@ -10,10 +10,6 @@ export const saveClothingEditClothingClothingIdEditPutBodyRotationAngleOneMin =
   -180;
 export const saveClothingEditClothingClothingIdEditPutBodyRotationAngleOneMax = 180;
 
-export const saveClothingEditClothingClothingIdEditPutBodyRotationAngleTwoRegExp =
-  new RegExp(
-    '^(?!^[-+.]*$)[+-]?0*(?:\\d{0,3}|(?=[\\d.]{1,6}0*$)\\d{0,3}\\.\\d{0,2}0*$)',
-  );
 export const saveClothingEditClothingClothingIdEditPutBodyPerspectiveParamOneCorners0Item0ItemMin = 0;
 export const saveClothingEditClothingClothingIdEditPutBodyPerspectiveParamOneCorners0Item0ItemMax = 1;
 
@@ -39,17 +35,17 @@ export const saveClothingEditClothingClothingIdEditPutBodyPerspectiveParamOneCor
 export const saveClothingEditClothingClothingIdEditPutBodyPerspectiveParamOneCorners3Item1ItemMax = 1;
 
 export const SaveClothingEditClothingClothingIdEditPutBody = zod.object({
-  rotation_angle: zod.union([
-    zod
-      .number()
-      .min(saveClothingEditClothingClothingIdEditPutBodyRotationAngleOneMin)
-      .max(saveClothingEditClothingClothingIdEditPutBodyRotationAngleOneMax),
-    zod
-      .string()
-      .regex(
-        saveClothingEditClothingClothingIdEditPutBodyRotationAngleTwoRegExp,
-      ),
-  ]),
+  rotation_angle: zod
+    .union([
+      zod
+        .number()
+        .min(saveClothingEditClothingClothingIdEditPutBodyRotationAngleOneMin)
+        .max(saveClothingEditClothingClothingIdEditPutBodyRotationAngleOneMax),
+      zod.string(),
+    ])
+    .describe(
+      '평면 회전 각도 -180~180. 원근 보정 뒤에 적용하고, 양수는 시계 방향이다.',
+    ),
   perspective_param: zod
     .union([
       zod.object({
@@ -129,13 +125,15 @@ export const SaveClothingEditClothingClothingIdEditPutBody = zod.object({
             ]),
           ])
           .describe(
-            '좌상·우상·우하·좌하 꼭짓점. 이미지 크기에 대한 0~1 비율 좌표 [x, y]',
+            '좌상·우상·우하·좌하 꼭짓점. 배경 제거본(없으면 원본)의 가로·세로에 대한 0~1 비율 좌표 [x, y]. 펼친 결과의 가로는 윗변·아랫변 길이의 평균, 세로는 왼변·오른변 길이의 평균이다.',
           ),
       }),
       zod.null(),
     ])
     .optional()
-    .describe('null이면 원근 보정을 적용하지 않는다.'),
+    .describe(
+      'null이면 원근 보정을 적용하지 않는다. 마스크 다음, 회전 전에 적용한다.',
+    ),
 });
 
 export type SaveClothingEditClothingClothingIdEditPutBody = zod.input<
