@@ -61,10 +61,6 @@ const ERRORS = {
     status: 404,
     body: { code: 'CLOTHING_NOT_FOUND', message: '옷을 찾을 수 없습니다.' },
   },
-  MEDIA_NOT_FOUND: {
-    status: 404,
-    body: { code: 'NOT_FOUND', message: '요청한 리소스를 찾을 수 없습니다.' },
-  },
   NOT_EDITABLE: {
     status: 409,
     body: {
@@ -145,27 +141,28 @@ const createClothing = (
   edit,
 });
 
-const clothings = new Map<number, ClothingDetail>([
-  [MOCK_CLOTHING_ID.NO_EDIT, createClothing(MOCK_CLOTHING_ID.NO_EDIT, null)],
-  [
-    MOCK_CLOTHING_ID.EDITED,
-    createClothing(MOCK_CLOTHING_ID.EDITED, SAMPLE_EDIT),
-  ],
-  [
-    MOCK_CLOTHING_ID.NOT_EDITABLE,
-    createClothing(MOCK_CLOTHING_ID.NOT_EDITABLE, null),
-  ],
-  [
-    MOCK_CLOTHING_ID.DISPLAY_INVALID,
-    createClothing(MOCK_CLOTHING_ID.DISPLAY_INVALID, null),
-  ],
-  [
-    MOCK_CLOTHING_ID.DISPLAY_SERVER_ERROR,
-    createClothing(MOCK_CLOTHING_ID.DISPLAY_SERVER_ERROR, null),
-  ],
-]);
+const INITIAL_CLOTHINGS = [
+  createClothing(MOCK_CLOTHING_ID.NO_EDIT, null),
+  createClothing(MOCK_CLOTHING_ID.EDITED, SAMPLE_EDIT),
+  createClothing(MOCK_CLOTHING_ID.NOT_EDITABLE, null),
+  createClothing(MOCK_CLOTHING_ID.DISPLAY_INVALID, null),
+  createClothing(MOCK_CLOTHING_ID.DISPLAY_SERVER_ERROR, null),
+];
+
+const clothings = new Map<number, ClothingDetail>();
 
 const uploadedMedia = new Map<string, Blob>();
+
+export const resetClothingMocks = () => {
+  clothings.clear();
+  uploadedMedia.clear();
+
+  for (const clothing of INITIAL_CLOTHINGS) {
+    clothings.set(clothing.clothing_id, clothing);
+  }
+};
+
+resetClothingMocks();
 
 const errorResponse = (error: MockError) =>
   HttpResponse.json<ClothingResponseBody>(error.body, {
@@ -421,8 +418,6 @@ export const clothingHandlers = [
 
     const assetUrl = SAMPLE_MEDIA_ASSETS.get(pathname);
 
-    return assetUrl === undefined
-      ? errorResponse(ERRORS.MEDIA_NOT_FOUND)
-      : fetch(bypass(assetUrl));
+    return assetUrl === undefined ? undefined : fetch(bypass(assetUrl));
   }),
 ];

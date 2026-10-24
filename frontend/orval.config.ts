@@ -43,7 +43,7 @@ const hasRedirectResponse = (operation: Operation) =>
 const isRedirectOnly = (operation: Operation) =>
   getSuccessResponses(operation).length === 0 && hasRedirectResponse(operation);
 
-const hasNoSuccessResponse = (operation: Operation) =>
+const hasNoSuccessOrRedirectResponse = (operation: Operation) =>
   getSuccessResponses(operation).length === 0 &&
   !hasRedirectResponse(operation);
 
@@ -100,7 +100,7 @@ const UNSUPPORTED_RESPONSE_RULES = [
   {
     message:
       '성공 응답과 리다이렉트 응답이 모두 없습니다. BE에 응답 정의를 요청하세요.',
-    isMatched: hasNoSuccessResponse,
+    isMatched: hasNoSuccessOrRedirectResponse,
   },
 ];
 
