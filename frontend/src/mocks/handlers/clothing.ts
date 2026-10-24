@@ -20,13 +20,13 @@ const MOCK_CLOTHING_ID = {
 
 const CUTOUT_SIZE = { width: 1536, height: 2048 } as const;
 
-const MEDIA_PATH = '/media/clothing/1';
+const MEMBER_MEDIA_PATH = '/media/clothing/1';
 
 const SAMPLE_MEDIA = {
-  origin: `${MEDIA_PATH}/sample.webp`,
-  cutout: `${MEDIA_PATH}/sample_cutout.webp`,
-  mask: `${MEDIA_PATH}/sample_mask.png`,
-  display: `${MEDIA_PATH}/sample_display.webp`,
+  origin: `${MEMBER_MEDIA_PATH}/sample.webp`,
+  cutout: `${MEMBER_MEDIA_PATH}/sample_cutout.webp`,
+  mask: `${MEMBER_MEDIA_PATH}/sample_mask.png`,
+  display: `${MEMBER_MEDIA_PATH}/sample_display.webp`,
 } as const;
 
 const SAMPLE_MEDIA_ASSETS = new Map<string, string>([
@@ -346,7 +346,7 @@ export const clothingHandlers = [
         return errorResponse(ERRORS.MASK_SIZE_MISMATCH);
       }
 
-      const maskUrl = `${MEDIA_PATH}/${crypto.randomUUID()}_mask.png`;
+      const maskUrl = `${MEMBER_MEDIA_PATH}/${crypto.randomUUID()}_mask.png`;
       uploadedMedia.set(maskUrl, mask);
 
       return saveClothingEdit(clothing, {
@@ -381,7 +381,7 @@ export const clothingHandlers = [
         return errorResponse(ERRORS.VALIDATION);
       }
 
-      const displayUrl = `${MEDIA_PATH}/${crypto.randomUUID()}_display.webp`;
+      const displayUrl = `${MEMBER_MEDIA_PATH}/${crypto.randomUUID()}_display.webp`;
       uploadedMedia.set(displayUrl, file);
 
       return saveClothingEdit(clothing, {
