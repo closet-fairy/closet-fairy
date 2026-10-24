@@ -62,6 +62,11 @@ const meta = {
         '네이티브 `button`의 id입니다. 다른 요소의 `aria-labelledby`나 `aria-controls`가 이 버튼을 가리킬 때 씁니다.',
       control: 'text',
     },
+    'aria-label': {
+      description:
+        '보이는 글자만으로 버튼이 하는 일을 알기 어려울 때 스크린리더가 대신 읽을 이름입니다. 보이는 글자로 충분하면 넘기지 않습니다.',
+      control: 'text',
+    },
     'aria-expanded': {
       description:
         '이 버튼이 여닫는 영역(시트, 펼침 목록 등)이 지금 열려 있는지 알립니다. 여닫는 버튼이 아니면 넘기지 않습니다.',
