@@ -14,7 +14,7 @@ from app.services.prompt.outfit_generation import (
     CandidateItem,
     WeatherInput,
     _format_category,
-    _format_clock,
+    _format_going_out_time,
     _format_hourly,
     _format_tpo,
     _format_weather,
@@ -50,6 +50,7 @@ class OutfitReviewInput:
     # 일부만 넘기면 아우터가 필요한 세트도 실패하지 않는다
     candidates: Sequence[CandidateItem]
     outfits: Sequence[ReviewTarget]
+    is_going_out_tomorrow: bool = False
 
 
 class OutfitReview(pydantic.BaseModel):
@@ -77,9 +78,9 @@ def assemble_outfit_review_prompt(data: OutfitReviewInput) -> AssembledPrompt:
     candidates = _sort_candidates(data.candidates)
 
     values = {
-        "weather": _format_weather(data.weather),
+        "weather": _format_weather(data.weather, data.is_going_out_tomorrow),
         "hourly_forecast": _format_hourly(data.weather.hourly, start_at, end_at),
-        "going_out_time": f"{start_at:%H:%M}~{_format_clock(end_at, start_at)}",
+        "going_out_time": _format_going_out_time(start_at, end_at, data.is_going_out_tomorrow),
         "season": f"{_label(_SEASON_LABELS, data.season_cd)} ({data.season_cd})",
         "tpo": _format_tpo(data.tpo_cd, data.tpo_text),
         "member_profile": _format_member_profile(data),

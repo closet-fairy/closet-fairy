@@ -186,6 +186,7 @@ def build_prompt_input(
         is_outer_required=supplement.outer_requirement == "required",
         candidates=[to_candidate_item(c) for c in supplement.candidates],
         outfit_count=outfit_count,
+        is_going_out_tomorrow=context.is_going_out_tomorrow,
     )
 
 

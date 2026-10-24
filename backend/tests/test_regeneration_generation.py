@@ -538,8 +538,9 @@ async def test_load_regeneration_context_wires_snapshot_intents_and_latest_deck(
     ]
     captured = {}
 
-    async def fake_load_context(db, session_id, session_row, weather):
+    async def fake_load_context(db, session_id, session_row, weather, weather_observed_at):
         captured["weather"] = weather
+        captured["weather_observed_at"] = weather_observed_at
         return _context()
 
     async def fake_completed(db, session_id, before_seq):
@@ -561,6 +562,7 @@ async def test_load_regeneration_context_wires_snapshot_intents_and_latest_deck(
     assert ctx.intents == [earlier, request.parsed_intent]
     assert captured["before_seq"] == request.request_seq
     assert captured["weather"].min_feels_like_temperature == 14.0
+    assert captured["weather_observed_at"] == datetime(2026, 10, 16, 9, 1, tzinfo=KST)
     assert [o.outfit_id for o in ctx.screen] == [201]
 
 

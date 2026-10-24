@@ -38,6 +38,7 @@ class RecommendContext:
     gender_cd: str
     preferred_styles: list[str]
     clothing: list[ClothingCandidate]
+    is_going_out_tomorrow: bool = False
 
 
 def _to_kst(dt: datetime) -> datetime:
@@ -64,11 +65,15 @@ async def collect_context(recommendation_session_id: int) -> RecommendContext:
         await weather_snapshot_repo.insert_weather_snapshot(
             db, recommendation_session_id, weather, to_db_utc(now.replace(microsecond=0))
         )
-        return await load_context(db, recommendation_session_id, session, weather)
+        return await load_context(db, recommendation_session_id, session, weather, now)
 
 
 async def load_context(
-    db: AsyncSession, recommendation_session_id: int, session: SessionRow, weather: WeatherResult
+    db: AsyncSession,
+    recommendation_session_id: int,
+    session: SessionRow,
+    weather: WeatherResult,
+    weather_observed_at: datetime,
 ) -> RecommendContext:
     setting = await member_setting_repo.get_member_setting(db, session.member_id)
     if setting is None:
@@ -85,11 +90,12 @@ async def load_context(
         )
 
     clothing = await clothing_repo.get_completed_clothing(db, session.member_id)
+    going_out_start = _to_kst(session.going_out_start_at)
 
     return RecommendContext(
         recommendation_session_id=recommendation_session_id,
         member_id=session.member_id,
-        going_out_start_at=_to_kst(session.going_out_start_at),
+        going_out_start_at=going_out_start,
         going_out_end_at=_to_kst(session.going_out_end_at),
         season_cd=session.season_cd,
         tpo_cd=session.tpo_cd,
@@ -101,4 +107,6 @@ async def load_context(
         gender_cd=gender_cd,
         preferred_styles=preferred_styles,
         clothing=clothing,
+        # 세션 생성 시각이 아니라 날씨 조회 시각과 비교한다. [날씨]가 외출 당일 값인지가 기준이라서
+        is_going_out_tomorrow=going_out_start.date() > weather_observed_at.astimezone(KST).date(),
     )

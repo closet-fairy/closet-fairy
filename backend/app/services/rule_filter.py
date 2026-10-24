@@ -62,7 +62,10 @@ def thickness_matches(
 
 def _is_precipitation_expected(context: RecommendContext) -> bool:
     weather = context.weather
-    if weather.weather_condition_cd in PRECIPITATION_CONDITION_CODES:
+    if (
+        not context.is_going_out_tomorrow
+        and weather.weather_condition_cd in PRECIPITATION_CONDITION_CODES
+    ):
         return True
     if context.tpo_input_type_cd == "preset" and context.tpo_cd == RAINY_TPO_CD:
         return True

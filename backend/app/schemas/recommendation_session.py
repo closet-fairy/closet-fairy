@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 from app.services.input_guard import is_harmful
 
 TpoCd = Literal["daily", "work", "formal", "exercise", "rainy", "midwinter", "date", "custom"]
+GoingOutDateCd = Literal["today", "tomorrow"]
 TPO_TEXT_MAX_LENGTH = 100
 
 
@@ -17,6 +18,9 @@ class RecommendationSessionCreate(BaseModel):
     tpo_text: str | None = Field(default=None, max_length=TPO_TEXT_MAX_LENGTH)
     going_out_start_time: time = Field(examples=["15:00"])
     going_out_end_time: time = Field(examples=["21:30"])
+    going_out_date_cd: GoingOutDateCd = Field(
+        default="today", description="외출 날짜, 생략하면 today", examples=["today"]
+    )
 
     @field_validator("going_out_start_time", "going_out_end_time")
     @classmethod

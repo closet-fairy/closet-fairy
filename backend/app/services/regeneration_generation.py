@@ -180,7 +180,9 @@ async def load_regeneration_context(regeneration_request_id: int) -> Regeneratio
             from_db_utc(session.going_out_start_at),
             from_db_utc(session.going_out_end_at),
         )
-        context = await load_context(db, session_id, session, weather)
+        context = await load_context(
+            db, session_id, session, weather, from_db_utc(snapshot.created_at)
+        )
         completed = await regeneration_repo.find_completed_intents(
             db, session_id, request.request_seq
         )
