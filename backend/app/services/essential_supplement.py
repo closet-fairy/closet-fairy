@@ -25,7 +25,7 @@ from app.services.rule_filter import FilterResult, OuterRequirement, thickness_m
 
 MAX_CANDIDATES_PER_CATEGORY = 8  # 악세서리는 종류(accessory_type_cd)별로 따로 적용
 
-# TPO 프리셋별 에센셜 formality_level 허용 구간 (2026-10-03 팀 확정).
+# TPO 프리셋별 에센셜 formality_level 허용 구간 (2026-10-03 팀 확정, date는 #125에서 추가).
 # 자유 입력(custom)은 formality_range_for_tpo()에서 전체 구간을 쓰므로 표에 없다.
 # 구간에 맞는 에센셜이 하나도 없으면 _fetch_essential_items()가 전체 구간(1~5)으로
 # 재조회한다. 시드 데이터가 모든 계절×TPO 조합을 다 못 채워도 코디 자체가 비는 상황을 막는다.
@@ -36,6 +36,7 @@ FORMALITY_RANGE_BY_TPO: dict[str, tuple[int, int]] = {
     "exercise": (1, 3),
     "rainy": (1, 5),
     "midwinter": (1, 5),
+    "date": (2, 4),
 }
 DEFAULT_FORMALITY_RANGE = (1, 5)
 

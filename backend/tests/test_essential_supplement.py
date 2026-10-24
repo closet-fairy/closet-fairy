@@ -1,12 +1,15 @@
 """REC-09 에센셜 보충(supplement_essentials) 단위 테스트."""
 
 from types import SimpleNamespace
+from typing import get_args
 
 from app.repositories import essential_item as essential_item_repo
 from app.repositories.clothing import ClothingCandidate
 from app.repositories.essential_item import EssentialItemCandidate
+from app.schemas.recommendation_session import TpoCd
 from app.services.essential_supplement import (
     DEFAULT_FORMALITY_RANGE,
+    FORMALITY_RANGE_BY_TPO,
     _fetch_essential_items,
     formality_range_for_tpo,
     supplement_essentials,
@@ -309,6 +312,11 @@ async def test_fetch_essential_items_does_not_fall_back_when_narrow_range_has_it
 def test_formality_range_for_preset_tpo_uses_table():
     assert formality_range_for_tpo("formal", "preset") == (4, 5)
     assert formality_range_for_tpo("exercise", "preset") == (1, 3)
+    assert formality_range_for_tpo("date", "preset") == (2, 4)
+
+
+def test_formality_range_table_covers_every_preset_tpo():
+    assert set(FORMALITY_RANGE_BY_TPO) == set(get_args(TpoCd)) - {"custom"}
 
 
 def test_formality_range_for_custom_input_is_not_restricted():

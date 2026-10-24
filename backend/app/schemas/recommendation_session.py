@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.services.input_guard import is_harmful
 
-TpoCd = Literal["daily", "work", "formal", "exercise", "rainy", "midwinter", "custom"]
+TpoCd = Literal["daily", "work", "formal", "exercise", "rainy", "midwinter", "date", "custom"]
 TPO_TEXT_MAX_LENGTH = 100
 
 

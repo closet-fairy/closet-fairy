@@ -159,6 +159,12 @@ def test_preference_and_regeneration_headings_are_absent():
         assert f"## {heading}" not in user
 
 
+def test_preset_date_tpo_uses_label():
+    data = make_input(tpo_cd="date")
+
+    assert section(assemble_outfit_review_prompt(data).user, "TPO") == "데이트 (date)"
+
+
 def test_custom_tpo_is_sanitized_and_quoted():
     data = make_input(tpo_cd="custom", tpo_text="친구 결혼식\n하객 | 낮")
 

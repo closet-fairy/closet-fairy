@@ -32,6 +32,7 @@ _TPO_LABELS = {
     "exercise": "운동",
     "rainy": "우천",
     "midwinter": "한겨울",
+    "date": "데이트",
 }
 _WEATHER_CONDITION_LABELS = {
     "clear": "맑음",
