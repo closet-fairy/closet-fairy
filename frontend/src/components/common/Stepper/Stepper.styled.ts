@@ -81,3 +81,10 @@ export const Number = styled.span<{ $isCurrent: boolean }>`
   color: ${({ $isCurrent }) => ($isCurrent ? fg.white : fg.neutral.light)};
   line-height: 1;
 `;
+
+export const Label = styled.span`
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;

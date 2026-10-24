@@ -75,3 +75,13 @@ export const Disabled: Story = {
     isDisabled: true,
   },
 };
+
+export const LongLabels: Story = {
+  args: {
+    steps: [
+      { value: 'brush', label: '배경 지우기와 되살리기' },
+      { value: 'perspective', label: '원근 바로잡기' },
+      { value: 'rotation', label: '회전과 기울기 조정' },
+    ],
+  },
+};

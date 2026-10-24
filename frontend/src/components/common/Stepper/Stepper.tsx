@@ -54,7 +54,7 @@ const Stepper = (props: StepperProps) => {
                 <S.Number aria-hidden $isCurrent={isCurrent}>
                   {index + 1}
                 </S.Number>
-                <span>{step.label}</span>
+                <S.Label>{step.label}</S.Label>
               </S.Step>
             </S.Item>
           );
