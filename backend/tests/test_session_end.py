@@ -57,7 +57,7 @@ def _patch_repos(monkeypatch, *, session=None, has_activity=False):
 
     async def cleanup_locked_session(db, session_id, status_cd):
         calls.append(("cleanup", session_id, status_cd))
-        return CleanupResult(deleted_outfit_count=4, deleted_deck_count=1)
+        return CleanupResult(deleted_outfit_count=4, deleted_deck_count=1, deleted_request_count=2)
 
     monkeypatch.setattr(session_end.session_repo, "lock_session", lock_session)
     monkeypatch.setattr(session_end.session_repo, "has_activity_since", has_activity_since)
@@ -95,6 +95,7 @@ async def test_cancel_logs_after_commit_with_counts_only(monkeypatch, caplog):
     assert record.recommendation_session_id == 7
     assert record.deleted_outfit_count == 4
     assert record.deleted_deck_count == 1
+    assert record.deleted_request_count == 2
 
 
 async def test_cancel_is_not_logged_when_commit_fails(monkeypatch, caplog):
@@ -159,6 +160,7 @@ async def test_inactive_session_is_abandoned_after_recheck_under_lock(monkeypatc
     assert record.recommendation_session_id == 7
     assert record.deleted_outfit_count == 4
     assert record.deleted_deck_count == 1
+    assert record.deleted_request_count == 2
 
 
 @pytest.mark.parametrize("status", ["completed", "canceled", "abandoned"])

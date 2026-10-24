@@ -1,7 +1,7 @@
 """세션 산출물 정리 (#32, 컨벤션 5-1).
 
 별점을 받은 세션은 별점 코디만 남기고 나머지 코디와 빈 덱을 지운다. 취소·이탈 세션은 덱을 모두
-지운다. 세션 행과 weather_snapshot은 상태 기록으로 남긴다.
+지운다. 재추천 요청은 모두 지운다. 세션 행과 weather_snapshot은 상태 기록으로 남긴다.
 """
 
 import logging
@@ -13,6 +13,7 @@ from app.core.logging import Event
 from app.repositories import outfit_feedback as feedback_repo
 from app.repositories import recommendation_deck as deck_repo
 from app.repositories import recommendation_session as session_repo
+from app.repositories import regeneration_request as regeneration_repo
 
 logger = logging.getLogger(__name__)
 
@@ -21,9 +22,10 @@ logger = logging.getLogger(__name__)
 class CleanupResult:
     deleted_outfit_count: int
     deleted_deck_count: int
+    deleted_request_count: int
 
 
-NOTHING_DELETED = CleanupResult(0, 0)
+NOTHING_DELETED = CleanupResult(0, 0, 0)
 
 
 async def cleanup_locked_session(
@@ -37,16 +39,23 @@ async def cleanup_locked_session(
                 extra={"recommendation_session_id": recommendation_session_id},
             )
             return NOTHING_DELETED
+        # 코디를 먼저 지우면 single 요청이 FK CASCADE로 함께 사라져 삭제 건수에 잡히지 않는다
+        request_count = await regeneration_repo.delete_session_requests(
+            db, recommendation_session_id
+        )
         outfit_count = await deck_repo.delete_outfits_except(
             db, recommendation_session_id, rated_outfit_id
         )
         deck_count = await deck_repo.delete_empty_decks(db, recommendation_session_id)
-        return CleanupResult(outfit_count, deck_count)
+        return CleanupResult(outfit_count, deck_count, request_count)
 
     if session_status_cd in ("canceled", "abandoned"):
+        request_count = await regeneration_repo.delete_session_requests(
+            db, recommendation_session_id
+        )
         outfit_ids = await deck_repo.find_session_outfit_ids(db, recommendation_session_id)
         deck_count = await deck_repo.delete_session_decks(db, recommendation_session_id)
-        return CleanupResult(len(outfit_ids), deck_count)
+        return CleanupResult(len(outfit_ids), deck_count, request_count)
 
     return NOTHING_DELETED
 
@@ -74,5 +83,6 @@ def _log_cleaned(recommendation_session_id: int, result: CleanupResult) -> None:
             "recommendation_session_id": recommendation_session_id,
             "deleted_outfit_count": result.deleted_outfit_count,
             "deleted_deck_count": result.deleted_deck_count,
+            "deleted_request_count": result.deleted_request_count,
         },
     )

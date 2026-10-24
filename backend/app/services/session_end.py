@@ -40,6 +40,7 @@ async def cancel_session(
             "recommendation_session_id": recommendation_session_id,
             "deleted_outfit_count": cleanup.deleted_outfit_count,
             "deleted_deck_count": cleanup.deleted_deck_count,
+            "deleted_request_count": cleanup.deleted_request_count,
         },
     )
     return "canceled"
@@ -65,6 +66,7 @@ async def abandon_if_inactive(
             "recommendation_session_id": recommendation_session_id,
             "deleted_outfit_count": cleanup.deleted_outfit_count,
             "deleted_deck_count": cleanup.deleted_deck_count,
+            "deleted_request_count": cleanup.deleted_request_count,
         },
     )
     return True
