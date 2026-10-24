@@ -77,7 +77,7 @@ def repo(monkeypatch):
         masks=[],
         deleted_edits=[],
         displays=[],
-        rated_keys=set(),
+        snapshot_keys=set(),
         mask_error=None,
         display_error=None,
     )
@@ -117,8 +117,8 @@ def repo(monkeypatch):
             raise r.display_error
         r.displays.append((clothing_id, display_image_url))
 
-    async def get_rated_snapshot_keys(db, clothing_id):
-        return r.rated_keys
+    async def get_snapshot_keys(db, clothing_id):
+        return r.snapshot_keys
 
     async def get_clothing_detail(db, storage, member_id, clothing_id):
         return ("detail", member_id, clothing_id)
@@ -132,7 +132,7 @@ def repo(monkeypatch):
         (clothing_repo, "upsert_edit_mask", upsert_edit_mask),
         (clothing_repo, "delete_clothing_edit", delete_clothing_edit),
         (clothing_repo, "upsert_edit_display", upsert_edit_display),
-        (clothing_repo, "get_rated_snapshot_keys", get_rated_snapshot_keys),
+        (clothing_repo, "get_snapshot_keys", get_snapshot_keys),
         (tag_repo, "replace_styles", replace_styles),
         (tag_repo, "replace_seasons", replace_seasons),
         (edit, "get_clothing_detail", get_clothing_detail),
@@ -421,9 +421,9 @@ async def test_new_display_image_replaces_previous_file(repo, storage, tmp_path)
     assert not (tmp_path / OLD_DISPLAY).exists()
 
 
-async def test_previous_display_image_used_by_rated_outfit_is_kept(repo, storage, tmp_path):
+async def test_previous_display_image_used_by_recommendation_is_kept(repo, storage, tmp_path):
     _with_old_display(repo, tmp_path)
-    repo.rated_keys = {OLD_DISPLAY}
+    repo.snapshot_keys = {OLD_DISPLAY}
 
     await edit.save_display_image(_FakeDb(), storage, MEMBER_ID, 5, _display_png())
 
@@ -474,9 +474,9 @@ async def test_saving_transform_drops_stale_display_image(repo, storage, tmp_pat
     assert not (tmp_path / OLD_DISPLAY).exists()
 
 
-async def test_saving_transform_keeps_display_image_of_rated_outfit(repo, storage, tmp_path):
+async def test_saving_transform_keeps_display_image_used_by_recommendation(repo, storage, tmp_path):
     _with_old_display(repo, tmp_path)
-    repo.rated_keys = {OLD_DISPLAY}
+    repo.snapshot_keys = {OLD_DISPLAY}
 
     await edit.save_edit(_FakeDb(), storage, MEMBER_ID, 5, ClothingEditUpdate(rotation_angle=90))
 

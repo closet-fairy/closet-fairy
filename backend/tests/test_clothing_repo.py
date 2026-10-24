@@ -456,3 +456,14 @@ async def test_lock_member_clothing_jobs_locks_every_job_of_member_in_id_order()
     assert "FOR UPDATE OF j" in sql
     assert "ORDER BY j.clothing_job_id" in sql
     assert params == {"member_id": 7}
+
+
+async def test_get_snapshot_keys_counts_every_recommendation_regardless_of_rating():
+    db = _QueryDb([_Row(image_url_snapshot="clothing/7/a_display.webp")])
+
+    keys = await clothing_repo.get_snapshot_keys(db, 5)
+
+    assert keys == {"clothing/7/a_display.webp"}
+    [(sql, params)] = db.executed
+    assert "outfit_feedback" not in sql
+    assert params == {"clothing_id": 5}

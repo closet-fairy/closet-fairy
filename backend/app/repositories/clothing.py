@@ -536,6 +536,14 @@ RATED_SNAPSHOT_KEYS_SQL = text(
     """
 )
 
+SNAPSHOT_KEYS_SQL = text(
+    """
+    SELECT DISTINCT image_url_snapshot
+    FROM outfit_item
+    WHERE clothing_id = :clothing_id AND image_url_snapshot IS NOT NULL
+    """
+)
+
 DELETE_CLOTHING_SQL = text("DELETE FROM clothing WHERE clothing_id = :clothing_id")
 
 RESET_FOR_RETRY_SQL = text(
@@ -549,6 +557,12 @@ RESET_FOR_RETRY_SQL = text(
 async def get_rated_snapshot_keys(db: AsyncSession, clothing_id: int) -> set[str]:
     """별점을 받은 코디가 이 옷의 이미지로 남겨 둔 저장소 키 (E-8)."""
     rows = (await db.execute(RATED_SNAPSHOT_KEYS_SQL, {"clothing_id": clothing_id})).all()
+    return {row.image_url_snapshot for row in rows}
+
+
+async def get_snapshot_keys(db: AsyncSession, clothing_id: int) -> set[str]:
+    """추천 결과(별점 여부와 무관)가 이 옷의 이미지로 남겨 둔 저장소 키."""
+    rows = (await db.execute(SNAPSHOT_KEYS_SQL, {"clothing_id": clothing_id})).all()
     return {row.image_url_snapshot for row in rows}
 
 

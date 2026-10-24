@@ -1,7 +1,8 @@
 """옷 속성 수정과 이미지 편집값 저장 (#75, FR-EDIT).
 
-편집값은 원본 이미지에 굽지 않고 파라미터로만 저장한다(FR-EDIT-06). 수정해도 자동 태깅을
-다시 하지 않는다. 동시에 고치면 마지막 저장이 남는다(NFR-EDIT-03).
+편집값은 원본 이미지에 굽지 않고 파라미터로 저장한다(FR-EDIT-06). 편집을 모두 적용한 표시
+이미지는 프론트엔드가 그려 올리고, 편집값이 바뀌면 비운다. 수정해도 자동 태깅을 다시 하지 않는다.
+동시에 고치면 마지막 저장이 남는다(NFR-EDIT-03).
 """
 
 import asyncio
@@ -22,11 +23,10 @@ from app.services.clothing_image import (
     ImageRejectReason,
     image_executor,
     image_size,
-    normalize_image,
     normalize_mask,
 )
 from app.services.clothing_query import ClothingNotFoundError, get_clothing_detail
-from app.services.clothing_upload import reject_message
+from app.services.clothing_upload import read_and_normalize, reject_message
 from app.services.storage import ImageStorage
 
 logger = logging.getLogger(__name__)
@@ -173,7 +173,7 @@ async def save_display_image(
     loop = asyncio.get_running_loop()
     executor = image_executor(settings.CLOTHING_IMAGE_NORMALIZE_CONCURRENCY)
     try:
-        image = await loop.run_in_executor(executor, _read_display_image, file)
+        image = await loop.run_in_executor(executor, read_and_normalize, file, settings)
     except ImageRejectedError as e:
         raise InvalidDisplayImageError(reject_message(e.reason, settings)) from e
 
@@ -213,7 +213,7 @@ async def _stale_display_keys(
 ) -> list[str]:
     if edit is None or not edit.display_image_url:
         return []
-    if edit.display_image_url in await clothing_repo.get_rated_snapshot_keys(db, clothing_id):
+    if edit.display_image_url in await clothing_repo.get_snapshot_keys(db, clothing_id):
         return []
     return [edit.display_image_url]
 
@@ -273,18 +273,6 @@ def _read_mask(file: BinaryIO, base_image: bytes) -> bytes:
     if len(data) > max_bytes:
         raise ImageRejectedError(ImageRejectReason.TOO_LARGE)
     return normalize_mask(data, expected_size=image_size(base_image))
-
-
-def _read_display_image(file: BinaryIO) -> bytes:
-    settings = get_settings()
-    data = file.read(settings.CLOTHING_UPLOAD_MAX_BYTES + 1)
-    if len(data) > settings.CLOTHING_UPLOAD_MAX_BYTES:
-        raise ImageRejectedError(ImageRejectReason.TOO_LARGE)
-    return normalize_image(
-        data,
-        quality=settings.CLOTHING_IMAGE_WEBP_QUALITY,
-        max_pixels=settings.CLOTHING_IMAGE_MAX_PIXELS,
-    )
 
 
 async def _delete_all_quietly(storage: ImageStorage, keys: list[str]) -> None:

@@ -195,7 +195,8 @@ async def reset_clothing_edit(
     member_id: int = Depends(get_current_member_id),
     storage: ImageStorage = Depends(get_image_storage),
 ) -> ClothingDetail:
-    """편집값 초기화. 회전·원근·마스크를 모두 지워 원래 이미지로 돌아간다 (FR-EDIT-06)."""
+    """편집값 초기화. 회전·원근·마스크와 표시 이미지를 모두 지워 원래 이미지로 돌아간다
+    (FR-EDIT-06)."""
     return await edit_service.reset_edit(db, storage, member_id, clothing_id)
 
 
