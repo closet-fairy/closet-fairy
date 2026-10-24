@@ -17,7 +17,7 @@ export const ClothingDetail = zod.object({
   image_url: zod
     .string()
     .describe(
-      '카드에 보여줄 이미지. 배경 제거본이 있으면 그것, 없으면 원본이다.',
+      '카드에 보여줄 이미지. 편집을 적용한 표시 이미지가 있으면 그것, 없으면 배경 제거본, 그것도 없으면 원본이다.',
     ),
   failure_reason: zod
     .union([zod.string(), zod.null()])
@@ -97,13 +97,22 @@ export const ClothingDetail = zod.object({
   edit: zod
     .union([
       zod.object({
-        rotation_angle: zod.number().describe('평면 회전 각도 -180~180'),
+        rotation_angle: zod
+          .number()
+          .describe(
+            '평면 회전 각도 -180~180. 원근 보정 뒤에 적용하고, 양수는 시계 방향이다.',
+          ),
         perspective_param: zod
           .union([zod.unknown(), zod.null()])
           .describe('원근 보정 파라미터. 미적용이면 null'),
         brush_mask_url: zod
           .union([zod.string(), zod.null()])
           .describe('브러시 마스크 이미지. 미보정이면 null'),
+        display_image_url: zod
+          .union([zod.string(), zod.null()])
+          .describe(
+            '편집을 모두 적용한 표시 이미지. 회전·원근이나 마스크를 다시 저장하면 null이 되고, 그동안 목록·추천에는 배경 제거본을 쓴다.',
+          ),
       }),
       zod.null(),
     ])

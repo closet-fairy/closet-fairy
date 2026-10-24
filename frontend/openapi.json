@@ -69,6 +69,16 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "로그인 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -104,6 +114,16 @@
           },
           "422": {
             "description": "입력값 검증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "로그인 필요",
             "content": {
               "application/json": {
                 "schema": {
@@ -147,6 +167,16 @@
           },
           "422": {
             "description": "입력값 검증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "로그인 필요",
             "content": {
               "application/json": {
                 "schema": {
@@ -211,6 +241,16 @@
               }
             }
           },
+          "401": {
+            "description": "로그인 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "404": {
             "description": "없는 세션이거나 본인 세션이 아님, 또는 이 세션의 코디가 아님"
           },
@@ -260,11 +300,86 @@
               }
             }
           },
+          "401": {
+            "description": "로그인 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "404": {
             "description": "없는 세션이거나 본인 세션이 아님"
           },
           "409": {
             "description": "이미 별점을 매겨 끝난 세션"
+          }
+        }
+      }
+    },
+    "/recommendation-sessions/{recommendation_session_id}/regenerations": {
+      "post": {
+        "tags": [
+          "recommendation"
+        ],
+        "summary": "Request Regeneration",
+        "description": "재추천 요청. 요청을 검증하고 의도를 파악해 기록한 뒤 202를 돌려준다.",
+        "operationId": "request_regeneration_recommendation_sessions__recommendation_session_id__regenerations_post",
+        "parameters": [
+          {
+            "name": "recommendation_session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Recommendation Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegenerationCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegenerationCreated"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "요청이 너무 김, 유해 입력, 이해하지 못한 요청, 지금 화면에 없는 코디를 대상으로 지정, 또는 대상 범위가 맞지 않음"
+          },
+          "401": {
+            "description": "로그인 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "없는 세션이거나 본인 세션이 아님, 또는 이 세션의 코디가 아님"
+          },
+          "409": {
+            "description": "첫 추천이 끝나지 않았거나 실패한 세션, 별점·취소·이탈로 끝난 세션, 또는 재추천을 만드는 중"
+          },
+          "503": {
+            "description": "요청 의도를 일시적으로 파악하지 못함. 다시 시도할 수 있음"
           }
         }
       }
@@ -370,6 +485,16 @@
               }
             }
           },
+          "401": {
+            "description": "로그인 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "429": {
             "description": "등록·재시도 요청이 너무 잦음"
           }
@@ -435,6 +560,16 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "로그인 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -484,6 +619,16 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "로그인 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -520,6 +665,16 @@
           },
           "422": {
             "description": "입력값 검증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "로그인 필요",
             "content": {
               "application/json": {
                 "schema": {
@@ -582,6 +737,16 @@
               }
             }
           },
+          "401": {
+            "description": "로그인 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "404": {
             "description": "없는 옷이거나 본인 옷이 아님"
           },
@@ -614,6 +779,16 @@
           },
           "422": {
             "description": "입력값 검증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "로그인 필요",
             "content": {
               "application/json": {
                 "schema": {
@@ -661,6 +836,16 @@
               }
             }
           },
+          "401": {
+            "description": "로그인 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "404": {
             "description": "없는 옷이거나 본인 옷이 아님"
           }
@@ -673,7 +858,7 @@
           "clothing"
         ],
         "summary": "Save Clothing Edit",
-        "description": "회전·원근 보정값 저장 (FR-EDIT-04·05). 원본 이미지와 브러시 마스크는 그대로 둔다.",
+        "description": "회전·원근 보정값 저장 (FR-EDIT-04·05). 원본 이미지와 브러시 마스크는 그대로 두고,\n표시 이미지는 비운다.",
         "operationId": "save_clothing_edit_clothing__clothing_id__edit_put",
         "parameters": [
           {
@@ -717,6 +902,16 @@
               }
             }
           },
+          "401": {
+            "description": "로그인 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "404": {
             "description": "없는 옷이거나 본인 옷이 아님"
           },
@@ -730,7 +925,7 @@
           "clothing"
         ],
         "summary": "Reset Clothing Edit",
-        "description": "편집값 초기화. 회전·원근·마스크를 모두 지워 원래 이미지로 돌아간다 (FR-EDIT-06).",
+        "description": "편집값 초기화. 회전·원근·마스크와 표시 이미지를 모두 지워 원래 이미지로 돌아간다\n(FR-EDIT-06).",
         "operationId": "reset_clothing_edit_clothing__clothing_id__edit_delete",
         "parameters": [
           {
@@ -764,6 +959,16 @@
               }
             }
           },
+          "401": {
+            "description": "로그인 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "404": {
             "description": "없는 옷이거나 본인 옷이 아님"
           },
@@ -779,7 +984,7 @@
           "clothing"
         ],
         "summary": "Save Clothing Mask",
-        "description": "브러시 마스크 저장 (FR-EDIT-03). 이전 마스크 파일은 지운다.",
+        "description": "브러시 마스크 저장 (FR-EDIT-03). 이전 마스크 파일은 지우고 표시 이미지는 비운다.",
         "operationId": "save_clothing_mask_clothing__clothing_id__edit_mask_put",
         "parameters": [
           {
@@ -815,6 +1020,78 @@
           },
           "422": {
             "description": "PNG가 아님 (CLOTHING_MASK_INVALID), 옷 이미지와 크기가 다름 (CLOTHING_MASK_SIZE_MISMATCH), 용량 초과 (CLOTHING_MASK_TOO_LARGE)"
+          },
+          "401": {
+            "description": "로그인 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "없는 옷이거나 본인 옷이 아님"
+          },
+          "409": {
+            "description": "처리 중이거나 실패한 옷 (CLOTHING_NOT_EDITABLE)"
+          }
+        }
+      }
+    },
+    "/clothing/{clothing_id}/edit/display": {
+      "put": {
+        "tags": [
+          "clothing"
+        ],
+        "summary": "Save Clothing Display Image",
+        "description": "표시 이미지 저장 (FR-EDIT-04·06). 옷장 목록과 추천 결과에 이 이미지를 쓴다.\n\n회전·원근이나 마스크를 저장하면 다시 비워지므로 편집을 저장한 뒤 마지막에 올린다.",
+        "operationId": "save_clothing_display_image_clothing__clothing_id__edit_display_put",
+        "parameters": [
+          {
+            "name": "clothing_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Clothing Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_save_clothing_display_image_clothing__clothing_id__edit_display_put"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClothingDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "형식·용량·해상도가 맞지 않음 (CLOTHING_DISPLAY_IMAGE_INVALID)"
+          },
+          "401": {
+            "description": "로그인 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           },
           "404": {
             "description": "없는 옷이거나 본인 옷이 아님"
@@ -865,6 +1142,16 @@
               }
             }
           },
+          "401": {
+            "description": "로그인 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
           "404": {
             "description": "없는 옷이거나 본인 옷이 아님"
           },
@@ -876,17 +1163,443 @@
           }
         }
       }
+    },
+    "/auth/{provider_cd}/login": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Start Login",
+        "operationId": "start_login_auth__provider_cd__login_get",
+        "parameters": [
+          {
+            "name": "provider_cd",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Provider Cd"
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "입력값 검증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "지원하지 않는 제공자"
+          },
+          "503": {
+            "description": "키 미설정"
+          }
+        }
+      }
+    },
+    "/auth/{provider_cd}/callback": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Finish Login",
+        "operationId": "finish_login_auth__provider_cd__callback_get",
+        "parameters": [
+          {
+            "name": "provider_cd",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Provider Cd"
+            }
+          },
+          {
+            "name": "code",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Code"
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "State"
+            }
+          },
+          {
+            "name": "error",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Error"
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "입력값 검증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/withdraw": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Start Withdrawal",
+        "description": "탈퇴 전 본인 확인을 시작한다. 받은 주소로 이동해 가입한 소셜 계정으로 다시 로그인하면\n콜백에서 탈퇴를 마친다.",
+        "operationId": "start_withdrawal_auth_withdraw_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WithdrawalStarted"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "입력값 검증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "로그인 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "키 미설정",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Logout",
+        "operationId": "logout_auth_logout_post",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "입력값 검증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/dev-login": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Dev Login",
+        "operationId": "dev_login_auth_dev_login_get",
+        "responses": {
+          "302": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "입력값 검증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "DEV_AUTH가 꺼져 있음"
+          }
+        }
+      }
+    },
+    "/members/me": {
+      "get": {
+        "tags": [
+          "member"
+        ],
+        "summary": "Get Me",
+        "description": "로그인한 회원 본인의 정보.",
+        "operationId": "get_me_members_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberMe"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "입력값 검증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "로그인 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "member"
+        ],
+        "summary": "Update Me",
+        "description": "닉네임 수정. 앞뒤 공백을 지운 뒤 1~30자가 아니면 422.",
+        "operationId": "update_me_members_me_patch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemberUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberMe"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "입력값 검증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "로그인 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/members/me/settings": {
+      "get": {
+        "tags": [
+          "member"
+        ],
+        "summary": "Get My Settings",
+        "description": "개인 설정. 온보딩 전이면 출생연도가 null이다.",
+        "operationId": "get_my_settings_members_me_settings_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberSettings"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "입력값 검증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "로그인 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "member"
+        ],
+        "summary": "Save My Settings",
+        "description": "개인 설정 저장 (온보딩·내 정보 공용). 출생연도가 있으면 온보딩이 완료된다.\n\n선호 스타일을 처음 고른 저장에서만 그 스타일들의 선호 점수에 +5를 준다.",
+        "operationId": "save_my_settings_members_me_settings_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemberSettingsUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberSettings"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "입력값 검증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "로그인 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "Body_save_clothing_display_image_clothing__clothing_id__edit_display_put": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "description": "마스크 → 원근 → 회전 순으로 편집을 모두 적용한 최종 이미지. PNG·WEBP 등"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_save_clothing_display_image_clothing__clothing_id__edit_display_put"
+      },
       "Body_save_clothing_mask_clothing__clothing_id__edit_mask_put": {
         "properties": {
           "file": {
             "type": "string",
             "contentMediaType": "application/octet-stream",
             "title": "File",
-            "description": "흑백 PNG. 흰색은 보이게, 검은색은 지우게. 크기는 옷 이미지와 같아야 한다."
+            "description": "흑백 PNG. 크기는 배경 제거본(없으면 원본)과 같아야 한다. 흰색은 원본을 그 가로·세로에 정확히 맞춰 줄인 이미지의 픽셀을 보이게, 검은색은 투명하게 한다."
           }
         },
         "type": "object",
@@ -983,7 +1696,7 @@
           "image_url": {
             "type": "string",
             "title": "Image Url",
-            "description": "카드에 보여줄 이미지. 배경 제거본이 있으면 그것, 없으면 원본이다.",
+            "description": "카드에 보여줄 이미지. 편집을 적용한 표시 이미지가 있으면 그것, 없으면 배경 제거본, 그것도 없으면 원본이다.",
             "examples": [
               "/media/clothing/1/3f2a9c0e8b1d4e6f.webp"
             ]
@@ -1080,7 +1793,7 @@
           "image_url": {
             "type": "string",
             "title": "Image Url",
-            "description": "카드에 보여줄 이미지. 배경 제거본이 있으면 그것, 없으면 원본이다.",
+            "description": "카드에 보여줄 이미지. 편집을 적용한 표시 이미지가 있으면 그것, 없으면 배경 제거본, 그것도 없으면 원본이다.",
             "examples": [
               "/media/clothing/1/3f2a9c0e8b1d4e6f.webp"
             ]
@@ -1319,7 +2032,7 @@
           "rotation_angle": {
             "type": "number",
             "title": "Rotation Angle",
-            "description": "평면 회전 각도 -180~180"
+            "description": "평면 회전 각도 -180~180. 원근 보정 뒤에 적용하고, 양수는 시계 방향이다."
           },
           "perspective_param": {
             "anyOf": [
@@ -1342,13 +2055,26 @@
             ],
             "title": "Brush Mask Url",
             "description": "브러시 마스크 이미지. 미보정이면 null"
+          },
+          "display_image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Image Url",
+            "description": "편집을 모두 적용한 표시 이미지. 회전·원근이나 마스크를 다시 저장하면 null이 되고, 그동안 목록·추천에는 배경 제거본을 쓴다."
           }
         },
         "type": "object",
         "required": [
           "rotation_angle",
           "perspective_param",
-          "brush_mask_url"
+          "brush_mask_url",
+          "display_image_url"
         ],
         "title": "ClothingEdit"
       },
@@ -1362,11 +2088,11 @@
                 "minimum": -180.0
               },
               {
-                "type": "string",
-                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,3}|(?=[\\d.]{1,6}0*$)\\d{0,3}\\.\\d{0,2}0*$)"
+                "type": "string"
               }
             ],
-            "title": "Rotation Angle"
+            "title": "Rotation Angle",
+            "description": "평면 회전 각도 -180~180. 원근 보정 뒤에 적용하고, 양수는 시계 방향이다."
           },
           "perspective_param": {
             "anyOf": [
@@ -1377,7 +2103,7 @@
                 "type": "null"
               }
             ],
-            "description": "null이면 원근 보정을 적용하지 않는다."
+            "description": "null이면 원근 보정을 적용하지 않는다. 마스크 다음, 회전 전에 적용한다."
           }
         },
         "additionalProperties": false,
@@ -1440,7 +2166,7 @@
           "image_url": {
             "type": "string",
             "title": "Image Url",
-            "description": "카드에 보여줄 이미지. 배경 제거본이 있으면 그것, 없으면 원본이다.",
+            "description": "카드에 보여줄 이미지. 편집을 적용한 표시 이미지가 있으면 그것, 없으면 배경 제거본, 그것도 없으면 원본이다.",
             "examples": [
               "/media/clothing/1/3f2a9c0e8b1d4e6f.webp"
             ]
@@ -1774,6 +2500,211 @@
         ],
         "title": "ErrorResponse"
       },
+      "MemberMe": {
+        "properties": {
+          "nickname": {
+            "type": "string",
+            "title": "Nickname"
+          },
+          "provider_cd": {
+            "type": "string",
+            "enum": [
+              "google",
+              "kakao"
+            ],
+            "title": "Provider Cd",
+            "description": "연결된 소셜 로그인"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At",
+            "description": "가입 시각 (KST)"
+          },
+          "is_onboarded": {
+            "type": "boolean",
+            "title": "Is Onboarded"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nickname",
+          "provider_cd",
+          "created_at",
+          "is_onboarded"
+        ],
+        "title": "MemberMe"
+      },
+      "MemberSettings": {
+        "properties": {
+          "birth_year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Birth Year",
+            "description": "온보딩 전이면 null"
+          },
+          "temperature_sensitivity_cd": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "cold_sensitive",
+                  "normal",
+                  "heat_sensitive"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temperature Sensitivity Cd"
+          },
+          "gender_cd": {
+            "type": "string",
+            "enum": [
+              "male",
+              "female",
+              "unisex"
+            ],
+            "title": "Gender Cd"
+          },
+          "style_cds": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "minimal",
+                "casual",
+                "street",
+                "classic",
+                "formal",
+                "sporty",
+                "romantic",
+                "vintage",
+                "bohemian",
+                "preppy",
+                "chic",
+                "unique",
+                "feminine"
+              ]
+            },
+            "type": "array",
+            "title": "Style Cds"
+          },
+          "is_onboarded": {
+            "type": "boolean",
+            "title": "Is Onboarded"
+          }
+        },
+        "type": "object",
+        "required": [
+          "birth_year",
+          "temperature_sensitivity_cd",
+          "gender_cd",
+          "style_cds",
+          "is_onboarded"
+        ],
+        "title": "MemberSettings"
+      },
+      "MemberSettingsUpdate": {
+        "properties": {
+          "birth_year": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Birth Year",
+            "description": "만 14세 미만으로 볼 수 있는 해(올해 - 14 이후)는 422",
+            "examples": [
+              1999
+            ]
+          },
+          "temperature_sensitivity_cd": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "cold_sensitive",
+                  "normal",
+                  "heat_sensitive"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temperature Sensitivity Cd"
+          },
+          "gender_cd": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "male",
+                  "female",
+                  "unisex"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gender Cd",
+            "description": "비우면 unisex"
+          },
+          "style_cds": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "minimal",
+                "casual",
+                "street",
+                "classic",
+                "formal",
+                "sporty",
+                "romantic",
+                "vintage",
+                "bohemian",
+                "preppy",
+                "chic",
+                "unique",
+                "feminine"
+              ]
+            },
+            "type": "array",
+            "title": "Style Cds",
+            "description": "개수 제한 없음. 처음 고른 스타일에만 선호 점수 +5"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "birth_year"
+        ],
+        "title": "MemberSettingsUpdate",
+        "description": "전체를 바꾼다. 보내지 않은 선택 항목은 비워진다."
+      },
+      "MemberUpdate": {
+        "properties": {
+          "nickname": {
+            "type": "string",
+            "title": "Nickname",
+            "description": "앞뒤 공백을 지운 뒤 1~30자. 다른 회원과 같아도 된다.",
+            "examples": [
+              "옷장요정"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "nickname"
+        ],
+        "title": "MemberUpdate"
+      },
       "OutfitItemResult": {
         "properties": {
           "slot_cd": {
@@ -2002,7 +2933,7 @@
             "maxItems": 4,
             "minItems": 4,
             "title": "Corners",
-            "description": "좌상·우상·우하·좌하 꼭짓점. 이미지 크기에 대한 0~1 비율 좌표 [x, y]",
+            "description": "좌상·우상·우하·좌하 꼭짓점. 배경 제거본(없으면 원본)의 가로·세로에 대한 0~1 비율 좌표 [x, y]. 펼친 결과의 가로는 윗변·아랫변 길이의 평균, 세로는 왼변·오른변 길이의 평균이다.",
             "examples": [
               [
                 [
@@ -2267,6 +3198,7 @@
               "exercise",
               "rainy",
               "midwinter",
+              "date",
               "custom"
             ],
             "title": "Tpo Cd"
@@ -2298,6 +3230,19 @@
             "examples": [
               "21:30"
             ]
+          },
+          "going_out_date_cd": {
+            "type": "string",
+            "enum": [
+              "today",
+              "tomorrow"
+            ],
+            "title": "Going Out Date Cd",
+            "description": "외출 날짜, 생략하면 today",
+            "default": "today",
+            "examples": [
+              "today"
+            ]
           }
         },
         "type": "object",
@@ -2328,6 +3273,91 @@
           "session_status_cd"
         ],
         "title": "RecommendationSessionCreated"
+      },
+      "RegenerationCreate": {
+        "properties": {
+          "request_text": {
+            "type": "string",
+            "title": "Request Text",
+            "examples": [
+              "좀 더 캐주얼하게"
+            ]
+          },
+          "target_scope_cd": {
+            "type": "string",
+            "enum": [
+              "single",
+              "all"
+            ],
+            "title": "Target Scope Cd"
+          },
+          "target_outfit_id": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Outfit Id"
+          },
+          "target_slot_cd": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "outer",
+                  "top",
+                  "bottom",
+                  "shoes",
+                  "socks",
+                  "accessories"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Slot Cd"
+          }
+        },
+        "type": "object",
+        "required": [
+          "request_text",
+          "target_scope_cd"
+        ],
+        "title": "RegenerationCreate"
+      },
+      "RegenerationCreated": {
+        "properties": {
+          "recommendation_session_id": {
+            "type": "integer",
+            "title": "Recommendation Session Id"
+          },
+          "regeneration_request_id": {
+            "type": "integer",
+            "title": "Regeneration Request Id"
+          },
+          "request_seq": {
+            "type": "integer",
+            "title": "Request Seq"
+          },
+          "regeneration_status_cd": {
+            "type": "string",
+            "const": "processing",
+            "title": "Regeneration Status Cd"
+          }
+        },
+        "type": "object",
+        "required": [
+          "recommendation_session_id",
+          "regeneration_request_id",
+          "request_seq",
+          "regeneration_status_cd"
+        ],
+        "title": "RegenerationCreated"
       },
       "RejectedUpload": {
         "properties": {
@@ -2382,6 +3412,7 @@
               "exercise",
               "rainy",
               "midwinter",
+              "date",
               "custom"
             ],
             "title": "Tpo Cd"
@@ -2554,6 +3585,20 @@
           "is_sky_missing"
         ],
         "title": "WeatherPreview"
+      },
+      "WithdrawalStarted": {
+        "properties": {
+          "authorize_url": {
+            "type": "string",
+            "title": "Authorize Url",
+            "description": "이 주소로 이동해 가입한 소셜 계정으로 다시 로그인한다."
+          }
+        },
+        "type": "object",
+        "required": [
+          "authorize_url"
+        ],
+        "title": "WithdrawalStarted"
       }
     }
   }

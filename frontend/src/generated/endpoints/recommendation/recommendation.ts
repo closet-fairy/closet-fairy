@@ -26,11 +26,13 @@ import {
   RatingResult,
   RecommendationResult,
   RecommendationSessionCreated,
+  RegenerationCreated,
 } from '../../models';
 import type {
   ErrorResponse,
   RatingCreate,
   RecommendationSessionCreate,
+  RegenerationCreate,
 } from '../../models';
 
 import { fetcher } from '../../../apis/fetcher';
@@ -441,7 +443,7 @@ export const getGetRecommendationResultRecommendationSessionsRecommendationSessi
         typeof getRecommendationResultRecommendationSessionsRecommendationSessionIdGet
       >
     >,
-    TError = ErrorType<void | ErrorResponse>,
+    TError = ErrorType<ErrorResponse | void>,
   >(
     recommendationSessionId: number,
     options?: {
@@ -506,7 +508,7 @@ export type GetRecommendationResultRecommendationSessionsRecommendationSessionId
     >
   >;
 export type GetRecommendationResultRecommendationSessionsRecommendationSessionIdGetQueryError =
-  ErrorType<void | ErrorResponse>;
+  ErrorType<ErrorResponse | void>;
 
 export function useGetRecommendationResultRecommendationSessionsRecommendationSessionIdGet<
   TData = Awaited<
@@ -514,7 +516,7 @@ export function useGetRecommendationResultRecommendationSessionsRecommendationSe
       typeof getRecommendationResultRecommendationSessionsRecommendationSessionIdGet
     >
   >,
-  TError = ErrorType<void | ErrorResponse>,
+  TError = ErrorType<ErrorResponse | void>,
 >(
   recommendationSessionId: number,
   options: {
@@ -557,7 +559,7 @@ export function useGetRecommendationResultRecommendationSessionsRecommendationSe
       typeof getRecommendationResultRecommendationSessionsRecommendationSessionIdGet
     >
   >,
-  TError = ErrorType<void | ErrorResponse>,
+  TError = ErrorType<ErrorResponse | void>,
 >(
   recommendationSessionId: number,
   options?: {
@@ -600,7 +602,7 @@ export function useGetRecommendationResultRecommendationSessionsRecommendationSe
       typeof getRecommendationResultRecommendationSessionsRecommendationSessionIdGet
     >
   >,
-  TError = ErrorType<void | ErrorResponse>,
+  TError = ErrorType<ErrorResponse | void>,
 >(
   recommendationSessionId: number,
   options?: {
@@ -631,7 +633,7 @@ export function useGetRecommendationResultRecommendationSessionsRecommendationSe
       typeof getRecommendationResultRecommendationSessionsRecommendationSessionIdGet
     >
   >,
-  TError = ErrorType<void | ErrorResponse>,
+  TError = ErrorType<ErrorResponse | void>,
 >(
   recommendationSessionId: number,
   options?: {
@@ -726,7 +728,7 @@ export const getRateRecommendationRecommendationSessionsRecommendationSessionIdR
     ] as const;
 
 export const getRateRecommendationRecommendationSessionsRecommendationSessionIdRatingPostMutationOptions =
-  <TError = ErrorType<void | ErrorResponse>, TContext = unknown>(options?: {
+  <TError = ErrorType<ErrorResponse | void>, TContext = unknown>(options?: {
     mutation?: UseMutationOptions<
       Awaited<
         ReturnType<
@@ -789,7 +791,7 @@ export type RateRecommendationRecommendationSessionsRecommendationSessionIdRatin
 export type RateRecommendationRecommendationSessionsRecommendationSessionIdRatingPostMutationBody =
   RatingCreate;
 export type RateRecommendationRecommendationSessionsRecommendationSessionIdRatingPostMutationError =
-  ErrorType<void | ErrorResponse>;
+  ErrorType<ErrorResponse | void>;
 export type RateRecommendationRecommendationSessionsRecommendationSessionIdRatingPostMutationVariables =
   { recommendationSessionId: number; data: RatingCreate };
 
@@ -797,7 +799,7 @@ export type RateRecommendationRecommendationSessionsRecommendationSessionIdRatin
  * @summary Rate Recommendation
  */
 export const useRateRecommendationRecommendationSessionsRecommendationSessionIdRatingPost =
-  <TError = ErrorType<void | ErrorResponse>, TContext = unknown>(
+  <TError = ErrorType<ErrorResponse | void>, TContext = unknown>(
     options?: {
       mutation?: UseMutationOptions<
         Awaited<
@@ -865,7 +867,7 @@ export const getCancelRecommendationSessionRecommendationSessionsRecommendationS
     ] as const;
 
 export const getCancelRecommendationSessionRecommendationSessionsRecommendationSessionIdCancelPostMutationOptions =
-  <TError = ErrorType<void | ErrorResponse>, TContext = unknown>(options?: {
+  <TError = ErrorType<ErrorResponse | void>, TContext = unknown>(options?: {
     mutation?: UseMutationOptions<
       Awaited<
         ReturnType<
@@ -926,7 +928,7 @@ export type CancelRecommendationSessionRecommendationSessionsRecommendationSessi
   >;
 
 export type CancelRecommendationSessionRecommendationSessionsRecommendationSessionIdCancelPostMutationError =
-  ErrorType<void | ErrorResponse>;
+  ErrorType<ErrorResponse | void>;
 export type CancelRecommendationSessionRecommendationSessionsRecommendationSessionIdCancelPostMutationVariables =
   { recommendationSessionId: number };
 
@@ -934,7 +936,7 @@ export type CancelRecommendationSessionRecommendationSessionsRecommendationSessi
  * @summary Cancel Recommendation Session
  */
 export const useCancelRecommendationSessionRecommendationSessionsRecommendationSessionIdCancelPost =
-  <TError = ErrorType<void | ErrorResponse>, TContext = unknown>(
+  <TError = ErrorType<ErrorResponse | void>, TContext = unknown>(
     options?: {
       mutation?: UseMutationOptions<
         Awaited<
@@ -961,6 +963,169 @@ export const useCancelRecommendationSessionRecommendationSessionsRecommendationS
   > => {
     return useMutation(
       getCancelRecommendationSessionRecommendationSessionsRecommendationSessionIdCancelPostMutationOptions(
+        options,
+      ),
+      queryClient,
+    );
+  };
+export const getRequestRegenerationRecommendationSessionsRecommendationSessionIdRegenerationsPostUrl =
+  (recommendationSessionId: number) => {
+    return `/recommendation-sessions/${recommendationSessionId}/regenerations`;
+  };
+
+/**
+ * 재추천 요청. 요청을 검증하고 의도를 파악해 기록한 뒤 202를 돌려준다.
+ * @summary Request Regeneration
+ */
+export const requestRegenerationRecommendationSessionsRecommendationSessionIdRegenerationsPost =
+  async (
+    recommendationSessionId: number,
+    regenerationCreate: RegenerationCreate,
+    options?: Parameters<typeof fetcher>[1],
+  ): Promise<RegenerationCreated> => {
+    const getHeaders = (
+      h?: NonNullable<RequestInit['headers']>,
+    ): Record<string, string | readonly string[]> => {
+      if (!h) return {};
+      if (h instanceof Headers) return Object.fromEntries(h.entries());
+      if (Symbol.iterator in h) {
+        return Object.fromEntries(
+          Array.from(
+            h as Iterable<Iterable<string>>,
+            (entry) => Array.from(entry) as [string, string],
+          ),
+        );
+      }
+      const headers: Record<string, string | readonly string[]> = {};
+      for (const [name, value] of Object.entries<
+        string | readonly string[] | undefined
+      >(h)) {
+        if (value !== undefined) headers[name] = value;
+      }
+      return headers;
+    };
+    return fetcher<RegenerationCreated>(
+      getRequestRegenerationRecommendationSessionsRecommendationSessionIdRegenerationsPostUrl(
+        recommendationSessionId,
+      ),
+      {
+        ...options,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getHeaders(options?.headers),
+        },
+        body: JSON.stringify(regenerationCreate),
+        schema: RegenerationCreated,
+      },
+    );
+  };
+
+export const getRequestRegenerationRecommendationSessionsRecommendationSessionIdRegenerationsPostMutationKey =
+  () =>
+    [
+      'requestRegenerationRecommendationSessionsRecommendationSessionIdRegenerationsPost',
+    ] as const;
+
+export const getRequestRegenerationRecommendationSessionsRecommendationSessionIdRegenerationsPostMutationOptions =
+  <TError = ErrorType<ErrorResponse | void>, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<
+      Awaited<
+        ReturnType<
+          typeof requestRegenerationRecommendationSessionsRecommendationSessionIdRegenerationsPost
+        >
+      >,
+      TError,
+      RequestRegenerationRecommendationSessionsRecommendationSessionIdRegenerationsPostMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof fetcher>;
+  }): UseMutationOptions<
+    Awaited<
+      ReturnType<
+        typeof requestRegenerationRecommendationSessionsRecommendationSessionIdRegenerationsPost
+      >
+    >,
+    TError,
+    RequestRegenerationRecommendationSessionsRecommendationSessionIdRegenerationsPostMutationVariables,
+    TContext
+  > => {
+    const mutationKey =
+      getRequestRegenerationRecommendationSessionsRecommendationSessionIdRegenerationsPostMutationKey();
+    const { mutation: mutationOptions, request: requestOptions } = options
+      ? options.mutation &&
+        'mutationKey' in options.mutation &&
+        options.mutation.mutationKey
+        ? options
+        : { ...options, mutation: { ...options.mutation, mutationKey } }
+      : { mutation: { mutationKey }, request: undefined };
+
+    const mutationFn: MutationFunction<
+      Awaited<
+        ReturnType<
+          typeof requestRegenerationRecommendationSessionsRecommendationSessionIdRegenerationsPost
+        >
+      >,
+      RequestRegenerationRecommendationSessionsRecommendationSessionIdRegenerationsPostMutationVariables
+    > = (props) => {
+      const { recommendationSessionId, data } = props ?? {};
+
+      return requestRegenerationRecommendationSessionsRecommendationSessionIdRegenerationsPost(
+        recommendationSessionId,
+        data,
+        requestOptions,
+      );
+    };
+
+    return { mutationFn, ...mutationOptions };
+  };
+
+export type RequestRegenerationRecommendationSessionsRecommendationSessionIdRegenerationsPostMutationResult =
+  NonNullable<
+    Awaited<
+      ReturnType<
+        typeof requestRegenerationRecommendationSessionsRecommendationSessionIdRegenerationsPost
+      >
+    >
+  >;
+export type RequestRegenerationRecommendationSessionsRecommendationSessionIdRegenerationsPostMutationBody =
+  RegenerationCreate;
+export type RequestRegenerationRecommendationSessionsRecommendationSessionIdRegenerationsPostMutationError =
+  ErrorType<ErrorResponse | void>;
+export type RequestRegenerationRecommendationSessionsRecommendationSessionIdRegenerationsPostMutationVariables =
+  { recommendationSessionId: number; data: RegenerationCreate };
+
+/**
+ * @summary Request Regeneration
+ */
+export const useRequestRegenerationRecommendationSessionsRecommendationSessionIdRegenerationsPost =
+  <TError = ErrorType<ErrorResponse | void>, TContext = unknown>(
+    options?: {
+      mutation?: UseMutationOptions<
+        Awaited<
+          ReturnType<
+            typeof requestRegenerationRecommendationSessionsRecommendationSessionIdRegenerationsPost
+          >
+        >,
+        TError,
+        RequestRegenerationRecommendationSessionsRecommendationSessionIdRegenerationsPostMutationVariables,
+        TContext
+      >;
+      request?: SecondParameter<typeof fetcher>;
+    },
+    queryClient?: QueryClient,
+  ): UseMutationResult<
+    Awaited<
+      ReturnType<
+        typeof requestRegenerationRecommendationSessionsRecommendationSessionIdRegenerationsPost
+      >
+    >,
+    TError,
+    RequestRegenerationRecommendationSessionsRecommendationSessionIdRegenerationsPostMutationVariables,
+    TContext
+  > => {
+    return useMutation(
+      getRequestRegenerationRecommendationSessionsRecommendationSessionIdRegenerationsPostMutationOptions(
         options,
       ),
       queryClient,

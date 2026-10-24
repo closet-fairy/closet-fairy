@@ -17,4 +17,5 @@ export const TPO_PRESETS: readonly TpoPreset[] = [
   { value: 'exercise', label: '운동' },
   { value: 'rainy', label: '우천' },
   { value: 'midwinter', label: '한겨울' },
+  { value: 'date', label: '데이트' },
 ];
