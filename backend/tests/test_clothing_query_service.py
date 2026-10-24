@@ -31,6 +31,7 @@ def _card(clothing_id: int, **overrides) -> ClothingCardRow:
         job_id=clothing_id * 10,
         job_started_at=CREATED_AT,
         job_failure_reason=None,
+        display_image_url=None,
     )
     return ClothingCardRow(**{**fields, **overrides})
 
@@ -248,6 +249,7 @@ async def test_detail_edit_params(repo):
         rotation_angle=Decimal("-90.00"),
         perspective_param={"points": [[0, 0], [1, 0]]},
         brush_mask_url="clothing/7/5_mask.png",
+        display_image_url="clothing/7/5_display.webp",
     )
 
     detail = await query.get_clothing_detail(None, _Storage(), MEMBER_ID, 5)
@@ -256,4 +258,22 @@ async def test_detail_edit_params(repo):
         "rotation_angle": -90.0,
         "perspective_param": {"points": [[0, 0], [1, 0]]},
         "brush_mask_url": "/media/clothing/7/5_mask.png",
+        "display_image_url": "/media/clothing/7/5_display.webp",
     }
+
+
+async def test_edited_clothing_shows_display_image_everywhere(repo):
+    edited = dict(
+        cutout_image_url="clothing/7/5_cutout.png", display_image_url="clothing/7/5_display.webp"
+    )
+    repo["page"] = [_card(5, **edited)]
+    repo["cards"] = [_card(5, **edited)]
+    repo["detail"] = _detail(5, **edited)
+
+    page = await query.get_clothing_page(None, _Storage(), MEMBER_ID, None, 10)
+    status = await query.get_clothing_status(None, _Storage(), MEMBER_ID, [5])
+    detail = await query.get_clothing_detail(None, _Storage(), MEMBER_ID, 5)
+
+    expected = "/media/clothing/7/5_display.webp"
+    assert page.items[0].image_url == status.items[0].image_url == detail.image_url == expected
+    assert detail.cutout_image_url == "/media/clothing/7/5_cutout.png"

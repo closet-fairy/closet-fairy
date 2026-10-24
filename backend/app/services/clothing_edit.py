@@ -1,7 +1,8 @@
 """옷 속성 수정과 이미지 편집값 저장 (#75, FR-EDIT).
 
-편집값은 원본 이미지에 굽지 않고 파라미터로만 저장한다(FR-EDIT-06). 수정해도 자동 태깅을
-다시 하지 않는다. 동시에 고치면 마지막 저장이 남는다(NFR-EDIT-03).
+편집값은 원본 이미지에 굽지 않고 파라미터로 저장한다(FR-EDIT-06). 편집을 모두 적용한 표시
+이미지는 프론트엔드가 그려 올리고, 편집값이 바뀌면 비운다. 수정해도 자동 태깅을 다시 하지 않는다.
+동시에 고치면 마지막 저장이 남는다(NFR-EDIT-03).
 """
 
 import asyncio
@@ -15,7 +16,7 @@ from app.core.config import get_settings
 from app.core.errors import ConflictError, ValidationError
 from app.repositories import clothing as clothing_repo
 from app.repositories import clothing_tag as tag_repo
-from app.repositories.clothing import ClothingForEdit
+from app.repositories.clothing import ClothingEditRow, ClothingForEdit
 from app.schemas.clothing import ClothingDetail, ClothingEditUpdate, ClothingUpdate
 from app.services.clothing_image import (
     ImageRejectedError,
@@ -25,6 +26,7 @@ from app.services.clothing_image import (
     normalize_mask,
 )
 from app.services.clothing_query import ClothingNotFoundError, get_clothing_detail
+from app.services.clothing_upload import read_and_normalize, reject_message
 from app.services.storage import ImageStorage
 
 logger = logging.getLogger(__name__)
@@ -54,6 +56,10 @@ class MaskSizeMismatchError(ValidationError):
 
 class MaskTooLargeError(ValidationError):
     code = "CLOTHING_MASK_TOO_LARGE"
+
+
+class InvalidDisplayImageError(ValidationError):
+    code = "CLOTHING_DISPLAY_IMAGE_INVALID"
 
 
 def _mask_error(reason: ImageRejectReason) -> ValidationError:
@@ -109,8 +115,11 @@ async def save_edit(
     perspective = edit.perspective_param.model_dump() if edit.perspective_param else None
     async with db.begin():
         await _lock_editable(db, member_id, clothing_id)
+        previous = await clothing_repo.get_clothing_edit(db, clothing_id)
+        stale_keys = await _stale_display_keys(db, clothing_id, previous)
         await clothing_repo.upsert_edit_transform(db, clothing_id, edit.rotation_angle, perspective)
         await clothing_repo.mark_reviewed(db, clothing_id)
+    await _delete_all_quietly(storage, stale_keys)
     return await get_clothing_detail(db, storage, member_id, clothing_id)
 
 
@@ -138,13 +147,49 @@ async def save_mask(
         async with db.begin():
             await _lock_editable(db, member_id, clothing_id)
             previous = await clothing_repo.get_clothing_edit(db, clothing_id)
+            stale_keys = await _stale_display_keys(db, clothing_id, previous)
             await clothing_repo.upsert_edit_mask(db, clothing_id, key)
             await clothing_repo.mark_reviewed(db, clothing_id)
     except Exception:
         await _delete_quietly(storage, key)
         raise
     if previous is not None and previous.brush_mask_url:
-        await _delete_quietly(storage, previous.brush_mask_url)
+        stale_keys.append(previous.brush_mask_url)
+    await _delete_all_quietly(storage, stale_keys)
+    return await get_clothing_detail(db, storage, member_id, clothing_id)
+
+
+async def save_display_image(
+    db: AsyncSession,
+    storage: ImageStorage,
+    member_id: int,
+    clothing_id: int,
+    file: BinaryIO,
+) -> ClothingDetail:
+    async with db.begin():
+        clothing = await clothing_repo.get_clothing_for_edit(db, member_id, clothing_id)
+    _ensure_editable(clothing)
+    settings = get_settings()
+    loop = asyncio.get_running_loop()
+    executor = image_executor(settings.CLOTHING_IMAGE_NORMALIZE_CONCURRENCY)
+    try:
+        image = await loop.run_in_executor(executor, read_and_normalize, file, settings)
+    except ImageRejectedError as e:
+        raise InvalidDisplayImageError(reject_message(e.reason, settings)) from e
+
+    key = f"clothing/{member_id}/{uuid4().hex}_display.webp"
+    await storage.save(key, image)
+    try:
+        async with db.begin():
+            await _lock_editable(db, member_id, clothing_id)
+            previous = await clothing_repo.get_clothing_edit(db, clothing_id)
+            stale_keys = await _stale_display_keys(db, clothing_id, previous)
+            await clothing_repo.upsert_edit_display(db, clothing_id, key)
+            await clothing_repo.mark_reviewed(db, clothing_id)
+    except Exception:
+        await _delete_quietly(storage, key)
+        raise
+    await _delete_all_quietly(storage, stale_keys)
     return await get_clothing_detail(db, storage, member_id, clothing_id)
 
 
@@ -154,11 +199,23 @@ async def reset_edit(
     async with db.begin():
         await _lock_editable(db, member_id, clothing_id)
         previous = await clothing_repo.get_clothing_edit(db, clothing_id)
+        stale_keys = await _stale_display_keys(db, clothing_id, previous)
         await clothing_repo.delete_clothing_edit(db, clothing_id)
         await clothing_repo.mark_reviewed(db, clothing_id)
     if previous is not None and previous.brush_mask_url:
-        await _delete_quietly(storage, previous.brush_mask_url)
+        stale_keys.append(previous.brush_mask_url)
+    await _delete_all_quietly(storage, stale_keys)
     return await get_clothing_detail(db, storage, member_id, clothing_id)
+
+
+async def _stale_display_keys(
+    db: AsyncSession, clothing_id: int, edit: ClothingEditRow | None
+) -> list[str]:
+    if edit is None or not edit.display_image_url:
+        return []
+    if edit.display_image_url in await clothing_repo.get_snapshot_keys(db, clothing_id):
+        return []
+    return [edit.display_image_url]
 
 
 async def _lock_editable(db: AsyncSession, member_id: int, clothing_id: int) -> ClothingForEdit:
@@ -218,8 +275,13 @@ def _read_mask(file: BinaryIO, base_image: bytes) -> bytes:
     return normalize_mask(data, expected_size=image_size(base_image))
 
 
+async def _delete_all_quietly(storage: ImageStorage, keys: list[str]) -> None:
+    for key in keys:
+        await _delete_quietly(storage, key)
+
+
 async def _delete_quietly(storage: ImageStorage, key: str) -> None:
     try:
         await storage.delete(key)
     except Exception:
-        logger.warning("브러시 마스크 파일 정리 실패", exc_info=True, extra={"key": key})
+        logger.warning("편집 이미지 파일 정리 실패", exc_info=True, extra={"key": key})

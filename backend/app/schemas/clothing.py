@@ -44,7 +44,10 @@ class ClothingProgress(BaseModel):
         description="처리 중인데 아직 차례를 기다리면 true. 처리가 시작됐거나 끝났으면 false."
     )
     image_url: str = Field(
-        description="카드에 보여줄 이미지. 배경 제거본이 있으면 그것, 없으면 원본이다.",
+        description=(
+            "카드에 보여줄 이미지. 편집을 적용한 표시 이미지가 있으면 그것, "
+            "없으면 배경 제거본, 그것도 없으면 원본이다."
+        ),
         examples=["/media/clothing/1/3f2a9c0e8b1d4e6f.webp"],
     )
     failure_reason: str | None = Field(
@@ -72,10 +75,19 @@ class ClothingPage(BaseModel):
     )
 
 
+ROTATION_DESCRIPTION = "평면 회전 각도 -180~180. 원근 보정 뒤에 적용하고, 양수는 시계 방향이다."
+
+
 class ClothingEdit(BaseModel):
-    rotation_angle: float = Field(description="평면 회전 각도 -180~180")
+    rotation_angle: float = Field(description=ROTATION_DESCRIPTION)
     perspective_param: Any | None = Field(description="원근 보정 파라미터. 미적용이면 null")
     brush_mask_url: str | None = Field(description="브러시 마스크 이미지. 미보정이면 null")
+    display_image_url: str | None = Field(
+        description=(
+            "편집을 모두 적용한 표시 이미지. 회전·원근이나 마스크를 다시 저장하면 null이 되고, "
+            "그동안 목록·추천에는 배경 제거본을 쓴다."
+        )
+    )
 
 
 class ClothingDetail(ClothingCard):
@@ -119,7 +131,11 @@ class PerspectiveParam(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     corners: tuple[Point, Point, Point, Point] = Field(
-        description="좌상·우상·우하·좌하 꼭짓점. 이미지 크기에 대한 0~1 비율 좌표 [x, y]",
+        description=(
+            "좌상·우상·우하·좌하 꼭짓점. 배경 제거본(없으면 원본)의 가로·세로에 대한 "
+            "0~1 비율 좌표 [x, y]. 펼친 결과의 가로는 윗변·아랫변 길이의 평균, "
+            "세로는 왼변·오른변 길이의 평균이다."
+        ),
         examples=[[[0.02, 0.05], [0.97, 0.01], [0.99, 0.96], [0.03, 0.99]]],
     )
 
@@ -127,7 +143,10 @@ class PerspectiveParam(BaseModel):
 class ClothingEditUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    rotation_angle: Decimal = Field(ge=-180, le=180, max_digits=5, decimal_places=2)
+    rotation_angle: Decimal = Field(
+        ge=-180, le=180, max_digits=5, decimal_places=2, description=ROTATION_DESCRIPTION
+    )
     perspective_param: PerspectiveParam | None = Field(
-        default=None, description="null이면 원근 보정을 적용하지 않는다."
+        default=None,
+        description="null이면 원근 보정을 적용하지 않는다. 마스크 다음, 회전 전에 적용한다.",
     )

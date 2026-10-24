@@ -32,6 +32,7 @@ def _clothing(
     item_name: str | None = None,
     color_nm: str | None = "블랙",
     cutout: str | None = None,
+    display: str | None = None,
 ) -> ClothingSnapshot:
     return ClothingSnapshot(
         clothing_id=clothing_id,
@@ -39,6 +40,7 @@ def _clothing(
         color_nm=color_nm,
         origin_image_url=f"http://img/{clothing_id}/origin.png",
         cutout_image_url=cutout,
+        display_image_url=display,
     )
 
 
@@ -92,6 +94,21 @@ def test_owned_item_snapshot_prefers_cutout_and_keeps_name():
         item_name_snapshot="네이비 블레이저",
         image_url_snapshot="http://img/10/cutout.png",
     )
+
+
+def test_owned_item_snapshot_prefers_edited_display_image():
+    clothing = {
+        **CLOTHING,
+        10: _clothing(
+            10, "네이비 블레이저", cutout="http://img/10/cutout.png", display="clothing/7/10_d.webp"
+        ),
+    }
+
+    rows = save.build_outfit_rows(
+        [DraftOutfit(1, "preferred", ("o10",), "r")], BY_KEY, clothing, ESSENTIALS
+    )
+
+    assert rows[0].items[0].image_url_snapshot == "clothing/7/10_d.webp"
 
 
 def test_owned_item_without_cutout_uses_origin_and_without_name_uses_color_and_category():

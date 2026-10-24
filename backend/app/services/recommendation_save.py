@@ -147,7 +147,9 @@ def _to_item_row(
             clothing_id=candidate.item_id,
             essential_item_id=None,
             item_name_snapshot=clothing.item_name or _fallback_name(candidate, clothing),
-            image_url_snapshot=clothing.cutout_image_url or clothing.origin_image_url,
+            image_url_snapshot=(
+                clothing.display_image_url or clothing.cutout_image_url or clothing.origin_image_url
+            ),
         )
 
     essential = essential_snapshots.get(candidate.item_id)

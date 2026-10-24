@@ -58,7 +58,7 @@ def _clothing(**overrides) -> ClothingForEdit:
 def repo(monkeypatch):
     r = SimpleNamespace(
         clothing=_clothing(),
-        edit=ClothingEditRow(Decimal(0), None, MASK),
+        edit=ClothingEditRow(Decimal(0), None, MASK, None),
         rated_keys=set(),
         locks=[],
         deleted=[],
@@ -129,6 +129,28 @@ async def test_delete_keeps_images_used_by_rated_outfits(repo, storage, tmp_path
 
     assert _exists(tmp_path, CUTOUT)
     assert not _exists(tmp_path, ORIGIN) and not _exists(tmp_path, MASK)
+
+
+async def test_delete_removes_display_image_unless_rated_outfit_uses_it(repo, storage, tmp_path):
+    display = "clothing/7/a_display.webp"
+    (tmp_path / display).write_bytes(b"image")
+    repo.edit = ClothingEditRow(Decimal(0), None, MASK, display)
+
+    await clothing_delete.delete_clothing(_FakeDb(), storage, MEMBER_ID, 5)
+
+    assert not _exists(tmp_path, display)
+
+
+async def test_delete_keeps_display_image_of_rated_outfit(repo, storage, tmp_path):
+    display = "clothing/7/a_display.webp"
+    (tmp_path / display).write_bytes(b"image")
+    repo.edit = ClothingEditRow(Decimal(0), None, MASK, display)
+    repo.rated_keys = {display}
+
+    await clothing_delete.delete_clothing(_FakeDb(), storage, MEMBER_ID, 5)
+
+    assert _exists(tmp_path, display)
+    assert not _exists(tmp_path, CUTOUT)
 
 
 @pytest.mark.parametrize("status", ["processing", "failed"])

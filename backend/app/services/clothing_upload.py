@@ -85,7 +85,7 @@ async def upload_clothing(
     loop = asyncio.get_running_loop()
     executor = image_executor(settings.CLOTHING_IMAGE_NORMALIZE_CONCURRENCY)
     outcomes = await asyncio.gather(
-        *(loop.run_in_executor(executor, _read_and_normalize, f.file, settings) for f in files),
+        *(loop.run_in_executor(executor, read_and_normalize, f.file, settings) for f in files),
         return_exceptions=True,
     )
 
@@ -135,7 +135,7 @@ async def upload_clothing(
     )
 
 
-def _read_and_normalize(file: BinaryIO, settings: Settings) -> bytes:
+def read_and_normalize(file: BinaryIO, settings: Settings) -> bytes:
     data = file.read(settings.CLOTHING_UPLOAD_MAX_BYTES + 1)
     if len(data) > settings.CLOTHING_UPLOAD_MAX_BYTES:
         raise ImageRejectedError(ImageRejectReason.TOO_LARGE)
