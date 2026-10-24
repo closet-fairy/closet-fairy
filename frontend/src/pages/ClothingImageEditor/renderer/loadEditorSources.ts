@@ -5,6 +5,8 @@ export interface EditorSources {
   size: Size;
   base: ImageBitmap;
   initialMask: HTMLCanvasElement;
+  defaultMask: HTMLCanvasElement;
+  hasSavedMask: boolean;
   isRestoreAvailable: boolean;
 }
 
@@ -72,6 +74,14 @@ const createMaskFromBlob = async (blob: Blob, size: Size) => {
   return canvas;
 };
 
+// 편집 중인 마스크와 [원래대로]에 쓸 기본 마스크가 서로 영향을 주지 않게 복사한다.
+export const cloneCanvas = (source: HTMLCanvasElement) => {
+  const canvas = createCanvas({ width: source.width, height: source.height });
+  get2dContext(canvas).drawImage(source, 0, 0);
+
+  return canvas;
+};
+
 const createFilledMask = (size: Size) => {
   const canvas = createCanvas(size);
   const context = get2dContext(canvas);
@@ -118,27 +128,51 @@ export const loadEditorSources = async (
       throw new EditorSourcesError('사진이 너무 커서 편집할 수 없어요.');
     }
 
+    const defaultMask = createFilledMask(size);
     const initialMask =
       maskBlob === null
-        ? createFilledMask(size)
+        ? cloneCanvas(defaultMask)
         : await createMaskFromBlob(maskBlob, size);
 
-    return { size, base: origin, initialMask, isRestoreAvailable: true };
+    return {
+      size,
+      base: origin,
+      initialMask,
+      defaultMask,
+      hasSavedMask: maskBlob !== null,
+      isRestoreAvailable: true,
+    };
   }
 
   const cutout = await createImageBitmap(cutoutBlob, BITMAP_OPTIONS);
   const size = { width: cutout.width, height: cutout.height };
+  const defaultMask = createMaskFromAlpha(cutout, size);
   const initialMask =
     maskBlob === null
-      ? createMaskFromAlpha(cutout, size)
+      ? cloneCanvas(defaultMask)
       : await createMaskFromBlob(maskBlob, size);
+  const hasSavedMask = maskBlob !== null;
   const base = await decodeResized(originBlob, size);
 
   if (base === null) {
-    return { size, base: cutout, initialMask, isRestoreAvailable: false };
+    return {
+      size,
+      base: cutout,
+      initialMask,
+      defaultMask,
+      hasSavedMask,
+      isRestoreAvailable: false,
+    };
   }
 
   cutout.close();
 
-  return { size, base, initialMask, isRestoreAvailable: true };
+  return {
+    size,
+    base,
+    initialMask,
+    defaultMask,
+    hasSavedMask,
+    isRestoreAvailable: true,
+  };
 };
