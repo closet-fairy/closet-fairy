@@ -16,6 +16,7 @@ from app.services import clothing_edit as edit
 from app.services.clothing_edit import (
     AccessoryTypeNotAllowedError,
     ClothingNotEditableError,
+    InvalidDisplayImageError,
     InvalidMaskError,
     MaskSizeMismatchError,
     MaskTooLargeError,
@@ -75,7 +76,10 @@ def repo(monkeypatch):
         transforms=[],
         masks=[],
         deleted_edits=[],
+        displays=[],
+        rated_keys=set(),
         mask_error=None,
+        display_error=None,
     )
 
     async def get_clothing_for_edit(db, member_id, clothing_id, *, lock=False):
@@ -108,6 +112,14 @@ def repo(monkeypatch):
     async def delete_clothing_edit(db, clothing_id):
         r.deleted_edits.append(clothing_id)
 
+    async def upsert_edit_display(db, clothing_id, display_image_url):
+        if r.display_error:
+            raise r.display_error
+        r.displays.append((clothing_id, display_image_url))
+
+    async def get_rated_snapshot_keys(db, clothing_id):
+        return r.rated_keys
+
     async def get_clothing_detail(db, storage, member_id, clothing_id):
         return ("detail", member_id, clothing_id)
 
@@ -119,6 +131,8 @@ def repo(monkeypatch):
         (clothing_repo, "upsert_edit_transform", upsert_edit_transform),
         (clothing_repo, "upsert_edit_mask", upsert_edit_mask),
         (clothing_repo, "delete_clothing_edit", delete_clothing_edit),
+        (clothing_repo, "upsert_edit_display", upsert_edit_display),
+        (clothing_repo, "get_rated_snapshot_keys", get_rated_snapshot_keys),
         (tag_repo, "replace_styles", replace_styles),
         (tag_repo, "replace_seasons", replace_seasons),
         (edit, "get_clothing_detail", get_clothing_detail),
@@ -270,7 +284,7 @@ def _png(size, mode="L") -> io.BytesIO:
 async def test_save_mask_stores_grayscale_png_and_removes_previous(repo, storage, tmp_path):
     old = tmp_path / "clothing/7/old_mask.png"
     old.write_bytes(b"old")
-    repo.edit = ClothingEditRow(Decimal(0), None, "clothing/7/old_mask.png")
+    repo.edit = ClothingEditRow(Decimal(0), None, "clothing/7/old_mask.png", None)
 
     await edit.save_mask(_FakeDb(), storage, MEMBER_ID, 5, _png((40, 60), "RGBA"))
 
@@ -320,7 +334,7 @@ async def test_mask_file_is_removed_when_db_fails(repo, storage, tmp_path):
 async def test_reset_deletes_edit_and_mask_file(repo, storage, tmp_path):
     mask = tmp_path / "clothing/7/old_mask.png"
     mask.write_bytes(b"old")
-    repo.edit = ClothingEditRow(Decimal(30), None, "clothing/7/old_mask.png")
+    repo.edit = ClothingEditRow(Decimal(30), None, "clothing/7/old_mask.png", None)
 
     await edit.reset_edit(_FakeDb(), storage, MEMBER_ID, 5)
 
@@ -370,3 +384,119 @@ def test_update_fields_match_editable_columns():
     fields = set(ClothingUpdate.model_fields)
 
     assert fields == set(clothing_repo.EDITABLE_ATTRIBUTE_COLUMNS) | {"style_cds", "season_cds"}
+
+
+# ---------- 표시 이미지 ----------
+
+OLD_DISPLAY = "clothing/7/old_display.webp"
+
+
+def _display_png(size=(40, 60)) -> io.BytesIO:
+    out = io.BytesIO()
+    Image.new("RGBA", size, (255, 0, 0, 0)).save(out, format="PNG")
+    out.seek(0)
+    return out
+
+
+def _with_old_display(repo, tmp_path, mask=None):
+    (tmp_path / OLD_DISPLAY).write_bytes(b"old")
+    repo.edit = ClothingEditRow(Decimal(0), None, mask, OLD_DISPLAY)
+
+
+async def test_display_image_is_saved_as_webp_keeping_transparency(repo, storage, tmp_path):
+    await edit.save_display_image(_FakeDb(), storage, MEMBER_ID, 5, _display_png())
+
+    [(clothing_id, key)] = repo.displays
+    assert clothing_id == 5 and key.startswith("clothing/7/") and key.endswith("_display.webp")
+    saved = Image.open(tmp_path / key)
+    assert (saved.format, saved.mode, saved.size) == ("WEBP", "RGBA", (40, 60))
+    assert repo.reviewed == [5]
+
+
+async def test_new_display_image_replaces_previous_file(repo, storage, tmp_path):
+    _with_old_display(repo, tmp_path)
+
+    await edit.save_display_image(_FakeDb(), storage, MEMBER_ID, 5, _display_png())
+
+    assert not (tmp_path / OLD_DISPLAY).exists()
+
+
+async def test_previous_display_image_used_by_rated_outfit_is_kept(repo, storage, tmp_path):
+    _with_old_display(repo, tmp_path)
+    repo.rated_keys = {OLD_DISPLAY}
+
+    await edit.save_display_image(_FakeDb(), storage, MEMBER_ID, 5, _display_png())
+
+    assert (tmp_path / OLD_DISPLAY).exists()
+
+
+async def test_unreadable_display_image_is_rejected(repo, storage, tmp_path):
+    with pytest.raises(InvalidDisplayImageError) as error:
+        await edit.save_display_image(_FakeDb(), storage, MEMBER_ID, 5, io.BytesIO(b"not image"))
+
+    assert error.value.code == "CLOTHING_DISPLAY_IMAGE_INVALID"
+    assert repo.displays == []
+    assert list((tmp_path / "clothing/7").glob("*_display.webp")) == []
+
+
+async def test_too_large_display_image_says_so(repo, storage, monkeypatch):
+    monkeypatch.setattr(edit.get_settings(), "CLOTHING_UPLOAD_MAX_BYTES", 10)
+
+    with pytest.raises(InvalidDisplayImageError) as error:
+        await edit.save_display_image(_FakeDb(), storage, MEMBER_ID, 5, _display_png())
+
+    assert "용량" in error.value.message
+
+
+async def test_display_image_needs_finished_clothing(repo, storage, tmp_path):
+    repo.clothing = _clothing(processing_status_cd="processing")
+
+    with pytest.raises(ClothingNotEditableError):
+        await edit.save_display_image(_FakeDb(), storage, MEMBER_ID, 5, _display_png())
+
+    assert list((tmp_path / "clothing/7").glob("*_display.webp")) == []
+
+
+async def test_display_file_is_removed_when_db_fails(repo, storage, tmp_path):
+    repo.display_error = ConnectionError("db gone")
+
+    with pytest.raises(ConnectionError):
+        await edit.save_display_image(_FakeDb(), storage, MEMBER_ID, 5, _display_png())
+
+    assert list((tmp_path / "clothing/7").glob("*_display.webp")) == []
+
+
+async def test_saving_transform_drops_stale_display_image(repo, storage, tmp_path):
+    _with_old_display(repo, tmp_path)
+
+    await edit.save_edit(_FakeDb(), storage, MEMBER_ID, 5, ClothingEditUpdate(rotation_angle=90))
+
+    assert not (tmp_path / OLD_DISPLAY).exists()
+
+
+async def test_saving_transform_keeps_display_image_of_rated_outfit(repo, storage, tmp_path):
+    _with_old_display(repo, tmp_path)
+    repo.rated_keys = {OLD_DISPLAY}
+
+    await edit.save_edit(_FakeDb(), storage, MEMBER_ID, 5, ClothingEditUpdate(rotation_angle=90))
+
+    assert (tmp_path / OLD_DISPLAY).exists()
+
+
+async def test_saving_mask_drops_stale_display_image_and_old_mask(repo, storage, tmp_path):
+    (tmp_path / "clothing/7/old_mask.png").write_bytes(b"old")
+    _with_old_display(repo, tmp_path, mask="clothing/7/old_mask.png")
+
+    await edit.save_mask(_FakeDb(), storage, MEMBER_ID, 5, _png((40, 60)))
+
+    assert not (tmp_path / OLD_DISPLAY).exists()
+    assert not (tmp_path / "clothing/7/old_mask.png").exists()
+
+
+async def test_reset_removes_display_image(repo, storage, tmp_path):
+    _with_old_display(repo, tmp_path)
+
+    await edit.reset_edit(_FakeDb(), storage, MEMBER_ID, 5)
+
+    assert repo.deleted_edits == [5]
+    assert not (tmp_path / OLD_DISPLAY).exists()

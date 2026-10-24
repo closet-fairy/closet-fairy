@@ -130,14 +130,16 @@ class ClothingSnapshot:
     color_nm: str | None
     origin_image_url: str
     cutout_image_url: str | None
+    display_image_url: str | None
 
 
 CLOTHING_SNAPSHOT_SQL = text(
     """
     SELECT c.clothing_id, c.item_name, co.color_nm,
-           c.origin_image_url, c.cutout_image_url
+           c.origin_image_url, c.cutout_image_url, e.display_image_url
     FROM clothing c
     LEFT JOIN color co ON co.color_cd = c.color_cd
+    LEFT JOIN clothing_edit e ON e.clothing_id = c.clothing_id
     WHERE c.member_id = :member_id AND c.clothing_id IN :clothing_ids
     """
 ).bindparams(bindparam("clothing_ids", expanding=True))
@@ -162,6 +164,7 @@ async def get_clothing_snapshots(
             color_nm=row.color_nm,
             origin_image_url=row.origin_image_url,
             cutout_image_url=row.cutout_image_url,
+            display_image_url=row.display_image_url,
         )
         for row in rows
     }
@@ -199,6 +202,7 @@ class ClothingCardRow:
     job_id: int | None
     job_started_at: datetime | None
     job_failure_reason: str | None
+    display_image_url: str | None
 
 
 @dataclass(frozen=True)
@@ -215,6 +219,7 @@ class ClothingEditRow:
     rotation_angle: Decimal
     perspective_param: Any
     brush_mask_url: str | None
+    display_image_url: str | None
 
 
 SEASON_ORDER = ("spring", "summer", "fall", "winter")
@@ -223,20 +228,21 @@ _CARD_COLUMNS = """
     c.clothing_id, c.processing_status_cd, c.reviewed_at, c.origin_image_url,
     c.cutout_image_url, c.category_cd, c.item_name, c.created_at,
     j.clothing_job_id AS job_id, j.started_at AS job_started_at,
-    j.failure_reason AS job_failure_reason
+    j.failure_reason AS job_failure_reason, e.display_image_url
 """
 
-_LATEST_JOB_JOIN = """
+_CARD_JOINS = """
     LEFT JOIN clothing_job j ON j.clothing_job_id = (
         SELECT MAX(lj.clothing_job_id) FROM clothing_job lj WHERE lj.clothing_id = c.clothing_id
     )
+    LEFT JOIN clothing_edit e ON e.clothing_id = c.clothing_id
 """
 
 CLOTHING_PAGE_SQL = text(
     f"""
     SELECT {_CARD_COLUMNS}
     FROM clothing c
-    {_LATEST_JOB_JOIN}
+    {_CARD_JOINS}
     WHERE c.member_id = :member_id
       AND (:cursor IS NULL OR c.clothing_id < :cursor)
     ORDER BY c.clothing_id DESC
@@ -248,7 +254,7 @@ CLOTHING_CARDS_BY_IDS_SQL = text(
     f"""
     SELECT {_CARD_COLUMNS}
     FROM clothing c
-    {_LATEST_JOB_JOIN}
+    {_CARD_JOINS}
     WHERE c.member_id = :member_id AND c.clothing_id IN :clothing_ids
     ORDER BY c.clothing_id DESC
     """
@@ -259,7 +265,7 @@ CLOTHING_DETAIL_SQL = text(
     SELECT {_CARD_COLUMNS},
            c.accessory_type_cd, c.color_cd, c.color_text, c.thickness_cd, c.is_waterproof
     FROM clothing c
-    {_LATEST_JOB_JOIN}
+    {_CARD_JOINS}
     WHERE c.member_id = :member_id AND c.clothing_id = :clothing_id
     """
 )
@@ -276,7 +282,7 @@ CLOTHING_TAGS_SQL = text(
 
 CLOTHING_EDIT_SQL = text(
     """
-    SELECT rotation_angle, perspective_param, brush_mask_url
+    SELECT rotation_angle, perspective_param, brush_mask_url, display_image_url
     FROM clothing_edit
     WHERE clothing_id = :clothing_id
     """
@@ -296,6 +302,7 @@ def _card(row) -> ClothingCardRow:
         job_id=row.job_id,
         job_started_at=row.job_started_at,
         job_failure_reason=row.job_failure_reason,
+        display_image_url=row.display_image_url,
     )
 
 
@@ -363,6 +370,7 @@ async def get_clothing_edit(db: AsyncSession, clothing_id: int) -> ClothingEditR
         rotation_angle=row.rotation_angle,
         perspective_param=json.loads(perspective) if isinstance(perspective, str) else perspective,
         brush_mask_url=row.brush_mask_url,
+        display_image_url=row.display_image_url,
     )
 
 
@@ -422,7 +430,8 @@ UPSERT_EDIT_TRANSFORM_SQL = text(
     VALUES (:clothing_id, :rotation_angle, :perspective_param) AS new
     ON DUPLICATE KEY UPDATE
         rotation_angle = new.rotation_angle,
-        perspective_param = new.perspective_param
+        perspective_param = new.perspective_param,
+        display_image_url = NULL
     """
 )
 
@@ -430,7 +439,15 @@ UPSERT_EDIT_MASK_SQL = text(
     """
     INSERT INTO clothing_edit (clothing_id, brush_mask_url)
     VALUES (:clothing_id, :brush_mask_url) AS new
-    ON DUPLICATE KEY UPDATE brush_mask_url = new.brush_mask_url
+    ON DUPLICATE KEY UPDATE brush_mask_url = new.brush_mask_url, display_image_url = NULL
+    """
+)
+
+UPSERT_EDIT_DISPLAY_SQL = text(
+    """
+    INSERT INTO clothing_edit (clothing_id, display_image_url)
+    VALUES (:clothing_id, :display_image_url) AS new
+    ON DUPLICATE KEY UPDATE display_image_url = new.display_image_url
     """
 )
 
@@ -496,6 +513,13 @@ async def upsert_edit_transform(
 async def upsert_edit_mask(db: AsyncSession, clothing_id: int, brush_mask_url: str) -> None:
     await db.execute(
         UPSERT_EDIT_MASK_SQL, {"clothing_id": clothing_id, "brush_mask_url": brush_mask_url}
+    )
+
+
+async def upsert_edit_display(db: AsyncSession, clothing_id: int, display_image_url: str) -> None:
+    await db.execute(
+        UPSERT_EDIT_DISPLAY_SQL,
+        {"clothing_id": clothing_id, "display_image_url": display_image_url},
     )
 
 

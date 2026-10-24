@@ -27,7 +27,7 @@ async def delete_clothing(
         edit = await clothing_repo.get_clothing_edit(db, clothing_id)
         keys = {clothing.origin_image_url, clothing.cutout_image_url}
         if edit is not None:
-            keys.add(edit.brush_mask_url)
+            keys.update((edit.brush_mask_url, edit.display_image_url))
         keys.discard(None)
         keys -= await clothing_repo.get_rated_snapshot_keys(db, clothing_id)
         await clothing_repo.delete_clothing(db, clothing_id)

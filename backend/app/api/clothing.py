@@ -130,7 +130,8 @@ async def save_clothing_edit(
     member_id: int = Depends(get_current_member_id),
     storage: ImageStorage = Depends(get_image_storage),
 ) -> ClothingDetail:
-    """회전·원근 보정값 저장 (FR-EDIT-04·05). 원본 이미지와 브러시 마스크는 그대로 둔다."""
+    """회전·원근 보정값 저장 (FR-EDIT-04·05). 원본 이미지와 브러시 마스크는 그대로 두고,
+    표시 이미지는 비운다."""
     return await edit_service.save_edit(db, storage, member_id, clothing_id, edit)
 
 
@@ -150,14 +151,41 @@ async def save_clothing_edit(
 async def save_clothing_mask(
     clothing_id: int,
     file: UploadFile = File(
-        description="흑백 PNG. 흰색은 보이게, 검은색은 지우게. 크기는 옷 이미지와 같아야 한다."
+        description=(
+            "흑백 PNG. 크기는 배경 제거본(없으면 원본)과 같아야 한다. 흰색은 원본을 그 가로·세로에 "
+            "정확히 맞춰 줄인 이미지의 픽셀을 보이게, 검은색은 투명하게 한다."
+        )
     ),
     db: AsyncSession = Depends(get_db),
     member_id: int = Depends(get_current_member_id),
     storage: ImageStorage = Depends(get_image_storage),
 ) -> ClothingDetail:
-    """브러시 마스크 저장 (FR-EDIT-03). 이전 마스크 파일은 지운다."""
+    """브러시 마스크 저장 (FR-EDIT-03). 이전 마스크 파일은 지우고 표시 이미지는 비운다."""
     return await edit_service.save_mask(db, storage, member_id, clothing_id, file.file)
+
+
+@router.put(
+    "/{clothing_id}/edit/display",
+    response_model=ClothingDetail,
+    responses={
+        **_EDIT_RESPONSES,
+        422: {"description": "형식·용량·해상도가 맞지 않음 (CLOTHING_DISPLAY_IMAGE_INVALID)"},
+    },
+)
+async def save_clothing_display_image(
+    clothing_id: int,
+    file: UploadFile = File(
+        description="마스크 → 원근 → 회전 순으로 편집을 모두 적용한 최종 이미지. PNG·WEBP 등"
+    ),
+    db: AsyncSession = Depends(get_db),
+    member_id: int = Depends(get_current_member_id),
+    storage: ImageStorage = Depends(get_image_storage),
+) -> ClothingDetail:
+    """표시 이미지 저장 (FR-EDIT-04·06). 옷장 목록과 추천 결과에 이 이미지를 쓴다.
+
+    회전·원근이나 마스크를 저장하면 다시 비워지므로 편집을 저장한 뒤 마지막에 올린다.
+    """
+    return await edit_service.save_display_image(db, storage, member_id, clothing_id, file.file)
 
 
 @router.delete("/{clothing_id}/edit", response_model=ClothingDetail, responses=_EDIT_RESPONSES)

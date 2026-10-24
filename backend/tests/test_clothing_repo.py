@@ -122,6 +122,7 @@ async def test_get_clothing_snapshots_filters_by_member_and_ids():
         color_nm="화이트",
         origin_image_url="http://a/11.png",
         cutout_image_url=None,
+        display_image_url="clothing/7/11_display.webp",
     )
     db = _RecordingDb([row])
 
@@ -131,6 +132,7 @@ async def test_get_clothing_snapshots_filters_by_member_and_ids():
     assert list(snapshots) == [11]
     assert snapshots[11].item_name is None
     assert snapshots[11].color_nm == "화이트"
+    assert snapshots[11].display_image_url == "clothing/7/11_display.webp"
 
 
 async def test_get_clothing_snapshots_skips_query_for_empty_ids():
@@ -206,6 +208,7 @@ def _card_row(clothing_id, **overrides):
         job_id=clothing_id * 10,
         job_started_at=None,
         job_failure_reason=None,
+        display_image_url=None,
     )
     return _Row(**{**fields, **overrides})
 
@@ -281,11 +284,21 @@ async def test_get_clothing_tags_splits_and_orders_seasons():
 
 
 async def test_get_clothing_edit_parses_json_text():
-    db = _QueryDb([_Row(rotation_angle=90, perspective_param='{"k": [1, 2]}', brush_mask_url=None)])
+    db = _QueryDb(
+        [
+            _Row(
+                rotation_angle=90,
+                perspective_param='{"k": [1, 2]}',
+                brush_mask_url=None,
+                display_image_url="clothing/7/5_display.webp",
+            )
+        ]
+    )
 
     edit = await clothing_repo.get_clothing_edit(db, 5)
 
     assert edit.perspective_param == {"k": [1, 2]}
+    assert edit.display_image_url == "clothing/7/5_display.webp"
 
 
 async def test_get_clothing_edit_returns_none_without_edit():
@@ -351,6 +364,7 @@ async def test_upsert_edit_transform_stores_perspective_as_json_text():
         {"clothing_id": 5, "rotation_angle": Decimal(0), "perspective_param": None},
     ]
     assert "brush_mask_url" not in db.executed[0][0]
+    assert "display_image_url = NULL" in db.executed[0][0]
 
 
 async def test_upsert_edit_mask_relies_on_default_rotation():
@@ -362,7 +376,21 @@ async def test_upsert_edit_mask_relies_on_default_rotation():
     assert "INSERT INTO clothing_edit (clothing_id, brush_mask_url)" in sql
     assert "ON DUPLICATE KEY UPDATE brush_mask_url = new.brush_mask_url" in " ".join(sql.split())
     assert "rotation_angle" not in sql
+    assert "display_image_url = NULL" in sql
     assert params == {"clothing_id": 5, "brush_mask_url": "clothing/7/m_mask.png"}
+
+
+async def test_upsert_edit_display_keeps_other_edit_values():
+    db = _InsertDb()
+
+    await clothing_repo.upsert_edit_display(db, 5, "clothing/7/d_display.webp")
+
+    [(sql, params)] = db.executed
+    flat = " ".join(sql.split())
+    assert "INSERT INTO clothing_edit (clothing_id, display_image_url)" in flat
+    assert "ON DUPLICATE KEY UPDATE display_image_url = new.display_image_url" in flat
+    assert "rotation_angle" not in sql and "brush_mask_url" not in sql
+    assert params == {"clothing_id": 5, "display_image_url": "clothing/7/d_display.webp"}
 
 
 async def test_delete_clothing_edit_removes_row():

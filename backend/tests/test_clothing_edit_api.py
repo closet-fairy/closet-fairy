@@ -61,6 +61,14 @@ def client(monkeypatch):
 
     monkeypatch.setattr(clothing_edit, "save_mask", save_mask)
 
+    async def save_display_image(db, storage, member_id, clothing_id, file):
+        calls.append(("save_display_image", storage, member_id, clothing_id, file.read()))
+        if outcome.get("display_error"):
+            raise outcome["display_error"]
+        return DETAIL
+
+    monkeypatch.setattr(clothing_edit, "save_display_image", save_display_image)
+
     async def fake_db():
         yield None
 
@@ -171,3 +179,23 @@ def test_delete_edit_resets(client):
 
     assert res.status_code == 200
     assert client.calls == [("reset_edit", STORAGE, 3, 5)]
+
+
+def test_put_display_image_passes_file(client):
+    res = client.put("/clothing/5/edit/display", files={"file": ("d.png", b"png", "image/png")})
+
+    assert res.status_code == 200
+    assert client.calls == [("save_display_image", STORAGE, 3, 5, b"png")]
+
+
+def test_put_display_image_rejection_is_422(client):
+    error = clothing_edit.InvalidDisplayImageError("사진을 읽을 수 없습니다.")
+    client.outcome["display_error"] = error
+
+    res = client.put("/clothing/5/edit/display", files={"file": ("d.png", b"x", "image/png")})
+
+    assert res.status_code == 422
+    assert res.json() == {
+        "code": "CLOTHING_DISPLAY_IMAGE_INVALID",
+        "message": "사진을 읽을 수 없습니다.",
+    }

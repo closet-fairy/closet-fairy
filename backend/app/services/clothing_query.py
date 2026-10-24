@@ -85,7 +85,9 @@ def _progress_fields(row: ClothingCardRow, storage: ImageStorage) -> dict:
         "clothing_id": row.clothing_id,
         "processing_status_cd": row.processing_status_cd,
         "is_queued": is_processing and row.job_id is not None and row.job_started_at is None,
-        "image_url": storage.url(row.cutout_image_url or row.origin_image_url),
+        "image_url": storage.url(
+            row.display_image_url or row.cutout_image_url or row.origin_image_url
+        ),
         "failure_reason": (
             row.job_failure_reason if row.processing_status_cd == "failed" else None
         ),
@@ -115,4 +117,5 @@ def _to_edit(edit: ClothingEditRow, storage: ImageStorage) -> ClothingEdit:
         rotation_angle=float(edit.rotation_angle),
         perspective_param=edit.perspective_param,
         brush_mask_url=storage.url(edit.brush_mask_url) if edit.brush_mask_url else None,
+        display_image_url=(storage.url(edit.display_image_url) if edit.display_image_url else None),
     )
