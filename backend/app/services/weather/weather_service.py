@@ -140,7 +140,9 @@ def min_feels_like(
 ) -> float:
     # 외출 시간대: 시작 시각이 속한 정시부터 종료 시각까지
     window_start = going_out_start.replace(minute=0, second=0, microsecond=0)
-    in_window = [h.feels_like_temperature for h in hourly if window_start <= h.at <= going_out_end]
+    in_window = [
+        h.feels_like_temperature for h in going_out_hours(hourly, going_out_start, going_out_end)
+    ]
 
     # 외출 시작이 지금과 같은 정시일 때만 현재 관측값을 후보에 섞는다.
     # (아니면, 외출과 무관한 지금 기온이 미래 외출의 최저값으로 잘못 반영된다)
