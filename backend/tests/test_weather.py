@@ -22,9 +22,14 @@ def test_grid_seoul_city_hall():
     assert to_grid(37.5665, 126.978) == (60, 127)
 
 
+def test_find_region_uses_sigungu_grid():
+    region = find_region("서울특별시", "성동구")
+    assert (region.sigungu_nm, region.grid_nx, region.grid_ny) == ("성동구", 61, 127)
+
+
 def test_find_region_falls_back_to_sido():
-    region = find_region("서울특별시", "성동구")  # 시/군/구 행이 없으면 시/도 대표값
-    assert (region.grid_nx, region.grid_ny) == (60, 127)
+    region = find_region("서울특별시", "없는구")  # 시/군/구 행이 없으면 시/도 대표값
+    assert (region.sigungu_nm, region.grid_nx, region.grid_ny) == (None, 60, 127)
 
 
 def test_ncst_base_time():

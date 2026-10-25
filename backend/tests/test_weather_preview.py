@@ -159,13 +159,20 @@ def test_preview_unknown_sido_404(make_client):
 
 def test_preview_unknown_sigungu_uses_sido(make_client):
     with make_client(_ok_handler) as client:
-        known = preview(client, sigungu_nm="성동구")
         unknown = preview(client, sigungu_nm="없는구")
     assert unknown.status_code == 200
-    assert unknown.json() == known.json()
     assert unknown.json()["is_fallback"] is False
     assert {(r.url.params["nx"], r.url.params["ny"]) for r in client.kma_requests} == {
         ("60", "127")
+    }
+
+
+def test_preview_uses_sigungu_grid(make_client):
+    with make_client(_ok_handler) as client:
+        res = preview(client, sigungu_nm="성동구")
+    assert res.status_code == 200
+    assert {(r.url.params["nx"], r.url.params["ny"]) for r in client.kma_requests} == {
+        ("61", "127")
     }
 
 
