@@ -98,31 +98,14 @@ export const Deselectable: Story = {
   args: {
     value: '보통',
     'aria-label': '체질',
-  },
-  render: function Render(args) {
-    const [, updateArgs] = useArgs();
-
-    const handleChange = (value: string | null) => {
-      if (value !== null) {
-        args.onChange(value);
-      }
-
-      updateArgs({ value });
-    };
-
-    return (
-      <ChipGroup
-        value={args.value}
-        aria-label={args['aria-label']}
-        isDisabled={args.isDisabled}
-        isDeselectable
-        onChange={handleChange}
-      >
+    isDeselectable: true,
+    children: (
+      <>
         <Chip value="추위 많이 탐">추위 많이 탐</Chip>
         <Chip value="보통">보통</Chip>
         <Chip value="더위 많이 탐">더위 많이 탐</Chip>
-      </ChipGroup>
-    );
+      </>
+    ),
   },
 };
 

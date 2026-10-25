@@ -279,6 +279,33 @@ describe('저장', () => {
       expect(history.location.pathname).toBe('/closet');
     });
   });
+
+  test('저장 실패 안내는 다른 단계에 다녀오면 사라져야 한다.', async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.put('/api/members/me/settings', () =>
+        HttpResponse.json(
+          { code: 'INTERNAL_ERROR', message: '처리 중 오류가 발생했습니다.' },
+          { status: 500 },
+        ),
+      ),
+    );
+    await renderOnboarding();
+    await goToStyleStep(user);
+    await user.click(continueButton());
+    await screen.findByText('저장하지 못했어요. 다시 시도해 주세요.');
+
+    await user.click(screen.getByRole('button', { name: '이전 단계' }));
+    await screen.findByRole('heading', { name: '체질과 성별을 알려 주세요' });
+    await user.click(continueButton());
+    await screen.findByRole('heading', {
+      name: '좋아하는 스타일을 골라 주세요',
+    });
+
+    expect(
+      screen.queryByText('저장하지 못했어요. 다시 시도해 주세요.'),
+    ).not.toBeInTheDocument();
+  });
 });
 
 describe('온보딩 중 로그아웃', () => {

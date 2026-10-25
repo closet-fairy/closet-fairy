@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useRouter, useRouterState } from '@tanstack/react-router';
 import { useEffect, useId, useRef, useState } from 'react';
-import { ApiError } from '@/apis/apiError';
+import { isValidationError } from '@/apis/apiError';
 import { isUnauthorizedError } from '@/apis/authSession';
 import BodyTypeFields from '@/components/BodyTypeFields';
 import Button from '@/components/common/Button';
@@ -11,6 +11,7 @@ import IconButton from '@/components/common/IconButton';
 import Tag from '@/components/common/Tag';
 import TextField from '@/components/common/TextField';
 import TopBar from '@/components/common/TopBar';
+import { SAVE_ERROR_MESSAGE } from '@/constants/saveErrorMessage';
 import type {
   GenderCd,
   StyleCd,
@@ -31,11 +32,12 @@ import {
   useUpdateMeMembersMePatch,
 } from '@/generated/endpoints/member/member';
 import type { MemberMe, MemberSettingsOutput } from '@/generated/models';
+import useGoBack from '@/pages/ProfileEdit/hooks/useGoBack';
 import StyleSelectView from '../StyleSelectView';
 import * as S from './ProfileEditForm.styled';
 
-const VALIDATION_STATUS = 422;
-const SAVE_ERROR_MESSAGE = '저장하지 못했어요. 다시 시도해 주세요.';
+const NICKNAME_REJECTED_MESSAGE =
+  '사용할 수 없는 닉네임이에요. 다시 입력해 주세요.';
 const NICKNAME_SAVE_ERROR_MESSAGE =
   '체질·성별·스타일은 저장했지만 닉네임은 저장하지 못했어요. 다시 시도해 주세요.';
 
@@ -78,14 +80,7 @@ const ProfileEditForm = (props: ProfileEditFormProps) => {
     };
   }, []);
 
-  const goBack = () => {
-    if (router.history.canGoBack()) {
-      router.history.back();
-      return;
-    }
-
-    void navigate({ to: '/my-info', replace: true });
-  };
+  const goBack = useGoBack();
 
   const handleNicknameChange = (value: string) => {
     setNickname(value);
@@ -150,8 +145,10 @@ const ProfileEditForm = (props: ProfileEditFormProps) => {
       }
 
       if (failedRequest === 'nickname') {
-        if (error instanceof ApiError && error.status === VALIDATION_STATUS) {
-          setNicknameError(error.message);
+        if (isValidationError(error)) {
+          setNicknameError(
+            error.message === '' ? NICKNAME_REJECTED_MESSAGE : error.message,
+          );
           return;
         }
 
