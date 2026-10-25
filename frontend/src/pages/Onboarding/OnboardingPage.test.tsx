@@ -202,6 +202,29 @@ describe('저장', () => {
     ]);
   });
 
+  test('로그인이 만료돼 401을 받으면 저장 실패 안내 대신 만료 안내만 보여 줘야 한다.', async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.put('/api/members/me/settings', () =>
+        HttpResponse.json(
+          { code: 'AUTH_REQUIRED', message: '로그인이 필요합니다.' },
+          { status: 401 },
+        ),
+      ),
+    );
+    await renderOnboarding();
+    await goToStyleStep(user);
+
+    await user.click(continueButton());
+
+    expect(
+      await screen.findByText('로그인이 만료되었어요'),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('저장하지 못했어요. 다시 시도해 주세요.'),
+    ).not.toBeInTheDocument();
+  });
+
   test('나이 때문에 거절되면 첫 단계로 돌아가 서버 안내를 보여 줘야 한다.', async () => {
     const user = userEvent.setup();
     server.use(

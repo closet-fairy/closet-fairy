@@ -75,14 +75,21 @@ describe('편집기 경로', () => {
 describe('편집 전 안내', () => {
   test('WebGL2를 쓸 수 없으면 옷을 조회하지 않고 안내해야 한다.', async () => {
     vi.mocked(isWebGL2Supported).mockReturnValue(false);
-    const handleRequest = vi.fn();
+    const clothingRequests: string[] = [];
+    const handleRequest = ({ request }: { request: Request }) => {
+      const path = new URL(request.url).pathname;
+
+      if (path.startsWith('/api/clothing')) {
+        clothingRequests.push(path);
+      }
+    };
     server.events.on('request:start', handleRequest);
 
     try {
       await renderAt('/closet/1/edit');
 
       expect(await screen.findByText(UNSUPPORTED_MESSAGE)).toBeInTheDocument();
-      expect(handleRequest).not.toHaveBeenCalled();
+      expect(clothingRequests).toHaveLength(0);
     } finally {
       server.events.removeListener('request:start', handleRequest);
     }
