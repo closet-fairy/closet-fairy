@@ -7,6 +7,7 @@ declare module '@tanstack/react-router' {
 declare module '@tanstack/history' {
   interface HistoryState {
     onboardingStep?: number;
+    profileEditView?: 'styles';
   }
 }
 

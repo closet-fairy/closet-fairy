@@ -16,6 +16,7 @@ import { Route as MyInfoRouteImport } from './routes/my-info'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as RecommendationRouteImport } from './routes/recommendation'
 import { Route as RecommendationHistoryRouteImport } from './routes/recommendation-history'
+import { Route as MyInfoEditRouteImport } from './routes/my-info_.edit'
 import { Route as ClosetClothingIdEditRouteImport } from './routes/closet_.$clothingId.edit'
 
 const IndexRoute = IndexRouteImport.update({
@@ -53,6 +54,11 @@ const RecommendationHistoryRoute = RecommendationHistoryRouteImport.update({
   path: '/recommendation-history',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MyInfoEditRoute = MyInfoEditRouteImport.update({
+  id: '/my-info_/edit',
+  path: '/my-info/edit',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ClosetClothingIdEditRoute = ClosetClothingIdEditRouteImport.update({
   id: '/closet_/$clothingId/edit',
   path: '/closet/$clothingId/edit',
@@ -67,6 +73,7 @@ export interface FileRoutesByFullPath {
   '/onboarding': typeof OnboardingRoute
   '/recommendation': typeof RecommendationRoute
   '/recommendation-history': typeof RecommendationHistoryRoute
+  '/my-info/edit': typeof MyInfoEditRoute
   '/closet/$clothingId/edit': typeof ClosetClothingIdEditRoute
 }
 export interface FileRoutesByTo {
@@ -77,6 +84,7 @@ export interface FileRoutesByTo {
   '/onboarding': typeof OnboardingRoute
   '/recommendation': typeof RecommendationRoute
   '/recommendation-history': typeof RecommendationHistoryRoute
+  '/my-info/edit': typeof MyInfoEditRoute
   '/closet/$clothingId/edit': typeof ClosetClothingIdEditRoute
 }
 export interface FileRoutesById {
@@ -88,6 +96,7 @@ export interface FileRoutesById {
   '/onboarding': typeof OnboardingRoute
   '/recommendation': typeof RecommendationRoute
   '/recommendation-history': typeof RecommendationHistoryRoute
+  '/my-info_/edit': typeof MyInfoEditRoute
   '/closet_/$clothingId/edit': typeof ClosetClothingIdEditRoute
 }
 export interface FileRouteTypes {
@@ -100,6 +109,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/recommendation'
     | '/recommendation-history'
+    | '/my-info/edit'
     | '/closet/$clothingId/edit'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -110,6 +120,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/recommendation'
     | '/recommendation-history'
+    | '/my-info/edit'
     | '/closet/$clothingId/edit'
   id:
     | '__root__'
@@ -120,6 +131,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/recommendation'
     | '/recommendation-history'
+    | '/my-info_/edit'
     | '/closet_/$clothingId/edit'
   fileRoutesById: FileRoutesById
 }
@@ -131,6 +143,7 @@ export interface RootRouteChildren {
   OnboardingRoute: typeof OnboardingRoute
   RecommendationRoute: typeof RecommendationRoute
   RecommendationHistoryRoute: typeof RecommendationHistoryRoute
+  MyInfoEditRoute: typeof MyInfoEditRoute
   ClosetClothingIdEditRoute: typeof ClosetClothingIdEditRoute
 }
 
@@ -185,6 +198,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RecommendationHistoryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/my-info_/edit': {
+      id: '/my-info_/edit'
+      path: '/my-info/edit'
+      fullPath: '/my-info/edit'
+      preLoaderRoute: typeof MyInfoEditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/closet_/$clothingId/edit': {
       id: '/closet_/$clothingId/edit'
       path: '/closet/$clothingId/edit'
@@ -203,6 +223,7 @@ const rootRouteChildren: RootRouteChildren = {
   OnboardingRoute: OnboardingRoute,
   RecommendationRoute: RecommendationRoute,
   RecommendationHistoryRoute: RecommendationHistoryRoute,
+  MyInfoEditRoute: MyInfoEditRoute,
   ClosetClothingIdEditRoute: ClosetClothingIdEditRoute,
 }
 export const routeTree = rootRouteImport
