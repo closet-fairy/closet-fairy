@@ -43,6 +43,9 @@ const POLLING_INTERVAL_MS = 2000;
 const MIN_DISPLAY_MS = 1000;
 const CANCEL_BUTTON_DELAY_MS = 1000;
 const URL_RESTORE_TIMEOUT_MS = 1000;
+const POP_STATE_SETTLE_MS = 200;
+const POP_STATE_SETTLE_POLL_MS = 16;
+const DATE_CHANGED_MESSAGE = '날짜가 바뀌어 외출 시간을 다시 골라 주세요.';
 const NOT_FOUND_STATUS = 404;
 const INPUT_PATH = '/recommendation';
 
@@ -144,9 +147,42 @@ const RecommendationProgressPage = () => {
   const leaveBlockerRef = useRef(leaveBlocker);
   const isLeaveBlocked = leaveBlocker.status === 'blocked';
 
+  const lastPopStateAtRef = useRef(0);
+
   useEffect(() => {
     leaveBlockerRef.current = leaveBlocker;
   });
+
+  useEffect(() => {
+    const handlePopState = () => {
+      lastPopStateAtRef.current = Date.now();
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, []);
+
+  /*
+   * 뒤로 가기는 브라우저 주소가 먼저 바뀌고 차단 상태는 몇 틱 뒤에 반영된다.
+   * 그사이에 다른 화면으로 replace하면 입력 화면 기록을 덮으므로, 방금 popstate가 있었다면 반영될 때까지 기다린다.
+   */
+  const isLeaveRequested = async () => {
+    const deadline = lastPopStateAtRef.current + POP_STATE_SETTLE_MS;
+
+    while (
+      leaveBlockerRef.current.status !== 'blocked' &&
+      Date.now() < deadline
+    ) {
+      await new Promise((resolve) => {
+        setTimeout(resolve, POP_STATE_SETTLE_POLL_MS);
+      });
+    }
+
+    return leaveBlockerRef.current.status === 'blocked';
+  };
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -243,10 +279,16 @@ const RecommendationProgressPage = () => {
       // 취소 요청이 실패해도 남은 세션은 BE의 이탈 정리가 닫는다.
     }
 
+    if (await isLeaveRequested()) {
+      setIsFailureDialogOpen(false);
+      returnToInput();
+      return;
+    }
+
     // 날짜가 바뀌면 같은 요청도 오늘·내일이 하루씩 밀리므로 다시 보내지 않고 입력 화면에서 고르게 한다.
     if (getKstDate(new Date(pending.requestedAt)) !== getKstDate(new Date())) {
       setIsFailureDialogOpen(false);
-      returnToInput();
+      returnToInput(DATE_CHANGED_MESSAGE);
       return;
     }
 
@@ -255,7 +297,7 @@ const RecommendationProgressPage = () => {
         data: pending.request,
       });
 
-      if (leaveBlockerRef.current.status === 'blocked') {
+      if (await isLeaveRequested()) {
         void cancelSession({ recommendationSessionId: nextSessionId }).catch(
           () => undefined,
         );
@@ -286,17 +328,20 @@ const RecommendationProgressPage = () => {
   };
 
   const moveToResult = async () => {
-    isLeaveAllowedRef.current = true;
     removeSessionItem(PENDING_RECOMMENDATION_STORAGE_KEY);
     setIsCancelDialogOpen(false);
-    const blocker = leaveBlockerRef.current;
 
-    if (blocker.status === 'blocked') {
-      const urlRestored = waitForPopState();
-      blocker.reset();
-      await urlRestored;
+    if (await isLeaveRequested()) {
+      const blocker = leaveBlockerRef.current;
+
+      if (blocker.status === 'blocked') {
+        const urlRestored = waitForPopState();
+        blocker.reset();
+        await urlRestored;
+      }
     }
 
+    isLeaveAllowedRef.current = true;
     await navigate({
       to: '/recommendation/sessions/$sessionId/result',
       params: { sessionId: String(sessionId) },
@@ -319,6 +364,7 @@ const RecommendationProgressPage = () => {
           return;
         }
 
+        setIsCancelDialogOpen(false);
         setIsFailureDialogOpen(true);
         return;
       }
@@ -479,7 +525,11 @@ const RecommendationProgressPage = () => {
         isOpen={isFailureDialogOpen}
         onOpenChange={() => {}}
         title="코디를 만들지 못했어요"
-        description="같은 조건으로 다시 시도하거나 조건을 바꿔 보세요."
+        description={
+          pending
+            ? '같은 조건으로 다시 시도하거나 조건을 바꿔 보세요.'
+            : '입력 화면에서 조건을 골라 다시 추천받아 주세요.'
+        }
         isDismissable={false}
         footer={
           <>
