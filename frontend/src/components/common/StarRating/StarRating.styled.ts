@@ -1,4 +1,3 @@
-import { css } from '@emotion/react';
 import styled from '@emotion/styled';
 import {
   border,
@@ -8,18 +7,7 @@ import {
   spacing,
   typography,
 } from '@/styles/tokens';
-
-const visuallyHidden = css`
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-  border: 0;
-`;
+import { visuallyHidden } from '@/styles/visuallyHidden';
 
 export const Fieldset = styled.fieldset`
   position: relative;
