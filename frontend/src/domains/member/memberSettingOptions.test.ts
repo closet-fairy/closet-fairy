@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest';
+import { MemberSettings } from '@/generated/models';
 import {
   isGenderCd,
   isStyleCd,
@@ -19,11 +20,15 @@ describe('설정 코드 판별', () => {
 });
 
 describe('선호 스타일', () => {
-  test('13종 모두 한 줄 설명을 가져야 한다.', () => {
-    expect(STYLE_OPTIONS).toHaveLength(13);
-    expect(STYLE_OPTIONS.every((option) => option.description !== '')).toBe(
-      true,
+  test('BE가 정한 스타일마다 이름과 한 줄 설명을 가져야 한다.', () => {
+    expect(STYLE_OPTIONS.map((option) => option.value)).toEqual(
+      MemberSettings.shape.style_cds.element.options,
     );
+    expect(
+      STYLE_OPTIONS.every(
+        (option) => option.label !== '' && option.description !== '',
+      ),
+    ).toBe(true);
   });
 
   test('고른 순서와 상관없이 스타일 목록 순서대로 정렬해야 한다.', () => {

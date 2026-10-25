@@ -27,17 +27,17 @@ const meta = {
     },
     hint: {
       description:
-        '라벨 오른쪽에 붙는 짧은 안내입니다. 안쪽의 `ChipGroup`, `Picker`는 이 문구를 자동으로 설명으로 연결합니다.',
+        '라벨 오른쪽에 붙는 짧은 안내입니다. 안쪽의 `ChipGroup`, `Picker`, `CheckList`는 이 문구를 자동으로 설명으로 연결합니다.',
       control: 'text',
     },
     htmlFor: {
       description:
-        '라벨과 연결할 입력 요소의 id입니다. 넘기면 라벨을 `<label for>`로 그려 라벨을 눌렀을 때 그 요소로 포커스가 갑니다. `ChipGroup`, `Picker`처럼 입력 요소가 아닌 공용 컴포넌트는 넘기지 않아도 라벨과 안내가 자동으로 연결됩니다.',
+        '라벨과 연결할 입력 요소의 id입니다. 넘기면 라벨을 `<label for>`로 그려 라벨을 눌렀을 때 그 요소로 포커스가 갑니다. `ChipGroup`, `Picker`, `CheckList`처럼 입력 요소가 아닌 공용 컴포넌트는 넘기지 않아도 라벨과 안내가 자동으로 연결됩니다.',
       control: 'text',
     },
     children: {
       description:
-        '라벨 아래에 놓을 내용입니다. 안쪽의 `ChipGroup`, `Picker`는 라벨을 이름으로, 안내를 설명으로 자동으로 씁니다. 그 밖의 요소는 `htmlFor`로 연결합니다.',
+        '라벨 아래에 놓을 내용입니다. 안쪽의 `ChipGroup`, `Picker`, `CheckList`는 라벨을 이름으로, 안내를 설명으로 자동으로 씁니다. 그 밖의 요소는 `htmlFor`로 연결합니다.',
       control: false,
     },
   },
