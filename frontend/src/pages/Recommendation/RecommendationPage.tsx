@@ -145,7 +145,7 @@ const RecommendationPage = () => {
     restoredForm?.end ?? null,
   );
   const [validationMessage, setValidationMessage] = useState<string | null>(
-    null,
+    restoredForm?.message ?? null,
   );
   const {
     mutate: createRecommendationSession,

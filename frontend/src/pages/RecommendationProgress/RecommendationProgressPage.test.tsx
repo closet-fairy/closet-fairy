@@ -208,28 +208,6 @@ describe('진행 화면에서 이동', () => {
     expect(cancelRequests.count).toBe(0);
   });
 
-  test('추천을 만들지 못하면 세션을 취소하고 입력값을 남긴 채 입력 화면으로 돌아가야 한다.', async () => {
-    savePending(0);
-    respondResult(createResult('failed'));
-    const cancelRequests = countCancelRequests();
-    const { history } = await renderAt(['/recommendation', PROGRESS_PATH]);
-
-    await waitFor(() => {
-      expect(history.location.pathname).toBe('/recommendation');
-    });
-    expect(cancelRequests.count).toBe(1);
-    expect(
-      await screen.findByRole('button', { name: /^위치 서울 성동구/ }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '출근' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
-    expect(
-      sessionStorage.getItem(RECOMMENDATION_FORM_DRAFT_STORAGE_KEY),
-    ).toBeNull();
-  });
-
   test('상태를 불러오지 못하면 다시 시도할 수 있어야 한다.', async () => {
     const user = userEvent.setup();
     respondResult(createResult('processing'));
@@ -325,6 +303,142 @@ describe('진행 중 그만두기', () => {
     });
     expect(history.location.pathname).toBe(PROGRESS_PATH);
     expect(cancelRequests.count).toBe(0);
+  });
+});
+
+describe('추천 실패', () => {
+  const NEXT_SESSION_ID = 6;
+  const findFailureDialog = () =>
+    screen.findByRole('dialog', { name: '코디를 만들지 못했어요' });
+
+  test('추천을 만들지 못하면 실패 안내를 띄우고, 돌아가기를 누르면 세션을 취소하고 입력값을 남긴 채 돌아가야 한다.', async () => {
+    const user = userEvent.setup();
+    savePending(Date.now() - 5000);
+    respondResult(createResult('failed'));
+    const cancelRequests = countCancelRequests();
+    const { history } = await renderAt(['/recommendation', PROGRESS_PATH]);
+
+    const dialog = await findFailureDialog();
+    expect(cancelRequests.count).toBe(0);
+    expect(history.location.pathname).toBe(PROGRESS_PATH);
+
+    await user.click(within(dialog).getByRole('button', { name: '돌아가기' }));
+
+    expect(
+      await screen.findByRole('button', { name: /^위치 서울 성동구/ }),
+    ).toBeInTheDocument();
+    expect(history.location.pathname).toBe('/recommendation');
+    expect(cancelRequests.count).toBe(1);
+  });
+
+  test('다시 시도하면 실패한 세션을 닫고 같은 요청으로 새 세션을 만들어 그 진행 화면으로 바꿔야 한다.', async () => {
+    const user = userEvent.setup();
+    savePending(Date.now() - 5000);
+    respondResult(createResult('failed'));
+    const cancelRequests = countCancelRequests();
+    let receivedBody: unknown;
+    server.use(
+      http.post('/api/recommendation-sessions', async ({ request }) => {
+        receivedBody = await request.json();
+
+        return HttpResponse.json(
+          {
+            recommendation_session_id: NEXT_SESSION_ID,
+            session_status_cd: 'active',
+          },
+          { status: 202 },
+        );
+      }),
+      http.get(`/api/recommendation-sessions/${NEXT_SESSION_ID}`, () =>
+        HttpResponse.json({
+          ...createResult('processing'),
+          recommendation_session_id: NEXT_SESSION_ID,
+        }),
+      ),
+    );
+    const { history } = await renderAt(['/recommendation', PROGRESS_PATH]);
+
+    await user.click(
+      within(await findFailureDialog()).getByRole('button', {
+        name: '다시 시도',
+      }),
+    );
+
+    await waitFor(() => {
+      expect(history.location.pathname).toBe(
+        `/recommendation/sessions/${NEXT_SESSION_ID}`,
+      );
+    });
+    expect(cancelRequests.count).toBe(1);
+    expect(receivedBody).toEqual({
+      sido_nm: '서울특별시',
+      sigungu_nm: '성동구',
+      location_input_type_cd: 'manual',
+      tpo_cd: 'work',
+      going_out_start_time: '09:00',
+      going_out_end_time: '14:00',
+      going_out_date_cd: 'today',
+    });
+    expect(
+      JSON.parse(
+        sessionStorage.getItem(PENDING_RECOMMENDATION_STORAGE_KEY) ?? 'null',
+      ),
+    ).toMatchObject({ sessionId: NEXT_SESSION_ID });
+    expect(await screen.findByText('코디를 만들고 있어요')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    history.back();
+
+    await waitFor(() => {
+      expect(history.location.pathname).toBe('/recommendation');
+    });
+  });
+
+  test('다시 시도가 거절되면 사유를 담아 입력값을 남긴 채 입력 화면으로 돌아가야 한다.', async () => {
+    const user = userEvent.setup();
+    savePending(Date.now() - 5000);
+    respondResult(createResult('failed'));
+    countCancelRequests();
+    server.use(
+      http.post('/api/recommendation-sessions', () =>
+        HttpResponse.json(
+          {
+            code: 'GOING_OUT_START_IN_PAST',
+            message: '외출 시작 시각이 이미 지났습니다.',
+          },
+          { status: 422 },
+        ),
+      ),
+    );
+    const { history } = await renderAt(['/recommendation', PROGRESS_PATH]);
+
+    await user.click(
+      within(await findFailureDialog()).getByRole('button', {
+        name: '다시 시도',
+      }),
+    );
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '외출 시작 시각이 이미 지났습니다.',
+    );
+    expect(history.location.pathname).toBe('/recommendation');
+    expect(
+      screen.getByRole('button', { name: /^위치 서울 성동구/ }),
+    ).toBeInTheDocument();
+  });
+
+  test('요청 기록이 없으면 다시 시도 없이 돌아가기만 보여 줘야 한다.', async () => {
+    respondResult(createResult('failed'));
+    await renderAt(['/recommendation', PROGRESS_PATH]);
+
+    const dialog = await findFailureDialog();
+
+    expect(
+      within(dialog).queryByRole('button', { name: '다시 시도' }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(dialog).getByRole('button', { name: '돌아가기' }),
+    ).toBeInTheDocument();
   });
 });
 
@@ -439,6 +553,25 @@ describe('뒤로 가기', () => {
     await new Promise((resolve) => setTimeout(resolve, 500));
     expect(window.location.pathname).toBe('/recommendation');
     expect(cancelRequestCount).toBe(1);
+  });
+
+  test('실패 안내가 떠 있을 때 뒤로 가기를 누르면 묻지 않고 세션을 취소한 뒤 입력 화면으로 돌아가야 한다.', async () => {
+    savePending(Date.now() - 5000);
+    respondResult(createResult('failed'));
+    const cancelRequests = countCancelRequests();
+    await renderWithBrowserHistory();
+    await screen.findByRole('dialog', { name: '코디를 만들지 못했어요' });
+
+    window.history.back();
+
+    expect(
+      await screen.findByRole('button', { name: /^위치 서울 성동구/ }),
+    ).toBeInTheDocument();
+    expect(window.location.pathname).toBe('/recommendation');
+    expect(
+      screen.queryByRole('dialog', { name: '추천을 그만둘까요?' }),
+    ).not.toBeInTheDocument();
+    expect(cancelRequests.count).toBe(1);
   });
 
   test('추천 그만두기 버튼으로 그만두면 진행 화면 기록을 지나 입력 화면으로 돌아가야 한다.', async () => {

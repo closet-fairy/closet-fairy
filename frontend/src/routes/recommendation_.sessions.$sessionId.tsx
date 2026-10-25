@@ -23,6 +23,8 @@ export const Route = createFileRoute('/recommendation_/sessions/$sessionId')({
     },
     stringify: (params) => ({ sessionId: String(params.sessionId) }),
   },
+  // 다시 시도하면 같은 화면에서 세션만 바뀌므로, 이전 세션의 상태가 남지 않게 새로 그린다.
+  remountDeps: ({ params }) => params.sessionId,
   staticData: { isFullScreen: true },
   component: RecommendationProgressPage,
 });
