@@ -21,6 +21,27 @@ const renderPage = () =>
 const submitButton = () =>
   screen.getByRole('button', { name: '코디 추천 받기' });
 
+const chooseLocationBySearch = async (
+  user: ReturnType<typeof userEvent.setup>,
+) => {
+  await user.click(
+    screen.getByRole('button', { name: '위치 위치를 선택하세요' }),
+  );
+  await user.click(
+    await screen.findByRole('button', { name: /주소 직접 입력/ }),
+  );
+  await user.type(
+    await screen.findByRole('searchbox', { name: '지역 검색' }),
+    '성동',
+  );
+  await user.click(
+    await screen.findByRole('button', { name: '서울특별시 성동구' }),
+  );
+  await waitFor(() => {
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+};
+
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] });
   vi.setSystemTime(new Date('2026-10-14T09:10:00+09:00'));
@@ -123,6 +144,7 @@ describe('추천 요청 보내기', () => {
     );
     const consoleInfo = vi.spyOn(console, 'info').mockImplementation(() => {});
     renderPage();
+    await chooseLocationBySearch(user);
 
     await user.click(screen.getByRole('button', { name: '출근' }));
     await user.click(submitButton());
@@ -162,6 +184,7 @@ describe('추천 요청 보내기', () => {
     );
     vi.spyOn(console, 'info').mockImplementation(() => {});
     renderPage();
+    await chooseLocationBySearch(user);
 
     await user.click(submitButton());
     await waitFor(() => {
@@ -194,6 +217,7 @@ describe('추천 요청 보내기', () => {
     );
     vi.spyOn(console, 'info').mockImplementation(() => {});
     renderPage();
+    await chooseLocationBySearch(user);
 
     await user.click(submitButton());
     await waitFor(() => {
@@ -226,6 +250,7 @@ describe('오류 안내', () => {
       ),
     );
     renderPage();
+    await chooseLocationBySearch(user);
 
     await user.click(submitButton());
 
@@ -247,6 +272,7 @@ describe('오류 안내', () => {
       }),
     );
     renderPage();
+    await chooseLocationBySearch(user);
 
     await user.click(
       screen.getByRole('button', { name: '외출 시간 돌아오는 시간 14:00' }),
@@ -284,6 +310,7 @@ describe('오류 안내', () => {
       ),
     );
     renderPage();
+    await chooseLocationBySearch(user);
 
     await user.click(submitButton());
     await screen.findByRole('alert');
@@ -306,6 +333,7 @@ describe('오류 안내', () => {
       }),
     );
     renderPage();
+    await chooseLocationBySearch(user);
 
     await user.click(submitButton());
     await waitFor(() => {
@@ -351,6 +379,7 @@ describe('상황 직접 입력', () => {
     );
     vi.spyOn(console, 'info').mockImplementation(() => {});
     renderPage();
+    await chooseLocationBySearch(user);
     await setCustomTpo(user, '직접 입력', '학교 발표');
 
     expect(customChip('학교 발표')).toHaveAttribute('aria-pressed', 'true');
@@ -508,6 +537,7 @@ describe('상황 직접 입력', () => {
       ),
     );
     renderPage();
+    await chooseLocationBySearch(user);
     await setCustomTpo(user, '직접 입력', '학교 발표');
     await user.click(submitButton());
 
@@ -563,6 +593,7 @@ describe('외출 날짜', () => {
     );
     vi.spyOn(console, 'info').mockImplementation(() => {});
     renderPage();
+    await chooseLocationBySearch(user);
 
     await pickOption(user, startTrigger('09:00'), '내일 08:00');
 
@@ -607,6 +638,7 @@ describe('외출 날짜', () => {
     vi.spyOn(console, 'info').mockImplementation(() => {});
     vi.setSystemTime(new Date('2026-10-14T23:40:00+09:00'));
     renderPage();
+    await chooseLocationBySearch(user);
 
     await pickOption(user, startTrigger('23:30'), '내일 09:00');
     vi.setSystemTime(new Date('2026-10-15T00:10:00+09:00'));
@@ -657,6 +689,7 @@ describe('외출 날짜', () => {
     );
     vi.setSystemTime(new Date('2026-10-14T23:20:00+09:00'));
     renderPage();
+    await chooseLocationBySearch(user);
 
     await pickOption(user, startTrigger('23:00'), '23:30');
     vi.setSystemTime(new Date('2026-10-15T00:10:00+09:00'));
@@ -677,6 +710,7 @@ describe('외출 날짜', () => {
   test('고른 오늘 시각이 지나간 뒤 요청하면 지난 시각이라고 알려야 한다.', async () => {
     const user = userEvent.setup();
     renderPage();
+    await chooseLocationBySearch(user);
 
     await pickOption(user, startTrigger('09:00'), '09:30');
     vi.setSystemTime(new Date('2026-10-14T10:10:00+09:00'));
@@ -694,6 +728,7 @@ describe('외출 날짜', () => {
     const user = userEvent.setup();
     vi.setSystemTime(new Date('2026-10-14T22:00:00+09:00'));
     renderPage();
+    await chooseLocationBySearch(user);
 
     await pickOption(user, startTrigger('22:00'), '23:30');
     vi.setSystemTime(new Date('2026-10-16T10:00:00+09:00'));
@@ -712,8 +747,62 @@ describe('외출 날짜', () => {
   });
 });
 
-describe('위치 필드와 날씨 미리보기', () => {
-  const weatherPreview = (overrides: Partial<WeatherPreview> = {}) => ({
+describe('위치 고르기', () => {
+  const stubGeolocation = (
+    getCurrentPosition: (
+      onSuccess: PositionCallback,
+      onError: PositionErrorCallback,
+    ) => void,
+  ) => {
+    Object.defineProperty(navigator, 'geolocation', {
+      value: { getCurrentPosition },
+      configurable: true,
+    });
+  };
+
+  const createPosition = (
+    latitude: number,
+    longitude: number,
+  ): GeolocationPosition => ({
+    coords: {
+      latitude,
+      longitude,
+      accuracy: 100,
+      altitude: null,
+      altitudeAccuracy: null,
+      heading: null,
+      speed: null,
+      toJSON: () => ({}),
+    },
+    timestamp: 0,
+    toJSON: () => ({}),
+  });
+
+  const createPositionError = (code: number): GeolocationPositionError => ({
+    code,
+    message: '',
+    PERMISSION_DENIED: 1,
+    POSITION_UNAVAILABLE: 2,
+    TIMEOUT: 3,
+  });
+
+  const openSheetAndUseCurrentLocation = async (
+    user: ReturnType<typeof userEvent.setup>,
+  ) => {
+    await user.click(
+      screen.getByRole('button', { name: '위치 위치를 선택하세요' }),
+    );
+    await user.click(
+      await screen.findByRole('button', { name: /현재 위치 사용/ }),
+    );
+  };
+
+  const UNAVAILABLE_NOTICE =
+    '현재 위치를 확인하지 못했어요. 주소를 직접 입력해 주세요.';
+
+  const weatherPreview = (
+    overrides: Partial<WeatherPreview> = {},
+  ): WeatherPreview => ({
     temperature: 24.3,
     feels_like_temperature: 25.1,
     weather_condition_cd: 'overcast',
@@ -722,57 +811,38 @@ describe('위치 필드와 날씨 미리보기', () => {
     ...overrides,
   });
 
-  test('위치 필드에 짧은 지역 이름과 그 지역의 날씨를 보여 줘야 한다.', async () => {
-    let weatherParams: URLSearchParams | undefined;
+  afterEach(() => {
+    Reflect.deleteProperty(navigator, 'geolocation');
+  });
+
+  test('위치를 고르지 않고 추천을 요청하면 요청을 보내지 않고 위치를 고르라는 안내를 보여 줘야 한다.', async () => {
+    const user = userEvent.setup();
+    let requestCount = 0;
     server.use(
-      http.get('/api/weather/preview', ({ request }) => {
-        weatherParams = new URL(request.url).searchParams;
-        return HttpResponse.json(weatherPreview());
+      http.post('/api/recommendation-sessions', () => {
+        requestCount += 1;
+        return HttpResponse.json(
+          { recommendation_session_id: 11, session_status_cd: 'active' },
+          { status: 202 },
+        );
       }),
     );
     renderPage();
 
-    expect(
-      await screen.findByRole('button', { name: '위치 서울 성동구 24° 흐림' }),
-    ).toBeInTheDocument();
-    expect(weatherParams?.get('sido_nm')).toBe('서울특별시');
-    expect(weatherParams?.get('sigungu_nm')).toBe('성동구');
-  });
+    await user.click(submitButton());
 
-  test('하늘상태 예보가 없으면 기온만 보여 줘야 한다.', async () => {
-    server.use(
-      http.get('/api/weather/preview', () =>
-        HttpResponse.json(
-          weatherPreview({
-            weather_condition_cd: 'clear',
-            is_sky_missing: true,
-          }),
-        ),
-      ),
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '위치를 선택해 주세요.',
     );
-    renderPage();
+    expect(requestCount).toBe(0);
 
-    expect(
-      await screen.findByRole('button', { name: '위치 서울 성동구 24°' }),
-    ).toBeInTheDocument();
-  });
+    await chooseLocationBySearch(user);
 
-  test('날씨가 대체값이면 기온 대신 날씨를 확인할 수 없다고 보여 줘야 한다.', async () => {
-    server.use(
-      http.get('/api/weather/preview', () =>
-        HttpResponse.json(weatherPreview({ is_fallback: true })),
-      ),
-    );
-    renderPage();
-
-    expect(
-      await screen.findByRole('button', {
-        name: '위치 서울 성동구 날씨 확인 불가',
-      }),
-    ).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
   test('날씨를 불러오지 못하면 날씨를 확인할 수 없다고 보여 줘야 한다.', async () => {
+    const user = userEvent.setup();
     server.use(
       http.get('/api/weather/preview', () =>
         HttpResponse.json(
@@ -783,10 +853,270 @@ describe('위치 필드와 날씨 미리보기', () => {
     );
     renderPage();
 
+    await chooseLocationBySearch(user);
+
     expect(
       await screen.findByRole('button', {
         name: '위치 서울 성동구 날씨 확인 불가',
       }),
     ).toBeInTheDocument();
+  });
+
+  test('주소를 검색해 고르면 위치 필드에 짧은 이름과 그 지역의 날씨를 보여 줘야 한다.', async () => {
+    const user = userEvent.setup();
+    let weatherParams: URLSearchParams | undefined;
+    server.use(
+      http.get('/api/weather/preview', ({ request }) => {
+        weatherParams = new URL(request.url).searchParams;
+        return HttpResponse.json(weatherPreview());
+      }),
+    );
+    renderPage();
+
+    await chooseLocationBySearch(user);
+
+    expect(
+      await screen.findByRole('button', { name: '위치 서울 성동구 24° 흐림' }),
+    ).toBeInTheDocument();
+    expect(weatherParams?.get('sido_nm')).toBe('서울특별시');
+    expect(weatherParams?.get('sigungu_nm')).toBe('성동구');
+  });
+
+  test('날씨가 대체값이면 기온 대신 날씨를 확인할 수 없다고 보여 줘야 한다.', async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.get('/api/weather/preview', () =>
+        HttpResponse.json(
+          weatherPreview({
+            temperature: 13.2,
+            weather_condition_cd: 'clear',
+            is_fallback: true,
+          }),
+        ),
+      ),
+    );
+    renderPage();
+
+    await chooseLocationBySearch(user);
+
+    expect(
+      await screen.findByRole('button', {
+        name: '위치 서울 성동구 날씨 확인 불가',
+      }),
+    ).toBeInTheDocument();
+  });
+
+  test('현재 위치를 쓰면 좌표를 본문으로 보내 찾은 지역을 고르고, 추천 요청에 current로 담아야 한다.', async () => {
+    const user = userEvent.setup();
+    let nearestBody: unknown;
+    let sessionBody: unknown;
+    stubGeolocation((onSuccess) => {
+      onSuccess(createPosition(37.5634, 127.0369));
+    });
+    server.use(
+      http.post('/api/regions/nearest', async ({ request }) => {
+        nearestBody = await request.json();
+        return HttpResponse.json({
+          sido_nm: '서울특별시',
+          sigungu_nm: '성동구',
+        });
+      }),
+      http.post('/api/recommendation-sessions', async ({ request }) => {
+        sessionBody = await request.json();
+        return HttpResponse.json(
+          { recommendation_session_id: 12, session_status_cd: 'active' },
+          { status: 202 },
+        );
+      }),
+    );
+    vi.spyOn(console, 'info').mockImplementation(() => {});
+    renderPage();
+
+    await openSheetAndUseCurrentLocation(user);
+    await screen.findByRole('button', { name: /^위치 서울 성동구/ });
+    await user.click(submitButton());
+
+    expect(nearestBody).toEqual({ lat: 37.5634, lon: 127.0369 });
+    await waitFor(() => {
+      expect(sessionBody).toMatchObject({
+        sido_nm: '서울특별시',
+        sigungu_nm: '성동구',
+        location_input_type_cd: 'current',
+      });
+    });
+  });
+
+  test('위치 권한을 거부하면 주소 직접 입력 화면으로 넘어가 권한이 없다고 알려야 한다.', async () => {
+    const user = userEvent.setup();
+    stubGeolocation((_onSuccess, onError) => {
+      onError(createPositionError(1));
+    });
+    renderPage();
+
+    await openSheetAndUseCurrentLocation(user);
+
+    expect(
+      await screen.findByRole('dialog', { name: '주소 입력' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('searchbox', { name: '지역 검색' }),
+    ).toHaveAccessibleDescription(
+      '위치 권한이 없어 현재 위치를 쓸 수 없어요. 주소를 직접 입력해 주세요.',
+    );
+  });
+
+  test('현재 위치 근처에 지역이 없으면 주소 직접 입력 화면으로 넘어가 그 사실을 알려야 한다.', async () => {
+    const user = userEvent.setup();
+    stubGeolocation((onSuccess) => {
+      onSuccess(createPosition(35.6812, 139.7671));
+    });
+    server.use(
+      http.post('/api/regions/nearest', () =>
+        HttpResponse.json(
+          { code: 'REGION_NOT_FOUND', message: '지원하지 않는 지역입니다.' },
+          { status: 404 },
+        ),
+      ),
+    );
+    renderPage();
+
+    await openSheetAndUseCurrentLocation(user);
+
+    expect(
+      await screen.findByRole('dialog', { name: '주소 입력' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('searchbox', { name: '지역 검색' }),
+    ).toHaveAccessibleDescription(
+      '현재 위치 근처에서 지역을 찾지 못했어요. 주소를 직접 입력해 주세요.',
+    );
+  });
+
+  test('현재 위치를 찾는 동안에는 화면 낭독기에 찾는 중이라고 알리고 주소 직접 입력을 잠가야 한다.', async () => {
+    const user = userEvent.setup();
+    stubGeolocation(() => {});
+    renderPage();
+
+    await openSheetAndUseCurrentLocation(user);
+
+    expect(
+      screen
+        .getAllByRole('status')
+        .some((status) =>
+          status.textContent?.includes('현재 위치를 찾는 중이에요'),
+        ),
+    ).toBe(true);
+    expect(
+      screen.getByRole('button', { name: /주소 직접 입력/ }),
+    ).toBeDisabled();
+  });
+
+  test('위치 확인 시간이 지나면 주소 직접 입력 화면으로 넘어가 현재 위치를 확인하지 못했다고 알려야 한다.', async () => {
+    const user = userEvent.setup();
+    stubGeolocation((_onSuccess, onError) => {
+      onError(createPositionError(3));
+    });
+    renderPage();
+
+    await openSheetAndUseCurrentLocation(user);
+
+    expect(
+      await screen.findByRole('searchbox', { name: '지역 검색' }),
+    ).toHaveAccessibleDescription(UNAVAILABLE_NOTICE);
+  });
+
+  test('지역 찾기 요청이 서버 오류로 실패하면 주소 직접 입력 화면으로 넘어가 현재 위치를 확인하지 못했다고 알려야 한다.', async () => {
+    const user = userEvent.setup();
+    stubGeolocation((onSuccess) => {
+      onSuccess(createPosition(37.5634, 127.0369));
+    });
+    server.use(
+      http.post('/api/regions/nearest', () =>
+        HttpResponse.json(
+          { code: 'INTERNAL_SERVER_ERROR', message: '서버 오류입니다.' },
+          { status: 500 },
+        ),
+      ),
+    );
+    renderPage();
+
+    await openSheetAndUseCurrentLocation(user);
+
+    expect(
+      await screen.findByRole('searchbox', { name: '지역 검색' }),
+    ).toHaveAccessibleDescription(UNAVAILABLE_NOTICE);
+  });
+
+  test('위치를 찾는 중에 시트를 닫으면 늦게 찾은 위치로 바꾸지 않아야 한다.', async () => {
+    const user = userEvent.setup();
+    let resolvePosition = () => {};
+    stubGeolocation((onSuccess) => {
+      resolvePosition = () => {
+        onSuccess(createPosition(37.5634, 127.0369));
+      };
+    });
+    let nearestRequestCount = 0;
+    server.use(
+      http.post('/api/regions/nearest', () => {
+        nearestRequestCount += 1;
+        return HttpResponse.json({
+          sido_nm: '서울특별시',
+          sigungu_nm: '성동구',
+        });
+      }),
+    );
+    renderPage();
+
+    await openSheetAndUseCurrentLocation(user);
+    await user.click(screen.getByRole('button', { name: '닫기' }));
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+    act(() => {
+      resolvePosition();
+    });
+    await act(async () => {
+      await new Promise((resolve) => {
+        setTimeout(resolve, 100);
+      });
+    });
+
+    expect(nearestRequestCount).toBe(0);
+    expect(
+      screen.getByRole('button', { name: '위치 위치를 선택하세요' }),
+    ).toBeInTheDocument();
+  });
+
+  test('위치를 찾는 중에 시트를 닫은 뒤 위치 확인이 실패해도, 시트를 다시 열 때 주소 직접 입력 화면이 저절로 열리지 않아야 한다.', async () => {
+    const user = userEvent.setup();
+    let rejectPosition = () => {};
+    stubGeolocation((_onSuccess, onError) => {
+      rejectPosition = () => {
+        onError(createPositionError(1));
+      };
+    });
+    renderPage();
+
+    await openSheetAndUseCurrentLocation(user);
+    await user.click(screen.getByRole('button', { name: '닫기' }));
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+    act(() => {
+      rejectPosition();
+    });
+    await user.click(
+      screen.getByRole('button', { name: '위치 위치를 선택하세요' }),
+    );
+
+    expect(
+      await screen.findByRole('dialog', { name: '위치 설정' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('dialog', { name: '주소 입력' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /현재 위치 사용/ }),
+    ).toHaveAccessibleName(/위치 권한을 한 번 확인합니다/);
   });
 });

@@ -5,6 +5,7 @@ import { toRecommendationSessionCreate } from './toRecommendationSessionCreate';
 const form = {
   sidoNm: '서울특별시',
   sigunguNm: '성동구',
+  locationInputTypeCd: 'manual',
   tpo: { cd: 'work' },
   goingOutDateCd: 'today',
   startTime: '09:00',
@@ -12,12 +13,21 @@ const form = {
 } as const;
 
 describe('추천 요청 본문 만들기', () => {
-  test('위치는 시·도와 시·군·구를 각 필드에 담고, 직접 고른 위치로 보내야 한다.', () => {
+  test('위치는 시·도와 시·군·구를 각 필드에 담고, 위치를 고른 방식을 함께 보내야 한다.', () => {
     const body = toRecommendationSessionCreate(form);
 
     expect(body.sido_nm).toBe('서울특별시');
     expect(body.sigungu_nm).toBe('성동구');
     expect(body.location_input_type_cd).toBe('manual');
+  });
+
+  test('현재 위치로 고른 위치는 current로 보내야 한다.', () => {
+    const body = toRecommendationSessionCreate({
+      ...form,
+      locationInputTypeCd: 'current',
+    });
+
+    expect(body.location_input_type_cd).toBe('current');
   });
 
   test('프리셋 상황이면 tpo_text 없이 tpo_cd만 담아야 한다.', () => {
