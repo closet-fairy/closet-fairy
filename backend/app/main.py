@@ -11,6 +11,7 @@ from app.api import (
     member,
     recommendation_precheck,
     recommendation_session,
+    regions,
     weather,
 )
 from app.core.config import get_settings
@@ -48,6 +49,7 @@ app.include_router(health.router)
 app.include_router(recommendation_precheck.router, responses=AUTH_REQUIRED_RESPONSES)
 app.include_router(recommendation_session.router, responses=AUTH_REQUIRED_RESPONSES)
 app.include_router(weather.router)
+app.include_router(regions.router)
 app.include_router(clothing.router, responses=AUTH_REQUIRED_RESPONSES)
 app.include_router(auth.router)
 app.include_router(media.router)
