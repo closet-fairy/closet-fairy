@@ -1,15 +1,12 @@
 import { describe, expect, test } from 'vitest';
 import {
   advanceStamps,
-  clampBrushSize,
   getBrushRadius,
   getStampSpacing,
   getStampsBounds,
-  getStrokeStamps,
   unionRects,
 } from './brush';
 import type { StampCursor } from './brush';
-import type { Point } from './types';
 
 const MASK_SIZE = { width: 100, height: 80 };
 
@@ -17,12 +14,6 @@ describe('붓 크기', () => {
   test('화면 지름을 표시 배율과 확대율로 나눠 마스크 반지름으로 바꿔야 한다.', () => {
     expect(getBrushRadius(20, 0.5, 1)).toBe(20);
     expect(getBrushRadius(20, 0.5, 4)).toBe(5);
-  });
-
-  test('붓 크기는 4~80px 정수로 잘라야 한다.', () => {
-    expect(clampBrushSize(2)).toBe(4);
-    expect(clampBrushSize(120)).toBe(80);
-    expect(clampBrushSize(20.4)).toBe(20);
   });
 
   test('도장 간격은 반지름의 25%여야 하고, 너무 작아지지 않아야 한다.', () => {
@@ -62,25 +53,6 @@ describe('점 보간', () => {
     const cursor: StampCursor = { point: [4, 4], carry: 1 };
 
     expect(advanceStamps(cursor, [4, 4], 5)).toEqual({ stamps: [], cursor });
-  });
-
-  test('나눠서 이어 그린 결과와 한 번에 다시 그린 결과가 같아야 한다.', () => {
-    const points: Point[] = [
-      [0, 0],
-      [7, 3],
-      [9, 11],
-      [20, 11],
-    ];
-    let cursor: StampCursor | null = null;
-    const incremental: Point[] = [];
-
-    for (const point of points) {
-      const advanced = advanceStamps(cursor, point, 2.5);
-      incremental.push(...advanced.stamps);
-      cursor = advanced.cursor;
-    }
-
-    expect(getStrokeStamps(points, 2.5)).toEqual(incremental);
   });
 });
 

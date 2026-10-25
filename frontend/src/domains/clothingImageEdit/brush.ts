@@ -32,9 +32,6 @@ export interface StampCursor {
   carry: number;
 }
 
-export const clampBrushSize = (size: number) =>
-  Math.min(Math.max(Math.round(size), BRUSH_SIZE_MIN), BRUSH_SIZE_MAX);
-
 export const getBrushRadius = (
   brushSize: number,
   displayScale: number,
@@ -84,19 +81,6 @@ export const advanceStamps = (
       carry: cursor.carry + length - stamps.length * spacing,
     },
   };
-};
-
-export const getStrokeStamps = (points: readonly Point[], spacing: number) => {
-  const stamps: Point[] = [];
-  let cursor: StampCursor | null = null;
-
-  for (const point of points) {
-    const advanced = advanceStamps(cursor, point, spacing);
-    stamps.push(...advanced.stamps);
-    cursor = advanced.cursor;
-  }
-
-  return stamps;
 };
 
 // 도장들이 칠한 영역을 감싸는 정수 사각형이다. 마스크 밖은 잘라 내고, 겹치는 곳이 없으면 null이다.

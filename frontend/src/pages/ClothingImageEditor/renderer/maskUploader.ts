@@ -8,7 +8,6 @@ import type {
 export interface MaskUploader {
   markDirty: (rect: Rect | null) => void;
   markAllDirty: () => void;
-  flush: () => void;
   dispose: () => void;
 }
 
@@ -94,7 +93,6 @@ export const createMaskUploader = (
       isAllDirty = true;
       schedule();
     },
-    flush,
     dispose: () => {
       if (frame !== null) {
         cancelFrame(frame);

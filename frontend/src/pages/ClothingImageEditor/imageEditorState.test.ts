@@ -14,7 +14,6 @@ import {
   getSaveAngle,
   hasChanges,
   imageEditorReducer,
-  isAllDefault,
 } from './imageEditorState';
 import type { ImageEditorAction, ImageEditorState } from './imageEditorState';
 
@@ -317,42 +316,5 @@ describe('바뀐 내용 확인', () => {
     );
 
     expect(hasChanges(state, initialState, noSavedMask)).toBe(false);
-  });
-});
-
-describe('모두 기본값인지 확인', () => {
-  test('편집한 적 없는 옷을 불러온 그대로면 기본값이어야 한다.', () => {
-    expect(isAllDefault(createState(), { hasSavedMask: false })).toBe(true);
-  });
-
-  test('저장된 마스크가 있으면 불러온 그대로는 기본값이 아니어야 한다.', () => {
-    expect(isAllDefault(createState(), { hasSavedMask: true })).toBe(false);
-  });
-
-  test('원래대로를 누르면 저장된 마스크가 있어도 기본값이어야 한다.', () => {
-    const state = reduce(createState(84, TILTED_CORNERS), { type: 'reset' });
-
-    expect(isAllDefault(state, { hasSavedMask: true })).toBe(true);
-  });
-
-  test('붓질했으면 기본값이 아니어야 한다.', () => {
-    const state = getEditState(createState(), {
-      history: withStrokes(1),
-      revision: 1,
-    });
-
-    expect(isAllDefault(state, { hasSavedMask: false })).toBe(false);
-  });
-
-  test('각도가 0°가 아니면 기본값이 아니어야 한다.', () => {
-    const state = reduce(createState(), { type: 'turnQuarter', direction: 1 });
-
-    expect(isAllDefault(state, { hasSavedMask: false })).toBe(false);
-  });
-
-  test('꼭짓점이 기본값이 아니면 기본값이 아니어야 한다.', () => {
-    expect(
-      isAllDefault(createState(0, TILTED_CORNERS), { hasSavedMask: false }),
-    ).toBe(false);
   });
 });
