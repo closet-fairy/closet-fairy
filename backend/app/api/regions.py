@@ -11,7 +11,7 @@ CACHE_CONTROL = "public, max-age=3600"
 
 @router.get("", response_model=list[SidoRegions])
 def list_regions(response: Response) -> list[SidoRegions]:
-    """위치 직접 선택용 시/도·시/군/구 목록. 행정구역 코드 순이다."""
+    """위치 직접 선택용 시/도·시/군/구 목록. 시/군/구는 행정구역 코드 순이다."""
     response.headers["Cache-Control"] = CACHE_CONTROL
     return [
         SidoRegions(sido_nm=sido_nm, sigungu_nms=sigungu_nms)
