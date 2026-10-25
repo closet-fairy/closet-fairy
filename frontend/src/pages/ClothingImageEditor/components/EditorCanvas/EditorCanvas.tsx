@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
-import { getOutputGeometry } from '@/domains/clothingImageEdit/outputGeometry';
+import { getPerspectiveOutputSize } from '@/domains/clothingImageEdit/perspective';
+import { getRotatedBounds } from '@/domains/clothingImageEdit/rotation';
 import type { Quad, Size } from '@/domains/clothingImageEdit/types';
 import type {
   EditorRenderer,
@@ -117,22 +118,27 @@ const EditorCanvas = (props: EditorCanvasProps) => {
     rendererRef.current?.render(options);
   }, [base, width, height, mask, maskVersion, corners, angle, faintOpacity]);
 
-  const outputSize =
+  const displaySize =
     displayScale === undefined
       ? null
-      : getOutputGeometry({ width, height }, corners, angle)?.outputSize;
+      : getRotatedBounds(
+          getPerspectiveOutputSize(corners, { width, height }),
+          angle,
+        );
 
   return (
     <S.Canvas
+      // 이미 컨텍스트가 있는 캔버스는 속성을 바꿔 다시 받을 수 없어, 드로잉 버퍼 보존이 바뀌면 캔버스를 새로 만든다.
+      key={String(isDrawingBufferPreserved)}
       ref={canvasRef}
       role="img"
       aria-label={ariaLabel}
-      $isScaled={outputSize !== null && outputSize !== undefined}
+      $isScaled={displaySize !== null}
       style={
-        outputSize && displayScale !== undefined
+        displaySize !== null && displayScale !== undefined
           ? {
-              width: outputSize.width * displayScale,
-              height: outputSize.height * displayScale,
+              width: displaySize.width * displayScale,
+              height: displaySize.height * displayScale,
             }
           : undefined
       }
