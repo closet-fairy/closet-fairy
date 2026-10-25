@@ -52,6 +52,17 @@ const meta = {
       control: 'boolean',
       table: { defaultValue: { summary: 'false' } },
     },
+    isInvalid: {
+      description:
+        '고른 값이 받아들여지지 않았음을 테두리 색과 `aria-invalid`로 알립니다. 오류 문구는 Picker 밖에서 보여 주고 `aria-describedby`로 연결합니다.',
+      control: 'boolean',
+      table: { defaultValue: { summary: 'false' } },
+    },
+    'aria-describedby': {
+      description:
+        '트리거의 설명으로 읽힐 요소의 id입니다. Picker 밖에 둔 안내·오류 문구를 연결할 때 씁니다. `FormField`의 안내 문구가 있으면 함께 연결합니다.',
+      control: 'text',
+    },
   },
   args: {
     label: '나가는 시간',
@@ -96,6 +107,28 @@ export const Empty: Story = {
 export const Disabled: Story = {
   args: {
     isDisabled: true,
+  },
+};
+
+export const Invalid: Story = {
+  args: {
+    isInvalid: true,
+    'aria-describedby': 'picker-invalid-message',
+  },
+  render: function Render(args) {
+    const [, updateArgs] = useArgs();
+
+    const handleChange = (value: string) => {
+      args.onChange(value);
+      updateArgs({ value });
+    };
+
+    return (
+      <StoryStack direction="column" gap={8}>
+        <Picker {...args} onChange={handleChange} />
+        <p id="picker-invalid-message">이 시간에는 추천을 받을 수 없어요.</p>
+      </StoryStack>
+    );
   },
 };
 

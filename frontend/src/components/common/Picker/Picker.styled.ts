@@ -13,7 +13,7 @@ import {
 
 const TRIGGER_HEIGHT = 64;
 
-export const Trigger = styled.button`
+export const Trigger = styled.button<{ $isInvalid: boolean }>`
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -22,7 +22,9 @@ export const Trigger = styled.button`
   width: 100%;
   min-height: ${TRIGGER_HEIGHT}px;
   padding: ${spacing[8]} ${spacing[12]};
-  border: 1px solid ${border.neutral.default};
+  border: 1px solid
+    ${({ $isInvalid }) =>
+      $isInvalid ? border.error.default : border.neutral.default};
   border-radius: ${radius.md};
   background-color: ${bg.white};
   text-align: center;

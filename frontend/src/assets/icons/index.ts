@@ -28,6 +28,7 @@ import MyLocation from '@material-symbols/svg-400/outlined/my_location.svg?react
 import Person from '@material-symbols/svg-400/outlined/person.svg?react';
 import PersonFill from '@material-symbols/svg-400/outlined/person-fill.svg?react';
 import ProgressActivity from '@material-symbols/svg-400/outlined/progress_activity.svg?react';
+import RadioButtonUnchecked from '@material-symbols/svg-400/outlined/radio_button_unchecked.svg?react';
 import Redo from '@material-symbols/svg-400/outlined/redo.svg?react';
 import Refresh from '@material-symbols/svg-400/outlined/refresh.svg?react';
 import RestartAlt from '@material-symbols/svg-400/outlined/restart_alt.svg?react';
@@ -71,6 +72,7 @@ export const icons = {
   person: Person,
   'person-fill': PersonFill,
   progress_activity: ProgressActivity,
+  radio_button_unchecked: RadioButtonUnchecked,
   redo: Redo,
   refresh: Refresh,
   restart_alt: RestartAlt,

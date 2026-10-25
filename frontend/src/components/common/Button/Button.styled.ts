@@ -1,4 +1,4 @@
-import { css } from '@emotion/react';
+import { css, keyframes } from '@emotion/react';
 import type { SerializedStyles } from '@emotion/react';
 import styled from '@emotion/styled';
 import {
@@ -15,6 +15,14 @@ import {
 import type { ButtonSize, ButtonVariant } from './Button';
 
 const PRESSED_SCALE = 0.98;
+
+const SPIN_DURATION = '1s';
+
+const spin = keyframes`
+  to {
+    transform: rotate(360deg);
+  }
+`;
 
 const HEIGHT: Record<ButtonSize, number> = {
   lg: 54,
@@ -76,6 +84,7 @@ export const Button = styled.button<{
   $size: ButtonSize;
   $isFullWidth: boolean;
 }>`
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -88,8 +97,12 @@ export const Button = styled.button<{
     $variant === 'text' ? regularTextStyles[$size] : strongTextStyles[$size]}
   ${({ $variant }) => variantStyles[$variant]}
 
-  &:active:not(:disabled) {
+  &:active:not(:disabled, [aria-busy='true']) {
     transform: scale(${PRESSED_SCALE});
+  }
+
+  &[aria-busy='true'] {
+    cursor: progress;
   }
 
   &:disabled {
@@ -97,6 +110,28 @@ export const Button = styled.button<{
   }
 `;
 
+export const Content = styled.span<{ $isHidden: boolean }>`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: inherit;
+  min-width: 0;
+  opacity: ${({ $isHidden }) => ($isHidden ? 0 : 1)};
+`;
+
 export const Label = styled.span`
   min-width: 0;
+`;
+
+export const Spinner = styled.span`
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
+
+export const SpinnerIcon = styled.span`
+  display: inline-flex;
+  animation: ${spin} ${SPIN_DURATION} linear infinite;
 `;

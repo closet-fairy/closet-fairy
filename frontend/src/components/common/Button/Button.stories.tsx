@@ -43,6 +43,12 @@ const meta = {
       control: 'boolean',
       table: { defaultValue: { summary: 'false' } },
     },
+    isLoading: {
+      description:
+        '요청을 보내는 중임을 보여 줍니다. 글자 대신 도는 아이콘을 보여 주되 버튼 너비는 그대로 두고, 흐리게 하지 않은 채 누름만 막습니다. 스크린리더에는 `aria-busy`로 알립니다.',
+      control: 'boolean',
+      table: { defaultValue: { summary: 'false' } },
+    },
     type: {
       description: '네이티브 `type`입니다. 폼 제출 버튼에만 submit을 줍니다.',
       control: 'inline-radio',
@@ -51,7 +57,7 @@ const meta = {
     },
     onClick: {
       description:
-        '버튼을 누르면 호출됩니다. 비활성 상태에서는 호출되지 않습니다.',
+        '버튼을 누르면 호출됩니다. 비활성이거나 로딩 중이면 호출되지 않습니다.',
     },
     ref: {
       description: '네이티브 `button` 요소에 연결할 ref입니다.',
@@ -174,6 +180,23 @@ export const Disabled: Story = {
       </StoryLabeled>
       <StoryLabeled label="text">
         <Button {...args} variant="text" />
+      </StoryLabeled>
+    </StoryStack>
+  ),
+};
+
+export const Loading: Story = {
+  args: {
+    isLoading: true,
+    children: '계속',
+  },
+  render: (args) => (
+    <StoryStack gap={16}>
+      <StoryLabeled label="primary / md">
+        <Button {...args} variant="primary" size="md" />
+      </StoryLabeled>
+      <StoryLabeled label="outline / lg">
+        <Button {...args} variant="outline" size="lg" />
       </StoryLabeled>
     </StoryStack>
   ),
