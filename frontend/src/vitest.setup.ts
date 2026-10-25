@@ -1,6 +1,7 @@
 import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
 import { afterAll, afterEach, beforeAll, vi } from 'vitest';
+import { resetSession } from '@/apis/authSession';
 import { resetClothingMocks } from '@/mocks/handlers/clothing';
 import { resetMemberMocks } from '@/mocks/handlers/member';
 import { server } from '@/mocks/node';
@@ -31,6 +32,7 @@ afterEach(() => {
   server.resetHandlers();
   resetClothingMocks();
   resetMemberMocks();
+  resetSession();
 
   if (unhandledRequests.length > 0) {
     const requests = unhandledRequests.splice(0).join(', ');

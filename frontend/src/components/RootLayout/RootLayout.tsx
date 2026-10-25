@@ -3,6 +3,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { Outlet, useMatches } from '@tanstack/react-router';
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
 import BottomTabBar from '@/components/BottomTabBar';
+import SessionExpiredDialog from '@/components/SessionExpiredDialog';
 import { globalStyles } from '@/styles/globalStyles';
 import * as S from './RootLayout.styled';
 
@@ -26,6 +27,7 @@ const RootLayout = () => {
         </S.Main>
         {!isFullScreen && <BottomTabBar />}
       </S.Container>
+      <SessionExpiredDialog />
       <ReactQueryDevtools />
       <TanStackRouterDevtools />
     </>

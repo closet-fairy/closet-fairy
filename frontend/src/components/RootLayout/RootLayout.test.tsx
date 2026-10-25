@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   createMemoryHistory,
   createRootRoute,
@@ -29,7 +30,15 @@ const renderAt = (path: string) => {
     history: createMemoryHistory({ initialEntries: [path] }),
   });
 
-  render(<RouterProvider router={router} />);
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+
+  render(
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  );
 };
 
 describe('하단 탭 표시', () => {
