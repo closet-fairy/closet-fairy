@@ -5,6 +5,7 @@ import Button from '@/components/common/Button';
 import Dialog from '@/components/common/Dialog';
 import Notice from '@/components/common/Notice';
 import type { ProviderCd } from '@/domains/member/memberSettingOptions';
+import useRedirectLock from '@/hooks/useRedirectLock';
 import * as S from './LoginPage.styled';
 
 const LOGIN_URL: Record<ProviderCd, string> = {
@@ -26,7 +27,7 @@ const LoginPage = () => {
   const [isWithdrawnNoticeOpen, setIsWithdrawnNoticeOpen] = useState(
     search.withdrawn !== undefined,
   );
-  const [isRedirecting, setIsRedirecting] = useState(false);
+  const { isRedirecting, redirect } = useRedirectLock();
   const hasSearch =
     search.error !== undefined || search.withdrawn !== undefined;
 
@@ -36,23 +37,8 @@ const LoginPage = () => {
     }
   }, [hasSearch, navigate]);
 
-  useEffect(() => {
-    const handlePageShow = (event: PageTransitionEvent) => {
-      if (event.persisted) {
-        setIsRedirecting(false);
-      }
-    };
-
-    window.addEventListener('pageshow', handlePageShow);
-
-    return () => {
-      window.removeEventListener('pageshow', handlePageShow);
-    };
-  }, []);
-
   const handleLogin = (provider: ProviderCd) => {
-    setIsRedirecting(true);
-    window.location.assign(LOGIN_URL[provider]);
+    redirect(LOGIN_URL[provider]);
   };
 
   return (
