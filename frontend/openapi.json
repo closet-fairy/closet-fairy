@@ -446,6 +446,94 @@
         }
       }
     },
+    "/regions": {
+      "get": {
+        "tags": [
+          "region"
+        ],
+        "summary": "List Regions",
+        "description": "위치 직접 선택용 시/도·시/군/구 목록. 시/군/구는 행정구역 코드 순이다.",
+        "operationId": "list_regions_regions_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SidoRegions"
+                  },
+                  "type": "array",
+                  "title": "Response List Regions Regions Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "입력값 검증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/regions/nearest": {
+      "post": {
+        "tags": [
+          "region"
+        ],
+        "summary": "Find Nearest Region",
+        "description": "현재 위치 좌표에서 가장 가까운 시/군/구 (FR-REC-02).\n\n좌표가 접근 로그에 남지 않도록 본문으로 받는다. 좌표는 저장하지 않는다.",
+        "operationId": "find_nearest_region_regions_nearest_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Coordinates"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegionName"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "입력값 검증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "100km 안에 지역이 없음",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/clothing": {
       "post": {
         "tags": [
@@ -2476,6 +2564,35 @@
         ],
         "title": "ClothingUploadResult"
       },
+      "Coordinates": {
+        "properties": {
+          "lat": {
+            "type": "number",
+            "maximum": 90.0,
+            "minimum": -90.0,
+            "title": "Lat",
+            "examples": [
+              35.1587
+            ]
+          },
+          "lon": {
+            "type": "number",
+            "maximum": 180.0,
+            "minimum": -180.0,
+            "title": "Lon",
+            "examples": [
+              129.1604
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "lat",
+          "lon"
+        ],
+        "title": "Coordinates"
+      },
       "ErrorResponse": {
         "properties": {
           "code": {
@@ -3359,6 +3476,30 @@
         ],
         "title": "RegenerationCreated"
       },
+      "RegionName": {
+        "properties": {
+          "sido_nm": {
+            "type": "string",
+            "title": "Sido Nm",
+            "examples": [
+              "서울특별시"
+            ]
+          },
+          "sigungu_nm": {
+            "type": "string",
+            "title": "Sigungu Nm",
+            "examples": [
+              "중구"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "sido_nm",
+          "sigungu_nm"
+        ],
+        "title": "RegionName"
+      },
       "RejectedUpload": {
         "properties": {
           "file_name": {
@@ -3499,6 +3640,37 @@
           "is_fallback"
         ],
         "title": "SessionWeather"
+      },
+      "SidoRegions": {
+        "properties": {
+          "sido_nm": {
+            "type": "string",
+            "title": "Sido Nm",
+            "examples": [
+              "서울특별시"
+            ]
+          },
+          "sigungu_nms": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sigungu Nms",
+            "examples": [
+              [
+                "종로구",
+                "중구",
+                "성동구"
+              ]
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "sido_nm",
+          "sigungu_nms"
+        ],
+        "title": "SidoRegions"
       },
       "UploadedClothing": {
         "properties": {
