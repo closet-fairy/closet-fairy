@@ -6,7 +6,7 @@ const meta = {
   argTypes: {
     settings: {
       description:
-        '개인 설정 조회 응답입니다. 비어 있는 체질·스타일은 "선택 안 함"으로 보여 주고, 출생연도는 연령대로 바꿔 보여 줍니다.',
+        '개인 설정 조회 응답입니다. 출생연도는 연령대로 바꿔 보여 주고, 비어 있는 출생연도·체질·스타일은 "선택 안 함"으로 보여 줍니다.',
       control: 'object',
     },
     currentYear: {
@@ -35,7 +35,7 @@ export const Default: Story = {};
 export const NothingSelected: Story = {
   args: {
     settings: {
-      birth_year: 2001,
+      birth_year: null,
       temperature_sensitivity_cd: null,
       gender_cd: 'unisex',
       style_cds: [],
