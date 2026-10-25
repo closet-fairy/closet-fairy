@@ -5,7 +5,7 @@ import { toRecommendationSessionCreate } from './toRecommendationSessionCreate';
 const form = {
   sidoNm: '서울특별시',
   sigunguNm: '성동구',
-  tpoCd: 'work',
+  tpo: { cd: 'work' },
   startTime: '09:00',
   endTime: '14:00',
 } as const;
@@ -31,6 +31,16 @@ describe('추천 요청 본문 만들기', () => {
 
     expect(body.going_out_start_time).toBe('09:00');
     expect(body.going_out_end_time).toBe('14:00');
+  });
+
+  test('직접 입력한 상황이면 tpo_cd를 custom으로 두고 앞뒤 공백을 지운 문구를 tpo_text에 담아야 한다.', () => {
+    const body = toRecommendationSessionCreate({
+      ...form,
+      tpo: { cd: 'custom', text: '  학교 발표 ' },
+    });
+
+    expect(body.tpo_cd).toBe('custom');
+    expect(body.tpo_text).toBe('학교 발표');
   });
 
   test('만든 본문은 생성된 요청 스키마의 필드 구성과 형식을 통과해야 한다.', () => {
