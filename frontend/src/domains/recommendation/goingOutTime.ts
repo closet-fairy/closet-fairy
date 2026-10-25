@@ -97,7 +97,7 @@ export const createStartTimeSlots = (now: Date) =>
 
 export const createStartOptions = (now: Date): GoingOutStart[] => {
   const today = getKstDate(now);
-  const tomorrow = getKstDate(new Date(now.getTime() + DAY_MILLISECONDS));
+  const tomorrow = shiftKstDate(today, 1);
 
   return [
     ...createStartTimeSlots(now).map((time) => ({ date: today, time })),
