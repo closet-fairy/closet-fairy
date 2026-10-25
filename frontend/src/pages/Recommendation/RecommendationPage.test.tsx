@@ -805,6 +805,39 @@ describe('위치 고르기', () => {
       '위치를 선택해 주세요.',
     );
     expect(requestCount).toBe(0);
+
+    await chooseLocationBySearch(user);
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  test('날씨를 불러오지 못하면 날씨를 확인할 수 없다고 보여 줘야 한다.', async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.get('/api/weather/preview', () =>
+        HttpResponse.json(
+          { code: 'INTERNAL_SERVER_ERROR', message: '서버 오류입니다.' },
+          { status: 500 },
+        ),
+      ),
+    );
+    render(
+      <QueryClientProvider
+        client={
+          new QueryClient({ defaultOptions: { queries: { retry: false } } })
+        }
+      >
+        <RecommendationPage />
+      </QueryClientProvider>,
+    );
+
+    await chooseLocationBySearch(user);
+
+    expect(
+      await screen.findByRole('button', {
+        name: '위치 서울 성동구 날씨 확인 불가',
+      }),
+    ).toBeInTheDocument();
   });
 
   test('주소를 검색해 고르면 위치 필드에 짧은 이름과 그 지역의 날씨를 보여 줘야 한다.', async () => {
@@ -1035,13 +1068,16 @@ describe('위치 고르기', () => {
     act(() => {
       resolvePosition();
     });
-
-    await waitFor(() => {
-      expect(
-        screen.getByRole('button', { name: '위치 위치를 선택하세요' }),
-      ).toBeInTheDocument();
+    await act(async () => {
+      await new Promise((resolve) => {
+        setTimeout(resolve, 100);
+      });
     });
+
     expect(nearestRequestCount).toBe(0);
+    expect(
+      screen.getByRole('button', { name: '위치 위치를 선택하세요' }),
+    ).toBeInTheDocument();
   });
 
   test('위치를 찾는 중에 시트를 닫은 뒤 위치 확인이 실패해도, 시트를 다시 열 때 주소 직접 입력 화면이 저절로 열리지 않아야 한다.', async () => {
