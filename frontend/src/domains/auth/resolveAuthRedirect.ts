@@ -1,8 +1,8 @@
 export type AuthStatus = 'signedOut' | 'needsOnboarding' | 'onboarded';
 
-export const LOGIN_PATH = '/login';
-export const ONBOARDING_PATH = '/onboarding';
-export const HOME_PATH = '/closet';
+const LOGIN_PATH = '/login';
+const ONBOARDING_PATH = '/onboarding';
+const HOME_PATH = '/closet';
 
 type AuthRedirectPath =
   typeof LOGIN_PATH | typeof ONBOARDING_PATH | typeof HOME_PATH;

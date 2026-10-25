@@ -29,10 +29,6 @@ const LogoutDialog = (props: LogoutDialogProps) => {
   };
 
   const handleOpenChange = (nextIsOpen: boolean) => {
-    if (logout.isPending) {
-      return;
-    }
-
     if (!nextIsOpen) {
       logout.reset();
     }
@@ -45,6 +41,7 @@ const LogoutDialog = (props: LogoutDialogProps) => {
   return (
     <Dialog
       isOpen={isOpen}
+      isDismissable={!logout.isPending}
       onOpenChange={handleOpenChange}
       title="로그아웃하시겠어요?"
       footer={

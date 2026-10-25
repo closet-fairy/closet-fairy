@@ -59,6 +59,13 @@ const OnboardingPage = () => {
   const visibleStep: OnboardingStep = isMissingEarlierStep ? 1 : step;
   const isSaving = saveSettings.isPending;
 
+  const [renderedStep, setRenderedStep] = useState(visibleStep);
+
+  if (renderedStep !== visibleStep) {
+    setRenderedStep(visibleStep);
+    setSaveError(undefined);
+  }
+
   useEffect(() => {
     visibleStepRef.current = visibleStep;
   }, [visibleStep]);

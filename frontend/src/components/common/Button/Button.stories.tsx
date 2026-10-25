@@ -57,7 +57,7 @@ const meta = {
     },
     onClick: {
       description:
-        '버튼을 누르면 호출됩니다. 비활성 상태에서는 호출되지 않습니다.',
+        '버튼을 누르면 호출됩니다. 비활성이거나 로딩 중이면 호출되지 않습니다.',
     },
     ref: {
       description: '네이티브 `button` 요소에 연결할 ref입니다.',
