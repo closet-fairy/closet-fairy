@@ -20,10 +20,11 @@ import {
   isPastTimeSlot,
   validateGoingOutTime,
 } from '@/domains/recommendation/goingOutTime';
+import type { RecommendationTpo } from '@/domains/recommendation/toRecommendationSessionCreate';
 import { toRecommendationSessionCreate } from '@/domains/recommendation/toRecommendationSessionCreate';
-import type { TpoPresetCd } from '@/domains/recommendation/tpoPresets';
 import { TPO_PRESETS } from '@/domains/recommendation/tpoPresets';
 import { useCreateRecommendationSessionRecommendationSessionsPost } from '@/generated/endpoints/recommendation/recommendation';
+import CustomTpoSheet from './components/CustomTpoSheet';
 import * as S from './RecommendationPage.styled';
 
 const TEMPORARY_LOCATION = {
@@ -64,7 +65,9 @@ const useTimeSlotNow = () => {
 
 const RecommendationPage = () => {
   const now = useTimeSlotNow();
-  const [tpoCd, setTpoCd] = useState<TpoPresetCd>('daily');
+  const [tpo, setTpo] = useState<RecommendationTpo>({ cd: 'daily' });
+  const [customTpoText, setCustomTpoText] = useState<string | null>(null);
+  const [isCustomTpoSheetOpen, setIsCustomTpoSheetOpen] = useState(false);
   const [selectedStart, setSelectedStart] = useState<string | null>(null);
   const [selectedEnd, setSelectedEnd] = useState<string | null>(null);
   const [validationMessage, setValidationMessage] = useState<string | null>(
@@ -104,13 +107,31 @@ const RecommendationPage = () => {
   };
 
   const handleTpoChange = (value: string) => {
+    if (value === 'custom') {
+      if (customTpoText !== null) {
+        setTpo({ cd: 'custom', text: customTpoText });
+        clearErrors();
+      }
+
+      return;
+    }
+
     const preset = TPO_PRESETS.find((tpoPreset) => tpoPreset.value === value);
 
     if (preset) {
-      setTpoCd(preset.value);
+      setTpo({ cd: preset.value });
       clearErrors();
     }
   };
+
+  const handleCustomTpoSubmit = (text: string) => {
+    setCustomTpoText(text);
+    setTpo({ cd: 'custom', text });
+    setIsCustomTpoSheetOpen(false);
+    clearErrors();
+  };
+
+  const isCustomTpoEditable = customTpoText === null || tpo.cd === 'custom';
 
   const handleStartChange = (value: string) => {
     setSelectedStart(value);
@@ -137,7 +158,7 @@ const RecommendationPage = () => {
         data: toRecommendationSessionCreate({
           sidoNm: TEMPORARY_LOCATION.sidoNm,
           sigunguNm: TEMPORARY_LOCATION.sigunguNm,
-          tpoCd,
+          tpo,
           startTime: start,
           endTime: end,
         }),
@@ -163,12 +184,24 @@ const RecommendationPage = () => {
             />
           </FormField>
           <FormField label="상황" hint="하나만 선택">
-            <ChipGroup value={tpoCd} onChange={handleTpoChange}>
+            <ChipGroup value={tpo.cd} onChange={handleTpoChange}>
               {TPO_PRESETS.map((preset) => (
                 <Chip key={preset.value} value={preset.value}>
                   {preset.label}
                 </Chip>
               ))}
+              <Chip
+                value="custom"
+                variant="dashed"
+                trailingIcon="edit"
+                onClick={
+                  isCustomTpoEditable
+                    ? () => setIsCustomTpoSheetOpen(true)
+                    : undefined
+                }
+              >
+                {customTpoText ?? '직접 입력'}
+              </Chip>
             </ChipGroup>
           </FormField>
           <FormField label="외출 시간" hint="30분 단위">
@@ -210,6 +243,12 @@ const RecommendationPage = () => {
           </Button>
         </S.Footer>
       </S.Form>
+      <CustomTpoSheet
+        isOpen={isCustomTpoSheetOpen}
+        onOpenChange={setIsCustomTpoSheetOpen}
+        initialText={customTpoText ?? ''}
+        onSubmit={handleCustomTpoSubmit}
+      />
     </S.Container>
   );
 };
