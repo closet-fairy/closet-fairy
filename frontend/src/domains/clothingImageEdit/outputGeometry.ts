@@ -7,6 +7,7 @@ import {
 import { getRotatedBounds } from './rotation';
 
 export interface OutputGeometry {
+  sourceSize: Size;
   outputSize: Size;
   perspectiveSize: Size;
   // 출력 픽셀 좌표에서 회전을 거꾸로 풀 때 쓰는 cos, sin이다.
@@ -50,6 +51,7 @@ export const getOutputGeometry = (
   const radians = toRadians(Number.isFinite(angle) ? angle : 0);
 
   return {
+    sourceSize,
     outputSize,
     perspectiveSize,
     inverseRotation: [Math.cos(radians), Math.sin(radians)],
@@ -68,8 +70,13 @@ export const mapOutputToSource = (
   geometry: OutputGeometry,
   outputPoint: readonly [number, number],
 ): readonly [number, number] | null => {
-  const { outputSize, perspectiveSize, inverseRotation, perspectiveToSource } =
-    geometry;
+  const {
+    sourceSize,
+    outputSize,
+    perspectiveSize,
+    inverseRotation,
+    perspectiveToSource,
+  } = geometry;
   const [cos, sin] = inverseRotation;
   const dx = outputPoint[0] - outputSize.width / 2;
   const dy = outputPoint[1] - outputSize.height / 2;
@@ -92,7 +99,19 @@ export const mapOutputToSource = (
     return null;
   }
 
-  return [(a * x + b * y + c) / w, (d * x + e * y + f) / w];
+  const sourceX = (a * x + b * y + c) / w;
+  const sourceY = (d * x + e * y + f) / w;
+
+  if (
+    sourceX < -EDGE_TOLERANCE ||
+    sourceY < -EDGE_TOLERANCE ||
+    sourceX > sourceSize.width + EDGE_TOLERANCE ||
+    sourceY > sourceSize.height + EDGE_TOLERANCE
+  ) {
+    return null;
+  }
+
+  return [sourceX, sourceY];
 };
 
 // GLSL의 mat3는 열 우선이라 행 우선 행렬을 전치해서 넘긴다.
