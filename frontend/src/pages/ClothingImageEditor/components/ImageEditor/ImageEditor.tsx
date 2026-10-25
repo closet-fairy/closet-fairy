@@ -29,6 +29,7 @@ import RotationPanel from '@/pages/ClothingImageEditor/components/RotationPanel'
 import SaveErrorBanner from '@/pages/ClothingImageEditor/components/SaveErrorBanner';
 import useBrushStrokes from '@/pages/ClothingImageEditor/hooks/useBrushStrokes';
 import useElementSize from '@/pages/ClothingImageEditor/hooks/useElementSize';
+import useHistoryShortcuts from '@/pages/ClothingImageEditor/hooks/useHistoryShortcuts';
 import {
   createInitialEditorState,
   getEditState,
@@ -171,6 +172,18 @@ const ImageEditor = (props: ImageEditorProps) => {
   });
   const isLeaveBlocked = leaveBlocker.status === 'blocked';
   const hasViewport = viewportSize.width > 0 && viewportSize.height > 0;
+
+  useHistoryShortcuts({
+    isEnabled:
+      state.step === 'brush' &&
+      !isSaving &&
+      mask !== null &&
+      openDialog === null &&
+      !isLeaveBlocked,
+    onUndo: brush.undo,
+    onRedo: brush.redo,
+    isBlocked: brush.isStrokeActive,
+  });
 
   // 화면을 돌리는 등 영역 크기가 바뀌면 확대·이동 기준이 달라지므로 화면 맞춤으로 되돌린다.
   if (

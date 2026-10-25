@@ -78,12 +78,14 @@ const BrushPanel = (props: BrushPanelProps) => {
         <IconButton
           icon="undo"
           aria-label="실행 취소"
+          aria-keyshortcuts="Control+Z Meta+Z"
           isDisabled={isDisabled || !isUndoAvailable}
           onClick={onUndo}
         />
         <IconButton
           icon="redo"
           aria-label="다시 실행"
+          aria-keyshortcuts="Control+Shift+Z Meta+Shift+Z Control+Y"
           isDisabled={isDisabled || !isRedoAvailable}
           onClick={onRedo}
         />
