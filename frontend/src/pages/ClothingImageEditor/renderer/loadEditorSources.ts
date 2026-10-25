@@ -67,11 +67,15 @@ const createMaskFromAlpha = (cutout: ImageBitmap, size: Size) => {
 
 const createMaskFromBlob = async (blob: Blob, size: Size) => {
   const mask = await createImageBitmap(blob, BITMAP_OPTIONS);
-  const canvas = createCanvas(size);
-  get2dContext(canvas).drawImage(mask, 0, 0, size.width, size.height);
-  mask.close();
 
-  return canvas;
+  try {
+    const canvas = createCanvas(size);
+    get2dContext(canvas).drawImage(mask, 0, 0, size.width, size.height);
+
+    return canvas;
+  } finally {
+    mask.close();
+  }
 };
 
 // 편집 중인 마스크와 [원래대로]에 쓸 기본 마스크가 서로 영향을 주지 않게 복사한다.
@@ -89,6 +93,30 @@ const createFilledMask = (size: Size) => {
   context.fillRect(0, 0, size.width, size.height);
 
   return canvas;
+};
+
+/*
+ * 기본 마스크와 처음 마스크를 만든다. 실패하면 이미 디코딩한 그림을 닫는다.
+ * 원본은 최대 5천만 화소라, 닫지 않으면 GC가 돌 때까지 메모리를 크게 잡아 다시 시도해도 실패하기 쉽다.
+ */
+const createMasks = async (
+  bitmap: ImageBitmap,
+  createDefaultMask: () => HTMLCanvasElement,
+  maskBlob: Blob | null,
+  size: Size,
+) => {
+  try {
+    const defaultMask = createDefaultMask();
+    const initialMask =
+      maskBlob === null
+        ? cloneCanvas(defaultMask)
+        : await createMaskFromBlob(maskBlob, size);
+
+    return { defaultMask, initialMask };
+  } catch (error) {
+    bitmap.close();
+    throw error;
+  }
 };
 
 const decodeResized = async (blob: Blob, size: Size) => {
@@ -128,11 +156,12 @@ export const loadEditorSources = async (
       throw new EditorSourcesError('사진이 너무 커서 편집할 수 없어요.');
     }
 
-    const defaultMask = createFilledMask(size);
-    const initialMask =
-      maskBlob === null
-        ? cloneCanvas(defaultMask)
-        : await createMaskFromBlob(maskBlob, size);
+    const { defaultMask, initialMask } = await createMasks(
+      origin,
+      () => createFilledMask(size),
+      maskBlob,
+      size,
+    );
 
     return {
       size,
@@ -146,11 +175,12 @@ export const loadEditorSources = async (
 
   const cutout = await createImageBitmap(cutoutBlob, BITMAP_OPTIONS);
   const size = { width: cutout.width, height: cutout.height };
-  const defaultMask = createMaskFromAlpha(cutout, size);
-  const initialMask =
-    maskBlob === null
-      ? cloneCanvas(defaultMask)
-      : await createMaskFromBlob(maskBlob, size);
+  const { defaultMask, initialMask } = await createMasks(
+    cutout,
+    () => createMaskFromAlpha(cutout, size),
+    maskBlob,
+    size,
+  );
   const hasSavedMask = maskBlob !== null;
   const base = await decodeResized(originBlob, size);
 

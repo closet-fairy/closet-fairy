@@ -42,6 +42,34 @@ describe('출력 기하', () => {
     expectPoint(mapOutputToSource(geometry, [123, 456]), [123, 456]);
   });
 
+  test('원본 범위를 벗어난 좌표는 비어 있는 자리여야 한다.', () => {
+    const geometry = getOutputGeometry(
+      SOURCE,
+      [
+        [-0.25, -0.25],
+        [1.25, -0.25],
+        [1.25, 1.25],
+        [-0.25, 1.25],
+      ],
+      0,
+    );
+
+    expect(geometry).not.toBeNull();
+    if (geometry === null) {
+      return;
+    }
+
+    const toSource = (point: readonly [number, number]) =>
+      mapOutputToSource(geometry, point);
+    const insideOrigin = toSource([
+      geometry.outputSize.width / 3,
+      geometry.outputSize.height / 3,
+    ]);
+
+    expect(toSource([0, 0])).toBeNull();
+    expect(insideOrigin).not.toBeNull();
+  });
+
   test('시계 방향 90°면 출력 오른쪽 위가 원본 왼쪽 위여야 한다.', () => {
     const geometry = getOutputGeometry(SOURCE, DEFAULT_CORNERS, 90);
 
