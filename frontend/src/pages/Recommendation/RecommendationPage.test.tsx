@@ -8,7 +8,11 @@ import RecommendationPage from './RecommendationPage';
 
 const renderPage = () =>
   render(
-    <QueryClientProvider client={new QueryClient()}>
+    <QueryClientProvider
+      client={
+        new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      }
+    >
       <RecommendationPage />
     </QueryClientProvider>,
   );
@@ -821,15 +825,7 @@ describe('위치 고르기', () => {
         ),
       ),
     );
-    render(
-      <QueryClientProvider
-        client={
-          new QueryClient({ defaultOptions: { queries: { retry: false } } })
-        }
-      >
-        <RecommendationPage />
-      </QueryClientProvider>,
-    );
+    renderPage();
 
     await chooseLocationBySearch(user);
 
