@@ -99,14 +99,14 @@ def sigungu_by_sido() -> dict[str, list[str]]:
     return grouped
 
 
-def find_nearest_region(lat: float, lon: float) -> Region:
+def find_nearest_region(lat: float, lon: float) -> RegionPoint:
     distance, point = min(
         ((_distance_km(lat, lon, p.lat, p.lon), p) for p in load_region_points()),
         key=lambda pair: pair[0],
     )
     if distance > NEAREST_REGION_MAX_KM:
         raise RegionNotFoundError()
-    return find_region(point.sido_nm, point.sigungu_nm)
+    return point
 
 
 def _distance_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
