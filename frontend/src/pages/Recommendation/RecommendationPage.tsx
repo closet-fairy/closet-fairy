@@ -1,3 +1,4 @@
+import { useNavigate } from '@tanstack/react-router';
 import type { FormEvent } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { isUnauthorizedError } from '@/apis/authSession';
@@ -9,6 +10,10 @@ import Icon from '@/components/common/Icon';
 import Notice from '@/components/common/Notice';
 import Picker from '@/components/common/Picker';
 import TopBar from '@/components/common/TopBar';
+import {
+  CLOTHING_SHORTAGE_DESCRIPTION,
+  formatClothingShortageTitle,
+} from '@/domains/recommendation/clothingShortage';
 import type { GoingOutStart } from '@/domains/recommendation/goingOutTime';
 import {
   createEndTimeSlots,
@@ -26,7 +31,10 @@ import {
 import type { RecommendationTpo } from '@/domains/recommendation/toRecommendationSessionCreate';
 import { toRecommendationSessionCreate } from '@/domains/recommendation/toRecommendationSessionCreate';
 import { TPO_PRESETS } from '@/domains/recommendation/tpoPresets';
-import { useCreateRecommendationSessionRecommendationSessionsPost } from '@/generated/endpoints/recommendation/recommendation';
+import {
+  useCreateRecommendationSessionRecommendationSessionsPost,
+  usePrecheckRecommendationRecommendationsPrecheckGet,
+} from '@/generated/endpoints/recommendation/recommendation';
 import CustomTpoSheet from './components/CustomTpoSheet';
 import LocationField from './components/LocationField';
 import LocationSheet from './components/LocationSheet';
@@ -90,7 +98,10 @@ const useTimeSlotNow = () => {
 };
 
 const RecommendationPage = () => {
+  const navigate = useNavigate();
   const now = useTimeSlotNow();
+  const { data: precheck } =
+    usePrecheckRecommendationRecommendationsPrecheckGet();
   const [location, setLocation] = useState<RecommendationLocation | null>(null);
   const [isLocationSheetOpen, setIsLocationSheetOpen] = useState(false);
   const locationFieldRef = useRef<HTMLButtonElement | null>(null);
@@ -261,6 +272,24 @@ const RecommendationPage = () => {
       <TopBar title="코디 추천" />
       <S.Form onSubmit={handleSubmit}>
         <S.Fields>
+          {precheck?.is_clothing_shortage && (
+            <Notice
+              icon="checkroom"
+              title={formatClothingShortageTitle(precheck.shortage_categories)}
+              description={CLOTHING_SHORTAGE_DESCRIPTION}
+              action={
+                <Button
+                  variant="outline"
+                  size="sm"
+                  icon="add_a_photo"
+                  isFullWidth
+                  onClick={() => void navigate({ to: '/closet' })}
+                >
+                  옷 등록하기
+                </Button>
+              }
+            />
+          )}
           <FormField label="위치">
             <LocationField
               ref={locationFieldRef}

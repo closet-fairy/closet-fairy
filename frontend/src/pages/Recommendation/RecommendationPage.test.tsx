@@ -1,11 +1,22 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import type * as TanStackRouter from '@tanstack/react-router';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import type { WeatherPreview } from '@/generated/models';
+import type {
+  ClothingShortagePrecheckResponse,
+  WeatherPreview,
+} from '@/generated/models';
 import { server } from '@/mocks/node';
 import RecommendationPage from './RecommendationPage';
+
+const { navigate } = vi.hoisted(() => ({ navigate: vi.fn() }));
+
+vi.mock('@tanstack/react-router', async (importOriginal) => ({
+  ...(await importOriginal<typeof TanStackRouter>()),
+  useNavigate: () => navigate,
+}));
 
 const renderPage = () =>
   render(
@@ -50,6 +61,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
+  navigate.mockReset();
 });
 
 describe('기본 외출 시간 갱신', () => {
@@ -1118,5 +1130,88 @@ describe('위치 고르기', () => {
     expect(
       screen.getByRole('button', { name: /현재 위치 사용/ }),
     ).toHaveAccessibleName(/위치 권한을 한 번 확인합니다/);
+  });
+});
+
+describe('옷 부족 안내', () => {
+  const usePrecheck = (precheck: ClothingShortagePrecheckResponse) => {
+    server.use(
+      http.get('/api/recommendations/precheck', () =>
+        HttpResponse.json(precheck),
+      ),
+    );
+  };
+
+  test('2벌 미만인 카테고리가 있으면 그 카테고리를 담아 안내하고, 옷 등록하기를 누르면 옷장으로 이동해야 한다.', async () => {
+    const user = userEvent.setup();
+    usePrecheck({
+      is_clothing_shortage: true,
+      category_counts: { top: 3, bottom: 1, shoes: 0 },
+      shortage_categories: ['bottom', 'shoes'],
+      notice_cd: 'clothing_shortage',
+    });
+    renderPage();
+
+    expect(
+      await screen.findByText(
+        '하의·신발이 2벌보다 적어 추천이 단조로울 수 있어요',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('모자란 옷은 기본 아이템으로 채워 추천합니다.'),
+    ).toBeInTheDocument();
+    expect(submitButton()).toBeEnabled();
+
+    await user.click(screen.getByRole('button', { name: '옷 등록하기' }));
+
+    expect(navigate).toHaveBeenCalledWith({ to: '/closet' });
+  });
+
+  test('옷이 부족하지 않으면 안내를 띄우지 않아야 한다.', async () => {
+    let precheckRequestCount = 0;
+    server.use(
+      http.get('/api/recommendations/precheck', () => {
+        precheckRequestCount += 1;
+
+        return HttpResponse.json<ClothingShortagePrecheckResponse>({
+          is_clothing_shortage: false,
+          category_counts: { top: 3, bottom: 2, shoes: 2 },
+          shortage_categories: [],
+          notice_cd: null,
+        });
+      }),
+    );
+    renderPage();
+
+    await waitFor(() => {
+      expect(precheckRequestCount).toBe(1);
+    });
+    expect(
+      screen.queryByRole('button', { name: '옷 등록하기' }),
+    ).not.toBeInTheDocument();
+  });
+
+  test('옷 부족 확인에 실패하면 안내 없이 입력 화면을 그대로 써야 한다.', async () => {
+    let precheckRequestCount = 0;
+    server.use(
+      http.get('/api/recommendations/precheck', () => {
+        precheckRequestCount += 1;
+
+        return HttpResponse.json(
+          { code: 'INTERNAL_ERROR', message: '처리 중 오류가 발생했습니다.' },
+          { status: 500 },
+        );
+      }),
+    );
+    renderPage();
+
+    await waitFor(() => {
+      expect(precheckRequestCount).toBe(1);
+    });
+    expect(
+      screen.queryByRole('button', { name: '옷 등록하기' }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(submitButton()).toBeEnabled();
   });
 });
