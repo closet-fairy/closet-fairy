@@ -4,7 +4,7 @@ import {
   createRouter,
   RouterProvider,
 } from '@tanstack/react-router';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
@@ -72,7 +72,7 @@ describe('탈퇴 동의', () => {
     await user.type(screen.getByRole('textbox'), '탈퇴합니다');
     await user.click(screen.getByRole('button', { name: '탈퇴하기' }));
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(assign).toHaveBeenCalledWith(
         'https://accounts.example.com/authorize?state=w.1',
       );
@@ -106,8 +106,40 @@ describe('탈퇴 동의', () => {
 
     await user.click(screen.getByRole('button', { name: '돌아가기' }));
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(history.location.pathname).toBe('/my-info');
     });
+  });
+});
+
+describe('본인 확인 화면으로 이동', () => {
+  test('이동하는 동안에는 입력란과 버튼을 막고, 뒤로 가기로 복원되면 다시 풀어야 한다.', async () => {
+    const user = userEvent.setup();
+    await renderWithdrawal();
+
+    await user.type(screen.getByRole('textbox'), '탈퇴합니다');
+    await user.click(screen.getByRole('button', { name: '탈퇴하기' }));
+
+    await waitFor(() => {
+      expect(assign).toHaveBeenCalled();
+    });
+    expect(screen.getByRole('textbox')).toBeDisabled();
+    expect(screen.getByRole('button', { name: '돌아가기' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '탈퇴하기' })).toHaveAttribute(
+      'aria-busy',
+      'true',
+    );
+
+    act(() => {
+      window.dispatchEvent(
+        new PageTransitionEvent('pageshow', { persisted: true }),
+      );
+    });
+
+    expect(screen.getByRole('textbox')).toBeEnabled();
+    expect(screen.getByRole('button', { name: '돌아가기' })).toBeEnabled();
+    expect(
+      screen.getByRole('button', { name: '탈퇴하기' }),
+    ).not.toHaveAttribute('aria-busy');
   });
 });
