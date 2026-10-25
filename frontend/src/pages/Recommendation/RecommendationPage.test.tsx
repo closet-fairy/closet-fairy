@@ -285,4 +285,30 @@ describe('오류 안내', () => {
 
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
+
+  test('로그인이 만료돼 401을 받으면 화면에 따로 안내하지 않아야 한다.', async () => {
+    const user = userEvent.setup();
+    let requestCount = 0;
+    server.use(
+      http.post('/api/recommendation-sessions', () => {
+        requestCount += 1;
+
+        return HttpResponse.json(
+          { code: 'AUTH_REQUIRED', message: '로그인이 필요합니다.' },
+          { status: 401 },
+        );
+      }),
+    );
+    renderPage();
+
+    await user.click(submitButton());
+    await waitFor(() => {
+      expect(requestCount).toBe(1);
+    });
+    await waitFor(() => {
+      expect(submitButton()).toBeEnabled();
+    });
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
 });

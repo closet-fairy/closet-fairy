@@ -1,3 +1,5 @@
+import { ApiError } from '@/apis/apiError';
+import { reportUnauthorized } from '@/apis/authSession';
 import { convertAlphaToMask } from '@/domains/clothingImageEdit/mask';
 import type { Size } from '@/domains/clothingImageEdit/types';
 
@@ -21,6 +23,8 @@ export class EditorSourcesError extends Error {}
 // iOS Safari의 2D 캔버스 면적 한도다.
 const MAX_CANVAS_PIXELS = 16_777_216;
 
+const UNAUTHORIZED_STATUS = 401;
+
 const BITMAP_OPTIONS: ImageBitmapOptions = {
   premultiplyAlpha: 'none',
   colorSpaceConversion: 'none',
@@ -28,6 +32,15 @@ const BITMAP_OPTIONS: ImageBitmapOptions = {
 
 const fetchBlob = async (url: string) => {
   const response = await fetch(url, { credentials: 'include' });
+
+  if (response.status === UNAUTHORIZED_STATUS) {
+    reportUnauthorized();
+    throw new ApiError({
+      code: 'AUTH_REQUIRED',
+      message: '로그인이 필요합니다.',
+      status: UNAUTHORIZED_STATUS,
+    });
+  }
 
   if (!response.ok) {
     throw new EditorSourcesError('이미지를 불러오지 못했어요.');

@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ClosetRouteImport } from './routes/closet'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as MyInfoRouteImport } from './routes/my-info'
 import { Route as RecommendationRouteImport } from './routes/recommendation'
 import { Route as RecommendationHistoryRouteImport } from './routes/recommendation-history'
@@ -24,6 +25,11 @@ const IndexRoute = IndexRouteImport.update({
 const ClosetRoute = ClosetRouteImport.update({
   id: '/closet',
   path: '/closet',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MyInfoRoute = MyInfoRouteImport.update({
@@ -50,6 +56,7 @@ const ClosetClothingIdEditRoute = ClosetClothingIdEditRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/closet': typeof ClosetRoute
+  '/login': typeof LoginRoute
   '/my-info': typeof MyInfoRoute
   '/recommendation': typeof RecommendationRoute
   '/recommendation-history': typeof RecommendationHistoryRoute
@@ -58,6 +65,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/closet': typeof ClosetRoute
+  '/login': typeof LoginRoute
   '/my-info': typeof MyInfoRoute
   '/recommendation': typeof RecommendationRoute
   '/recommendation-history': typeof RecommendationHistoryRoute
@@ -67,6 +75,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/closet': typeof ClosetRoute
+  '/login': typeof LoginRoute
   '/my-info': typeof MyInfoRoute
   '/recommendation': typeof RecommendationRoute
   '/recommendation-history': typeof RecommendationHistoryRoute
@@ -77,6 +86,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/closet'
+    | '/login'
     | '/my-info'
     | '/recommendation'
     | '/recommendation-history'
@@ -85,6 +95,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/closet'
+    | '/login'
     | '/my-info'
     | '/recommendation'
     | '/recommendation-history'
@@ -93,6 +104,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/closet'
+    | '/login'
     | '/my-info'
     | '/recommendation'
     | '/recommendation-history'
@@ -102,6 +114,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ClosetRoute: typeof ClosetRoute
+  LoginRoute: typeof LoginRoute
   MyInfoRoute: typeof MyInfoRoute
   RecommendationRoute: typeof RecommendationRoute
   RecommendationHistoryRoute: typeof RecommendationHistoryRoute
@@ -122,6 +135,13 @@ declare module '@tanstack/react-router' {
       path: '/closet'
       fullPath: '/closet'
       preLoaderRoute: typeof ClosetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/my-info': {
@@ -158,6 +178,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ClosetRoute: ClosetRoute,
+  LoginRoute: LoginRoute,
   MyInfoRoute: MyInfoRoute,
   RecommendationRoute: RecommendationRoute,
   RecommendationHistoryRoute: RecommendationHistoryRoute,

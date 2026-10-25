@@ -1,6 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
 import { ApiError } from '@/apis/apiError';
+import { isUnauthorizedError } from '@/apis/authSession';
 import { snapCorners } from '@/domains/clothingImageEdit/perspective';
 import type { SaveRequest } from '@/domains/clothingImageEdit/saveRequests';
 import {
@@ -185,7 +186,11 @@ const useSaveClothingImageEdit = (clothingId: number) => {
               queryKey: detailQueryKey,
               refetchType: 'none',
             });
-            setErrorMessage(getSaveErrorMessage(outcome.error));
+            setErrorMessage(
+              isUnauthorizedError(outcome.error)
+                ? null
+                : getSaveErrorMessage(outcome.error),
+            );
           }
 
           return 'failed';

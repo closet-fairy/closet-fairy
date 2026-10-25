@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { ApiError } from '@/apis/apiError';
+import { isUnauthorizedError } from '@/apis/authSession';
 import Button from '@/components/common/Button';
 import type { ClothingDetail } from '@/generated/models';
 import ClothingNotFoundDialog from '@/pages/ClothingImageEditor/components/ClothingNotFoundDialog';
@@ -50,7 +51,7 @@ const ClothingImageEditorLoader = (props: ClothingImageEditorLoaderProps) => {
   const { save, isSaving, errorMessage, isNotFound, hasUnsavedServerChange } =
     useSaveClothingImageEdit(clothingId);
 
-  if (sourcesQuery.isPending) {
+  if (sourcesQuery.isPending || isUnauthorizedError(sourcesQuery.error)) {
     return <EditorStatusView title="불러오고 있어요" onClose={onClose} />;
   }
 
