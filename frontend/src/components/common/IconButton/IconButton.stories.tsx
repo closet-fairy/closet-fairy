@@ -76,6 +76,11 @@ const meta = {
       description: '버튼의 설명으로 읽힐 요소의 id입니다.',
       control: 'text',
     },
+    'aria-keyshortcuts': {
+      description:
+        '이 버튼과 같은 일을 하는 키보드 단축키를 알립니다. 예: `Control+Z Meta+Z`. 단축키가 없으면 넘기지 않습니다.',
+      control: 'text',
+    },
   },
   args: {
     icon: 'close',
