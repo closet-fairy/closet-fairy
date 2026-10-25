@@ -102,6 +102,9 @@ const RecommendationPage = () => {
   const now = useTimeSlotNow();
   const { data: precheck } =
     usePrecheckRecommendationRecommendationsPrecheckGet();
+  const shortageTitle = precheck?.is_clothing_shortage
+    ? formatClothingShortageTitle(precheck.shortage_categories)
+    : null;
   const [location, setLocation] = useState<RecommendationLocation | null>(null);
   const [isLocationSheetOpen, setIsLocationSheetOpen] = useState(false);
   const locationFieldRef = useRef<HTMLButtonElement | null>(null);
@@ -270,12 +273,13 @@ const RecommendationPage = () => {
   return (
     <S.Container>
       <TopBar title="코디 추천" />
+      <S.ShortageStatus role="status">{shortageTitle ?? ''}</S.ShortageStatus>
       <S.Form onSubmit={handleSubmit}>
         <S.Fields>
-          {precheck?.is_clothing_shortage && (
+          {shortageTitle && (
             <Notice
               icon="checkroom"
-              title={formatClothingShortageTitle(precheck.shortage_categories)}
+              title={shortageTitle}
               description={CLOTHING_SHORTAGE_DESCRIPTION}
               action={
                 <Button

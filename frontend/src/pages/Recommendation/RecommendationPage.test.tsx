@@ -1152,11 +1152,12 @@ describe('옷 부족 안내', () => {
     });
     renderPage();
 
-    expect(
-      await screen.findByText(
-        '하의·신발이 각각 2개보다 적어 추천이 단조로울 수 있어요',
-      ),
-    ).toBeInTheDocument();
+    const title = '하의·신발이 각각 2개보다 적어 추천이 단조로울 수 있어요';
+
+    await waitFor(() => {
+      expect(screen.getByRole('status')).toHaveTextContent(title);
+    });
+    expect(screen.getAllByText(title)).toHaveLength(2);
     expect(
       screen.getByText('모자란 옷은 기본 아이템으로 채워 추천합니다.'),
     ).toBeInTheDocument();
@@ -1189,6 +1190,7 @@ describe('옷 부족 안내', () => {
     expect(
       screen.queryByRole('button', { name: '옷 등록하기' }),
     ).not.toBeInTheDocument();
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
   });
 
   test('옷 부족 확인에 실패하면 안내 없이 입력 화면을 그대로 써야 한다.', async () => {
