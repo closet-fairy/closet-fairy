@@ -22,7 +22,7 @@ def list_regions(response: Response) -> list[SidoRegions]:
 @router.post(
     "/nearest",
     response_model=RegionName,
-    responses={404: {"model": ErrorResponse, "description": "50km 안에 지역이 없음"}},
+    responses={404: {"model": ErrorResponse, "description": "100km 안에 지역이 없음"}},
 )
 def find_nearest_region(coordinates: Coordinates) -> RegionName:
     """현재 위치 좌표에서 가장 가까운 시/군/구 (FR-REC-02).
