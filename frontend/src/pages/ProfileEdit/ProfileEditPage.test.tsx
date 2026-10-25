@@ -68,6 +68,7 @@ describe('프로필 저장', () => {
     await waitFor(() => {
       expect(history.location.pathname).toBe('/my-info');
     });
+    expect(await screen.findByText('옷장요정')).toBeInTheDocument();
     expect(requests).toEqual([
       {
         method: 'PUT',
