@@ -441,6 +441,38 @@ describe('뒤로 가기', () => {
     expect(cancelRequestCount).toBe(1);
   });
 
+  test('추천 그만두기 버튼으로 그만두면 진행 화면 기록을 지나 입력 화면으로 돌아가야 한다.', async () => {
+    const user = userEvent.setup();
+    savePending(0);
+    respondResult(createResult('processing'));
+    const cancelRequests = countCancelRequests();
+    await renderWithBrowserHistory();
+
+    await user.click(
+      await screen.findByRole(
+        'button',
+        { name: '추천 그만두기' },
+        { timeout: 2000 },
+      ),
+    );
+    await user.click(
+      within(await findDialog()).getByRole('button', { name: '그만두기' }),
+    );
+
+    expect(
+      await screen.findByRole('button', { name: /^위치 서울 성동구/ }),
+    ).toBeInTheDocument();
+    expect(window.location.pathname).toBe('/recommendation');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(cancelRequests.count).toBe(1);
+
+    window.history.back();
+
+    await waitFor(() => {
+      expect(window.location.pathname).toBe('/my-info');
+    });
+  });
+
   test('확인 창이 떠 있는 동안 앞으로 가기로 돌아오면 창을 닫고 계속 기다려야 한다.', async () => {
     respondResult(createResult('processing'));
     await renderWithBrowserHistory();
