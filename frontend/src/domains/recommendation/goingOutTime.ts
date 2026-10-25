@@ -42,6 +42,9 @@ export const getKstDate = (now: Date) => {
 
 const getKstMidnight = (date: string) => Date.parse(`${date}T00:00:00+09:00`);
 
+export const shiftKstDate = (date: string, days: number) =>
+  getKstDate(new Date(getKstMidnight(date) + days * DAY_MILLISECONDS));
+
 export const getDayOffset = (date: string, now: Date) =>
   Math.round(
     (getKstMidnight(date) - getKstMidnight(getKstDate(now))) / DAY_MILLISECONDS,

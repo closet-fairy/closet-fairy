@@ -9,6 +9,7 @@ import {
   getDefaultEndTime,
   getGoingOutDateCd,
   getKstDate,
+  shiftKstDate,
   getMillisecondsUntilNextTimeSlot,
   isNextDayReturn,
   isPastTimeSlot,
@@ -200,6 +201,11 @@ describe('KST 날짜', () => {
       '2026-10-14',
     );
     expect(getKstDate(new Date('2026-10-14T15:00:00Z'))).toBe('2026-10-15');
+  });
+
+  test('날짜를 앞뒤로 옮길 때 달과 해가 바뀌는 경계를 넘어야 한다.', () => {
+    expect(shiftKstDate('2026-10-31', 1)).toBe('2026-11-01');
+    expect(shiftKstDate('2027-01-01', -1)).toBe('2026-12-31');
   });
 
   test('오늘과의 날짜 차이를 세야 한다.', () => {
