@@ -125,8 +125,9 @@ export const Spinner = styled.span`
   display: flex;
   align-items: center;
   justify-content: center;
+`;
 
-  & > span {
-    animation: ${spin} ${SPIN_DURATION} linear infinite;
-  }
+export const SpinnerIcon = styled.span`
+  display: inline-flex;
+  animation: ${spin} ${SPIN_DURATION} linear infinite;
 `;
