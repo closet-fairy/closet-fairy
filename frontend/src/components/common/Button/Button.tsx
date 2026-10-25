@@ -88,7 +88,9 @@ const Button = (props: ButtonProps) => {
       </S.Content>
       {isLoading && (
         <S.Spinner aria-hidden>
-          <Icon name="progress_activity" size={ICON_SIZE[size]} />
+          <S.SpinnerIcon>
+            <Icon name="progress_activity" size={ICON_SIZE[size]} />
+          </S.SpinnerIcon>
         </S.Spinner>
       )}
     </S.Button>
