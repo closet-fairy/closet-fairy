@@ -3,6 +3,7 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import type { WeatherPreview } from '@/generated/models';
 import { server } from '@/mocks/node';
 import RecommendationPage from './RecommendationPage';
 
@@ -708,7 +709,7 @@ describe('외출 날짜', () => {
 });
 
 describe('위치 필드와 날씨 미리보기', () => {
-  const weatherPreview = (overrides: Record<string, unknown> = {}) => ({
+  const weatherPreview = (overrides: Partial<WeatherPreview> = {}) => ({
     temperature: 24.3,
     feels_like_temperature: 25.1,
     weather_condition_cd: 'overcast',

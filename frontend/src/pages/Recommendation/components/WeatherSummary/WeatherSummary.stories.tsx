@@ -3,7 +3,9 @@ import { delay, http, HttpResponse } from 'msw';
 import type { WeatherPreview } from '@/generated/models';
 import WeatherSummary from './WeatherSummary';
 
-const createPreview = (overrides: Partial<WeatherPreview> = {}) => ({
+const createPreview = (
+  overrides: Partial<WeatherPreview> = {},
+): WeatherPreview => ({
   temperature: 24.3,
   feels_like_temperature: 25.1,
   weather_condition_cd: 'overcast',

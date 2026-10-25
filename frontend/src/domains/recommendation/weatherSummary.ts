@@ -25,8 +25,7 @@ export type WeatherSummary =
     };
 
 export const formatTemperature = (temperature: number) => {
-  // Math.round(-0.4)는 -0이라 그대로 두면 "-0°"로 보이므로 0으로 바꾼다.
-  const rounded = Math.round(temperature) || 0;
+  const rounded = Math.round(temperature);
 
   return `${rounded}°`;
 };

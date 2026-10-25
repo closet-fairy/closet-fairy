@@ -1,4 +1,4 @@
-const SIDO_SHORT_NAMES: Readonly<Record<string, string>> = {
+const SIDO_SHORT_NAMES: Readonly<Partial<Record<string, string>>> = {
   서울특별시: '서울',
   부산광역시: '부산',
   대구광역시: '대구',
