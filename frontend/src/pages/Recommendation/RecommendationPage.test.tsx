@@ -684,4 +684,25 @@ describe('외출 날짜', () => {
       '외출 시작 시각이 이미 지났습니다.',
     );
   });
+
+  test('고른 시각이 이틀 이상 지나면 날짜를 붙여 보여 주고, 요청하면 지난 시각이라고 알려야 한다.', async () => {
+    const user = userEvent.setup();
+    vi.setSystemTime(new Date('2026-10-14T22:00:00+09:00'));
+    renderPage();
+
+    await pickOption(user, startTrigger('22:00'), '23:30');
+    vi.setSystemTime(new Date('2026-10-16T10:00:00+09:00'));
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+
+    expect(startTrigger('10/14 23:30')).toBeInTheDocument();
+    expect(endTrigger('어제 04:30')).toBeInTheDocument();
+
+    await user.click(submitButton());
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '외출 시작 시각이 이미 지났습니다.',
+    );
+  });
 });
