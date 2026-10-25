@@ -11,6 +11,7 @@ import CheckroomFill from '@material-symbols/svg-400/outlined/checkroom-fill.svg
 import ChevronLeft from '@material-symbols/svg-400/outlined/chevron_left.svg?react';
 import ChevronRight from '@material-symbols/svg-400/outlined/chevron_right.svg?react';
 import Close from '@material-symbols/svg-400/outlined/close.svg?react';
+import Cloud from '@material-symbols/svg-400/outlined/cloud.svg?react';
 import Edit from '@material-symbols/svg-400/outlined/edit.svg?react';
 import EditLocationAlt from '@material-symbols/svg-400/outlined/edit_location_alt.svg?react';
 import ErrorIcon from '@material-symbols/svg-400/outlined/error.svg?react';
@@ -26,11 +27,13 @@ import Layers from '@material-symbols/svg-400/outlined/layers.svg?react';
 import LocationOn from '@material-symbols/svg-400/outlined/location_on.svg?react';
 import Logout from '@material-symbols/svg-400/outlined/logout.svg?react';
 import MyLocation from '@material-symbols/svg-400/outlined/my_location.svg?react';
+import PartlyCloudyDay from '@material-symbols/svg-400/outlined/partly_cloudy_day.svg?react';
 import Person from '@material-symbols/svg-400/outlined/person.svg?react';
 import PersonFill from '@material-symbols/svg-400/outlined/person-fill.svg?react';
 import PersonRemove from '@material-symbols/svg-400/outlined/person_remove.svg?react';
 import ProgressActivity from '@material-symbols/svg-400/outlined/progress_activity.svg?react';
 import RadioButtonUnchecked from '@material-symbols/svg-400/outlined/radio_button_unchecked.svg?react';
+import Rainy from '@material-symbols/svg-400/outlined/rainy.svg?react';
 import Redo from '@material-symbols/svg-400/outlined/redo.svg?react';
 import Refresh from '@material-symbols/svg-400/outlined/refresh.svg?react';
 import RestartAlt from '@material-symbols/svg-400/outlined/restart_alt.svg?react';
@@ -41,7 +44,10 @@ import Star from '@material-symbols/svg-400/outlined/star.svg?react';
 import StarFill from '@material-symbols/svg-400/outlined/star-fill.svg?react';
 import StarShine from '@material-symbols/svg-400/outlined/star_shine.svg?react';
 import StarShineFill from '@material-symbols/svg-400/outlined/star_shine-fill.svg?react';
+import Sunny from '@material-symbols/svg-400/outlined/sunny.svg?react';
 import Undo from '@material-symbols/svg-400/outlined/undo.svg?react';
+import WeatherMix from '@material-symbols/svg-400/outlined/weather_mix.svg?react';
+import WeatherSnowy from '@material-symbols/svg-400/outlined/weather_snowy.svg?react';
 
 export const icons = {
   add_a_photo: AddAPhoto,
@@ -57,6 +63,7 @@ export const icons = {
   chevron_left: ChevronLeft,
   chevron_right: ChevronRight,
   close: Close,
+  cloud: Cloud,
   edit: Edit,
   edit_location_alt: EditLocationAlt,
   error: ErrorIcon,
@@ -72,11 +79,13 @@ export const icons = {
   location_on: LocationOn,
   logout: Logout,
   my_location: MyLocation,
+  partly_cloudy_day: PartlyCloudyDay,
   person: Person,
   'person-fill': PersonFill,
   person_remove: PersonRemove,
   progress_activity: ProgressActivity,
   radio_button_unchecked: RadioButtonUnchecked,
+  rainy: Rainy,
   redo: Redo,
   refresh: Refresh,
   restart_alt: RestartAlt,
@@ -87,7 +96,10 @@ export const icons = {
   'star-fill': StarFill,
   star_shine: StarShine,
   'star_shine-fill': StarShineFill,
+  sunny: Sunny,
   undo: Undo,
+  weather_mix: WeatherMix,
+  weather_snowy: WeatherSnowy,
 } as const;
 
 export type IconName = keyof typeof icons;
