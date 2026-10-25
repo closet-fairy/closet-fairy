@@ -706,3 +706,90 @@ describe('외출 날짜', () => {
     );
   });
 });
+
+describe('위치 필드와 날씨 미리보기', () => {
+  const weatherPreview = (overrides: Record<string, unknown> = {}) => ({
+    temperature: 24.3,
+    feels_like_temperature: 25.1,
+    weather_condition_cd: 'overcast',
+    is_fallback: false,
+    is_sky_missing: false,
+    ...overrides,
+  });
+
+  test('위치 필드에 짧은 지역 이름과 그 지역의 날씨를 보여 줘야 한다.', async () => {
+    let weatherParams: URLSearchParams | undefined;
+    server.use(
+      http.get('/api/weather/preview', ({ request }) => {
+        weatherParams = new URL(request.url).searchParams;
+        return HttpResponse.json(weatherPreview());
+      }),
+    );
+    renderPage();
+
+    expect(
+      await screen.findByRole('button', { name: '위치 서울 성동구 24° 흐림' }),
+    ).toBeInTheDocument();
+    expect(weatherParams?.get('sido_nm')).toBe('서울특별시');
+    expect(weatherParams?.get('sigungu_nm')).toBe('성동구');
+  });
+
+  test('하늘상태 예보가 없으면 기온만 보여 줘야 한다.', async () => {
+    server.use(
+      http.get('/api/weather/preview', () =>
+        HttpResponse.json(
+          weatherPreview({
+            weather_condition_cd: 'clear',
+            is_sky_missing: true,
+          }),
+        ),
+      ),
+    );
+    renderPage();
+
+    expect(
+      await screen.findByRole('button', { name: '위치 서울 성동구 24°' }),
+    ).toBeInTheDocument();
+  });
+
+  test('날씨가 대체값이면 기온 대신 날씨를 확인할 수 없다고 보여 줘야 한다.', async () => {
+    server.use(
+      http.get('/api/weather/preview', () =>
+        HttpResponse.json(weatherPreview({ is_fallback: true })),
+      ),
+    );
+    renderPage();
+
+    expect(
+      await screen.findByRole('button', {
+        name: '위치 서울 성동구 날씨 확인 불가',
+      }),
+    ).toBeInTheDocument();
+  });
+
+  test('날씨를 불러오지 못하면 날씨를 확인할 수 없다고 보여 줘야 한다.', async () => {
+    server.use(
+      http.get('/api/weather/preview', () =>
+        HttpResponse.json(
+          { code: 'INTERNAL_SERVER_ERROR', message: '서버 오류입니다.' },
+          { status: 500 },
+        ),
+      ),
+    );
+    render(
+      <QueryClientProvider
+        client={
+          new QueryClient({ defaultOptions: { queries: { retry: false } } })
+        }
+      >
+        <RecommendationPage />
+      </QueryClientProvider>,
+    );
+
+    expect(
+      await screen.findByRole('button', {
+        name: '위치 서울 성동구 날씨 확인 불가',
+      }),
+    ).toBeInTheDocument();
+  });
+});

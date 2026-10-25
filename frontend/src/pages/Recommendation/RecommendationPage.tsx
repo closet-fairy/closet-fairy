@@ -6,7 +6,6 @@ import Chip from '@/components/common/Chip';
 import ChipGroup from '@/components/common/ChipGroup';
 import FormField from '@/components/common/FormField';
 import Icon from '@/components/common/Icon';
-import ListItem from '@/components/common/ListItem';
 import Notice from '@/components/common/Notice';
 import Picker from '@/components/common/Picker';
 import TopBar from '@/components/common/TopBar';
@@ -29,12 +28,14 @@ import { toRecommendationSessionCreate } from '@/domains/recommendation/toRecomm
 import { TPO_PRESETS } from '@/domains/recommendation/tpoPresets';
 import { useCreateRecommendationSessionRecommendationSessionsPost } from '@/generated/endpoints/recommendation/recommendation';
 import CustomTpoSheet from './components/CustomTpoSheet';
+import LocationField from './components/LocationField';
 import * as S from './RecommendationPage.styled';
+import type { RecommendationLocation } from './types';
 
-const TEMPORARY_LOCATION = {
+const TEMPORARY_LOCATION: RecommendationLocation = {
   sidoNm: '서울특별시',
   sigunguNm: '성동구',
-  label: '서울 성동구',
+  inputTypeCd: 'manual',
 };
 
 const GOING_OUT_DATE_OUT_OF_RANGE_MESSAGE =
@@ -250,11 +251,7 @@ const RecommendationPage = () => {
       <S.Form onSubmit={handleSubmit}>
         <S.Fields>
           <FormField label="위치">
-            <ListItem
-              variant="card"
-              icon="location_on"
-              title={TEMPORARY_LOCATION.label}
-            />
+            <LocationField location={TEMPORARY_LOCATION} onClick={() => {}} />
           </FormField>
           <FormField label="상황" hint="하나만 선택">
             <ChipGroup value={tpo.cd} onChange={handleTpoChange}>
