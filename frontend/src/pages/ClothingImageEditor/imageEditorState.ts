@@ -7,7 +7,6 @@ import {
 } from '@/domains/clothingImageEdit/angle';
 import {
   DEFAULT_CORNERS,
-  isDefaultCorners,
   isValidQuad,
   snapCorners,
 } from '@/domains/clothingImageEdit/perspective';
@@ -174,15 +173,5 @@ export const hasChanges = (
     ) ||
     state.maskStatus === 'edited' ||
     isMaskChanged
-  );
-};
-
-export const isAllDefault = (state: ImageEditorState, context: MaskContext) => {
-  const { hasSavedMask } = context;
-
-  return (
-    getSaveAngle(state) === 0 &&
-    isDefaultCorners(state.corners) &&
-    isDefaultMask(state.maskStatus, hasSavedMask)
   );
 };

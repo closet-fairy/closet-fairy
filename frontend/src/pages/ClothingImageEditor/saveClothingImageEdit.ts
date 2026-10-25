@@ -5,7 +5,10 @@ import {
 } from '@/domains/clothingImageEdit/perspective';
 import type { PerspectiveParamValue } from '@/domains/clothingImageEdit/perspective';
 import { planSaveRequests } from '@/domains/clothingImageEdit/saveRequests';
-import type { SaveRequest } from '@/domains/clothingImageEdit/saveRequests';
+import type {
+  MaskStatus,
+  SaveRequest,
+} from '@/domains/clothingImageEdit/saveRequests';
 import type { ClothingDetail } from '@/generated/models';
 import { getSaveAngle } from '@/pages/ClothingImageEditor/imageEditorState';
 import type { ImageEditorState } from '@/pages/ClothingImageEditor/imageEditorState';
@@ -30,7 +33,10 @@ export interface SaveJob {
 
 export interface SaveSession {
   hasSavedMask: boolean;
+  // 편집기를 열 때 저장된 마스크가 있었는지다. 상태의 'initial'은 이 시점의 마스크를 뜻한다.
+  initialHasSavedMask: boolean;
   isServerChanged: boolean;
+  isServerMaskChanged: boolean;
   pendingJob: SaveJob | null;
 }
 
@@ -59,7 +65,9 @@ interface SaveClothingImageEditResult {
 
 export const createSaveSession = (hasSavedMask: boolean): SaveSession => ({
   hasSavedMask,
+  initialHasSavedMask: hasSavedMask,
   isServerChanged: false,
+  isServerMaskChanged: false,
   pendingJob: null,
 });
 
@@ -79,16 +87,32 @@ const isSameSaveTarget = (a: ImageEditorState, b: ImageEditorState) =>
 const hasBrushMask = (clothing: ClothingDetail) =>
   (clothing.edit?.brush_mask_url ?? null) !== null;
 
+/*
+ * 'initial'은 편집기를 열 때 불러온 마스크 그대로라는 뜻이다.
+ * 앞선 저장이 중간에 실패해 서버의 마스크가 바뀌었으면 그 마스크와 더는 같지 않으므로,
+ * 처음에 저장된 마스크가 없었으면 기본 마스크로, 있었으면 지금 마스크를 다시 올리는 것으로 본다.
+ */
+const getPlanMaskStatus = (
+  state: ImageEditorState,
+  session: SaveSession,
+): MaskStatus => {
+  if (state.maskStatus !== 'initial' || !session.isServerMaskChanged) {
+    return state.maskStatus;
+  }
+
+  return session.initialHasSavedMask ? 'edited' : 'default';
+};
+
 const planSaveJob = async (
   state: ImageEditorState,
-  hasSavedMask: boolean,
+  session: SaveSession,
   createFiles: SaveClothingImageEditParams['createFiles'],
 ): Promise<SaveJob | null> => {
   const requests = planSaveRequests({
     isDefaultTransform:
       getSaveAngle(state) === 0 && isDefaultCorners(state.corners),
-    maskStatus: state.maskStatus,
-    hasSavedMask,
+    maskStatus: getPlanMaskStatus(state, session),
+    hasSavedMask: session.hasSavedMask,
   });
 
   try {
@@ -139,9 +163,7 @@ export const saveClothingImageEdit = async (
     };
   }
 
-  const job =
-    resumableJob ??
-    (await planSaveJob(state, session.hasSavedMask, createFiles));
+  const job = resumableJob ?? (await planSaveJob(state, session, createFiles));
 
   if (job === null) {
     return {
@@ -150,7 +172,7 @@ export const saveClothingImageEdit = async (
     };
   }
 
-  let { hasSavedMask, isServerChanged } = session;
+  let { hasSavedMask, isServerChanged, isServerMaskChanged } = session;
   let lastResponse: ClothingDetail | null = null;
 
   for (let index = job.nextIndex; index < job.requests.length; index += 1) {
@@ -160,15 +182,19 @@ export const saveClothingImageEdit = async (
       return {
         outcome: { status: 'requestFailed', error, lastResponse },
         session: {
+          ...session,
           hasSavedMask,
           isServerChanged,
+          isServerMaskChanged,
           pendingJob: { ...job, nextIndex: index },
         },
       };
     }
 
+    const request = job.requests[index];
     hasSavedMask = hasBrushMask(lastResponse);
     isServerChanged = true;
+    isServerMaskChanged ||= request === 'saveMask' || request === 'resetEdit';
   }
 
   return {

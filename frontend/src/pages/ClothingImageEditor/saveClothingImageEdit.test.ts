@@ -272,6 +272,98 @@ describe('실패 뒤 다시 시도', () => {
     expect(second.session.pendingJob).toBeNull();
   });
 
+  test('마스크까지 저장된 뒤 붓질을 모두 실행 취소했으면, 회전을 남긴 채 처음에 저장된 마스크가 없던 옷은 초기화부터 다시 보내야 한다.', async () => {
+    const files = createFiles();
+    const first = await saveClothingImageEdit({
+      session: createSaveSession(false),
+      state: createState({ tilt: 3, maskStatus: 'edited', maskVersion: 3 }),
+      isChanged: true,
+      hasInvalidSavedEdit: false,
+      createFiles: files,
+      sendRequest: createSendRequest({
+        failAt: 'saveDisplay',
+        maskUrl: '/media/mask.png',
+      }),
+    });
+
+    expect(first.session.hasSavedMask).toBe(true);
+
+    const retrying = createSendRequest();
+    const second = await saveClothingImageEdit({
+      session: first.session,
+      state: createState({ tilt: 3, maskStatus: 'initial', maskVersion: 5 }),
+      isChanged: false,
+      hasInvalidSavedEdit: false,
+      createFiles: files,
+      sendRequest: retrying,
+    });
+
+    expect(getSentRequests(retrying)).toEqual([
+      'resetEdit',
+      'saveEdit',
+      'saveDisplay',
+    ]);
+    expect(second.outcome.status).toBe('saved');
+  });
+
+  test('마스크까지 저장된 뒤 붓질을 모두 실행 취소했으면, 처음에 저장된 마스크가 있던 옷은 지금 마스크를 다시 올려야 한다.', async () => {
+    const files = createFiles();
+    const first = await saveClothingImageEdit({
+      session: createSaveSession(true),
+      state: createState({ maskStatus: 'edited', maskVersion: 3 }),
+      isChanged: true,
+      hasInvalidSavedEdit: false,
+      createFiles: files,
+      sendRequest: createSendRequest({
+        failAt: 'saveDisplay',
+        maskUrl: '/media/mask-2.png',
+      }),
+    });
+
+    const retrying = createSendRequest({ maskUrl: '/media/mask-3.png' });
+    await saveClothingImageEdit({
+      session: first.session,
+      state: createState({ maskStatus: 'initial', maskVersion: 5 }),
+      isChanged: false,
+      hasInvalidSavedEdit: false,
+      createFiles: files,
+      sendRequest: retrying,
+    });
+
+    expect(getSentRequests(retrying)).toEqual([
+      'saveEdit',
+      'saveMask',
+      'saveDisplay',
+    ]);
+  });
+
+  test('회전·원근만 저장된 뒤에는 불러온 마스크를 그대로 두어야 한다.', async () => {
+    const files = createFiles();
+    const first = await saveClothingImageEdit({
+      session: createSaveSession(true),
+      state: createState({ tilt: 3 }),
+      isChanged: true,
+      hasInvalidSavedEdit: false,
+      createFiles: files,
+      sendRequest: createSendRequest({
+        failAt: 'saveDisplay',
+        maskUrl: '/media/mask.png',
+      }),
+    });
+
+    const retrying = createSendRequest({ maskUrl: '/media/mask.png' });
+    await saveClothingImageEdit({
+      session: first.session,
+      state: createState({ tilt: 4 }),
+      isChanged: true,
+      hasInvalidSavedEdit: false,
+      createFiles: files,
+      sendRequest: retrying,
+    });
+
+    expect(getSentRequests(retrying)).toEqual(['saveEdit', 'saveDisplay']);
+  });
+
   test('실패한 뒤 단계만 옮겼으면 실패한 요청부터 이어 보내야 한다.', async () => {
     const state = createState({ tilt: 3 });
     const files = createFiles();

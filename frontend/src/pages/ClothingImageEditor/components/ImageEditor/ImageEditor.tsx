@@ -431,7 +431,7 @@ const ImageEditor = (props: ImageEditorProps) => {
                   angle={angle}
                   faintOpacity={faintOpacity}
                   displayScale={getDisplayScale()}
-                  preserveDrawingBuffer
+                  isDrawingBufferPreserved
                   onReady={(renderer, canvas) => {
                     previewCanvasRef.current = canvas;
                     setPreviewCanvas(canvas);
@@ -445,6 +445,7 @@ const ImageEditor = (props: ImageEditorProps) => {
                   <PerspectiveOverlay
                     corners={state.corners}
                     quarterTurns={state.quarterTurns}
+                    imageSize={sources.size}
                     onChange={(nextCorners) =>
                       dispatch({ type: 'setCorners', corners: nextCorners })
                     }

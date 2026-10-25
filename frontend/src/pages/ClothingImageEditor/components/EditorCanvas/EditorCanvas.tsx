@@ -17,7 +17,7 @@ interface EditorCanvasProps {
   angle: number;
   faintOpacity?: number;
   displayScale?: number;
-  preserveDrawingBuffer?: boolean;
+  isDrawingBufferPreserved?: boolean;
   onReady?: (renderer: EditorRenderer, canvas: HTMLCanvasElement) => void;
   onError?: (error: unknown) => void;
   'aria-label': string;
@@ -33,7 +33,7 @@ const EditorCanvas = (props: EditorCanvasProps) => {
     angle,
     faintOpacity = 0,
     displayScale,
-    preserveDrawingBuffer = false,
+    isDrawingBufferPreserved = false,
     onReady,
     onError,
     'aria-label': ariaLabel,
@@ -46,6 +46,10 @@ const EditorCanvas = (props: EditorCanvasProps) => {
     angle,
     faintOpacity,
   });
+  const latestBaseRef = useRef<{ source: TexImageSource; size: Size } | null>(
+    null,
+  );
+  const latestMaskRef = useRef<TexImageSource | null>(null);
   const callbacksRef = useRef({ onReady, onError });
   const { width, height } = size;
 
@@ -64,7 +68,7 @@ const EditorCanvas = (props: EditorCanvasProps) => {
 
     try {
       renderer = createEditorRenderer(canvas, {
-        preserveDrawingBuffer,
+        preserveDrawingBuffer: isDrawingBufferPreserved,
         onRestored: () => {
           renderer.render(latestOptionsRef.current);
         },
@@ -78,19 +82,32 @@ const EditorCanvas = (props: EditorCanvasProps) => {
     }
 
     rendererRef.current = renderer;
+
+    // 렌더러를 다시 만들면 텍스처가 비어 있으므로, 들고 있던 원본과 마스크를 바로 올린다.
+    const latestBase = latestBaseRef.current;
+    const latestMask = latestMaskRef.current;
+
+    if (latestBase !== null && latestMask !== null) {
+      renderer.setBase(latestBase.source, latestBase.size);
+      renderer.setMask(latestMask);
+      renderer.render(latestOptionsRef.current);
+    }
+
     callbacksRef.current.onReady?.(renderer, canvas);
 
     return () => {
       renderer.dispose();
       rendererRef.current = null;
     };
-  }, [preserveDrawingBuffer]);
+  }, [isDrawingBufferPreserved]);
 
   useEffect(() => {
+    latestBaseRef.current = { source: base, size: { width, height } };
     rendererRef.current?.setBase(base, { width, height });
   }, [base, width, height]);
 
   useEffect(() => {
+    latestMaskRef.current = mask;
     rendererRef.current?.setMask(mask);
   }, [mask, maskVersion]);
 
