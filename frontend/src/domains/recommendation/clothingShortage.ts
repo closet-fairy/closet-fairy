@@ -39,6 +39,7 @@ export const formatClothingShortageTitle = (
     .map((category) => SHORTAGE_CATEGORY_LABELS[category])
     .join('·');
   const particle = hasFinalConsonant(labels) ? '이' : '가';
+  const each = shortageCategories.length > 1 ? '각각 ' : '';
 
-  return `${labels}${particle} ${MIN_CLOTHING_COUNT}벌보다 적어 추천이 단조로울 수 있어요`;
+  return `${labels}${particle} ${each}${MIN_CLOTHING_COUNT}개보다 적어 추천이 단조로울 수 있어요`;
 };

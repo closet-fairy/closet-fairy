@@ -3,16 +3,16 @@ import { formatClothingShortageTitle } from './clothingShortage';
 
 describe('옷 부족 안내 제목', () => {
   test.each([
-    [['top'] as const, '상의가 2벌보다 적어 추천이 단조로울 수 있어요'],
-    [['bottom'] as const, '하의가 2벌보다 적어 추천이 단조로울 수 있어요'],
-    [['shoes'] as const, '신발이 2벌보다 적어 추천이 단조로울 수 있어요'],
+    [['top'] as const, '상의가 2개보다 적어 추천이 단조로울 수 있어요'],
+    [['bottom'] as const, '하의가 2개보다 적어 추천이 단조로울 수 있어요'],
+    [['shoes'] as const, '신발이 2개보다 적어 추천이 단조로울 수 있어요'],
     [
       ['top', 'bottom'] as const,
-      '상의·하의가 2벌보다 적어 추천이 단조로울 수 있어요',
+      '상의·하의가 각각 2개보다 적어 추천이 단조로울 수 있어요',
     ],
     [
       ['top', 'bottom', 'shoes'] as const,
-      '상의·하의·신발이 2벌보다 적어 추천이 단조로울 수 있어요',
+      '상의·하의·신발이 각각 2개보다 적어 추천이 단조로울 수 있어요',
     ],
   ])('부족한 카테고리가 %j면 "%s"여야 한다.', (categories, title) => {
     expect(formatClothingShortageTitle(categories)).toBe(title);

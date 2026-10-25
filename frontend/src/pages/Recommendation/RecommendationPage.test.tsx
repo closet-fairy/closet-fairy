@@ -1134,7 +1134,7 @@ describe('위치 고르기', () => {
 });
 
 describe('옷 부족 안내', () => {
-  const usePrecheck = (precheck: ClothingShortagePrecheckResponse) => {
+  const respondPrecheck = (precheck: ClothingShortagePrecheckResponse) => {
     server.use(
       http.get('/api/recommendations/precheck', () =>
         HttpResponse.json(precheck),
@@ -1144,7 +1144,7 @@ describe('옷 부족 안내', () => {
 
   test('2벌 미만인 카테고리가 있으면 그 카테고리를 담아 안내하고, 옷 등록하기를 누르면 옷장으로 이동해야 한다.', async () => {
     const user = userEvent.setup();
-    usePrecheck({
+    respondPrecheck({
       is_clothing_shortage: true,
       category_counts: { top: 3, bottom: 1, shoes: 0 },
       shortage_categories: ['bottom', 'shoes'],
@@ -1154,7 +1154,7 @@ describe('옷 부족 안내', () => {
 
     expect(
       await screen.findByText(
-        '하의·신발이 2벌보다 적어 추천이 단조로울 수 있어요',
+        '하의·신발이 각각 2개보다 적어 추천이 단조로울 수 있어요',
       ),
     ).toBeInTheDocument();
     expect(
