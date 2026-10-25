@@ -3,23 +3,35 @@ import { useContext } from 'react';
 import { FormFieldContext } from '@/components/common/FormField/FormField.context';
 import * as S from './ChipGroup.styled';
 
-interface ChipGroupProps {
+interface ChipGroupBaseProps {
   value: string | null;
-  onChange: (value: string) => void;
   children: ReactNode;
   'aria-label'?: string;
   'aria-labelledby'?: string;
   isDisabled?: boolean;
 }
 
+interface RequiredChipGroupProps extends ChipGroupBaseProps {
+  isDeselectable?: false;
+  onChange: (value: string) => void;
+}
+
+interface DeselectableChipGroupProps extends ChipGroupBaseProps {
+  isDeselectable: true;
+  onChange: (value: string | null) => void;
+}
+
+type ChipGroupProps = RequiredChipGroupProps | DeselectableChipGroupProps;
+
 const ChipGroup = (props: ChipGroupProps) => {
   const {
     value,
-    onChange,
     children,
     'aria-label': ariaLabel,
     'aria-labelledby': ariaLabelledBy,
     isDisabled = false,
+    isDeselectable,
+    onChange,
   } = props;
 
   const formField = useContext(FormFieldContext);
@@ -27,11 +39,14 @@ const ChipGroup = (props: ChipGroupProps) => {
   const handleValueChange = (groupValue: string[]) => {
     const nextValue = groupValue.at(0);
 
-    if (nextValue === undefined) {
+    if (nextValue !== undefined) {
+      onChange(nextValue);
       return;
     }
 
-    onChange(nextValue);
+    if (isDeselectable === true) {
+      onChange(null);
+    }
   };
 
   return (

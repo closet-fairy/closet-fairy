@@ -32,7 +32,13 @@ const meta = {
     },
     onChange: {
       description:
-        '다른 칩을 눌러 선택이 바뀔 때 호출합니다. 이벤트 객체가 아니라 새로 고른 칩의 `value` 문자열을 넘깁니다. 이미 선택된 칩을 다시 누르면 해제되지 않고 호출되지도 않으며, `onClick`을 넘긴 칩을 눌렀을 때도 호출되지 않습니다.',
+        '다른 칩을 눌러 선택이 바뀔 때 호출합니다. 이벤트 객체가 아니라 새로 고른 칩의 `value` 문자열을 넘깁니다. 이미 선택된 칩을 다시 누르면 해제되지 않고 호출되지도 않으며, `onClick`을 넘긴 칩을 눌렀을 때도 호출되지 않습니다. `isDeselectable`이면 선택된 칩을 다시 눌렀을 때 `null`로 호출합니다.',
+    },
+    isDeselectable: {
+      description:
+        '`true`면 이미 선택된 칩을 다시 눌러 선택을 풀 수 있습니다. 고르지 않아도 되는 선택 항목에 씁니다. 풀리면 `onChange`가 `null`로 호출됩니다.',
+      control: 'boolean',
+      table: { defaultValue: { summary: 'false' } },
     },
     children: {
       description: '묶을 `Chip`들입니다.',
@@ -64,8 +70,11 @@ const meta = {
   render: function Render(args) {
     const [, updateArgs] = useArgs();
 
-    const handleChange = (value: string) => {
-      args.onChange(value);
+    const handleChange = (value: string | null) => {
+      if (value !== null) {
+        args.onChange(value);
+      }
+
       updateArgs({ value });
     };
 
@@ -82,6 +91,38 @@ export const Default: Story = {};
 export const NoSelection: Story = {
   args: {
     value: null,
+  },
+};
+
+export const Deselectable: Story = {
+  args: {
+    value: '보통',
+    'aria-label': '체질',
+  },
+  render: function Render(args) {
+    const [, updateArgs] = useArgs();
+
+    const handleChange = (value: string | null) => {
+      if (value !== null) {
+        args.onChange(value);
+      }
+
+      updateArgs({ value });
+    };
+
+    return (
+      <ChipGroup
+        value={args.value}
+        aria-label={args['aria-label']}
+        isDisabled={args.isDisabled}
+        isDeselectable
+        onChange={handleChange}
+      >
+        <Chip value="추위 많이 탐">추위 많이 탐</Chip>
+        <Chip value="보통">보통</Chip>
+        <Chip value="더위 많이 탐">더위 많이 탐</Chip>
+      </ChipGroup>
+    );
   },
 };
 
@@ -128,8 +169,11 @@ export const CustomSituationInput: Story = {
     const [, updateArgs] = useArgs();
     const [customSituation, setCustomSituation] = useState<string | null>(null);
 
-    const handleChange = (value: string) => {
-      args.onChange(value);
+    const handleChange = (value: string | null) => {
+      if (value !== null) {
+        args.onChange(value);
+      }
+
       updateArgs({ value });
     };
 
