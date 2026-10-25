@@ -4,12 +4,11 @@ import AppBrand from '@/components/AppBrand';
 import Button from '@/components/common/Button';
 import Dialog from '@/components/common/Dialog';
 import Notice from '@/components/common/Notice';
+import type { ProviderCd } from '@/domains/member/memberSettingOptions';
 import useRedirectLock from '@/hooks/useRedirectLock';
 import * as S from './LoginPage.styled';
 
-type Provider = 'google' | 'kakao';
-
-const LOGIN_URL: Record<Provider, string> = {
+const LOGIN_URL: Record<ProviderCd, string> = {
   google: '/api/auth/google/login',
   kakao: '/api/auth/kakao/login',
 };
@@ -38,7 +37,7 @@ const LoginPage = () => {
     }
   }, [hasSearch, navigate]);
 
-  const handleLogin = (provider: Provider) => {
+  const handleLogin = (provider: ProviderCd) => {
     redirect(LOGIN_URL[provider]);
   };
 
