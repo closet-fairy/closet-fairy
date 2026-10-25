@@ -312,3 +312,201 @@ describe('오류 안내', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });
+
+describe('상황 직접 입력', () => {
+  const customChip = (name: string) => screen.getByRole('button', { name });
+
+  const setCustomTpo = async (
+    user: ReturnType<typeof userEvent.setup>,
+    chipName: string,
+    text: string,
+  ) => {
+    await user.click(customChip(chipName));
+    const input = await screen.findByRole('textbox', { name: '상황' });
+    await user.clear(input);
+    await user.type(input, text);
+    await user.click(screen.getByRole('button', { name: '이 상황으로 설정' }));
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+  };
+
+  test('직접 입력한 문구를 설정하면 칩이 그 문구로 바뀌어 선택되고, 추천 요청에 custom과 문구를 담아야 한다.', async () => {
+    const user = userEvent.setup();
+    let receivedBody: unknown;
+    server.use(
+      http.post('/api/recommendation-sessions', async ({ request }) => {
+        receivedBody = await request.json();
+        return HttpResponse.json(
+          { recommendation_session_id: 13, session_status_cd: 'active' },
+          { status: 202 },
+        );
+      }),
+    );
+    vi.spyOn(console, 'info').mockImplementation(() => {});
+    renderPage();
+    await setCustomTpo(user, '직접 입력', '학교 발표');
+
+    expect(customChip('학교 발표')).toHaveAttribute('aria-pressed', 'true');
+
+    await user.click(submitButton());
+
+    await waitFor(() => {
+      expect(receivedBody).toMatchObject({
+        tpo_cd: 'custom',
+        tpo_text: '학교 발표',
+      });
+    });
+  });
+
+  test('다른 칩을 골랐다가 문구 칩을 다시 누르면 시트 없이 그 문구가 다시 선택되어야 한다.', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await setCustomTpo(user, '직접 입력', '학교 발표');
+    await user.click(screen.getByRole('button', { name: '출근' }));
+
+    expect(customChip('학교 발표')).toHaveAttribute('aria-pressed', 'false');
+
+    await user.click(customChip('학교 발표'));
+
+    expect(customChip('학교 발표')).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  test('이미 선택된 문구 칩을 누르면 적어 둔 문구가 채워진 시트가 열려 고칠 수 있어야 한다.', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await setCustomTpo(user, '직접 입력', '학교 발표');
+    await user.click(customChip('학교 발표'));
+
+    expect(await screen.findByRole('textbox', { name: '상황' })).toHaveValue(
+      '학교 발표',
+    );
+
+    const input = screen.getByRole('textbox', { name: '상황' });
+    await user.clear(input);
+    await user.type(input, '동아리 발표');
+    await user.click(screen.getByRole('button', { name: '이 상황으로 설정' }));
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    expect(customChip('동아리 발표')).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  test('문구가 비어 있거나 공백뿐이면 설정 버튼이 비활성이어야 한다.', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(customChip('직접 입력'));
+    const input = await screen.findByRole('textbox', { name: '상황' });
+
+    expect(
+      screen.getByRole('button', { name: '이 상황으로 설정' }),
+    ).toBeDisabled();
+
+    await user.type(input, '   ');
+
+    expect(
+      screen.getByRole('button', { name: '이 상황으로 설정' }),
+    ).toBeDisabled();
+  });
+
+  test('설정하지 않고 시트를 닫으면 고치던 문구는 버리고 원래 문구와 선택을 유지해야 한다.', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await setCustomTpo(user, '직접 입력', '학교 발표');
+    await user.click(customChip('학교 발표'));
+    const input = await screen.findByRole('textbox', { name: '상황' });
+    await user.type(input, ' 리허설');
+    await user.keyboard('{Escape}');
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    expect(customChip('학교 발표')).toHaveAttribute('aria-pressed', 'true');
+
+    await user.click(customChip('학교 발표'));
+
+    expect(await screen.findByRole('textbox', { name: '상황' })).toHaveValue(
+      '학교 발표',
+    );
+  });
+
+  test('처음 연 직접 입력 시트를 설정하지 않고 닫으면 원래 고른 칩과 "직접 입력" 칩을 그대로 두어야 한다.', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(customChip('직접 입력'));
+    await screen.findByRole('textbox', { name: '상황' });
+    await user.keyboard('{Escape}');
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    expect(screen.getByRole('button', { name: '데일리' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(customChip('직접 입력')).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  test('Enter를 누르면 문구를 설정하고, 문구가 비어 있으면 아무 일도 일어나지 않아야 한다.', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(customChip('직접 입력'));
+    const input = await screen.findByRole('textbox', { name: '상황' });
+    await user.keyboard('{Enter}');
+
+    expect(
+      screen.getByRole('dialog', { name: '어떤 상황인가요' }),
+    ).toBeInTheDocument();
+
+    await user.type(input, '학교 발표{Enter}');
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    expect(customChip('학교 발표')).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  test('문구가 최대 글자 수를 넘으면 설정 버튼이 비활성이어야 한다.', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(customChip('직접 입력'));
+    const input = await screen.findByRole('textbox', { name: '상황' });
+    await user.click(input);
+    await user.paste('가'.repeat(101));
+
+    expect(
+      screen.getByRole('button', { name: '이 상황으로 설정' }),
+    ).toBeDisabled();
+  });
+
+  test('서버가 직접 입력한 문구를 거절하면 서버가 준 안내 문구를 보여 줘야 한다.', async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.post('/api/recommendation-sessions', () =>
+        HttpResponse.json(
+          {
+            code: 'VALIDATION_ERROR',
+            message: '입력할 수 없는 내용이 포함되어 있습니다.',
+          },
+          { status: 422 },
+        ),
+      ),
+    );
+    renderPage();
+    await setCustomTpo(user, '직접 입력', '학교 발표');
+    await user.click(submitButton());
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '입력할 수 없는 내용이 포함되어 있습니다.',
+    );
+  });
+});
