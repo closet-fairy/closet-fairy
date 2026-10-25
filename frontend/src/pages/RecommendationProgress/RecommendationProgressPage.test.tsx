@@ -389,17 +389,13 @@ describe('추천 실패', () => {
       going_out_end_time: '14:00',
       going_out_date_cd: 'today',
     });
-    expect(
-      JSON.parse(
-        sessionStorage.getItem(PENDING_RECOMMENDATION_STORAGE_KEY) ?? 'null',
-      ),
-    ).toMatchObject({ sessionId: NEXT_SESSION_ID });
     const nextPending = parsePendingRecommendation(
       JSON.parse(
         sessionStorage.getItem(PENDING_RECOMMENDATION_STORAGE_KEY) ?? 'null',
       ),
       NEXT_SESSION_ID,
     );
+    expect(nextPending).not.toBeNull();
     expect(nextPending?.requestedAt ?? 0).toBeGreaterThan(requestedAt);
     expect(await screen.findByText('코디를 만들고 있어요')).toBeInTheDocument();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
@@ -435,9 +431,11 @@ describe('추천 실패', () => {
       }),
     );
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      '외출 시작 시각이 이미 지났습니다.',
-    );
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        '외출 시작 시각이 이미 지났습니다.',
+      );
+    });
     expect(history.location.pathname).toBe('/recommendation');
     expect(
       screen.getByRole('button', { name: /^위치 서울 성동구/ }),
@@ -492,9 +490,11 @@ describe('추천 실패의 경계 상황', () => {
       }),
     );
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      '날짜가 바뀌어 외출 시간을 다시 골라 주세요.',
-    );
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        '날짜가 바뀌어 외출 시간을 다시 골라 주세요.',
+      );
+    });
     expect(history.location.pathname).toBe('/recommendation');
     expect(createRequestCount).toBe(0);
     expect(cancelRequests.count).toBe(1);

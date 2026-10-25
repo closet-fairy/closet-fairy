@@ -41,6 +41,12 @@ export const TimePicker = styled.div`
 export const Footer = styled.div`
   display: flex;
   flex-direction: column;
-  gap: ${spacing[12]};
   margin-top: auto;
+`;
+
+// 알림 영역은 비어 있어도 늘 두어야 내용이 채워질 때 읽히므로, 간격은 내용이 있을 때만 준다.
+export const Alert = styled.div`
+  &:not(:empty) {
+    margin-bottom: ${spacing[12]};
+  }
 `;

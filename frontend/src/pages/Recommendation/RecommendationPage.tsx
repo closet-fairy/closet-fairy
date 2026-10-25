@@ -145,7 +145,7 @@ const RecommendationPage = () => {
     restoredForm?.end ?? null,
   );
   const [validationMessage, setValidationMessage] = useState<string | null>(
-    restoredForm?.message ?? null,
+    null,
   );
   const {
     mutate: createRecommendationSession,
@@ -157,6 +157,23 @@ const RecommendationPage = () => {
   useEffect(() => {
     removeSessionItem(RECOMMENDATION_FORM_DRAFT_STORAGE_KEY);
   }, []);
+
+  // 돌아온 사유는 알림 영역이 빈 채로 그려진 다음에 채워야 화면 낭독기가 변화로 알아채고 읽는다.
+  useEffect(() => {
+    const message = restoredForm?.message;
+
+    if (message === undefined) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setValidationMessage(message);
+    });
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [restoredForm]);
 
   const start = selectedStart ?? {
     date: getKstDate(now),
@@ -398,11 +415,11 @@ const RecommendationPage = () => {
           </FormField>
         </S.Fields>
         <S.Footer>
-          {errorMessage && (
-            <div role="alert">
+          <S.Alert role="alert">
+            {errorMessage && (
               <Notice variant="subtle" icon="info" title={errorMessage} />
-            </div>
-          )}
+            )}
+          </S.Alert>
           <Button
             type="submit"
             size="lg"

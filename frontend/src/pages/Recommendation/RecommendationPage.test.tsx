@@ -287,9 +287,11 @@ describe('오류 안내', () => {
 
     await user.click(submitButton());
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      '외출 시작 시각이 이미 지났습니다.',
-    );
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        '외출 시작 시각이 이미 지났습니다.',
+      );
+    });
   });
 
   test('나가는 시간과 돌아오는 시간이 같으면 요청을 보내지 않고 안내 문구를 보여 줘야 한다.', async () => {
@@ -323,9 +325,11 @@ describe('오류 안내', () => {
     });
     await user.click(submitButton());
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      '외출 시작과 종료 시각이 같습니다.',
-    );
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        '외출 시작과 종료 시각이 같습니다.',
+      );
+    });
     expect(requestCount).toBe(0);
   });
 
@@ -346,10 +350,12 @@ describe('오류 안내', () => {
     await chooseLocationBySearch(user);
 
     await user.click(submitButton());
-    await screen.findByRole('alert');
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).not.toBeEmptyDOMElement();
+    });
     await user.click(screen.getByRole('button', { name: '운동' }));
 
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.getByRole('alert')).toBeEmptyDOMElement();
   });
 
   test('로그인이 만료돼 401을 받으면 화면에 따로 안내하지 않아야 한다.', async () => {
@@ -376,7 +382,7 @@ describe('오류 안내', () => {
       expect(submitButton()).toBeEnabled();
     });
 
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.getByRole('alert')).toBeEmptyDOMElement();
   });
 });
 
@@ -573,9 +579,11 @@ describe('상황 직접 입력', () => {
     await setCustomTpo(user, '직접 입력', '학교 발표');
     await user.click(submitButton());
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      '입력할 수 없는 내용이 포함되어 있습니다.',
-    );
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        '입력할 수 없는 내용이 포함되어 있습니다.',
+      );
+    });
   });
 });
 
@@ -731,9 +739,11 @@ describe('외출 날짜', () => {
 
     await user.click(submitButton());
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      '외출 시작 시각이 이미 지났습니다.',
-    );
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        '외출 시작 시각이 이미 지났습니다.',
+      );
+    });
     expect(requestCount).toBe(0);
   });
 
@@ -749,9 +759,11 @@ describe('외출 날짜', () => {
     });
     await user.click(submitButton());
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      '외출 시작 시각이 이미 지났습니다.',
-    );
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        '외출 시작 시각이 이미 지났습니다.',
+      );
+    });
   });
 
   test('고른 시각이 이틀 이상 지나면 날짜를 붙여 보여 주고, 요청하면 지난 시각이라고 알려야 한다.', async () => {
@@ -771,9 +783,11 @@ describe('외출 날짜', () => {
 
     await user.click(submitButton());
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      '외출 시작 시각이 이미 지났습니다.',
-    );
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        '외출 시작 시각이 이미 지났습니다.',
+      );
+    });
   });
 });
 
@@ -861,14 +875,16 @@ describe('위치 고르기', () => {
 
     await user.click(submitButton());
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      '위치를 선택해 주세요.',
-    );
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        '위치를 선택해 주세요.',
+      );
+    });
     expect(requestCount).toBe(0);
 
     await chooseLocationBySearch(user);
 
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.getByRole('alert')).toBeEmptyDOMElement();
   });
 
   test('날씨를 불러오지 못하면 날씨를 확인할 수 없다고 보여 줘야 한다.', async () => {
@@ -1230,7 +1246,7 @@ describe('옷 부족 안내', () => {
     expect(
       screen.queryByRole('button', { name: '옷 등록하기' }),
     ).not.toBeInTheDocument();
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.getByRole('alert')).toBeEmptyDOMElement();
     expect(submitButton()).toBeEnabled();
   });
 });
