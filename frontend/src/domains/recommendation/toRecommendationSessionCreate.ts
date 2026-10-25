@@ -8,6 +8,7 @@ export type RecommendationTpo =
 interface RecommendationForm {
   sidoNm: string;
   sigunguNm: string;
+  locationInputTypeCd: RecommendationSessionCreate['location_input_type_cd'];
   tpo: RecommendationTpo;
   goingOutDateCd: GoingOutDateCd;
   startTime: string;
@@ -17,12 +18,20 @@ interface RecommendationForm {
 export const toRecommendationSessionCreate = (
   form: RecommendationForm,
 ): RecommendationSessionCreate => {
-  const { sidoNm, sigunguNm, tpo, goingOutDateCd, startTime, endTime } = form;
+  const {
+    sidoNm,
+    sigunguNm,
+    locationInputTypeCd,
+    tpo,
+    goingOutDateCd,
+    startTime,
+    endTime,
+  } = form;
 
   return {
     sido_nm: sidoNm,
     sigungu_nm: sigunguNm,
-    location_input_type_cd: 'manual',
+    location_input_type_cd: locationInputTypeCd,
     ...(tpo.cd === 'custom'
       ? { tpo_cd: tpo.cd, tpo_text: tpo.text.trim() }
       : { tpo_cd: tpo.cd }),

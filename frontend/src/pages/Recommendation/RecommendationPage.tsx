@@ -1,5 +1,5 @@
 import type { FormEvent } from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { isUnauthorizedError } from '@/apis/authSession';
 import Button from '@/components/common/Button';
 import Chip from '@/components/common/Chip';
@@ -29,14 +29,11 @@ import { TPO_PRESETS } from '@/domains/recommendation/tpoPresets';
 import { useCreateRecommendationSessionRecommendationSessionsPost } from '@/generated/endpoints/recommendation/recommendation';
 import CustomTpoSheet from './components/CustomTpoSheet';
 import LocationField from './components/LocationField';
+import LocationSheet from './components/LocationSheet';
 import * as S from './RecommendationPage.styled';
 import type { RecommendationLocation } from './types';
 
-const TEMPORARY_LOCATION: RecommendationLocation = {
-  sidoNm: '서울특별시',
-  sigunguNm: '성동구',
-  inputTypeCd: 'manual',
-};
+const LOCATION_REQUIRED_MESSAGE = '위치를 선택해 주세요.';
 
 const GOING_OUT_DATE_OUT_OF_RANGE_MESSAGE =
   '외출 날짜는 오늘이나 내일만 고를 수 있습니다.';
@@ -94,6 +91,9 @@ const useTimeSlotNow = () => {
 
 const RecommendationPage = () => {
   const now = useTimeSlotNow();
+  const [location, setLocation] = useState<RecommendationLocation | null>(null);
+  const [isLocationSheetOpen, setIsLocationSheetOpen] = useState(false);
+  const locationFieldRef = useRef<HTMLButtonElement | null>(null);
   const [tpo, setTpo] = useState<RecommendationTpo>({ cd: 'daily' });
   const [customTpoText, setCustomTpoText] = useState<string | null>(null);
   const [isCustomTpoSheetOpen, setIsCustomTpoSheetOpen] = useState(false);
@@ -168,6 +168,11 @@ const RecommendationPage = () => {
     }
   };
 
+  const handleLocationSelect = (nextLocation: RecommendationLocation) => {
+    setLocation(nextLocation);
+    clearErrors();
+  };
+
   const handleTpoChange = (value: string) => {
     if (value === 'custom') {
       if (customTpoText !== null) {
@@ -212,6 +217,11 @@ const RecommendationPage = () => {
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
+    if (location === null) {
+      setValidationMessage(LOCATION_REQUIRED_MESSAGE);
+      return;
+    }
+
     const submittedAt = new Date();
     const message = validateGoingOutTime({ start, end, now: submittedAt });
     const goingOutDateCd = getGoingOutDateCd(start.date, submittedAt);
@@ -229,8 +239,9 @@ const RecommendationPage = () => {
     createRecommendationSession(
       {
         data: toRecommendationSessionCreate({
-          sidoNm: TEMPORARY_LOCATION.sidoNm,
-          sigunguNm: TEMPORARY_LOCATION.sigunguNm,
+          sidoNm: location.sidoNm,
+          sigunguNm: location.sigunguNm,
+          locationInputTypeCd: location.inputTypeCd,
           tpo,
           goingOutDateCd,
           startTime: start.time,
@@ -251,7 +262,11 @@ const RecommendationPage = () => {
       <S.Form onSubmit={handleSubmit}>
         <S.Fields>
           <FormField label="위치">
-            <LocationField location={TEMPORARY_LOCATION} onClick={() => {}} />
+            <LocationField
+              ref={locationFieldRef}
+              location={location}
+              onClick={() => setIsLocationSheetOpen(true)}
+            />
           </FormField>
           <FormField label="상황" hint="하나만 선택">
             <ChipGroup value={tpo.cd} onChange={handleTpoChange}>
@@ -313,6 +328,12 @@ const RecommendationPage = () => {
           </Button>
         </S.Footer>
       </S.Form>
+      <LocationSheet
+        isOpen={isLocationSheetOpen}
+        onOpenChange={setIsLocationSheetOpen}
+        onSelect={handleLocationSelect}
+        finalFocus={locationFieldRef}
+      />
       <CustomTpoSheet
         isOpen={isCustomTpoSheetOpen}
         onOpenChange={setIsCustomTpoSheetOpen}
