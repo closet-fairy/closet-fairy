@@ -80,7 +80,7 @@ const OnboardingPage = () => {
     }
   }, [isMissingEarlierStep, navigate]);
 
-  const goToStep = (nextStep: number) => {
+  const goToStep = (nextStep: OnboardingStep) => {
     void navigate({ to: '/onboarding', state: { onboardingStep: nextStep } });
   };
 
