@@ -448,6 +448,11 @@ describe('추천 실패', () => {
     expect(
       within(dialog).getByRole('button', { name: '돌아가기' }),
     ).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(
+        '입력 화면에서 조건을 골라 다시 추천받아 주세요.',
+      ),
+    ).toBeInTheDocument();
   });
 });
 
