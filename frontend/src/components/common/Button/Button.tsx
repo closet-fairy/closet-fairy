@@ -14,6 +14,7 @@ interface ButtonProps {
   icon?: IconName;
   isFullWidth?: boolean;
   isDisabled?: boolean;
+  isLoading?: boolean;
   type?: 'button' | 'submit' | 'reset';
   onClick?: MouseEventHandler<HTMLButtonElement>;
   ref?: Ref<HTMLButtonElement>;
@@ -40,6 +41,7 @@ const Button = (props: ButtonProps) => {
     icon,
     isFullWidth = false,
     isDisabled = false,
+    isLoading = false,
     type = 'button',
     onClick,
     ref,
@@ -52,13 +54,24 @@ const Button = (props: ButtonProps) => {
     'aria-describedby': ariaDescribedBy,
   } = props;
 
+  const handleClick: MouseEventHandler<HTMLButtonElement> = (event) => {
+    if (isLoading) {
+      event.preventDefault();
+      return;
+    }
+
+    onClick?.(event);
+  };
+
   return (
     <S.Button
       ref={ref}
       type={type}
       disabled={isDisabled}
-      onClick={onClick}
+      onClick={handleClick}
       id={id}
+      aria-busy={isLoading || undefined}
+      aria-disabled={isLoading || undefined}
       aria-label={ariaLabel}
       aria-expanded={ariaExpanded}
       aria-pressed={ariaPressed}
@@ -69,8 +82,15 @@ const Button = (props: ButtonProps) => {
       $size={size}
       $isFullWidth={isFullWidth}
     >
-      {icon && <Icon name={icon} size={ICON_SIZE[size]} />}
-      <S.Label>{children}</S.Label>
+      <S.Content $isHidden={isLoading}>
+        {icon && <Icon name={icon} size={ICON_SIZE[size]} />}
+        <S.Label>{children}</S.Label>
+      </S.Content>
+      {isLoading && (
+        <S.Spinner aria-hidden>
+          <Icon name="progress_activity" size={ICON_SIZE[size]} />
+        </S.Spinner>
+      )}
     </S.Button>
   );
 };
