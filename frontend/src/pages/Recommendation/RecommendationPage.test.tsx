@@ -435,6 +435,7 @@ describe('상황 직접 입력', () => {
       '학교 발표',
     );
   });
+
   test('처음 연 직접 입력 시트를 설정하지 않고 닫으면 원래 고른 칩과 "직접 입력" 칩을 그대로 두어야 한다.', async () => {
     const user = userEvent.setup();
     renderPage();
