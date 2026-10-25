@@ -80,11 +80,15 @@ def sigungu_by_sido() -> dict[str, list[str]]:
 
 
 def find_nearest_region(lat: float, lon: float) -> Region:
-    region = min(
-        (r for r in load_regions() if r.sigungu_nm is not None),
-        key=lambda r: _distance_km(lat, lon, r.lat, r.lon),
+    distance, region = min(
+        (
+            (_distance_km(lat, lon, r.lat, r.lon), r)
+            for r in load_regions()
+            if r.sigungu_nm is not None
+        ),
+        key=lambda pair: pair[0],
     )
-    if _distance_km(lat, lon, region.lat, region.lon) > NEAREST_REGION_MAX_KM:
+    if distance > NEAREST_REGION_MAX_KM:
         raise RegionNotFoundError()
     return region
 

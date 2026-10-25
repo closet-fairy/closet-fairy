@@ -33,6 +33,7 @@ def test_region_list_groups_sigungu_by_sido_in_code_order(client):
     res = client.get("/regions")
 
     assert res.status_code == 200
+    assert res.headers["cache-control"] == "public, max-age=3600"
     body = res.json()
     assert len(body) == SIDO_COUNT
     assert sum(len(s["sigungu_nms"]) for s in body) == SIGUNGU_COUNT
@@ -52,27 +53,42 @@ def test_region_list_groups_sigungu_by_sido_in_code_order(client):
     ids=["haeundae", "jeju-airport", "ulleungdo"],
 )
 def test_nearest_region_for_current_location(client, lat, lon, sido_nm, sigungu_nm):
-    res = client.get("/regions/nearest", params={"lat": lat, "lon": lon})
+    res = client.post("/regions/nearest", json={"lat": lat, "lon": lon})
 
     assert res.status_code == 200
     assert res.json() == {"sido_nm": sido_nm, "sigungu_nm": sigungu_nm}
 
 
 def test_location_far_from_every_region_is_not_found(client):
-    res = client.get("/regions/nearest", params={"lat": 35.68, "lon": 139.76})
+    res = client.post("/regions/nearest", json={"lat": 35.68, "lon": 139.76})
 
     assert res.status_code == 404
     assert res.json()["code"] == "REGION_NOT_FOUND"
 
 
-@pytest.mark.parametrize("params", [{"lat": 91, "lon": 127}, {"lat": 37, "lon": 181}, {"lat": 37}])
-def test_invalid_coordinates_are_422(client, params):
-    res = client.get("/regions/nearest", params=params)
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"lat": 91, "lon": 127},
+        {"lat": 37, "lon": 181},
+        {"lat": 37},
+        {"lat": 37, "lon": 127, "x": 1},
+    ],
+    ids=["lat-range", "lon-range", "missing", "extra-field"],
+)
+def test_invalid_coordinates_are_422(client, body):
+    res = client.post("/regions/nearest", json=body)
 
     assert res.status_code == 422
 
 
 def test_region_apis_do_not_need_login(client):
     assert client.get("/regions").status_code == 200
-    nearest = client.get("/regions/nearest", params={"lat": 35.1587, "lon": 129.1604})
+    nearest = client.post("/regions/nearest", json={"lat": 35.1587, "lon": 129.1604})
     assert nearest.status_code == 200
+
+
+def test_coordinates_in_query_string_are_not_accepted(client):
+    res = client.get("/regions/nearest", params={"lat": 35.1587, "lon": 129.1604})
+
+    assert res.status_code == 405
