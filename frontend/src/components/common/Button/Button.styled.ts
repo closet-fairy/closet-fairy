@@ -101,6 +101,10 @@ export const Button = styled.button<{
     transform: scale(${PRESSED_SCALE});
   }
 
+  &[aria-busy='true'] {
+    cursor: progress;
+  }
+
   &:disabled {
     opacity: ${opacity.disabled};
   }

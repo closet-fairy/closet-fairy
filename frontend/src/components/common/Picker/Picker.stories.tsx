@@ -113,6 +113,22 @@ export const Disabled: Story = {
 export const Invalid: Story = {
   args: {
     isInvalid: true,
+    'aria-describedby': 'picker-invalid-message',
+  },
+  render: function Render(args) {
+    const [, updateArgs] = useArgs();
+
+    const handleChange = (value: string) => {
+      args.onChange(value);
+      updateArgs({ value });
+    };
+
+    return (
+      <StoryStack direction="column" gap={8}>
+        <Picker {...args} onChange={handleChange} />
+        <p id="picker-invalid-message">이 시간에는 추천을 받을 수 없어요.</p>
+      </StoryStack>
+    );
   },
 };
 
