@@ -119,3 +119,29 @@ export const Locating: Story = {
     );
   },
 };
+
+export const PermissionDenied: Story = {
+  beforeEach: () => {
+    Object.defineProperty(navigator, 'geolocation', {
+      value: {
+        getCurrentPosition: (
+          _onSuccess: PositionCallback,
+          onError: PositionErrorCallback,
+        ) => {
+          onError({
+            code: 1,
+            message: 'User denied Geolocation',
+            PERMISSION_DENIED: 1,
+            POSITION_UNAVAILABLE: 2,
+            TIMEOUT: 3,
+          });
+        },
+      },
+      configurable: true,
+    });
+
+    return () => {
+      Reflect.deleteProperty(navigator, 'geolocation');
+    };
+  },
+};
