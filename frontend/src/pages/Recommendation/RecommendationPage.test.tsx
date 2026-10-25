@@ -9,7 +9,11 @@ import RecommendationPage from './RecommendationPage';
 
 const renderPage = () =>
   render(
-    <QueryClientProvider client={new QueryClient()}>
+    <QueryClientProvider
+      client={
+        new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      }
+    >
       <RecommendationPage />
     </QueryClientProvider>,
   );
@@ -777,15 +781,7 @@ describe('위치 필드와 날씨 미리보기', () => {
         ),
       ),
     );
-    render(
-      <QueryClientProvider
-        client={
-          new QueryClient({ defaultOptions: { queries: { retry: false } } })
-        }
-      >
-        <RecommendationPage />
-      </QueryClientProvider>,
-    );
+    renderPage();
 
     expect(
       await screen.findByRole('button', {

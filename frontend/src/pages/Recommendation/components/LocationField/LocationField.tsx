@@ -1,7 +1,7 @@
 import type { Ref } from 'react';
 import { useContext, useId } from 'react';
-import Icon from '@/components/common/Icon';
 import { FormFieldContext } from '@/components/common/FormField/FormField.context';
+import Icon from '@/components/common/Icon';
 import { formatRegionLabel } from '@/domains/recommendation/regionLabel';
 import type { RecommendationLocation } from '../../types';
 import WeatherSummary from '../WeatherSummary';
