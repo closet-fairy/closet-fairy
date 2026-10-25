@@ -1,5 +1,6 @@
 import type { FormEvent } from 'react';
 import { useEffect, useState } from 'react';
+import { isUnauthorizedError } from '@/apis/authSession';
 import Button from '@/components/common/Button';
 import Chip from '@/components/common/Chip';
 import ChipGroup from '@/components/common/ChipGroup';
@@ -90,7 +91,9 @@ const RecommendationPage = () => {
     value: slot,
     label: isNextDayReturn(start, slot) ? `다음 날 ${slot}` : slot,
   }));
-  const errorMessage = validationMessage ?? error?.message ?? null;
+  const requestErrorMessage =
+    error && !isUnauthorizedError(error) ? error.message : null;
+  const errorMessage = validationMessage ?? requestErrorMessage;
 
   const clearErrors = () => {
     setValidationMessage(null);

@@ -1,6 +1,7 @@
 import { useNavigate, useParams } from '@tanstack/react-router';
 import { useState } from 'react';
 import { ApiError } from '@/apis/apiError';
+import { isUnauthorizedError } from '@/apis/authSession';
 import Button from '@/components/common/Button';
 import { useGetClothingClothingClothingIdGet } from '@/generated/endpoints/clothing/clothing';
 import ClothingImageEditorLoader from '@/pages/ClothingImageEditor/components/ClothingImageEditorLoader';
@@ -71,7 +72,7 @@ const ClothingImageEditorPage = () => {
     );
   }
 
-  if (!clothingQuery.isFetchedAfterMount) {
+  if (!clothingQuery.isFetchedAfterMount || isUnauthorizedError(error)) {
     return <EditorStatusView title="불러오고 있어요" onClose={close} />;
   }
 
