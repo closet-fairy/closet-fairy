@@ -187,12 +187,13 @@ const initialize = (
   }
 
   const program = gl.createProgram();
-  gl.attachShader(program, compileShader(gl, gl.VERTEX_SHADER, VERTEX_SHADER));
-  gl.attachShader(
-    program,
-    compileShader(gl, gl.FRAGMENT_SHADER, FRAGMENT_SHADER),
-  );
+  const vertexShader = compileShader(gl, gl.VERTEX_SHADER, VERTEX_SHADER);
+  const fragmentShader = compileShader(gl, gl.FRAGMENT_SHADER, FRAGMENT_SHADER);
+  gl.attachShader(program, vertexShader);
+  gl.attachShader(program, fragmentShader);
   gl.linkProgram(program);
+  gl.deleteShader(vertexShader);
+  gl.deleteShader(fragmentShader);
 
   if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
     throw new EditorRendererError(UNSUPPORTED_MESSAGE, {
@@ -405,7 +406,6 @@ export const createEditorRenderer = (
       const gl = state?.gl;
       dispose();
       gl?.getExtension('WEBGL_lose_context')?.loseContext();
-      state = null;
     },
   };
 };
