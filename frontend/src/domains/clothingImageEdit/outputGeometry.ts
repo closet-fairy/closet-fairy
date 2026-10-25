@@ -47,7 +47,7 @@ export const getOutputGeometry = (
     return null;
   }
 
-  const radians = toRadians(angle);
+  const radians = toRadians(Number.isFinite(angle) ? angle : 0);
 
   return {
     outputSize,

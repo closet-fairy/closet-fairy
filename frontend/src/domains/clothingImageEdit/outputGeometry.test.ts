@@ -31,6 +31,17 @@ describe('출력 기하', () => {
     expectPoint(mapOutputToSource(geometry, [123, 456]), [123, 456]);
   });
 
+  test('유한하지 않은 각도는 출력 크기와 역회전 모두 0°로 계산해야 한다.', () => {
+    const geometry = getOutputGeometry(SOURCE, DEFAULT_CORNERS, Number.NaN);
+
+    expect(geometry?.outputSize).toEqual(SOURCE);
+    if (geometry === null) {
+      return;
+    }
+
+    expectPoint(mapOutputToSource(geometry, [123, 456]), [123, 456]);
+  });
+
   test('시계 방향 90°면 출력 오른쪽 위가 원본 왼쪽 위여야 한다.', () => {
     const geometry = getOutputGeometry(SOURCE, DEFAULT_CORNERS, 90);
 
