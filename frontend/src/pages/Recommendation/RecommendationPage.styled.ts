@@ -1,5 +1,10 @@
 import styled from '@emotion/styled';
 import { fg, spacing } from '@/styles/tokens';
+import { visuallyHidden } from '@/styles/visuallyHidden';
+
+export const ShortageStatus = styled.p`
+  ${visuallyHidden}
+`;
 
 export const Container = styled.div`
   display: flex;
