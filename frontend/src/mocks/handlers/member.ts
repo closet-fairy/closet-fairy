@@ -129,7 +129,12 @@ export const memberHandlers = [
     }
 
     const result = strictMemberUpdate.safeParse(await request.json());
-    const nickname = result.success ? result.data.nickname.trim() : '';
+
+    if (!result.success) {
+      return validationError<MemberMe>('입력값이 올바르지 않습니다.');
+    }
+
+    const nickname = result.data.nickname.trim();
 
     if (nickname === '' || [...nickname].length > NICKNAME_MAX_LENGTH) {
       return validationError<MemberMe>('닉네임은 1~30자로 입력해 주세요.');
@@ -183,6 +188,8 @@ export const memberHandlers = [
     return new HttpResponse(null, { status: 204 });
   }),
 
+  // BE는 본인 확인용 소셜 인증 주소를 돌려주고, 그 콜백에서 탈퇴를 마친 뒤 /login?withdrawn=1로 보낸다.
+  // 목업에서는 소셜 인증을 거칠 수 없어 마지막 도착지를 바로 돌려주고 세션도 여기서 끊는다.
   http.post('/api/auth/withdraw', () => {
     if (getStatus() === 'signedOut') {
       return authRequired<WithdrawalStarted>();
