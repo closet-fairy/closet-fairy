@@ -1,5 +1,6 @@
 import { Dialog } from '@base-ui/react/dialog';
 import styled from '@emotion/styled';
+import { TOP_BAR_HEIGHT } from '@/components/common/TopBar/TopBar.styled';
 import {
   bg,
   duration,
@@ -9,7 +10,6 @@ import {
   typography,
   zIndex,
 } from '@/styles/tokens';
-import { TOP_BAR_HEIGHT } from '@/components/common/TopBar/TopBar.styled';
 import { transientOptions } from '@/styles/transientOptions';
 
 const POPUP_HIDDEN_OFFSET = 24;
