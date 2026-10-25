@@ -49,7 +49,9 @@ const MyInfoPage = () => {
   }, [hasSearch, navigate]);
 
   const isSettingsFailed =
-    settingsQuery.isError && !isUnauthorizedError(settingsQuery.error);
+    settingsQuery.data === undefined &&
+    settingsQuery.isError &&
+    !isUnauthorizedError(settingsQuery.error);
 
   return (
     <S.Container>
@@ -86,6 +88,11 @@ const MyInfoPage = () => {
         )}
         <S.Section>
           <S.SectionTitle>추천에 쓰이는 정보</S.SectionTitle>
+          {settingsQuery.isPending && (
+            <div role="status">
+              <Notice variant="subtle" title="불러오고 있어요" />
+            </div>
+          )}
           {settingsQuery.data && (
             <SettingSummary
               settings={settingsQuery.data}

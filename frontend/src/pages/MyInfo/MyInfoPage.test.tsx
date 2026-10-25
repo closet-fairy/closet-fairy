@@ -4,11 +4,12 @@ import {
   createRouter,
   RouterProvider,
 } from '@tanstack/react-router';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { describe, expect, test } from 'vitest';
 import { getKstYear, toAgeGroup } from '@/domains/member/birthYear';
+import { getGetMySettingsMembersMeSettingsGetQueryKey } from '@/generated/endpoints/member/member';
 import { server } from '@/mocks/node';
 import { routeTree } from '@/routeTree.gen';
 
@@ -26,7 +27,7 @@ const renderAt = async (path: string) => {
     </QueryClientProvider>,
   );
 
-  return { history };
+  return { history, queryClient };
 };
 
 describe('내 정보 조회', () => {
@@ -63,6 +64,32 @@ describe('내 정보 조회', () => {
     await user.click(await screen.findByRole('button', { name: '다시 시도' }));
 
     expect(await screen.findByText('추위 많이 탐')).toBeInTheDocument();
+  });
+
+  test('이미 불러온 설정이 있으면 다시 불러오기가 실패해도 실패 안내를 띄우지 않아야 한다.', async () => {
+    const { queryClient } = await renderAt('/my-info');
+    await screen.findByText('추위 많이 탐');
+
+    server.use(
+      http.get('/api/members/me/settings', () =>
+        HttpResponse.json(
+          { code: 'INTERNAL_ERROR', message: '처리 중 오류가 발생했습니다.' },
+          { status: 500 },
+        ),
+      ),
+    );
+    const settingsQueryKey = getGetMySettingsMembersMeSettingsGetQueryKey();
+    await act(async () => {
+      await queryClient.refetchQueries({ queryKey: settingsQueryKey });
+    });
+
+    expect(queryClient.getQueryState(settingsQueryKey)?.status).toBe('error');
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+
+    expect(screen.getByText('추위 많이 탐')).toBeInTheDocument();
+    expect(
+      screen.queryByText('정보를 불러오지 못했어요.'),
+    ).not.toBeInTheDocument();
   });
 });
 
