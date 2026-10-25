@@ -91,13 +91,14 @@ describe('프로필 저장', () => {
   test('닉네임을 바꾸지 않았으면 닉네임 수정 요청을 보내지 않아야 한다.', async () => {
     const user = userEvent.setup();
     const requests = captureRequests();
-    await renderEdit();
+    const { history } = await renderEdit();
 
     await user.click(screen.getByRole('button', { name: '저장' }));
 
     await waitFor(() => {
-      expect(requests).toHaveLength(1);
+      expect(history.location.pathname).toBe('/my-info');
     });
+    expect(requests).toHaveLength(1);
     expect(requests.at(0)?.method).toBe('PUT');
   });
 

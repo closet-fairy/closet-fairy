@@ -4,6 +4,7 @@ import AppBrand from '@/components/AppBrand';
 import Button from '@/components/common/Button';
 import Dialog from '@/components/common/Dialog';
 import Notice from '@/components/common/Notice';
+import useRedirectLock from '@/hooks/useRedirectLock';
 import * as S from './LoginPage.styled';
 
 type Provider = 'google' | 'kakao';
@@ -27,7 +28,7 @@ const LoginPage = () => {
   const [isWithdrawnNoticeOpen, setIsWithdrawnNoticeOpen] = useState(
     search.withdrawn !== undefined,
   );
-  const [isRedirecting, setIsRedirecting] = useState(false);
+  const { isRedirecting, redirect } = useRedirectLock();
   const hasSearch =
     search.error !== undefined || search.withdrawn !== undefined;
 
@@ -37,23 +38,8 @@ const LoginPage = () => {
     }
   }, [hasSearch, navigate]);
 
-  useEffect(() => {
-    const handlePageShow = (event: PageTransitionEvent) => {
-      if (event.persisted) {
-        setIsRedirecting(false);
-      }
-    };
-
-    window.addEventListener('pageshow', handlePageShow);
-
-    return () => {
-      window.removeEventListener('pageshow', handlePageShow);
-    };
-  }, []);
-
   const handleLogin = (provider: Provider) => {
-    setIsRedirecting(true);
-    window.location.assign(LOGIN_URL[provider]);
+    redirect(LOGIN_URL[provider]);
   };
 
   return (

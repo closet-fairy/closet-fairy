@@ -7,7 +7,7 @@ import {
   useGetMeMembersMeGet,
   useGetMySettingsMembersMeSettingsGet,
 } from '@/generated/endpoints/member/member';
-import useGoBack from '@/pages/ProfileEdit/hooks/useGoBack';
+import useGoBack from '@/hooks/useGoBack';
 import ProfileEditForm from './components/ProfileEditForm';
 import * as S from './ProfileEditPage.styled';
 
