@@ -6,6 +6,7 @@ import ListItem from '@/components/common/ListItem';
 import Notice from '@/components/common/Notice';
 import TopBar from '@/components/common/TopBar';
 import LogoutDialog from '@/components/LogoutDialog';
+import { LOAD_ERROR_MESSAGE } from '@/constants/loadErrorMessage';
 import { getKstYear } from '@/domains/member/birthYear';
 import { PROVIDER_LABEL } from '@/domains/member/memberSettingOptions';
 import {
@@ -100,22 +101,24 @@ const MyInfoPage = () => {
             />
           )}
           {isSettingsFailed && (
-            <Notice
-              variant="subtle"
-              icon="error"
-              title="정보를 불러오지 못했어요."
-              action={
-                <Button
-                  variant="outline"
-                  size="md"
-                  isFullWidth
-                  isLoading={settingsQuery.isFetching}
-                  onClick={() => void settingsQuery.refetch()}
-                >
-                  다시 시도
-                </Button>
-              }
-            />
+            <div role="alert">
+              <Notice
+                variant="subtle"
+                icon="error"
+                title={LOAD_ERROR_MESSAGE}
+                action={
+                  <Button
+                    variant="outline"
+                    size="md"
+                    isFullWidth
+                    isLoading={settingsQuery.isFetching}
+                    onClick={() => void settingsQuery.refetch()}
+                  >
+                    다시 시도
+                  </Button>
+                }
+              />
+            </div>
           )}
         </S.Section>
         <S.Section>

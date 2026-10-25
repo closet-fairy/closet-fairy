@@ -88,7 +88,35 @@ describe('내 정보 조회', () => {
 
     expect(screen.getByText('추위 많이 탐')).toBeInTheDocument();
     expect(
-      screen.queryByText('정보를 불러오지 못했어요.'),
+      screen.queryByText('정보를 불러오지 못했어요'),
+    ).not.toBeInTheDocument();
+  });
+
+  test('설정을 처음 불러올 때 401을 받으면 실패 안내 대신 만료 안내만 보여 줘야 한다.', async () => {
+    server.use(
+      http.get('/api/members/me/settings', () =>
+        HttpResponse.json(
+          { code: 'AUTH_REQUIRED', message: '로그인이 필요합니다.' },
+          { status: 401 },
+        ),
+      ),
+    );
+    const { queryClient } = await renderAt('/my-info');
+
+    expect(
+      await screen.findByText('로그인이 만료되었어요'),
+    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        queryClient.getQueryState(
+          getGetMySettingsMembersMeSettingsGetQueryKey(),
+        )?.status,
+      ).toBe('error');
+    });
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+
+    expect(
+      screen.queryByText('정보를 불러오지 못했어요'),
     ).not.toBeInTheDocument();
   });
 });
