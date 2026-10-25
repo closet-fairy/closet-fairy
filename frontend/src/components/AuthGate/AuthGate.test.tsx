@@ -8,7 +8,6 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { describe, expect, test } from 'vitest';
-import { getGetMySettingsMembersMeSettingsGetQueryOptions } from '@/generated/endpoints/member/member';
 import { setMockMemberStatus } from '@/mocks/handlers/member';
 import { server } from '@/mocks/node';
 import { routeTree } from '@/routeTree.gen';
@@ -107,8 +106,8 @@ describe('로그인·온보딩 상태에 따른 이동', () => {
 describe('세션 만료', () => {
   test('쓰던 중 여러 요청이 동시에 401을 받아도 만료 안내는 하나만 띄워야 한다.', async () => {
     const user = userEvent.setup();
-    const { queryClient, history } = await renderAt('/closet');
-    await screen.findByRole('heading', { name: '옷장' });
+    const { queryClient, history } = await renderAt('/my-info');
+    await screen.findByText('김하늘');
 
     server.use(
       http.get('/api/members/me', () =>
@@ -118,12 +117,7 @@ describe('세션 만료', () => {
         HttpResponse.json(AUTH_REQUIRED, { status: 401 }),
       ),
     );
-    await Promise.all([
-      queryClient.invalidateQueries(),
-      queryClient
-        .fetchQuery(getGetMySettingsMembersMeSettingsGetQueryOptions())
-        .catch(() => undefined),
-    ]);
+    await queryClient.invalidateQueries();
 
     expect(
       await screen.findByText('로그인이 만료되었어요'),

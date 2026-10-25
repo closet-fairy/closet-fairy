@@ -24,9 +24,11 @@ import InkEraser from '@material-symbols/svg-400/outlined/ink_eraser.svg?react';
 import KeyboardArrowUp from '@material-symbols/svg-400/outlined/keyboard_arrow_up.svg?react';
 import Layers from '@material-symbols/svg-400/outlined/layers.svg?react';
 import LocationOn from '@material-symbols/svg-400/outlined/location_on.svg?react';
+import Logout from '@material-symbols/svg-400/outlined/logout.svg?react';
 import MyLocation from '@material-symbols/svg-400/outlined/my_location.svg?react';
 import Person from '@material-symbols/svg-400/outlined/person.svg?react';
 import PersonFill from '@material-symbols/svg-400/outlined/person-fill.svg?react';
+import PersonRemove from '@material-symbols/svg-400/outlined/person_remove.svg?react';
 import ProgressActivity from '@material-symbols/svg-400/outlined/progress_activity.svg?react';
 import RadioButtonUnchecked from '@material-symbols/svg-400/outlined/radio_button_unchecked.svg?react';
 import Redo from '@material-symbols/svg-400/outlined/redo.svg?react';
@@ -68,9 +70,11 @@ export const icons = {
   keyboard_arrow_up: KeyboardArrowUp,
   layers: Layers,
   location_on: LocationOn,
+  logout: Logout,
   my_location: MyLocation,
   person: Person,
   'person-fill': PersonFill,
+  person_remove: PersonRemove,
   progress_activity: ProgressActivity,
   radio_button_unchecked: RadioButtonUnchecked,
   redo: Redo,

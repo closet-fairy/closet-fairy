@@ -3,6 +3,7 @@ import Button from '@/components/common/Button';
 import IconButton from '@/components/common/IconButton';
 import StatusView from '@/components/common/StatusView';
 import TopBar from '@/components/common/TopBar';
+import { LOAD_ERROR_MESSAGE } from '@/constants/loadErrorMessage';
 import {
   useGetMeMembersMeGet,
   useGetMySettingsMembersMeSettingsGet,
@@ -37,7 +38,7 @@ const ProfileEditPage = () => {
       />
       {isFailed ? (
         <StatusView
-          title="정보를 불러오지 못했어요"
+          title={LOAD_ERROR_MESSAGE}
           description={settingsQuery.error.message}
           actions={
             <Button
