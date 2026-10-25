@@ -22,6 +22,11 @@ export class ApiError extends Error {
   }
 }
 
+const VALIDATION_STATUS = 422;
+
+export const isValidationError = (error: unknown): error is ApiError =>
+  error instanceof ApiError && error.status === VALIDATION_STATUS;
+
 const serverErrorSchema = z.object({
   code: z.string(),
   message: z.string(),

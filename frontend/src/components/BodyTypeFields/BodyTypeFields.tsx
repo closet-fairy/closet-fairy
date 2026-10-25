@@ -24,12 +24,6 @@ interface BodyTypeFieldsProps {
   isDisabled?: boolean;
 }
 
-const GENDER_CHIPS = GENDER_OPTIONS.map((option) => (
-  <Chip key={option.value} value={option.value}>
-    {option.label}
-  </Chip>
-));
-
 const BodyTypeFields = (props: BodyTypeFieldsProps) => {
   const {
     temperatureSensitivity,
@@ -39,6 +33,12 @@ const BodyTypeFields = (props: BodyTypeFieldsProps) => {
     isGenderDeselectable = true,
     isDisabled = false,
   } = props;
+
+  const genderChips = GENDER_OPTIONS.map((option) => (
+    <Chip key={option.value} value={option.value}>
+      {option.label}
+    </Chip>
+  ));
 
   const handleGenderChange = (value: string | null) => {
     onGenderChange(value !== null && isGenderCd(value) ? value : null);
@@ -74,7 +74,7 @@ const BodyTypeFields = (props: BodyTypeFieldsProps) => {
             isDisabled={isDisabled}
             onChange={handleGenderChange}
           >
-            {GENDER_CHIPS}
+            {genderChips}
           </ChipGroup>
         ) : (
           <ChipGroup
@@ -82,7 +82,7 @@ const BodyTypeFields = (props: BodyTypeFieldsProps) => {
             isDisabled={isDisabled}
             onChange={handleGenderChange}
           >
-            {GENDER_CHIPS}
+            {genderChips}
           </ChipGroup>
         )}
       </FormField>

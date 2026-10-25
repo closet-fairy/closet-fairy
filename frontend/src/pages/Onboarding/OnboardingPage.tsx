@@ -3,10 +3,12 @@ import { useNavigate, useRouter, useRouterState } from '@tanstack/react-router';
 import type { ComponentProps } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { z } from 'zod';
+import { isValidationError } from '@/apis/apiError';
 import { isUnauthorizedError } from '@/apis/authSession';
 import BodyTypeFields from '@/components/BodyTypeFields';
 import LogoutDialog from '@/components/LogoutDialog';
 import StylePreferenceList from '@/components/StylePreferenceList';
+import { SAVE_ERROR_MESSAGE } from '@/constants/saveErrorMessage';
 import type {
   GenderCd,
   StyleCd,
@@ -23,8 +25,6 @@ import BirthYearField from './components/BirthYearField';
 import OnboardingStepLayout from './components/OnboardingStepLayout';
 
 const TOTAL_STEPS = 3;
-const VALIDATION_STATUS = 422;
-const SAVE_ERROR_MESSAGE = '저장하지 못했어요. 다시 시도해 주세요.';
 const BIRTH_YEAR_ERROR_MESSAGE = '만 14세 이상만 이용할 수 있습니다.';
 const OPTIONAL_NOTE = '지금 넘겨도 내 정보에서 정할 수 있어요.';
 
@@ -58,6 +58,13 @@ const OnboardingPage = () => {
   const isMissingEarlierStep = step > 1 && birthYear === null;
   const visibleStep: OnboardingStep = isMissingEarlierStep ? 1 : step;
   const isSaving = saveSettings.isPending;
+
+  const [renderedStep, setRenderedStep] = useState(visibleStep);
+
+  if (renderedStep !== visibleStep) {
+    setRenderedStep(visibleStep);
+    setSaveError(undefined);
+  }
 
   useEffect(() => {
     visibleStepRef.current = visibleStep;
@@ -119,7 +126,7 @@ const OnboardingPage = () => {
             return;
           }
 
-          if (error.status === VALIDATION_STATUS) {
+          if (isValidationError(error)) {
             setBirthYearError(
               error.message === '' ? BIRTH_YEAR_ERROR_MESSAGE : error.message,
             );

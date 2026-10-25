@@ -138,6 +138,28 @@ describe('프로필 저장', () => {
     ).toBeInTheDocument();
   });
 
+  test('서버가 안내 없이 닉네임을 거절해도 입력란 아래에 기본 안내를 보여 줘야 한다.', async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.patch('/api/members/me', () =>
+        HttpResponse.json(
+          { code: 'VALIDATION_ERROR', message: '' },
+          { status: 422 },
+        ),
+      ),
+    );
+    await renderEdit();
+
+    await user.type(screen.getByRole('textbox', { name: '닉네임' }), '!');
+    await user.click(screen.getByRole('button', { name: '저장' }));
+
+    expect(
+      await screen.findByText(
+        '사용할 수 없는 닉네임이에요. 다시 입력해 주세요.',
+      ),
+    ).toBeInTheDocument();
+  });
+
   test('설정 저장이 실패하면 화면에 남아 실패 안내를 보여 줘야 한다.', async () => {
     const user = userEvent.setup();
     server.use(

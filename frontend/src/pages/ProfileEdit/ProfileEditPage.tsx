@@ -1,4 +1,3 @@
-import { useNavigate, useRouter } from '@tanstack/react-router';
 import { isUnauthorizedError } from '@/apis/authSession';
 import Button from '@/components/common/Button';
 import IconButton from '@/components/common/IconButton';
@@ -8,12 +7,12 @@ import {
   useGetMeMembersMeGet,
   useGetMySettingsMembersMeSettingsGet,
 } from '@/generated/endpoints/member/member';
+import useGoBack from '@/pages/ProfileEdit/hooks/useGoBack';
 import ProfileEditForm from './components/ProfileEditForm';
 import * as S from './ProfileEditPage.styled';
 
 const ProfileEditPage = () => {
-  const navigate = useNavigate();
-  const router = useRouter();
+  const goBack = useGoBack();
   const meQuery = useGetMeMembersMeGet();
   const settingsQuery = useGetMySettingsMembersMeSettingsGet();
 
@@ -23,15 +22,6 @@ const ProfileEditPage = () => {
 
   const isFailed =
     settingsQuery.isError && !isUnauthorizedError(settingsQuery.error);
-
-  const goBack = () => {
-    if (router.history.canGoBack()) {
-      router.history.back();
-      return;
-    }
-
-    void navigate({ to: '/my-info', replace: true });
-  };
 
   return (
     <S.Container>
