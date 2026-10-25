@@ -10,14 +10,18 @@ import ListItem from '@/components/common/ListItem';
 import Notice from '@/components/common/Notice';
 import Picker from '@/components/common/Picker';
 import TopBar from '@/components/common/TopBar';
+import type { GoingOutStart } from '@/domains/recommendation/goingOutTime';
 import {
   createEndTimeSlots,
-  createStartTimeSlots,
+  createStartOptions,
   getCurrentTimeSlot,
+  getDayOffset,
   getDefaultEndTime,
+  getGoingOutDateCd,
+  getKstDate,
   getMillisecondsUntilNextTimeSlot,
   isNextDayReturn,
-  isPastTimeSlot,
+  shiftKstDate,
   validateGoingOutTime,
 } from '@/domains/recommendation/goingOutTime';
 import type { RecommendationTpo } from '@/domains/recommendation/toRecommendationSessionCreate';
@@ -32,6 +36,30 @@ const TEMPORARY_LOCATION = {
   sigunguNm: '성동구',
   label: '서울 성동구',
 };
+
+const GOING_OUT_DATE_OUT_OF_RANGE_MESSAGE =
+  '외출 날짜는 오늘이나 내일만 고를 수 있습니다.';
+
+const DAY_PREFIXES: Readonly<Partial<Record<number, string>>> = {
+  [-1]: '어제 ',
+  0: '',
+  1: '내일 ',
+  2: '모레 ',
+};
+
+const formatDayTime = (dayOffset: number, date: string, time: string) => {
+  const prefix = DAY_PREFIXES[dayOffset];
+
+  if (prefix !== undefined) {
+    return `${prefix}${time}`;
+  }
+
+  const [, month, day] = date.split('-').map(Number);
+
+  return `${month}/${day} ${time}`;
+};
+
+const toStartValue = (start: GoingOutStart) => `${start.date} ${start.time}`;
 
 const useTimeSlotNow = () => {
   const [now, setNow] = useState(() => new Date());
@@ -68,7 +96,9 @@ const RecommendationPage = () => {
   const [tpo, setTpo] = useState<RecommendationTpo>({ cd: 'daily' });
   const [customTpoText, setCustomTpoText] = useState<string | null>(null);
   const [isCustomTpoSheetOpen, setIsCustomTpoSheetOpen] = useState(false);
-  const [selectedStart, setSelectedStart] = useState<string | null>(null);
+  const [selectedStart, setSelectedStart] = useState<GoingOutStart | null>(
+    null,
+  );
   const [selectedEnd, setSelectedEnd] = useState<string | null>(null);
   const [validationMessage, setValidationMessage] = useState<string | null>(
     null,
@@ -80,20 +110,51 @@ const RecommendationPage = () => {
     reset,
   } = useCreateRecommendationSessionRecommendationSessionsPost();
 
-  const start = selectedStart ?? getCurrentTimeSlot(now);
-  const end = selectedEnd ?? getDefaultEndTime(start);
-  const startSlots = isPastTimeSlot(start, now)
-    ? [start, ...createStartTimeSlots(now)]
-    : createStartTimeSlots(now);
+  const start = selectedStart ?? {
+    date: getKstDate(now),
+    time: getCurrentTimeSlot(now),
+  };
+  const startDayOffset = getDayOffset(start.date, now);
+  const end = selectedEnd ?? getDefaultEndTime(start.time);
+  const startCandidates = createStartOptions(now);
+  const dayOffsets = new Map<string, number>();
+  const getCachedDayOffset = (date: string) => {
+    const cached = dayOffsets.get(date);
+
+    if (cached !== undefined) {
+      return cached;
+    }
+
+    const dayOffset = getDayOffset(date, now);
+    dayOffsets.set(date, dayOffset);
+
+    return dayOffset;
+  };
+  const startSlots = startCandidates.some(
+    (candidate) => toStartValue(candidate) === toStartValue(start),
+  )
+    ? startCandidates
+    : [start, ...startCandidates];
   const endSlots =
-    end === start
-      ? [end, ...createEndTimeSlots(start)]
-      : createEndTimeSlots(start);
-  const startOptions = startSlots.map((slot) => ({ value: slot, label: slot }));
-  const endOptions = endSlots.map((slot) => ({
-    value: slot,
-    label: isNextDayReturn(start, slot) ? `다음 날 ${slot}` : slot,
+    end === start.time
+      ? [end, ...createEndTimeSlots(start.time)]
+      : createEndTimeSlots(start.time);
+  const startOptions = startSlots.map((slot) => ({
+    value: toStartValue(slot),
+    label: formatDayTime(getCachedDayOffset(slot.date), slot.date, slot.time),
   }));
+  const endOptions = endSlots.map((slot) => {
+    const extraDays = isNextDayReturn(start.time, slot) ? 1 : 0;
+
+    return {
+      value: slot,
+      label: formatDayTime(
+        startDayOffset + extraDays,
+        shiftKstDate(start.date, extraDays),
+        slot,
+      ),
+    };
+  });
   const requestErrorMessage =
     error && !isUnauthorizedError(error) ? error.message : null;
   const errorMessage = validationMessage ?? requestErrorMessage;
@@ -134,8 +195,12 @@ const RecommendationPage = () => {
   const isCustomTpoEditable = customTpoText === null || tpo.cd === 'custom';
 
   const handleStartChange = (value: string) => {
-    setSelectedStart(value);
-    clearErrors();
+    const nextStart = startSlots.find((slot) => toStartValue(slot) === value);
+
+    if (nextStart) {
+      setSelectedStart(nextStart);
+      clearErrors();
+    }
   };
 
   const handleEndChange = (value: string) => {
@@ -146,10 +211,17 @@ const RecommendationPage = () => {
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    const message = validateGoingOutTime({ start, end, now: new Date() });
+    const submittedAt = new Date();
+    const message = validateGoingOutTime({ start, end, now: submittedAt });
+    const goingOutDateCd = getGoingOutDateCd(start.date, submittedAt);
     setValidationMessage(message);
 
     if (message) {
+      return;
+    }
+
+    if (goingOutDateCd === null) {
+      setValidationMessage(GOING_OUT_DATE_OUT_OF_RANGE_MESSAGE);
       return;
     }
 
@@ -159,7 +231,8 @@ const RecommendationPage = () => {
           sidoNm: TEMPORARY_LOCATION.sidoNm,
           sigunguNm: TEMPORARY_LOCATION.sigunguNm,
           tpo,
-          startTime: start,
+          goingOutDateCd,
+          startTime: start.time,
           endTime: end,
         }),
       },
@@ -210,7 +283,7 @@ const RecommendationPage = () => {
                 <Picker
                   label="나가는 시간"
                   options={startOptions}
-                  value={start}
+                  value={toStartValue(start)}
                   onChange={handleStartChange}
                 />
               </S.TimePicker>

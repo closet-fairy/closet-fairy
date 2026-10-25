@@ -1,4 +1,5 @@
 import type { RecommendationSessionCreate } from '@/generated/models';
+import type { GoingOutDateCd } from './goingOutTime';
 import type { TpoPresetCd } from './tpoPresets';
 
 export type RecommendationTpo =
@@ -8,6 +9,7 @@ interface RecommendationForm {
   sidoNm: string;
   sigunguNm: string;
   tpo: RecommendationTpo;
+  goingOutDateCd: GoingOutDateCd;
   startTime: string;
   endTime: string;
 }
@@ -15,7 +17,7 @@ interface RecommendationForm {
 export const toRecommendationSessionCreate = (
   form: RecommendationForm,
 ): RecommendationSessionCreate => {
-  const { sidoNm, sigunguNm, tpo, startTime, endTime } = form;
+  const { sidoNm, sigunguNm, tpo, goingOutDateCd, startTime, endTime } = form;
 
   return {
     sido_nm: sidoNm,
@@ -26,5 +28,6 @@ export const toRecommendationSessionCreate = (
       : { tpo_cd: tpo.cd }),
     going_out_start_time: startTime,
     going_out_end_time: endTime,
+    going_out_date_cd: goingOutDateCd,
   };
 };

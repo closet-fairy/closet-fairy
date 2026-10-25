@@ -135,6 +135,7 @@ describe('추천 요청 보내기', () => {
       tpo_cd: 'work',
       going_out_start_time: '09:00',
       going_out_end_time: '14:00',
+      going_out_date_cd: 'today',
     });
   });
 
@@ -507,6 +508,201 @@ describe('상황 직접 입력', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       '입력할 수 없는 내용이 포함되어 있습니다.',
+    );
+  });
+});
+
+describe('외출 날짜', () => {
+  const startTrigger = (label: string) =>
+    screen.getByRole('button', { name: `외출 시간 나가는 시간 ${label}` });
+  const endTrigger = (label: string) =>
+    screen.getByRole('button', { name: `외출 시간 돌아오는 시간 ${label}` });
+
+  const pickOption = async (
+    user: ReturnType<typeof userEvent.setup>,
+    trigger: HTMLElement,
+    option: string,
+  ) => {
+    await user.click(trigger);
+    await user.click(await screen.findByRole('option', { name: option }));
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+  };
+
+  test('나가는 시각 목록은 오늘 남은 시각 뒤에 내일의 모든 시각을 이어 보여 줘야 한다.', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(startTrigger('09:00'));
+    const options = await screen.findAllByRole('option');
+    const labels = options.map((option) => option.textContent);
+
+    expect(labels.at(0)).toBe('09:00');
+    expect(labels).toContain('23:30');
+    expect(labels).toContain('내일 00:00');
+    expect(labels.at(-1)).toBe('내일 23:30');
+  });
+
+  test('내일 시각을 고르면 지금보다 이른 시각이어도 tomorrow로 추천을 요청해야 한다.', async () => {
+    const user = userEvent.setup();
+    let receivedBody: unknown;
+    server.use(
+      http.post('/api/recommendation-sessions', async ({ request }) => {
+        receivedBody = await request.json();
+        return HttpResponse.json(
+          { recommendation_session_id: 21, session_status_cd: 'active' },
+          { status: 202 },
+        );
+      }),
+    );
+    vi.spyOn(console, 'info').mockImplementation(() => {});
+    renderPage();
+
+    await pickOption(user, startTrigger('09:00'), '내일 08:00');
+
+    expect(endTrigger('내일 13:00')).toBeInTheDocument();
+
+    await user.click(submitButton());
+
+    await waitFor(() => {
+      expect(receivedBody).toMatchObject({
+        going_out_date_cd: 'tomorrow',
+        going_out_start_time: '08:00',
+        going_out_end_time: '13:00',
+      });
+    });
+  });
+
+  test('돌아오는 시각은 오늘을 기준으로 내일과 모레를 붙여 보여 줘야 한다.', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await pickOption(user, startTrigger('09:00'), '22:00');
+
+    expect(endTrigger('내일 03:00')).toBeInTheDocument();
+
+    await pickOption(user, startTrigger('22:00'), '내일 22:00');
+
+    expect(endTrigger('모레 03:00')).toBeInTheDocument();
+  });
+
+  test('화면을 연 채 자정이 지나면 고른 내일 시각이 오늘 시각이 되어 today로 요청해야 한다.', async () => {
+    const user = userEvent.setup();
+    let receivedBody: unknown;
+    server.use(
+      http.post('/api/recommendation-sessions', async ({ request }) => {
+        receivedBody = await request.json();
+        return HttpResponse.json(
+          { recommendation_session_id: 22, session_status_cd: 'active' },
+          { status: 202 },
+        );
+      }),
+    );
+    vi.spyOn(console, 'info').mockImplementation(() => {});
+    vi.setSystemTime(new Date('2026-10-14T23:40:00+09:00'));
+    renderPage();
+
+    await pickOption(user, startTrigger('23:30'), '내일 09:00');
+    vi.setSystemTime(new Date('2026-10-15T00:10:00+09:00'));
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+
+    expect(startTrigger('09:00')).toBeInTheDocument();
+
+    await user.click(submitButton());
+
+    await waitFor(() => {
+      expect(receivedBody).toMatchObject({
+        going_out_date_cd: 'today',
+        going_out_start_time: '09:00',
+      });
+    });
+  });
+
+  test('자정이 지나 내일 외출이 오늘이 되면 돌아오는 시각에서도 내일 표시가 빠져야 한다.', async () => {
+    const user = userEvent.setup();
+    vi.setSystemTime(new Date('2026-10-14T23:40:00+09:00'));
+    renderPage();
+
+    await pickOption(user, startTrigger('23:30'), '내일 09:00');
+
+    expect(endTrigger('내일 14:00')).toBeInTheDocument();
+
+    vi.setSystemTime(new Date('2026-10-15T00:10:00+09:00'));
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+
+    expect(endTrigger('14:00')).toBeInTheDocument();
+  });
+
+  test('고른 오늘 시각이 자정을 넘겨 어제가 되면 어제로 표시하고, 요청하면 지난 시각이라고 알려야 한다.', async () => {
+    const user = userEvent.setup();
+    let requestCount = 0;
+    server.use(
+      http.post('/api/recommendation-sessions', () => {
+        requestCount += 1;
+        return HttpResponse.json(
+          { recommendation_session_id: 23, session_status_cd: 'active' },
+          { status: 202 },
+        );
+      }),
+    );
+    vi.setSystemTime(new Date('2026-10-14T23:20:00+09:00'));
+    renderPage();
+
+    await pickOption(user, startTrigger('23:00'), '23:30');
+    vi.setSystemTime(new Date('2026-10-15T00:10:00+09:00'));
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+
+    expect(startTrigger('어제 23:30')).toBeInTheDocument();
+
+    await user.click(submitButton());
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '외출 시작 시각이 이미 지났습니다.',
+    );
+    expect(requestCount).toBe(0);
+  });
+
+  test('고른 오늘 시각이 지나간 뒤 요청하면 지난 시각이라고 알려야 한다.', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await pickOption(user, startTrigger('09:00'), '09:30');
+    vi.setSystemTime(new Date('2026-10-14T10:10:00+09:00'));
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    await user.click(submitButton());
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '외출 시작 시각이 이미 지났습니다.',
+    );
+  });
+
+  test('고른 시각이 이틀 이상 지나면 날짜를 붙여 보여 주고, 요청하면 지난 시각이라고 알려야 한다.', async () => {
+    const user = userEvent.setup();
+    vi.setSystemTime(new Date('2026-10-14T22:00:00+09:00'));
+    renderPage();
+
+    await pickOption(user, startTrigger('22:00'), '23:30');
+    vi.setSystemTime(new Date('2026-10-16T10:00:00+09:00'));
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+
+    expect(startTrigger('10/14 23:30')).toBeInTheDocument();
+    expect(endTrigger('어제 04:30')).toBeInTheDocument();
+
+    await user.click(submitButton());
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '외출 시작 시각이 이미 지났습니다.',
     );
   });
 });
