@@ -11,8 +11,14 @@ const SIDO_SUFFIX_ALIASES = [
   { suffix: '특별자치시', alias: '시' },
   { suffix: '특별시', alias: '시' },
   { suffix: '광역시', alias: '시' },
-  { suffix: '특별자치도', alias: '도' },
 ] as const;
+
+const SIDO_FORMER_NAMES: Readonly<Partial<Record<string, readonly string[]>>> =
+  {
+    강원특별자치도: ['강원도'],
+    전북특별자치도: ['전라북도'],
+    제주특별자치도: ['제주도'],
+  };
 
 const SEARCH_TARGET_SEPARATOR = '|';
 
@@ -28,6 +34,7 @@ const getSidoAliases = (sidoNm: string) => {
     sidoNm,
     shortName,
     ...(suffixAlias ? [`${shortName}${suffixAlias.alias}`] : []),
+    ...(SIDO_FORMER_NAMES[sidoNm] ?? []),
   ];
 };
 

@@ -5,6 +5,9 @@ const REGIONS = [
   { sido_nm: '서울특별시', sigungu_nms: ['종로구', '중구', '성동구'] },
   { sido_nm: '부산광역시', sigungu_nms: ['중구', '해운대구'] },
   { sido_nm: '세종특별자치시', sigungu_nms: ['세종특별자치시'] },
+  { sido_nm: '강원특별자치도', sigungu_nms: ['춘천시'] },
+  { sido_nm: '전북특별자치도', sigungu_nms: ['전주시 완산구'] },
+  { sido_nm: '전라남도', sigungu_nms: ['목포시'] },
   {
     sido_nm: '경기도',
     sigungu_nms: ['수원시 장안구', '수원시 권선구', '성남시 분당구'],
@@ -69,6 +72,15 @@ describe('지역 검색', () => {
     expect(fullNamesOf('서울시 성동구')).toEqual(['서울특별시 성동구']);
     expect(fullNamesOf('부산시 해운대')).toEqual(['부산광역시 해운대구']);
     expect(fullNamesOf('세종시')).toEqual(['세종특별자치시']);
+  });
+
+  test('특별자치도는 바뀌기 전 이름으로도 찾아야 한다.', () => {
+    expect(fullNamesOf('강원도 춘천')).toEqual(['강원특별자치도 춘천시']);
+    expect(fullNamesOf('전라북도')).toEqual(['전북특별자치도 전주시 완산구']);
+    expect(fullNamesOf('전라')).toEqual([
+      '전북특별자치도 전주시 완산구',
+      '전라남도 목포시',
+    ]);
   });
 
   test('띄어 적은 낱말은 순서대로 붙어 있지 않아도 모두 들어 있으면 찾아야 한다.', () => {
