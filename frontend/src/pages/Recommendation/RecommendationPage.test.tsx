@@ -8,6 +8,10 @@ import type {
   ClothingShortagePrecheckResponse,
   WeatherPreview,
 } from '@/generated/models';
+import {
+  PENDING_RECOMMENDATION_STORAGE_KEY,
+  RECOMMENDATION_FORM_DRAFT_STORAGE_KEY,
+} from '@/constants/recommendationStorageKey';
 import { server } from '@/mocks/node';
 import RecommendationPage from './RecommendationPage';
 
@@ -62,6 +66,7 @@ afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
   navigate.mockReset();
+  sessionStorage.clear();
 });
 
 describe('기본 외출 시간 갱신', () => {
@@ -154,7 +159,6 @@ describe('추천 요청 보내기', () => {
         );
       }),
     );
-    const consoleInfo = vi.spyOn(console, 'info').mockImplementation(() => {});
     renderPage();
     await chooseLocationBySearch(user);
 
@@ -162,9 +166,9 @@ describe('추천 요청 보내기', () => {
     await user.click(submitButton());
 
     await waitFor(() => {
-      expect(consoleInfo).toHaveBeenCalledWith('추천 세션을 만들었습니다.', {
-        recommendation_session_id: 7,
-        session_status_cd: 'active',
+      expect(navigate).toHaveBeenCalledWith({
+        to: '/recommendation/sessions/$sessionId',
+        params: { sessionId: 7 },
       });
     });
     expect(receivedBody).toEqual({
@@ -175,6 +179,25 @@ describe('추천 요청 보내기', () => {
       going_out_start_time: '09:00',
       going_out_end_time: '14:00',
       going_out_date_cd: 'today',
+    });
+    expect(
+      JSON.parse(
+        sessionStorage.getItem(PENDING_RECOMMENDATION_STORAGE_KEY) ?? 'null',
+      ),
+    ).toMatchObject({
+      sessionId: 7,
+      request: receivedBody,
+      form: {
+        location: {
+          sidoNm: '서울특별시',
+          sigunguNm: '성동구',
+          inputTypeCd: 'manual',
+        },
+        tpo: { cd: 'work' },
+        customTpoText: null,
+        start: null,
+        end: null,
+      },
     });
   });
 
@@ -194,7 +217,6 @@ describe('추천 요청 보내기', () => {
         );
       }),
     );
-    vi.spyOn(console, 'info').mockImplementation(() => {});
     renderPage();
     await chooseLocationBySearch(user);
 
@@ -227,7 +249,6 @@ describe('추천 요청 보내기', () => {
         );
       }),
     );
-    vi.spyOn(console, 'info').mockImplementation(() => {});
     renderPage();
     await chooseLocationBySearch(user);
 
@@ -389,7 +410,6 @@ describe('상황 직접 입력', () => {
         );
       }),
     );
-    vi.spyOn(console, 'info').mockImplementation(() => {});
     renderPage();
     await chooseLocationBySearch(user);
     await setCustomTpo(user, '직접 입력', '학교 발표');
@@ -603,7 +623,6 @@ describe('외출 날짜', () => {
         );
       }),
     );
-    vi.spyOn(console, 'info').mockImplementation(() => {});
     renderPage();
     await chooseLocationBySearch(user);
 
@@ -647,7 +666,6 @@ describe('외출 날짜', () => {
         );
       }),
     );
-    vi.spyOn(console, 'info').mockImplementation(() => {});
     vi.setSystemTime(new Date('2026-10-14T23:40:00+09:00'));
     renderPage();
     await chooseLocationBySearch(user);
@@ -941,7 +959,6 @@ describe('위치 고르기', () => {
         );
       }),
     );
-    vi.spyOn(console, 'info').mockImplementation(() => {});
     renderPage();
 
     await openSheetAndUseCurrentLocation(user);
@@ -1215,5 +1232,73 @@ describe('옷 부족 안내', () => {
     ).not.toBeInTheDocument();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(submitButton()).toBeEnabled();
+  });
+});
+
+describe('입력값 복원', () => {
+  const saveDraft = (start: { date: string; time: string }) => {
+    sessionStorage.setItem(
+      RECOMMENDATION_FORM_DRAFT_STORAGE_KEY,
+      JSON.stringify({
+        location: {
+          sidoNm: '서울특별시',
+          sigunguNm: '성동구',
+          inputTypeCd: 'manual',
+        },
+        tpo: { cd: 'custom', text: '친구 결혼식' },
+        customTpoText: '친구 결혼식',
+        start,
+        end: '15:00',
+      }),
+    );
+  };
+
+  test('취소하고 돌아오면 위치, 상황, 외출 시간을 그대로 채우고 초안은 지워야 한다.', async () => {
+    saveDraft({ date: '2026-10-14', time: '10:00' });
+    renderPage();
+
+    expect(
+      await screen.findByRole('button', { name: /^위치 서울 성동구/ }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /친구 결혼식/ })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(
+      screen.getByRole('button', { name: '외출 시간 나가는 시간 10:00' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: '외출 시간 돌아오는 시간 15:00' }),
+    ).toBeInTheDocument();
+    expect(
+      sessionStorage.getItem(RECOMMENDATION_FORM_DRAFT_STORAGE_KEY),
+    ).toBeNull();
+  });
+
+  test('돌아왔을 때 나가는 시간이 이미 지났으면 시간만 기본값으로 돌려야 한다.', async () => {
+    saveDraft({ date: '2026-10-14', time: '08:00' });
+    renderPage();
+
+    expect(
+      await screen.findByRole('button', { name: /^위치 서울 성동구/ }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /친구 결혼식/ })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(
+      screen.getByRole('button', { name: '외출 시간 나가는 시간 09:00' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: '외출 시간 돌아오는 시간 14:00' }),
+    ).toBeInTheDocument();
+  });
+
+  test('초안이 없으면 빈 입력 화면으로 시작해야 한다.', () => {
+    renderPage();
+
+    expect(
+      screen.getByRole('button', { name: '위치 위치를 선택하세요' }),
+    ).toBeInTheDocument();
   });
 });

@@ -19,6 +19,8 @@ import { Route as RecommendationHistoryRouteImport } from './routes/recommendati
 import { Route as MyInfoEditRouteImport } from './routes/my-info_.edit'
 import { Route as MyInfoWithdrawRouteImport } from './routes/my-info_.withdraw'
 import { Route as ClosetClothingIdEditRouteImport } from './routes/closet_.$clothingId.edit'
+import { Route as RecommendationSessionsSessionIdRouteImport } from './routes/recommendation_.sessions.$sessionId'
+import { Route as RecommendationSessionsSessionIdResultRouteImport } from './routes/recommendation_.sessions.$sessionId_.result'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -70,6 +72,18 @@ const ClosetClothingIdEditRoute = ClosetClothingIdEditRouteImport.update({
   path: '/closet/$clothingId/edit',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RecommendationSessionsSessionIdRoute =
+  RecommendationSessionsSessionIdRouteImport.update({
+    id: '/recommendation_/sessions/$sessionId',
+    path: '/recommendation/sessions/$sessionId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const RecommendationSessionsSessionIdResultRoute =
+  RecommendationSessionsSessionIdResultRouteImport.update({
+    id: '/recommendation_/sessions/$sessionId_/result',
+    path: '/recommendation/sessions/$sessionId/result',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -82,6 +96,8 @@ export interface FileRoutesByFullPath {
   '/my-info/edit': typeof MyInfoEditRoute
   '/my-info/withdraw': typeof MyInfoWithdrawRoute
   '/closet/$clothingId/edit': typeof ClosetClothingIdEditRoute
+  '/recommendation/sessions/$sessionId': typeof RecommendationSessionsSessionIdRoute
+  '/recommendation/sessions/$sessionId/result': typeof RecommendationSessionsSessionIdResultRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -94,6 +110,8 @@ export interface FileRoutesByTo {
   '/my-info/edit': typeof MyInfoEditRoute
   '/my-info/withdraw': typeof MyInfoWithdrawRoute
   '/closet/$clothingId/edit': typeof ClosetClothingIdEditRoute
+  '/recommendation/sessions/$sessionId': typeof RecommendationSessionsSessionIdRoute
+  '/recommendation/sessions/$sessionId/result': typeof RecommendationSessionsSessionIdResultRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -107,6 +125,8 @@ export interface FileRoutesById {
   '/my-info_/edit': typeof MyInfoEditRoute
   '/my-info_/withdraw': typeof MyInfoWithdrawRoute
   '/closet_/$clothingId/edit': typeof ClosetClothingIdEditRoute
+  '/recommendation_/sessions/$sessionId': typeof RecommendationSessionsSessionIdRoute
+  '/recommendation_/sessions/$sessionId_/result': typeof RecommendationSessionsSessionIdResultRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -121,6 +141,8 @@ export interface FileRouteTypes {
     | '/my-info/edit'
     | '/my-info/withdraw'
     | '/closet/$clothingId/edit'
+    | '/recommendation/sessions/$sessionId'
+    | '/recommendation/sessions/$sessionId/result'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -133,6 +155,8 @@ export interface FileRouteTypes {
     | '/my-info/edit'
     | '/my-info/withdraw'
     | '/closet/$clothingId/edit'
+    | '/recommendation/sessions/$sessionId'
+    | '/recommendation/sessions/$sessionId/result'
   id:
     | '__root__'
     | '/'
@@ -145,6 +169,8 @@ export interface FileRouteTypes {
     | '/my-info_/edit'
     | '/my-info_/withdraw'
     | '/closet_/$clothingId/edit'
+    | '/recommendation_/sessions/$sessionId'
+    | '/recommendation_/sessions/$sessionId_/result'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -158,6 +184,8 @@ export interface RootRouteChildren {
   MyInfoEditRoute: typeof MyInfoEditRoute
   MyInfoWithdrawRoute: typeof MyInfoWithdrawRoute
   ClosetClothingIdEditRoute: typeof ClosetClothingIdEditRoute
+  RecommendationSessionsSessionIdRoute: typeof RecommendationSessionsSessionIdRoute
+  RecommendationSessionsSessionIdResultRoute: typeof RecommendationSessionsSessionIdResultRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -232,6 +260,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ClosetClothingIdEditRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/recommendation_/sessions/$sessionId': {
+      id: '/recommendation_/sessions/$sessionId'
+      path: '/recommendation/sessions/$sessionId'
+      fullPath: '/recommendation/sessions/$sessionId'
+      preLoaderRoute: typeof RecommendationSessionsSessionIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/recommendation_/sessions/$sessionId_/result': {
+      id: '/recommendation_/sessions/$sessionId_/result'
+      path: '/recommendation/sessions/$sessionId/result'
+      fullPath: '/recommendation/sessions/$sessionId/result'
+      preLoaderRoute: typeof RecommendationSessionsSessionIdResultRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -246,6 +288,9 @@ const rootRouteChildren: RootRouteChildren = {
   MyInfoEditRoute: MyInfoEditRoute,
   MyInfoWithdrawRoute: MyInfoWithdrawRoute,
   ClosetClothingIdEditRoute: ClosetClothingIdEditRoute,
+  RecommendationSessionsSessionIdRoute: RecommendationSessionsSessionIdRoute,
+  RecommendationSessionsSessionIdResultRoute:
+    RecommendationSessionsSessionIdResultRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

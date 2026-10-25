@@ -11,6 +11,10 @@ import Notice from '@/components/common/Notice';
 import Picker from '@/components/common/Picker';
 import TopBar from '@/components/common/TopBar';
 import {
+  PENDING_RECOMMENDATION_STORAGE_KEY,
+  RECOMMENDATION_FORM_DRAFT_STORAGE_KEY,
+} from '@/constants/recommendationStorageKey';
+import {
   CLOTHING_SHORTAGE_DESCRIPTION,
   formatClothingShortageTitle,
 } from '@/domains/recommendation/clothingShortage';
@@ -28,6 +32,11 @@ import {
   shiftKstDate,
   validateGoingOutTime,
 } from '@/domains/recommendation/goingOutTime';
+import {
+  parseRecommendationFormDraft,
+  restoreRecommendationForm,
+} from '@/domains/recommendation/recommendationRequestRecord';
+import type { PendingRecommendation } from '@/domains/recommendation/recommendationRequestRecord';
 import type { RecommendationTpo } from '@/domains/recommendation/toRecommendationSessionCreate';
 import { toRecommendationSessionCreate } from '@/domains/recommendation/toRecommendationSessionCreate';
 import { TPO_PRESETS } from '@/domains/recommendation/tpoPresets';
@@ -35,6 +44,11 @@ import {
   useCreateRecommendationSessionRecommendationSessionsPost,
   usePrecheckRecommendationRecommendationsPrecheckGet,
 } from '@/generated/endpoints/recommendation/recommendation';
+import {
+  readSessionJson,
+  removeSessionItem,
+  writeSessionJson,
+} from '@/utils/sessionStorageJson';
 import CustomTpoSheet from './components/CustomTpoSheet';
 import LocationField from './components/LocationField';
 import LocationSheet from './components/LocationSheet';
@@ -105,16 +119,31 @@ const RecommendationPage = () => {
   const shortageTitle = precheck?.is_clothing_shortage
     ? formatClothingShortageTitle(precheck.shortage_categories)
     : null;
-  const [location, setLocation] = useState<RecommendationLocation | null>(null);
+  const [restoredForm] = useState(() => {
+    const draft = parseRecommendationFormDraft(
+      readSessionJson(RECOMMENDATION_FORM_DRAFT_STORAGE_KEY),
+    );
+
+    return draft && restoreRecommendationForm(draft, new Date());
+  });
+  const [location, setLocation] = useState<RecommendationLocation | null>(
+    restoredForm?.location ?? null,
+  );
   const [isLocationSheetOpen, setIsLocationSheetOpen] = useState(false);
   const locationFieldRef = useRef<HTMLButtonElement | null>(null);
-  const [tpo, setTpo] = useState<RecommendationTpo>({ cd: 'daily' });
-  const [customTpoText, setCustomTpoText] = useState<string | null>(null);
+  const [tpo, setTpo] = useState<RecommendationTpo>(
+    restoredForm?.tpo ?? { cd: 'daily' },
+  );
+  const [customTpoText, setCustomTpoText] = useState<string | null>(
+    restoredForm?.customTpoText ?? null,
+  );
   const [isCustomTpoSheetOpen, setIsCustomTpoSheetOpen] = useState(false);
   const [selectedStart, setSelectedStart] = useState<GoingOutStart | null>(
-    null,
+    restoredForm?.start ?? null,
   );
-  const [selectedEnd, setSelectedEnd] = useState<string | null>(null);
+  const [selectedEnd, setSelectedEnd] = useState<string | null>(
+    restoredForm?.end ?? null,
+  );
   const [validationMessage, setValidationMessage] = useState<string | null>(
     null,
   );
@@ -124,6 +153,10 @@ const RecommendationPage = () => {
     error,
     reset,
   } = useCreateRecommendationSessionRecommendationSessionsPost();
+
+  useEffect(() => {
+    removeSessionItem(RECOMMENDATION_FORM_DRAFT_STORAGE_KEY);
+  }, []);
 
   const start = selectedStart ?? {
     date: getKstDate(now),
@@ -250,21 +283,41 @@ const RecommendationPage = () => {
       return;
     }
 
+    const request = toRecommendationSessionCreate({
+      sidoNm: location.sidoNm,
+      sigunguNm: location.sigunguNm,
+      locationInputTypeCd: location.inputTypeCd,
+      tpo,
+      goingOutDateCd,
+      startTime: start.time,
+      endTime: end,
+    });
+
     createRecommendationSession(
+      { data: request },
       {
-        data: toRecommendationSessionCreate({
-          sidoNm: location.sidoNm,
-          sigunguNm: location.sigunguNm,
-          locationInputTypeCd: location.inputTypeCd,
-          tpo,
-          goingOutDateCd,
-          startTime: start.time,
-          endTime: end,
-        }),
-      },
-      {
-        onSuccess: (createdSession) => {
-          console.info('추천 세션을 만들었습니다.', createdSession);
+        onSuccess: ({ recommendation_session_id: sessionId }) => {
+          const pendingRecommendation: PendingRecommendation = {
+            sessionId,
+            requestedAt: Date.now(),
+            request,
+            form: {
+              location,
+              tpo,
+              customTpoText,
+              start: selectedStart,
+              end: selectedEnd,
+            },
+          };
+
+          writeSessionJson(
+            PENDING_RECOMMENDATION_STORAGE_KEY,
+            pendingRecommendation,
+          );
+          void navigate({
+            to: '/recommendation/sessions/$sessionId',
+            params: { sessionId },
+          });
         },
       },
     );
