@@ -1,5 +1,4 @@
-import { useNavigate, useRouter } from '@tanstack/react-router';
-import { useEffect, useId, useState } from 'react';
+import { useId, useState } from 'react';
 import { isUnauthorizedError } from '@/apis/authSession';
 import type { IconName } from '@/assets/icons';
 import Button from '@/components/common/Button';
@@ -14,6 +13,8 @@ import {
 } from '@/domains/member/withdrawalConfirm';
 import { useStartWithdrawalAuthWithdrawPost } from '@/generated/endpoints/auth/auth';
 import { useGetMeMembersMeGet } from '@/generated/endpoints/member/member';
+import useGoBack from '@/hooks/useGoBack';
+import useRedirectLock from '@/hooks/useRedirectLock';
 import * as S from './WithdrawalPage.styled';
 
 const START_ERROR_MESSAGE = '탈퇴를 시작하지 못했어요. 다시 시도해 주세요.';
@@ -30,46 +31,21 @@ const DELETED_RECORDS: DeletedRecord[] = [
 ];
 
 const WithdrawalPage = () => {
-  const navigate = useNavigate();
-  const router = useRouter();
+  const goBack = useGoBack();
   const phraseInputId = useId();
   const { data: me } = useGetMeMembersMeGet();
   const startWithdrawal = useStartWithdrawalAuthWithdrawPost();
   const [phrase, setPhrase] = useState('');
-  const [isRedirecting, setIsRedirecting] = useState(false);
+  const { isRedirecting, redirect } = useRedirectLock();
   const isConfirmed = isWithdrawalConfirmed(phrase);
   const isBusy = startWithdrawal.isPending || isRedirecting;
   const hasError =
     startWithdrawal.isError && !isUnauthorizedError(startWithdrawal.error);
 
-  useEffect(() => {
-    const handlePageShow = (event: PageTransitionEvent) => {
-      if (event.persisted) {
-        setIsRedirecting(false);
-      }
-    };
-
-    window.addEventListener('pageshow', handlePageShow);
-
-    return () => {
-      window.removeEventListener('pageshow', handlePageShow);
-    };
-  }, []);
-
-  const goBack = () => {
-    if (router.history.canGoBack()) {
-      router.history.back();
-      return;
-    }
-
-    void navigate({ to: '/my-info', replace: true });
-  };
-
   const handleWithdraw = () => {
     startWithdrawal.mutate(undefined, {
       onSuccess: ({ authorize_url: authorizeUrl }) => {
-        setIsRedirecting(true);
-        window.location.assign(authorizeUrl);
+        redirect(authorizeUrl);
       },
     });
   };
