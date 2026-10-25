@@ -2,6 +2,7 @@ import { Global } from '@emotion/react';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { Outlet, useMatches } from '@tanstack/react-router';
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
+import AuthGate from '@/components/AuthGate';
 import BottomTabBar from '@/components/BottomTabBar';
 import SessionExpiredDialog from '@/components/SessionExpiredDialog';
 import { globalStyles } from '@/styles/globalStyles';
@@ -21,12 +22,14 @@ const RootLayout = () => {
   return (
     <>
       <Global styles={globalStyles} />
-      <S.Container>
-        <S.Main>
-          <Outlet />
-        </S.Main>
-        {!isFullScreen && <BottomTabBar />}
-      </S.Container>
+      <AuthGate>
+        <S.Container>
+          <S.Main>
+            <Outlet />
+          </S.Main>
+          {!isFullScreen && <BottomTabBar />}
+        </S.Container>
+      </AuthGate>
       <SessionExpiredDialog />
       <ReactQueryDevtools />
       <TanStackRouterDevtools />
