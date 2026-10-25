@@ -18,6 +18,7 @@ interface ButtonProps {
   onClick?: MouseEventHandler<HTMLButtonElement>;
   ref?: Ref<HTMLButtonElement>;
   id?: string;
+  'aria-label'?: string;
   'aria-expanded'?: boolean;
   'aria-pressed'?: boolean | 'mixed';
   'aria-haspopup'?: boolean | 'menu' | 'listbox' | 'tree' | 'grid' | 'dialog';
@@ -43,6 +44,7 @@ const Button = (props: ButtonProps) => {
     onClick,
     ref,
     id,
+    'aria-label': ariaLabel,
     'aria-expanded': ariaExpanded,
     'aria-pressed': ariaPressed,
     'aria-haspopup': ariaHasPopup,
@@ -57,6 +59,7 @@ const Button = (props: ButtonProps) => {
       disabled={isDisabled}
       onClick={onClick}
       id={id}
+      aria-label={ariaLabel}
       aria-expanded={ariaExpanded}
       aria-pressed={ariaPressed}
       aria-haspopup={ariaHasPopup}
