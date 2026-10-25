@@ -30,8 +30,20 @@ export class EditorRendererError extends Error {}
 export const UNSUPPORTED_MESSAGE =
   '이 브라우저에서는 이미지 편집을 할 수 없어요.';
 
-export const isWebGL2Supported = () =>
-  document.createElement('canvas').getContext('webgl2') !== null;
+export const isWebGL2Supported = () => {
+  const gl = document.createElement('canvas').getContext('webgl2');
+
+  if (gl === null) {
+    return false;
+  }
+
+  // 브라우저가 동시에 둘 수 있는 컨텍스트 수가 정해져 있어, 확인용 컨텍스트는 바로 돌려준다.
+  gl.getExtension('WEBGL_lose_context')?.loseContext();
+
+  return true;
+};
+
+const RENDER_ERROR_MESSAGE = '미리보기를 그리지 못했어요.';
 
 const VERTEX_SHADER = `#version 300 es
 in vec2 a_position;
@@ -321,7 +333,9 @@ export const createEditorRenderer = (
         renderOptions.angle,
       );
 
+      // 컨텍스트를 잃은 경우와 달리, 아래 두 실패는 같은 옵션으로 다시 그려도 그대로라 알린다.
       if (geometry === null) {
+        onError?.(new EditorRendererError(RENDER_ERROR_MESSAGE));
         return null;
       }
 
@@ -341,6 +355,7 @@ export const createEditorRenderer = (
         gl.drawingBufferWidth !== outputSize.width ||
         gl.drawingBufferHeight !== outputSize.height
       ) {
+        onError?.(new EditorRendererError(RENDER_ERROR_MESSAGE));
         return null;
       }
 
