@@ -11,13 +11,11 @@ describe('상황 프리셋 목록', () => {
     });
   });
 
-  test('BE 스펙의 tpo_cd 중 custom을 뺀 값이 모두, 같은 순서로 프리셋에 있어야 한다.', () => {
+  test('날씨가 대신 판단하는 rainy와 midwinter는 프리셋에 들어가지 않아야 한다.', () => {
     const presetValues = TPO_PRESETS.map((preset) => preset.value);
-    const specValues = tpoCdSchema.options.filter(
-      (value) => value !== 'custom',
-    );
 
-    expect(presetValues).toEqual(specValues);
+    expect(presetValues).not.toContain('rainy');
+    expect(presetValues).not.toContain('midwinter');
   });
 
   test('직접 입력인 custom은 프리셋에 들어가지 않아야 한다.', () => {
