@@ -1,4 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import type { RouterHistory } from '@tanstack/react-router';
 import {
   createBrowserHistory,
   createMemoryHistory,
@@ -105,6 +106,8 @@ const renderAt = async (entries: string[]) => {
   });
   const router = createRouter({ routeTree, history, context: { queryClient } });
   await router.load();
+  // 입력 화면은 코드 분할로 늦게 불러오므로, 돌아가는 화면을 기다리는 단언이 불러오는 시간에 걸리지 않게 미리 받아 둔다.
+  await router.preloadRoute({ to: '/recommendation' });
 
   render(
     <QueryClientProvider client={queryClient}>
@@ -115,8 +118,40 @@ const renderAt = async (entries: string[]) => {
   return { history };
 };
 
+const browserHistories: RouterHistory[] = [];
+
+const renderWithBrowserHistory = async () => {
+  window.history.replaceState(null, '', '/my-info');
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  const history = createBrowserHistory();
+  browserHistories.push(history);
+  const router = createRouter({ routeTree, history, context: { queryClient } });
+  await router.load();
+  await router.preloadRoute({ to: '/recommendation' });
+
+  render(
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  );
+  await router.navigate({ to: '/recommendation' });
+  await router.navigate({
+    to: '/recommendation/sessions/$sessionId',
+    params: { sessionId: SESSION_ID },
+  });
+  await screen.findByText('코디를 만들고 있어요');
+
+  return { router };
+};
+
 afterEach(() => {
   sessionStorage.clear();
+  browserHistories.splice(0).forEach((history) => {
+    history.destroy();
+  });
+  window.history.replaceState(null, '', '/');
 });
 
 describe('진행 화면에서 이동', () => {
@@ -144,7 +179,8 @@ describe('진행 화면에서 이동', () => {
     );
     unsubscribe();
 
-    expect((navigatedAt ?? 0) - requestedAt).toBeGreaterThanOrEqual(1000);
+    // 타이머는 조금 일찍 깨어날 수 있어 몇 ms의 오차를 둔다.
+    expect((navigatedAt ?? 0) - requestedAt).toBeGreaterThanOrEqual(950);
     expect(
       sessionStorage.getItem(PENDING_RECOMMENDATION_STORAGE_KEY),
     ).toBeNull();
@@ -163,11 +199,13 @@ describe('진행 화면에서 이동', () => {
 
   test('취소나 이탈로 끝난 세션이면 입력 화면으로 돌아가야 한다.', async () => {
     respondResult(createResult('failed', 'canceled'));
+    const cancelRequests = countCancelRequests();
     const { history } = await renderAt([PROGRESS_PATH]);
 
     await waitFor(() => {
       expect(history.location.pathname).toBe('/recommendation');
     });
+    expect(cancelRequests.count).toBe(0);
   });
 
   test('추천을 만들지 못하면 세션을 취소하고 입력값을 남긴 채 입력 화면으로 돌아가야 한다.', async () => {
@@ -288,35 +326,133 @@ describe('진행 중 그만두기', () => {
     expect(history.location.pathname).toBe(PROGRESS_PATH);
     expect(cancelRequests.count).toBe(0);
   });
+});
 
-  test('뒤로 가기를 누르면 같은 확인 다이얼로그를 띄우고 이동을 멈춰야 한다.', async () => {
+describe('뒤로 가기', () => {
+  const findDialog = () =>
+    screen.findByRole('dialog', { name: '추천을 그만둘까요?' });
+
+  test('뒤로 가기를 누르고 그만두면 세션을 취소하고 입력값을 남긴 채 입력 화면으로 돌아가야 한다.', async () => {
+    const user = userEvent.setup();
+    savePending(0);
     respondResult(createResult('processing'));
-    window.history.replaceState(null, '', '/recommendation');
-    const queryClient = new QueryClient({
-      defaultOptions: { queries: { retry: false } },
-    });
-    const router = createRouter({
-      routeTree,
-      history: createBrowserHistory(),
-      context: { queryClient },
-    });
-    await router.load();
-    render(
-      <QueryClientProvider client={queryClient}>
-        <RouterProvider router={router} />
-      </QueryClientProvider>,
+    const cancelRequests = countCancelRequests();
+    const { router } = await renderWithBrowserHistory();
+
+    window.history.back();
+    await user.click(
+      within(await findDialog()).getByRole('button', { name: '그만두기' }),
     );
-    await router.navigate({
-      to: '/recommendation/sessions/$sessionId',
-      params: { sessionId: SESSION_ID },
+
+    expect(
+      await screen.findByRole('button', { name: /^위치 서울 성동구/ }),
+    ).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/recommendation');
+    expect(window.location.pathname).toBe('/recommendation');
+    expect(cancelRequests.count).toBe(1);
+  });
+
+  test('계속 기다리면 주소를 진행 화면으로 되돌리고, 다시 뒤로 가면 또 물어야 한다.', async () => {
+    const user = userEvent.setup();
+    respondResult(createResult('processing'));
+    const cancelRequests = countCancelRequests();
+    await renderWithBrowserHistory();
+
+    window.history.back();
+    await user.click(
+      within(await findDialog()).getByRole('button', { name: '계속 기다리기' }),
+    );
+
+    await waitFor(() => {
+      expect(window.location.pathname).toBe(PROGRESS_PATH);
     });
-    await screen.findByText('코디를 만들고 있어요');
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
 
     window.history.back();
 
+    expect(await findDialog()).toBeInTheDocument();
+    expect(cancelRequests.count).toBe(0);
+  });
+
+  test('확인 창이 떠 있는 동안 추천이 끝나면 창을 닫고 진행 화면 기록을 결과로 바꿔야 한다.', async () => {
+    respondResult(createResult('processing'));
+    const { router } = await renderWithBrowserHistory();
+
+    window.history.back();
+    await findDialog();
+    respondResult(createResult('completed'));
+
+    await waitFor(
+      () => {
+        expect(window.location.pathname).toBe(`${PROGRESS_PATH}/result`);
+      },
+      { timeout: 4000 },
+    );
+    expect(router.state.location.pathname).toBe(`${PROGRESS_PATH}/result`);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    window.history.back();
+
+    await waitFor(() => {
+      expect(window.location.pathname).toBe('/recommendation');
+    });
+  });
+
+  test('취소를 요청하는 중에 뒤로 가기를 눌러도 입력 화면에서 멈춰야 한다.', async () => {
+    const user = userEvent.setup();
+    savePending(0);
+    respondResult(createResult('processing'));
+    let cancelRequestCount = 0;
+    server.use(
+      http.post(
+        `/api/recommendation-sessions/${SESSION_ID}/cancel`,
+        async () => {
+          cancelRequestCount += 1;
+          await new Promise((resolve) => setTimeout(resolve, 300));
+
+          return HttpResponse.json({
+            recommendation_session_id: SESSION_ID,
+            session_status_cd: 'canceled',
+          });
+        },
+      ),
+    );
+    await renderWithBrowserHistory();
+
+    await user.click(
+      await screen.findByRole(
+        'button',
+        { name: '추천 그만두기' },
+        { timeout: 2000 },
+      ),
+    );
+    await user.click(
+      within(await findDialog()).getByRole('button', { name: '그만두기' }),
+    );
+    window.history.back();
+
     expect(
-      await screen.findByRole('dialog', { name: '추천을 그만둘까요?' }),
+      await screen.findByRole('button', { name: /^위치 서울 성동구/ }),
     ).toBeInTheDocument();
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    expect(window.location.pathname).toBe('/recommendation');
+    expect(cancelRequestCount).toBe(1);
+  });
+
+  test('확인 창이 떠 있는 동안 앞으로 가기로 돌아오면 창을 닫고 계속 기다려야 한다.', async () => {
+    respondResult(createResult('processing'));
+    await renderWithBrowserHistory();
+
+    window.history.back();
+    await findDialog();
+    window.history.forward();
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+    expect(window.location.pathname).toBe(PROGRESS_PATH);
     expect(screen.getByText('코디를 만들고 있어요')).toBeInTheDocument();
   });
 });

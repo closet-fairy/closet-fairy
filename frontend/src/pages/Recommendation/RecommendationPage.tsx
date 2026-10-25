@@ -301,7 +301,13 @@ const RecommendationPage = () => {
             sessionId,
             requestedAt: Date.now(),
             request,
-            form: { location, tpo, customTpoText, start, end },
+            form: {
+              location,
+              tpo,
+              customTpoText,
+              start: selectedStart,
+              end: selectedEnd,
+            },
           };
 
           writeSessionJson(

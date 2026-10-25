@@ -14,23 +14,29 @@ interface SessionParams {
 
 interface MockSession {
   request: RecommendationSessionCreateOutput | null;
-  pollCount: number;
+  createdAt: number;
   sessionStatusCd: RecommendationResult['session_status_cd'];
 }
 
 // 직접 입력에 이 말을 넣으면 생성이 실패하는 세션을 만든다.
 const FAILURE_KEYWORD = '실패';
 const FAILED_SESSION_ID = 9001;
-const POLLS_UNTIL_SETTLED = 3;
+// 진행 화면과 취소를 dev:mock에서 직접 해 볼 수 있도록 생성에 몇 초가 걸리는 것처럼 둔다.
+const GENERATION_MS = 6000;
 
 const sessions = new Map<number, MockSession>();
 let nextSessionId = 1;
+
+export const resetRecommendationMocks = () => {
+  sessions.clear();
+  nextSessionId = 1;
+};
 
 // 새로고침하면 MSW 상태가 사라지므로, 모르는 세션은 처음 만든 것처럼 다룬다.
 const getSession = (sessionId: number) => {
   const session = sessions.get(sessionId) ?? {
     request: null,
-    pollCount: 0,
+    createdAt: Date.now(),
     sessionStatusCd: 'active',
   };
   sessions.set(sessionId, session);
@@ -46,7 +52,7 @@ const getGenerationStatusCd = (
     return 'failed';
   }
 
-  if (session.pollCount < POLLS_UNTIL_SETTLED) {
+  if (Date.now() - session.createdAt < GENERATION_MS) {
     return 'processing';
   }
 
@@ -128,7 +134,7 @@ export const recommendationHandlers = [
       : nextSessionId++;
     sessions.set(sessionId, {
       request: body,
-      pollCount: 0,
+      createdAt: Date.now(),
       sessionStatusCd: 'active',
     });
 
@@ -142,7 +148,6 @@ export const recommendationHandlers = [
     ({ params }) => {
       const sessionId = Number(params.sessionId);
       const session = getSession(sessionId);
-      session.pollCount += 1;
 
       return HttpResponse.json<RecommendationResult>(
         toResult(sessionId, session),

@@ -4,6 +4,7 @@ import { afterAll, afterEach, beforeAll, vi } from 'vitest';
 import { resetSession } from '@/apis/authSession';
 import { resetClothingMocks } from '@/mocks/handlers/clothing';
 import { resetMemberMocks } from '@/mocks/handlers/member';
+import { resetRecommendationMocks } from '@/mocks/handlers/recommendation';
 import { server } from '@/mocks/node';
 
 // jsdom에는 ResizeObserver가 없어서, 크기 변화를 지켜보는 컴포넌트가 테스트에서 멈추지 않도록 빈 구현을 둔다.
@@ -32,6 +33,7 @@ afterEach(() => {
   server.resetHandlers();
   resetClothingMocks();
   resetMemberMocks();
+  resetRecommendationMocks();
   resetSession();
 
   if (unhandledRequests.length > 0) {

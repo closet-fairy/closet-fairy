@@ -75,6 +75,18 @@ describe('입력값 초안', () => {
     ).toEqual({ date: '2026-10-15', time: '08:00' });
   });
 
+  test('직접 고르지 않은 시간은 비워 둔 채로 복원해야 한다.', () => {
+    const untouched = { ...draft, start: null, end: null };
+
+    expect(parseRecommendationFormDraft(untouched)).toEqual(untouched);
+    expect(
+      restoreRecommendationForm(
+        untouched,
+        new Date('2026-10-14T10:10:00+09:00'),
+      ),
+    ).toEqual(untouched);
+  });
+
   test('나가는 시간이 지났으면 시간만 비우고 나머지는 남겨야 한다.', () => {
     const now = new Date('2026-10-14T10:10:00+09:00');
 

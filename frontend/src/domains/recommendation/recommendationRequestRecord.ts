@@ -1,7 +1,6 @@
 import { z } from 'zod';
 import { RecommendationSessionCreate } from '@/generated/models';
 import { createStartOptions } from './goingOutTime';
-import type { GoingOutStart } from './goingOutTime';
 import type { TpoPresetCd } from './tpoPresets';
 import { TPO_PRESETS } from './tpoPresets';
 
@@ -19,8 +18,9 @@ const RecommendationFormDraft = z.object({
     z.object({ cd: z.custom<TpoPresetCd>(isTpoPresetCd) }),
   ]),
   customTpoText: z.string().nullable(),
-  start: z.object({ date: z.string(), time: z.string() }),
-  end: z.string(),
+  // 직접 고르지 않은 시간은 null로 두어, 돌아왔을 때도 현재 시각을 따라 기본값이 바뀌게 한다.
+  start: z.object({ date: z.string(), time: z.string() }).nullable(),
+  end: z.string().nullable(),
 });
 
 const PendingRecommendation = z.object({
@@ -33,14 +33,6 @@ const PendingRecommendation = z.object({
 export type RecommendationFormDraft = z.infer<typeof RecommendationFormDraft>;
 
 export type PendingRecommendation = z.input<typeof PendingRecommendation>;
-
-export interface RestoredRecommendationForm extends Omit<
-  RecommendationFormDraft,
-  'start' | 'end'
-> {
-  start: GoingOutStart | null;
-  end: string | null;
-}
 
 export const parsePendingRecommendation = (
   value: unknown,
@@ -64,10 +56,15 @@ export const parseRecommendationFormDraft = (
 export const restoreRecommendationForm = (
   draft: RecommendationFormDraft,
   now: Date,
-): RestoredRecommendationForm => {
+): RecommendationFormDraft => {
+  const { start } = draft;
+
+  if (start === null) {
+    return draft;
+  }
+
   const isStartAvailable = createStartOptions(now).some(
-    (option) =>
-      option.date === draft.start.date && option.time === draft.start.time,
+    (option) => option.date === start.date && option.time === start.time,
   );
 
   return isStartAvailable ? draft : { ...draft, start: null, end: null };

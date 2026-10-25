@@ -1,3 +1,4 @@
+import type { ShouldBlockFn } from '@tanstack/react-router';
 import {
   useBlocker,
   useNavigate,
@@ -11,6 +12,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { ApiError } from '@/apis/apiError';
 import { isUnauthorizedError } from '@/apis/authSession';
 import Button from '@/components/common/Button';
 import Dialog from '@/components/common/Dialog';
@@ -39,6 +41,8 @@ const POLLING_INTERVAL_MS = 2000;
 const MIN_DISPLAY_MS = 1000;
 const CANCEL_BUTTON_DELAY_MS = 1000;
 const URL_RESTORE_TIMEOUT_MS = 1000;
+const NOT_FOUND_STATUS = 404;
+const INPUT_PATH = '/recommendation';
 
 const progressVisual = (
   <svg width={190} height={190} viewBox="0 0 190 190" aria-hidden>
@@ -85,6 +89,7 @@ const RecommendationProgressPage = () => {
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
   const [isCancelButtonVisible, setIsCancelButtonVisible] = useState(false);
   const isLeaveAllowedRef = useRef(false);
+  const cancelButtonRef = useRef<HTMLButtonElement | null>(null);
   const { mutateAsync: cancelSession } =
     useCancelRecommendationSessionRecommendationSessionsRecommendationSessionIdCancelPost();
   const {
@@ -111,21 +116,30 @@ const RecommendationProgressPage = () => {
   );
   const progress =
     result === undefined ? null : getRecommendationProgress(result);
-  const isWaiting =
-    progress === 'processing' || (progress === null && error === null);
   const isCanceling = leaveState === 'canceling';
-  const shouldBlockLeave = useCallback(
-    () =>
+  // 결과가 나와도 최소 노출 시간이 지나 이동하기 전까지는 기다리는 중으로 본다.
+  const isWaiting =
+    leaveState === 'none' &&
+    (progress === null ? error === null : progress !== 'ended');
+  const shouldBlockLeave = useCallback<ShouldBlockFn>(
+    ({ current, next }) =>
       !isLeaveAllowedRef.current &&
-      (isCanceling || (leaveState === 'none' && isWaiting)),
-    [isCanceling, isWaiting, leaveState],
+      current.pathname !== next.pathname &&
+      (isCanceling || isWaiting),
+    [isCanceling, isWaiting],
   );
   const leaveBlocker = useBlocker({
     shouldBlockFn: shouldBlockLeave,
     enableBeforeUnload: false,
     withResolver: true,
   });
+  // 취소 요청을 기다린 뒤에는 그사이 바뀐 차단 상태를 읽어야 하므로 최신 값을 ref로 둔다.
+  const leaveBlockerRef = useRef(leaveBlocker);
   const isLeaveBlocked = leaveBlocker.status === 'blocked';
+
+  useEffect(() => {
+    leaveBlockerRef.current = leaveBlocker;
+  });
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -137,18 +151,47 @@ const RecommendationProgressPage = () => {
     };
   }, []);
 
+  // 확인 창이 떠 있는 동안 앞으로 가기로 진행 화면에 돌아오면 나가려던 것을 거둔 것으로 본다.
+  useEffect(() => {
+    if (!isLeaveBlocked) {
+      return;
+    }
+
+    const handlePopState = () => {
+      const blocker = leaveBlockerRef.current;
+
+      if (
+        blocker.status === 'blocked' &&
+        window.location.pathname === blocker.current.pathname
+      ) {
+        blocker.proceed();
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [isLeaveBlocked]);
+
   const returnToInput = () => {
     isLeaveAllowedRef.current = true;
+    removeSessionItem(PENDING_RECOMMENDATION_STORAGE_KEY);
+    const blocker = leaveBlockerRef.current;
+
+    if (blocker.status === 'blocked') {
+      // 여러 칸 뒤로 가는 등 입력 화면이 아닌 곳으로 나가면 입력값을 남기지 않는다.
+      if (pending && blocker.next.pathname === INPUT_PATH) {
+        writeSessionJson(RECOMMENDATION_FORM_DRAFT_STORAGE_KEY, pending.form);
+      }
+
+      blocker.proceed();
+      return;
+    }
 
     if (pending) {
       writeSessionJson(RECOMMENDATION_FORM_DRAFT_STORAGE_KEY, pending.form);
-    }
-
-    removeSessionItem(PENDING_RECOMMENDATION_STORAGE_KEY);
-
-    if (leaveBlocker.status === 'blocked') {
-      leaveBlocker.proceed();
-      return;
     }
 
     if (pending && router.history.canGoBack()) {
@@ -156,7 +199,7 @@ const RecommendationProgressPage = () => {
       return;
     }
 
-    void navigate({ to: '/recommendation', replace: true });
+    void navigate({ to: INPUT_PATH, replace: true });
   };
 
   const cancelAndReturn = async () => {
@@ -176,10 +219,11 @@ const RecommendationProgressPage = () => {
     isLeaveAllowedRef.current = true;
     removeSessionItem(PENDING_RECOMMENDATION_STORAGE_KEY);
     setIsCancelDialogOpen(false);
+    const blocker = leaveBlockerRef.current;
 
-    if (leaveBlocker.status === 'blocked') {
+    if (blocker.status === 'blocked') {
       const urlRestored = waitForPopState();
-      leaveBlocker.reset();
+      blocker.reset();
       await urlRestored;
     }
 
@@ -244,27 +288,66 @@ const RecommendationProgressPage = () => {
     }
   };
 
+  const cancelDialog = (
+    <Dialog
+      isOpen={isCancelDialogOpen || isLeaveBlocked}
+      onOpenChange={handleCancelDialogOpenChange}
+      title="추천을 그만둘까요?"
+      description="지금 그만두면 만들던 코디는 사라져요."
+      isDismissable={!isCanceling}
+      finalFocus={cancelButtonRef}
+      footer={
+        <>
+          <Button
+            isFullWidth
+            isLoading={isCanceling}
+            onClick={() => void cancelAndReturn()}
+          >
+            그만두기
+          </Button>
+          <Button
+            variant="text"
+            size="md"
+            isFullWidth
+            isDisabled={isCanceling}
+            onClick={handleKeepWaiting}
+          >
+            계속 기다리기
+          </Button>
+        </>
+      }
+    />
+  );
+
   if (result === undefined && error !== null) {
+    const isNotFound =
+      error instanceof ApiError && error.status === NOT_FOUND_STATUS;
+
     return (
-      <StatusView
-        title="추천 상태를 확인하지 못했어요"
-        description={isUnauthorizedError(error) ? undefined : error.message}
-        actions={
-          <>
-            <Button isFullWidth onClick={() => void refetch()}>
-              다시 시도
-            </Button>
-            <Button
-              variant="text"
-              size="md"
-              isFullWidth
-              onClick={returnToInput}
-            >
-              돌아가기
-            </Button>
-          </>
-        }
-      />
+      <>
+        <StatusView
+          title="추천 상태를 확인하지 못했어요"
+          description={isUnauthorizedError(error) ? undefined : error.message}
+          actions={
+            <>
+              {!isNotFound && (
+                <Button isFullWidth onClick={() => void refetch()}>
+                  다시 시도
+                </Button>
+              )}
+              <Button
+                variant={isNotFound ? 'primary' : 'text'}
+                size={isNotFound ? 'lg' : 'md'}
+                isFullWidth
+                onClick={returnToInput}
+              >
+                돌아가기
+              </Button>
+            </>
+          }
+        />
+        {cancelDialog}
+      </>
     );
   }
 
@@ -278,6 +361,7 @@ const RecommendationProgressPage = () => {
         actions={
           <S.CancelAction $isVisible={isCancelButtonVisible}>
             <Button
+              ref={cancelButtonRef}
               variant="text"
               size="md"
               isFullWidth
@@ -289,33 +373,7 @@ const RecommendationProgressPage = () => {
           </S.CancelAction>
         }
       />
-      <Dialog
-        isOpen={isCancelDialogOpen || isLeaveBlocked}
-        onOpenChange={handleCancelDialogOpenChange}
-        title="추천을 그만둘까요?"
-        description="지금 그만두면 만들던 코디는 사라져요."
-        isDismissable={!isCanceling}
-        footer={
-          <>
-            <Button
-              isFullWidth
-              isLoading={isCanceling}
-              onClick={() => void cancelAndReturn()}
-            >
-              그만두기
-            </Button>
-            <Button
-              variant="text"
-              size="md"
-              isFullWidth
-              isDisabled={isCanceling}
-              onClick={handleKeepWaiting}
-            >
-              계속 기다리기
-            </Button>
-          </>
-        }
-      />
+      {cancelDialog}
     </>
   );
 };

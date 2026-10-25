@@ -195,8 +195,8 @@ describe('추천 요청 보내기', () => {
         },
         tpo: { cd: 'work' },
         customTpoText: null,
-        start: { date: '2026-10-14', time: '09:00' },
-        end: '14:00',
+        start: null,
+        end: null,
       },
     });
   });
