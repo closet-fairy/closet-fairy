@@ -3,6 +3,7 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+import type { WeatherPreview } from '@/generated/models';
 import { server } from '@/mocks/node';
 import RecommendationPage from './RecommendationPage';
 
@@ -785,6 +786,31 @@ describe('위치 고르기', () => {
     TIMEOUT: 3,
   });
 
+  const openSheetAndUseCurrentLocation = async (
+    user: ReturnType<typeof userEvent.setup>,
+  ) => {
+    await user.click(
+      screen.getByRole('button', { name: '위치 위치를 선택하세요' }),
+    );
+    await user.click(
+      await screen.findByRole('button', { name: /현재 위치 사용/ }),
+    );
+  };
+
+  const UNAVAILABLE_NOTICE =
+    '현재 위치를 확인하지 못했어요. 주소를 직접 입력해 주세요.';
+
+  const weatherPreview = (
+    overrides: Partial<WeatherPreview> = {},
+  ): WeatherPreview => ({
+    temperature: 24.3,
+    feels_like_temperature: 25.1,
+    weather_condition_cd: 'overcast',
+    is_fallback: false,
+    is_sky_missing: false,
+    ...overrides,
+  });
+
   afterEach(() => {
     Reflect.deleteProperty(navigator, 'geolocation');
   });
@@ -842,13 +868,7 @@ describe('위치 고르기', () => {
     server.use(
       http.get('/api/weather/preview', ({ request }) => {
         weatherParams = new URL(request.url).searchParams;
-        return HttpResponse.json({
-          temperature: 24.3,
-          feels_like_temperature: 25.1,
-          weather_condition_cd: 'overcast',
-          is_fallback: false,
-          is_sky_missing: false,
-        });
+        return HttpResponse.json(weatherPreview());
       }),
     );
     renderPage();
@@ -866,13 +886,13 @@ describe('위치 고르기', () => {
     const user = userEvent.setup();
     server.use(
       http.get('/api/weather/preview', () =>
-        HttpResponse.json({
-          temperature: 13.2,
-          feels_like_temperature: 12.4,
-          weather_condition_cd: 'clear',
-          is_fallback: true,
-          is_sky_missing: false,
-        }),
+        HttpResponse.json(
+          weatherPreview({
+            temperature: 13.2,
+            weather_condition_cd: 'clear',
+            is_fallback: true,
+          }),
+        ),
       ),
     );
     renderPage();
@@ -912,12 +932,7 @@ describe('위치 고르기', () => {
     vi.spyOn(console, 'info').mockImplementation(() => {});
     renderPage();
 
-    await user.click(
-      screen.getByRole('button', { name: '위치 위치를 선택하세요' }),
-    );
-    await user.click(
-      await screen.findByRole('button', { name: /현재 위치 사용/ }),
-    );
+    await openSheetAndUseCurrentLocation(user);
     await screen.findByRole('button', { name: /^위치 서울 성동구/ });
     await user.click(submitButton());
 
@@ -938,12 +953,7 @@ describe('위치 고르기', () => {
     });
     renderPage();
 
-    await user.click(
-      screen.getByRole('button', { name: '위치 위치를 선택하세요' }),
-    );
-    await user.click(
-      await screen.findByRole('button', { name: /현재 위치 사용/ }),
-    );
+    await openSheetAndUseCurrentLocation(user);
 
     expect(
       await screen.findByRole('dialog', { name: '주소 입력' }),
@@ -970,12 +980,7 @@ describe('위치 고르기', () => {
     );
     renderPage();
 
-    await user.click(
-      screen.getByRole('button', { name: '위치 위치를 선택하세요' }),
-    );
-    await user.click(
-      await screen.findByRole('button', { name: /현재 위치 사용/ }),
-    );
+    await openSheetAndUseCurrentLocation(user);
 
     expect(
       await screen.findByRole('dialog', { name: '주소 입력' }),
@@ -986,19 +991,25 @@ describe('위치 고르기', () => {
       '현재 위치 근처에서 지역을 찾지 못했어요. 주소를 직접 입력해 주세요.',
     );
   });
-  const openSheetAndUseCurrentLocation = async (
-    user: ReturnType<typeof userEvent.setup>,
-  ) => {
-    await user.click(
-      screen.getByRole('button', { name: '위치 위치를 선택하세요' }),
-    );
-    await user.click(
-      await screen.findByRole('button', { name: /현재 위치 사용/ }),
-    );
-  };
 
-  const UNAVAILABLE_NOTICE =
-    '현재 위치를 확인하지 못했어요. 주소를 직접 입력해 주세요.';
+  test('현재 위치를 찾는 동안에는 화면 낭독기에 찾는 중이라고 알리고 주소 직접 입력을 잠가야 한다.', async () => {
+    const user = userEvent.setup();
+    stubGeolocation(() => {});
+    renderPage();
+
+    await openSheetAndUseCurrentLocation(user);
+
+    expect(
+      screen
+        .getAllByRole('status')
+        .some((status) =>
+          status.textContent?.includes('현재 위치를 찾는 중이에요'),
+        ),
+    ).toBe(true);
+    expect(
+      screen.getByRole('button', { name: /주소 직접 입력/ }),
+    ).toBeDisabled();
+  });
 
   test('위치 확인 시간이 지나면 주소 직접 입력 화면으로 넘어가 현재 위치를 확인하지 못했다고 알려야 한다.', async () => {
     const user = userEvent.setup();
