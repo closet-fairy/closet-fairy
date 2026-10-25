@@ -5,12 +5,11 @@ import { isUnauthorizedError, markSessionActive } from '@/apis/authSession';
 import Button from '@/components/common/Button';
 import StatusView from '@/components/common/StatusView';
 import SplashScreen from '@/components/SplashScreen';
+import { LOAD_ERROR_MESSAGE } from '@/constants/loadErrorMessage';
 import type { AuthStatus } from '@/domains/auth/resolveAuthRedirect';
 import { resolveAuthRedirect } from '@/domains/auth/resolveAuthRedirect';
 import { useGetMeMembersMeGet } from '@/generated/endpoints/member/member';
 import * as S from './AuthGate.styled';
-
-const LOAD_ERROR_TITLE = '정보를 불러오지 못했어요';
 
 interface AuthGateProps {
   children: ReactNode;
@@ -35,7 +34,7 @@ const AuthGate = (props: AuthGateProps) => {
     return (
       <S.ErrorContainer>
         <StatusView
-          title={LOAD_ERROR_TITLE}
+          title={LOAD_ERROR_MESSAGE}
           description={error?.message}
           actions={
             <Button

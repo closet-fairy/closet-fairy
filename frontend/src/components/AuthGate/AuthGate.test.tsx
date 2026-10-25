@@ -124,7 +124,7 @@ describe('세션 만료', () => {
     ).toBeInTheDocument();
     expect(screen.getAllByRole('dialog')).toHaveLength(1);
     expect(
-      screen.queryByText('정보를 불러오지 못했어요.'),
+      screen.queryByText('정보를 불러오지 못했어요'),
     ).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: '다시 로그인' }));
