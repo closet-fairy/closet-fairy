@@ -32,7 +32,7 @@ import {
   useUpdateMeMembersMePatch,
 } from '@/generated/endpoints/member/member';
 import type { MemberMe, MemberSettingsOutput } from '@/generated/models';
-import useGoBack from '@/pages/ProfileEdit/hooks/useGoBack';
+import useGoBack from '@/hooks/useGoBack';
 import StyleSelectView from '../StyleSelectView';
 import * as S from './ProfileEditForm.styled';
 
