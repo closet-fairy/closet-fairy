@@ -292,31 +292,12 @@ const RecommendationProgressPage = () => {
       return;
     }
 
+    let nextSessionId: number;
+
     try {
-      const { recommendation_session_id: nextSessionId } = await createSession({
+      ({ recommendation_session_id: nextSessionId } = await createSession({
         data: pending.request,
-      });
-
-      if (await isLeaveRequested()) {
-        void cancelSession({ recommendationSessionId: nextSessionId }).catch(
-          () => undefined,
-        );
-        setIsFailureDialogOpen(false);
-        returnToInput();
-        return;
-      }
-
-      isLeaveAllowedRef.current = true;
-      writeSessionJson(PENDING_RECOMMENDATION_STORAGE_KEY, {
-        ...pending,
-        sessionId: nextSessionId,
-        requestedAt: Date.now(),
-      });
-      await navigate({
-        to: '/recommendation/sessions/$sessionId',
-        params: { sessionId: nextSessionId },
-        replace: true,
-      });
+      }));
     } catch (retryError) {
       setIsFailureDialogOpen(false);
       returnToInput(
@@ -324,7 +305,29 @@ const RecommendationProgressPage = () => {
           ? retryError.message
           : undefined,
       );
+      return;
     }
+
+    if (await isLeaveRequested()) {
+      void cancelSession({ recommendationSessionId: nextSessionId }).catch(
+        () => undefined,
+      );
+      setIsFailureDialogOpen(false);
+      returnToInput();
+      return;
+    }
+
+    isLeaveAllowedRef.current = true;
+    writeSessionJson(PENDING_RECOMMENDATION_STORAGE_KEY, {
+      ...pending,
+      sessionId: nextSessionId,
+      requestedAt: Date.now(),
+    });
+    await navigate({
+      to: '/recommendation/sessions/$sessionId',
+      params: { sessionId: nextSessionId },
+      replace: true,
+    });
   };
 
   const moveToResult = async () => {

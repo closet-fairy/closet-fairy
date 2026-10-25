@@ -14,11 +14,13 @@ import {
   PENDING_RECOMMENDATION_STORAGE_KEY,
   RECOMMENDATION_FORM_DRAFT_STORAGE_KEY,
 } from '@/constants/recommendationStorageKey';
+import { parsePendingRecommendation } from '@/domains/recommendation/recommendationRequestRecord';
 import type { RecommendationResult } from '@/generated/models';
 import { server } from '@/mocks/node';
 import { routeTree } from '@/routeTree.gen';
 
 const SESSION_ID = 5;
+const NEXT_SESSION_ID = 6;
 const PROGRESS_PATH = `/recommendation/sessions/${SESSION_ID}`;
 
 const form = {
@@ -145,6 +147,14 @@ const renderWithBrowserHistory = async () => {
 
   return { router };
 };
+
+const findFailureDialog = () =>
+  screen.findByRole('dialog', { name: '코디를 만들지 못했어요' });
+
+const wait = (ms: number) =>
+  new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
 
 afterEach(() => {
   sessionStorage.clear();
@@ -307,10 +317,6 @@ describe('진행 중 그만두기', () => {
 });
 
 describe('추천 실패', () => {
-  const NEXT_SESSION_ID = 6;
-  const findFailureDialog = () =>
-    screen.findByRole('dialog', { name: '코디를 만들지 못했어요' });
-
   test('추천을 만들지 못하면 실패 안내를 띄우고, 돌아가기를 누르면 세션을 취소하고 입력값을 남긴 채 돌아가야 한다.', async () => {
     const user = userEvent.setup();
     savePending(Date.now() - 5000);
@@ -388,11 +394,13 @@ describe('추천 실패', () => {
         sessionStorage.getItem(PENDING_RECOMMENDATION_STORAGE_KEY) ?? 'null',
       ),
     ).toMatchObject({ sessionId: NEXT_SESSION_ID });
-    expect(
+    const nextPending = parsePendingRecommendation(
       JSON.parse(
         sessionStorage.getItem(PENDING_RECOMMENDATION_STORAGE_KEY) ?? 'null',
-      ).requestedAt,
-    ).toBeGreaterThan(requestedAt);
+      ),
+      NEXT_SESSION_ID,
+    );
+    expect(nextPending?.requestedAt ?? 0).toBeGreaterThan(requestedAt);
     expect(await screen.findByText('코디를 만들고 있어요')).toBeInTheDocument();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 
@@ -457,14 +465,6 @@ describe('추천 실패', () => {
 });
 
 describe('추천 실패의 경계 상황', () => {
-  const NEXT_SESSION_ID = 6;
-  const findFailureDialog = () =>
-    screen.findByRole('dialog', { name: '코디를 만들지 못했어요' });
-  const wait = (ms: number) =>
-    new Promise((resolve) => {
-      setTimeout(resolve, ms);
-    });
-
   test('요청한 날과 날짜가 바뀌었으면 다시 보내지 않고 안내와 함께 입력 화면으로 돌아가야 한다.', async () => {
     const user = userEvent.setup();
     savePending(Date.now() - 2 * 24 * 60 * 60 * 1000);
@@ -747,7 +747,7 @@ describe('뒤로 가기', () => {
         `/api/recommendation-sessions/${SESSION_ID}/cancel`,
         async () => {
           cancelRequestCount += 1;
-          await new Promise((resolve) => setTimeout(resolve, 300));
+          await wait(300);
 
           return HttpResponse.json({
             recommendation_session_id: SESSION_ID,
@@ -773,7 +773,7 @@ describe('뒤로 가기', () => {
     expect(
       await screen.findByRole('button', { name: /^위치 서울 성동구/ }),
     ).toBeInTheDocument();
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    await wait(500);
     expect(window.location.pathname).toBe('/recommendation');
     expect(cancelRequestCount).toBe(1);
   });
