@@ -179,6 +179,7 @@ const initialize = (
     premultipliedAlpha: true,
     preserveDrawingBuffer,
     antialias: false,
+    depth: false,
   });
 
   if (gl === null) {
@@ -293,6 +294,7 @@ export const createEditorRenderer = (
       gl.deleteTexture(maskTexture);
       gl.deleteBuffer(buffer);
       gl.deleteProgram(program);
+      state = null;
     }
   };
 
