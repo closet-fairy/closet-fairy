@@ -95,6 +95,7 @@ const RecommendationProgressPage = () => {
   const {
     data: result,
     error,
+    isFetching,
     refetch,
   } = useGetRecommendationResultRecommendationSessionsRecommendationSessionIdGet(
     sessionId,
@@ -331,7 +332,11 @@ const RecommendationProgressPage = () => {
           actions={
             <>
               {!isNotFound && (
-                <Button isFullWidth onClick={() => void refetch()}>
+                <Button
+                  isFullWidth
+                  isLoading={isFetching}
+                  onClick={() => void refetch()}
+                >
                   다시 시도
                 </Button>
               )}
