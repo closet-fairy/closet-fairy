@@ -14,11 +14,13 @@ import {
   PENDING_RECOMMENDATION_STORAGE_KEY,
   RECOMMENDATION_FORM_DRAFT_STORAGE_KEY,
 } from '@/constants/recommendationStorageKey';
+import { parsePendingRecommendation } from '@/domains/recommendation/recommendationRequestRecord';
 import type { RecommendationResult } from '@/generated/models';
 import { server } from '@/mocks/node';
 import { routeTree } from '@/routeTree.gen';
 
 const SESSION_ID = 5;
+const NEXT_SESSION_ID = 6;
 const PROGRESS_PATH = `/recommendation/sessions/${SESSION_ID}`;
 
 const form = {
@@ -146,6 +148,14 @@ const renderWithBrowserHistory = async () => {
   return { router };
 };
 
+const findFailureDialog = () =>
+  screen.findByRole('dialog', { name: '코디를 만들지 못했어요' });
+
+const wait = (ms: number) =>
+  new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+
 afterEach(() => {
   sessionStorage.clear();
   browserHistories.splice(0).forEach((history) => {
@@ -206,28 +216,6 @@ describe('진행 화면에서 이동', () => {
       expect(history.location.pathname).toBe('/recommendation');
     });
     expect(cancelRequests.count).toBe(0);
-  });
-
-  test('추천을 만들지 못하면 세션을 취소하고 입력값을 남긴 채 입력 화면으로 돌아가야 한다.', async () => {
-    savePending(0);
-    respondResult(createResult('failed'));
-    const cancelRequests = countCancelRequests();
-    const { history } = await renderAt(['/recommendation', PROGRESS_PATH]);
-
-    await waitFor(() => {
-      expect(history.location.pathname).toBe('/recommendation');
-    });
-    expect(cancelRequests.count).toBe(1);
-    expect(
-      await screen.findByRole('button', { name: /^위치 서울 성동구/ }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '출근' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
-    expect(
-      sessionStorage.getItem(RECOMMENDATION_FORM_DRAFT_STORAGE_KEY),
-    ).toBeNull();
   });
 
   test('상태를 불러오지 못하면 다시 시도할 수 있어야 한다.', async () => {
@@ -328,6 +316,355 @@ describe('진행 중 그만두기', () => {
   });
 });
 
+describe('추천 실패', () => {
+  test('추천을 만들지 못하면 실패 안내를 띄우고, 돌아가기를 누르면 세션을 취소하고 입력값을 남긴 채 돌아가야 한다.', async () => {
+    const user = userEvent.setup();
+    savePending(Date.now() - 5000);
+    respondResult(createResult('failed'));
+    const cancelRequests = countCancelRequests();
+    const { history } = await renderAt(['/recommendation', PROGRESS_PATH]);
+
+    const dialog = await findFailureDialog();
+    expect(cancelRequests.count).toBe(0);
+    expect(history.location.pathname).toBe(PROGRESS_PATH);
+
+    await user.click(within(dialog).getByRole('button', { name: '돌아가기' }));
+
+    expect(
+      await screen.findByRole('button', { name: /^위치 서울 성동구/ }),
+    ).toBeInTheDocument();
+    expect(history.location.pathname).toBe('/recommendation');
+    expect(cancelRequests.count).toBe(1);
+    expect(
+      sessionStorage.getItem(RECOMMENDATION_FORM_DRAFT_STORAGE_KEY),
+    ).toBeNull();
+  });
+
+  test('다시 시도하면 실패한 세션을 닫고 같은 요청으로 새 세션을 만들어 그 진행 화면으로 바꿔야 한다.', async () => {
+    const user = userEvent.setup();
+    const requestedAt = Date.now() - 5000;
+    savePending(requestedAt);
+    respondResult(createResult('failed'));
+    const cancelRequests = countCancelRequests();
+    let receivedBody: unknown;
+    server.use(
+      http.post('/api/recommendation-sessions', async ({ request }) => {
+        receivedBody = await request.json();
+
+        return HttpResponse.json(
+          {
+            recommendation_session_id: NEXT_SESSION_ID,
+            session_status_cd: 'active',
+          },
+          { status: 202 },
+        );
+      }),
+      http.get(`/api/recommendation-sessions/${NEXT_SESSION_ID}`, () =>
+        HttpResponse.json({
+          ...createResult('processing'),
+          recommendation_session_id: NEXT_SESSION_ID,
+        }),
+      ),
+    );
+    const { history } = await renderAt(['/recommendation', PROGRESS_PATH]);
+
+    await user.click(
+      within(await findFailureDialog()).getByRole('button', {
+        name: '다시 시도',
+      }),
+    );
+
+    await waitFor(() => {
+      expect(history.location.pathname).toBe(
+        `/recommendation/sessions/${NEXT_SESSION_ID}`,
+      );
+    });
+    expect(cancelRequests.count).toBe(1);
+    expect(receivedBody).toEqual({
+      sido_nm: '서울특별시',
+      sigungu_nm: '성동구',
+      location_input_type_cd: 'manual',
+      tpo_cd: 'work',
+      going_out_start_time: '09:00',
+      going_out_end_time: '14:00',
+      going_out_date_cd: 'today',
+    });
+    const nextPending = parsePendingRecommendation(
+      JSON.parse(
+        sessionStorage.getItem(PENDING_RECOMMENDATION_STORAGE_KEY) ?? 'null',
+      ),
+      NEXT_SESSION_ID,
+    );
+    expect(nextPending).not.toBeNull();
+    expect(nextPending?.requestedAt ?? 0).toBeGreaterThan(requestedAt);
+    expect(await screen.findByText('코디를 만들고 있어요')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    history.back();
+
+    await waitFor(() => {
+      expect(history.location.pathname).toBe('/recommendation');
+    });
+  });
+
+  test('다시 시도가 거절되면 사유를 담아 입력값을 남긴 채 입력 화면으로 돌아가야 한다.', async () => {
+    const user = userEvent.setup();
+    savePending(Date.now() - 5000);
+    respondResult(createResult('failed'));
+    countCancelRequests();
+    server.use(
+      http.post('/api/recommendation-sessions', () =>
+        HttpResponse.json(
+          {
+            code: 'PAST_GOING_OUT_TIME',
+            message: '외출 시작 시각이 이미 지났습니다.',
+          },
+          { status: 422 },
+        ),
+      ),
+    );
+    const { history } = await renderAt(['/recommendation', PROGRESS_PATH]);
+
+    await user.click(
+      within(await findFailureDialog()).getByRole('button', {
+        name: '다시 시도',
+      }),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        '외출 시작 시각이 이미 지났습니다.',
+      );
+    });
+    expect(history.location.pathname).toBe('/recommendation');
+    expect(
+      screen.getByRole('button', { name: /^위치 서울 성동구/ }),
+    ).toBeInTheDocument();
+  });
+
+  test('요청 기록이 없으면 다시 시도 없이 돌아가기만 보여 줘야 한다.', async () => {
+    respondResult(createResult('failed'));
+    await renderAt(['/recommendation', PROGRESS_PATH]);
+
+    const dialog = await findFailureDialog();
+
+    expect(
+      within(dialog).queryByRole('button', { name: '다시 시도' }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(dialog).getByRole('button', { name: '돌아가기' }),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(
+        '입력 화면에서 조건을 골라 다시 추천받아 주세요.',
+      ),
+    ).toBeInTheDocument();
+  });
+});
+
+describe('추천 실패의 경계 상황', () => {
+  test('요청한 날과 날짜가 바뀌었으면 다시 보내지 않고 안내와 함께 입력 화면으로 돌아가야 한다.', async () => {
+    const user = userEvent.setup();
+    savePending(Date.now() - 2 * 24 * 60 * 60 * 1000);
+    respondResult(createResult('failed'));
+    const cancelRequests = countCancelRequests();
+    let createRequestCount = 0;
+    server.use(
+      http.post('/api/recommendation-sessions', () => {
+        createRequestCount += 1;
+
+        return HttpResponse.json(
+          {
+            recommendation_session_id: NEXT_SESSION_ID,
+            session_status_cd: 'active',
+          },
+          { status: 202 },
+        );
+      }),
+    );
+    const { history } = await renderAt(['/recommendation', PROGRESS_PATH]);
+
+    await user.click(
+      within(await findFailureDialog()).getByRole('button', {
+        name: '다시 시도',
+      }),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        '날짜가 바뀌어 외출 시간을 다시 골라 주세요.',
+      );
+    });
+    expect(history.location.pathname).toBe('/recommendation');
+    expect(createRequestCount).toBe(0);
+    expect(cancelRequests.count).toBe(1);
+  });
+
+  test('실패 안내에서 뒤로 가기를 눌러 취소하는 동안 그만둘지 묻는 창이 뜨지 않아야 한다.', async () => {
+    savePending(Date.now() - 5000);
+    respondResult(createResult('failed'));
+    server.use(
+      http.post(
+        `/api/recommendation-sessions/${SESSION_ID}/cancel`,
+        async () => {
+          await wait(400);
+
+          return HttpResponse.json({
+            recommendation_session_id: SESSION_ID,
+            session_status_cd: 'canceled',
+          });
+        },
+      ),
+    );
+    await renderWithBrowserHistory();
+    await findFailureDialog();
+
+    window.history.back();
+    await wait(150);
+
+    expect(
+      screen.queryByRole('dialog', { name: '추천을 그만둘까요?' }),
+    ).not.toBeInTheDocument();
+    expect(
+      await screen.findByRole('button', { name: /^위치 서울 성동구/ }),
+    ).toBeInTheDocument();
+  });
+
+  test('다시 시도 중에 뒤로 가기를 누르면 새 세션을 취소하고 입력 화면에 머물러야 한다.', async () => {
+    const user = userEvent.setup();
+    savePending(Date.now() - 5000);
+    respondResult(createResult('failed'));
+    countCancelRequests();
+    let createRequestCount = 0;
+    let nextCancelRequestCount = 0;
+    server.use(
+      http.post('/api/recommendation-sessions', async () => {
+        createRequestCount += 1;
+        await wait(400);
+
+        return HttpResponse.json(
+          {
+            recommendation_session_id: NEXT_SESSION_ID,
+            session_status_cd: 'active',
+          },
+          { status: 202 },
+        );
+      }),
+      http.post(
+        `/api/recommendation-sessions/${NEXT_SESSION_ID}/cancel`,
+        () => {
+          nextCancelRequestCount += 1;
+
+          return HttpResponse.json({
+            recommendation_session_id: NEXT_SESSION_ID,
+            session_status_cd: 'canceled',
+          });
+        },
+      ),
+    );
+    await renderWithBrowserHistory();
+
+    await user.click(
+      within(await findFailureDialog()).getByRole('button', {
+        name: '다시 시도',
+      }),
+    );
+    await waitFor(() => {
+      expect(createRequestCount).toBe(1);
+    });
+    window.history.back();
+
+    expect(
+      await screen.findByRole('button', { name: /^위치 서울 성동구/ }),
+    ).toBeInTheDocument();
+    await wait(800);
+    expect(window.location.pathname).toBe('/recommendation');
+    expect(nextCancelRequestCount).toBe(1);
+    expect(
+      sessionStorage.getItem(PENDING_RECOMMENDATION_STORAGE_KEY),
+    ).toBeNull();
+  });
+
+  test('실패한 세션을 닫는 중에 뒤로 가기를 누르면 새 세션을 만들지 않아야 한다.', async () => {
+    const user = userEvent.setup();
+    savePending(Date.now() - 5000);
+    respondResult(createResult('failed'));
+    let createRequestCount = 0;
+    server.use(
+      http.post(
+        `/api/recommendation-sessions/${SESSION_ID}/cancel`,
+        async () => {
+          await wait(400);
+
+          return HttpResponse.json({
+            recommendation_session_id: SESSION_ID,
+            session_status_cd: 'canceled',
+          });
+        },
+      ),
+      http.post('/api/recommendation-sessions', () => {
+        createRequestCount += 1;
+
+        return HttpResponse.json(
+          {
+            recommendation_session_id: NEXT_SESSION_ID,
+            session_status_cd: 'active',
+          },
+          { status: 202 },
+        );
+      }),
+    );
+    await renderWithBrowserHistory();
+
+    await user.click(
+      within(await findFailureDialog()).getByRole('button', {
+        name: '다시 시도',
+      }),
+    );
+    window.history.back();
+
+    expect(
+      await screen.findByRole('button', { name: /^위치 서울 성동구/ }),
+    ).toBeInTheDocument();
+    expect(window.location.pathname).toBe('/recommendation');
+    expect(createRequestCount).toBe(0);
+  });
+
+  test('그만둘지 묻는 창이 떠 있을 때 실패하면 실패 안내 없이 돌아가야 한다.', async () => {
+    savePending(0);
+    let generationStatusCd: RecommendationResult['generation_status_cd'] =
+      'processing';
+    server.use(
+      http.get(`/api/recommendation-sessions/${SESSION_ID}`, () =>
+        HttpResponse.json(createResult(generationStatusCd)),
+      ),
+    );
+    const cancelRequests = countCancelRequests();
+    await renderWithBrowserHistory();
+
+    window.history.back();
+    await screen.findByRole('dialog', { name: '추천을 그만둘까요?' });
+    generationStatusCd = 'failed';
+    let hasShownFailure = false;
+    const observer = setInterval(() => {
+      if (screen.queryByRole('dialog', { name: '코디를 만들지 못했어요' })) {
+        hasShownFailure = true;
+      }
+    }, 20);
+
+    expect(
+      await screen.findByRole(
+        'button',
+        { name: /^위치 서울 성동구/ },
+        { timeout: 4000 },
+      ),
+    ).toBeInTheDocument();
+    clearInterval(observer);
+    expect(hasShownFailure).toBe(false);
+    expect(cancelRequests.count).toBe(1);
+  });
+});
+
 describe('뒤로 가기', () => {
   const findDialog = () =>
     screen.findByRole('dialog', { name: '추천을 그만둘까요?' });
@@ -410,7 +747,7 @@ describe('뒤로 가기', () => {
         `/api/recommendation-sessions/${SESSION_ID}/cancel`,
         async () => {
           cancelRequestCount += 1;
-          await new Promise((resolve) => setTimeout(resolve, 300));
+          await wait(300);
 
           return HttpResponse.json({
             recommendation_session_id: SESSION_ID,
@@ -436,9 +773,28 @@ describe('뒤로 가기', () => {
     expect(
       await screen.findByRole('button', { name: /^위치 서울 성동구/ }),
     ).toBeInTheDocument();
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    await wait(500);
     expect(window.location.pathname).toBe('/recommendation');
     expect(cancelRequestCount).toBe(1);
+  });
+
+  test('실패 안내가 떠 있을 때 뒤로 가기를 누르면 묻지 않고 세션을 취소한 뒤 입력 화면으로 돌아가야 한다.', async () => {
+    savePending(Date.now() - 5000);
+    respondResult(createResult('failed'));
+    const cancelRequests = countCancelRequests();
+    await renderWithBrowserHistory();
+    await screen.findByRole('dialog', { name: '코디를 만들지 못했어요' });
+
+    window.history.back();
+
+    expect(
+      await screen.findByRole('button', { name: /^위치 서울 성동구/ }),
+    ).toBeInTheDocument();
+    expect(window.location.pathname).toBe('/recommendation');
+    expect(
+      screen.queryByRole('dialog', { name: '추천을 그만둘까요?' }),
+    ).not.toBeInTheDocument();
+    expect(cancelRequests.count).toBe(1);
   });
 
   test('추천 그만두기 버튼으로 그만두면 진행 화면 기록을 지나 입력 화면으로 돌아가야 한다.', async () => {

@@ -21,6 +21,8 @@ const RecommendationFormDraft = z.object({
   // 직접 고르지 않은 시간은 null로 두어, 돌아왔을 때도 현재 시각을 따라 기본값이 바뀌게 한다.
   start: z.object({ date: z.string(), time: z.string() }).nullable(),
   end: z.string().nullable(),
+  // 다시 시도하지 못하고 돌아왔을 때 입력 화면에 보여 줄 사유다.
+  message: z.string().optional(),
 });
 
 const PendingRecommendation = z.object({

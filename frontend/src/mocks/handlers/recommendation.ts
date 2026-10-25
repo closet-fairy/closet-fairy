@@ -18,18 +18,20 @@ interface MockSession {
   sessionStatusCd: RecommendationResult['session_status_cd'];
 }
 
-// 직접 입력에 이 말을 넣으면 생성이 실패하는 세션을 만든다.
+// 직접 입력에 이 말을 넣으면 생성이 실패하는 세션을 만든다. 새로고침해도 알 수 있게 번호로 구분한다.
 const FAILURE_KEYWORD = '실패';
-const FAILED_SESSION_ID = 9001;
+const FIRST_FAILED_SESSION_ID = 9001;
 // 진행 화면과 취소를 dev:mock에서 직접 해 볼 수 있도록 생성에 몇 초가 걸리는 것처럼 둔다.
 const GENERATION_MS = 6000;
 
 const sessions = new Map<number, MockSession>();
 let nextSessionId = 1;
+let nextFailedSessionId = FIRST_FAILED_SESSION_ID;
 
 export const resetRecommendationMocks = () => {
   sessions.clear();
   nextSessionId = 1;
+  nextFailedSessionId = FIRST_FAILED_SESSION_ID;
 };
 
 // 새로고침하면 MSW 상태가 사라지므로, 모르는 세션은 처음 만든 것처럼 다룬다.
@@ -56,7 +58,7 @@ const getGenerationStatusCd = (
     return 'processing';
   }
 
-  return sessionId === FAILED_SESSION_ID ? 'failed' : 'completed';
+  return sessionId >= FIRST_FAILED_SESSION_ID ? 'failed' : 'completed';
 };
 
 const toResult = (
@@ -130,7 +132,7 @@ export const recommendationHandlers = [
   http.post('/api/recommendation-sessions', async ({ request }) => {
     const body = RecommendationSessionCreate.parse(await request.json());
     const sessionId = body.tpo_text?.includes(FAILURE_KEYWORD)
-      ? FAILED_SESSION_ID
+      ? nextFailedSessionId++
       : nextSessionId++;
     sessions.set(sessionId, {
       request: body,
