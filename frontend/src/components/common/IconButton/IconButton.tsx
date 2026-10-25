@@ -20,6 +20,7 @@ interface IconButtonProps {
   'aria-haspopup'?: boolean | 'menu' | 'listbox' | 'tree' | 'grid' | 'dialog';
   'aria-controls'?: string;
   'aria-describedby'?: string;
+  'aria-keyshortcuts'?: string;
 }
 
 const IconButton = (props: IconButtonProps) => {
@@ -37,6 +38,7 @@ const IconButton = (props: IconButtonProps) => {
     'aria-haspopup': ariaHasPopup,
     'aria-controls': ariaControls,
     'aria-describedby': ariaDescribedBy,
+    'aria-keyshortcuts': ariaKeyShortcuts,
   } = props;
 
   return (
@@ -52,6 +54,7 @@ const IconButton = (props: IconButtonProps) => {
       aria-haspopup={ariaHasPopup}
       aria-controls={ariaControls}
       aria-describedby={ariaDescribedBy}
+      aria-keyshortcuts={ariaKeyShortcuts}
       $variant={variant}
     >
       <Icon name={icon} size={iconSize} />
