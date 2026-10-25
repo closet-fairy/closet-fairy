@@ -9,9 +9,9 @@ import {
   typography,
   zIndex,
 } from '@/styles/tokens';
+import { TOP_BAR_HEIGHT } from '@/components/common/TopBar/TopBar.styled';
 import { transientOptions } from '@/styles/transientOptions';
 
-const TOP_BAR_HEIGHT = 54;
 const POPUP_HIDDEN_OFFSET = 24;
 
 export const Popup = styled(Dialog.Popup, transientOptions)`

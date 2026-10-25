@@ -30,7 +30,12 @@ const subscribeVisualViewport = (onChange: () => void) => {
   };
 };
 
-const getVisualViewportHeight = () => window.visualViewport?.height ?? null;
+// 핀치 줌으로 확대하면 height가 배율만큼 작아지므로, 배율을 곱해 레이아웃 기준 높이로 맞춘다.
+const getVisualViewportHeight = () => {
+  const viewport = window.visualViewport;
+
+  return viewport ? viewport.height * viewport.scale : null;
+};
 
 const FullScreenDialog = (props: FullScreenDialogProps) => {
   const {
@@ -66,6 +71,7 @@ const FullScreenDialog = (props: FullScreenDialogProps) => {
               ? undefined
               : { height: visualViewportHeight }
           }
+          // 바텀시트 안에서 열면 마우스로 끌 때 뒤의 시트가 끌려 닫히지 않게 한다.
           data-base-ui-swipe-ignore=""
         >
           <S.TopBar>
