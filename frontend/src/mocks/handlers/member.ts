@@ -1,6 +1,11 @@
 import { http, HttpResponse } from 'msw';
 import type { JsonBodyType } from 'msw';
 import { z } from 'zod';
+import {
+  getKstYear,
+  getLatestAllowedBirthYear,
+} from '@/domains/member/birthYear';
+import { NICKNAME_MAX_LENGTH } from '@/domains/member/nickname';
 import type {
   ErrorResponse,
   MemberMe,
@@ -8,13 +13,11 @@ import type {
   WithdrawalStarted,
 } from '@/generated/models';
 import { MemberSettingsUpdate, MemberUpdate } from '@/generated/models';
-import {
-  getKstYear,
-  getLatestAllowedBirthYear,
-} from '@/domains/member/birthYear';
-import { NICKNAME_MAX_LENGTH } from '@/domains/member/nickname';
 
 const MOCK_MEMBER_STATUS_KEY = 'closet-fairy:mock-member-status';
+
+const strictMemberUpdate = MemberUpdate.strict();
+const strictMemberSettingsUpdate = MemberSettingsUpdate.strict();
 
 const mockMemberStatusSchema = z.enum([
   'signedOut',
@@ -125,7 +128,7 @@ export const memberHandlers = [
       return authRequired<MemberMe>();
     }
 
-    const result = MemberUpdate.safeParse(await request.json());
+    const result = strictMemberUpdate.safeParse(await request.json());
     const nickname = result.success ? result.data.nickname.trim() : '';
 
     if (nickname === '' || [...nickname].length > NICKNAME_MAX_LENGTH) {
@@ -148,7 +151,7 @@ export const memberHandlers = [
       return authRequired<MemberSettings>();
     }
 
-    const result = MemberSettingsUpdate.safeParse(await request.json());
+    const result = strictMemberSettingsUpdate.safeParse(await request.json());
 
     if (!result.success) {
       return validationError<MemberSettings>('입력값이 올바르지 않습니다.');
