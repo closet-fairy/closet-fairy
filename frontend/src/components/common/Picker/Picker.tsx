@@ -17,6 +17,8 @@ interface PickerProps {
   onChange: (value: string) => void;
   placeholder?: string;
   isDisabled?: boolean;
+  isInvalid?: boolean;
+  'aria-describedby'?: string;
 }
 
 const findScrollParent = (element: HTMLElement) => {
@@ -86,6 +88,8 @@ const Picker = (props: PickerProps) => {
     onChange,
     placeholder,
     isDisabled = false,
+    isInvalid = false,
+    'aria-describedby': ariaDescribedBy,
   } = props;
   const [isOpen, setIsOpen] = useState(false);
   const [activeValue, setActiveValue] = useState<string | null>(null);
@@ -102,6 +106,9 @@ const Picker = (props: PickerProps) => {
     captionId,
     displayText ? displayTextId : undefined,
   ]
+    .filter((id) => id !== undefined)
+    .join(' ');
+  const triggerDescribedBy = [formField?.hintId, ariaDescribedBy]
     .filter((id) => id !== undefined)
     .join(' ');
 
@@ -143,9 +150,13 @@ const Picker = (props: PickerProps) => {
         aria-haspopup="dialog"
         aria-expanded={isOpen}
         aria-labelledby={triggerLabelledBy}
-        aria-describedby={formField?.hintId}
+        aria-describedby={
+          triggerDescribedBy === '' ? undefined : triggerDescribedBy
+        }
+        aria-invalid={isInvalid || undefined}
         disabled={isDisabled}
         onClick={handleTriggerClick}
+        $isInvalid={isInvalid}
       >
         <S.Caption id={captionId}>{label}</S.Caption>
         {selectedOption ? (
