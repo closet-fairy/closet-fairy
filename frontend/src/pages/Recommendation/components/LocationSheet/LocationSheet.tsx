@@ -186,6 +186,11 @@ const LocationSheet = (props: LocationSheetProps) => {
           onClick={() => openSearch(null)}
         />
       </S.Options>
+      <S.Status role="status">
+        {isLocating
+          ? '현재 위치를 찾는 중이에요. 찾는 동안 주소 직접 입력은 누를 수 없어요.'
+          : ''}
+      </S.Status>
       <RegionSearch
         isOpen={isSearchOpen}
         onOpenChange={setIsSearchOpen}
