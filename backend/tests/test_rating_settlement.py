@@ -245,7 +245,7 @@ def _patch_repos(
         return session
 
     async def find_session_outfits(db, session_id):
-        calls.append(("outfit_ids", session_id))
+        calls.append(("outfits", session_id))
         return list(outfits)
 
     async def find_session_requests(db, session_id):
@@ -308,7 +308,7 @@ async def test_settles_whole_session_in_one_transaction_with_session_locked_firs
 
     assert [c[0] for c in calls] == [
         "lock_session",
-        "outfit_ids",
+        "outfits",
         "requests",
         "insert_feedbacks",
         "attribute_feedbacks",
@@ -530,7 +530,7 @@ async def test_outfit_outside_session_is_404(monkeypatch):
     with pytest.raises(settlement.OutfitNotInSessionError):
         await _rate(_FakeDb(), outfit_id=999)
 
-    assert [c[0] for c in calls] == ["lock_session", "outfit_ids"]
+    assert [c[0] for c in calls] == ["lock_session", "outfits"]
 
 
 async def test_lost_settlement_race_is_409_and_rolls_back(monkeypatch):
