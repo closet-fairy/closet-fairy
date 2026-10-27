@@ -245,3 +245,54 @@ async def test_find_session_requests_reads_every_status_in_order():
         regeneration_repo.RequestTargetRow(1, "single", 101, 12),
         regeneration_repo.RequestTargetRow(2, "all", None, None),
     ]
+
+
+async def test_find_latest_request_reads_highest_request_seq_of_session():
+    created_at = datetime(2026, 10, 14, 12, 29, 10)
+    db = _RowsDb(
+        [
+            _Row(
+                request_seq=3,
+                regeneration_status_cd="processing",
+                target_scope_cd="single",
+                target_outfit_id=101,
+                target_slot_cd="shoes",
+                created_at=created_at,
+            )
+        ]
+    )
+
+    row = await regeneration_repo.find_latest_request(db, 7)
+
+    sql, params = db.executed[0]
+    assert "WHERE recommendation_session_id = :recommendation_session_id" in sql
+    assert "ORDER BY request_seq DESC" in sql
+    assert "LIMIT 1" in sql
+    assert params == {"recommendation_session_id": 7}
+    assert row == regeneration_repo.LatestRequestRow(
+        3, "processing", "single", 101, "shoes", created_at
+    )
+
+
+async def test_find_latest_request_keeps_missing_target_as_none():
+    db = _RowsDb(
+        [
+            _Row(
+                request_seq=1,
+                regeneration_status_cd="failed",
+                target_scope_cd="all",
+                target_outfit_id=None,
+                target_slot_cd=None,
+                created_at=datetime(2026, 10, 14, 12, 0),
+            )
+        ]
+    )
+
+    row = await regeneration_repo.find_latest_request(db, 7)
+
+    assert row.target_outfit_id is None
+    assert row.target_slot_cd is None
+
+
+async def test_find_latest_request_returns_none_without_request():
+    assert await regeneration_repo.find_latest_request(_RowsDb([]), 7) is None

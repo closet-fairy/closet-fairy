@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field, model_validator
 from app.schemas.codes import CategoryCd
 
 TargetScopeCd = Literal["single", "all"]
+RegenerationStatusCd = Literal["processing", "completed", "failed"]
 
 
 class RegenerationCreate(BaseModel):

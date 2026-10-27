@@ -251,6 +251,48 @@ async def find_session_requests(
     ]
 
 
+LATEST_REQUEST_SQL = text(
+    """
+    SELECT request_seq, regeneration_status_cd, target_scope_cd, target_outfit_id,
+           target_slot_cd, created_at
+    FROM regeneration_request
+    WHERE recommendation_session_id = :recommendation_session_id
+    ORDER BY request_seq DESC
+    LIMIT 1
+    """
+)
+
+
+@dataclass(frozen=True)
+class LatestRequestRow:
+    request_seq: int
+    regeneration_status_cd: str
+    target_scope_cd: str
+    target_outfit_id: int | None
+    target_slot_cd: str | None
+    created_at: datetime
+
+
+async def find_latest_request(
+    db: AsyncSession, recommendation_session_id: int
+) -> LatestRequestRow | None:
+    row = (
+        await db.execute(
+            LATEST_REQUEST_SQL, {"recommendation_session_id": recommendation_session_id}
+        )
+    ).first()
+    if row is None:
+        return None
+    return LatestRequestRow(
+        request_seq=int(row.request_seq),
+        regeneration_status_cd=row.regeneration_status_cd,
+        target_scope_cd=row.target_scope_cd,
+        target_outfit_id=int(row.target_outfit_id) if row.target_outfit_id is not None else None,
+        target_slot_cd=row.target_slot_cd,
+        created_at=row.created_at,
+    )
+
+
 def _to_intent(parsed_intent: str | dict) -> RegenerationIntent:
     data = json.loads(parsed_intent) if isinstance(parsed_intent, str) else parsed_intent
     return RegenerationIntent.from_dict(data)

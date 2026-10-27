@@ -54,10 +54,11 @@ async def get_recommendation_result(
     db: AsyncSession = Depends(get_db),
     member_id: int = Depends(get_current_member_id),
     storage: ImageStorage = Depends(get_image_storage),
+    now: datetime = Depends(get_now),
 ) -> RecommendationResult:
     """추천 결과 조회(폴링). generation_status_cd가 processing이면 잠시 뒤 다시 조회한다."""
     return await result_service.get_recommendation_result(
-        db, storage, recommendation_session_id, member_id
+        db, storage, recommendation_session_id, member_id, now
     )
 
 
