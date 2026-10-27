@@ -20,17 +20,17 @@
   1. 서버를 로그 파일로 남기며 띄운다 (PowerShell):
        [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
        $env:PYTHONIOENCODING = "utf-8"
-       python -m uvicorn app.main:app | Tee-Object -FilePath e2e_server.log
+       python -m uvicorn app.main:app | Tee-Object -FilePath e2e_regen_server.log
   2. 다른 창에서 개발테스터:
        python scripts/regeneration_e2e.py --member dev --json e2e_regen_dev.json `
-         --server-log e2e_server.log
+         --server-log e2e_regen_server.log
   3. .env의 DEV_MEMBER_ID를 부족테스터 id로 바꾸고 서버를 다시 띄운다 (로그는 이어 붙인다):
-       python -m uvicorn app.main:app | Tee-Object -FilePath e2e_server.log -Append
+       python -m uvicorn app.main:app | Tee-Object -FilePath e2e_regen_server.log -Append
      부족테스터:
        python scripts/regeneration_e2e.py --member sparse --json e2e_regen_sparse.json `
-         --server-log e2e_server.log
-  4. 집계 (첫 추천 E2E 기록과 함께 넘겨도 된다):
-       python scripts/aggregate_metrics.py e2e_server.log `
+         --server-log e2e_regen_server.log
+  4. 집계 (같은 로그 파일로 돌린 기록만 함께 넘긴다):
+       python scripts/aggregate_metrics.py e2e_regen_server.log `
          --e2e e2e_regen_dev.json e2e_regen_sparse.json
   5. 끝나면 .env의 DEV_MEMBER_ID를 원래 값으로 되돌린다.
 
