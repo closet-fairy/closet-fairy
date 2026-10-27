@@ -167,6 +167,90 @@ async def find_completed_intents(
     return [_to_intent(r.parsed_intent) for r in result]
 
 
+COMPLETE_REQUEST_SQL = text(
+    """
+    UPDATE regeneration_request
+    SET regeneration_status_cd = 'completed', result_deck_id = :result_deck_id
+    WHERE regeneration_request_id = :regeneration_request_id
+      AND regeneration_status_cd = 'processing'
+    """
+)
+
+FAIL_REQUEST_SQL = text(
+    """
+    UPDATE regeneration_request
+    SET regeneration_status_cd = 'failed'
+    WHERE regeneration_request_id = :regeneration_request_id
+      AND regeneration_status_cd = 'processing'
+    """
+)
+
+DELETE_SESSION_REQUESTS_SQL = text(
+    """
+    DELETE FROM regeneration_request
+    WHERE recommendation_session_id = :recommendation_session_id
+    """
+)
+
+SELECT_SESSION_REQUESTS_SQL = text(
+    """
+    SELECT request_seq, target_scope_cd, target_outfit_id, result_deck_id
+    FROM regeneration_request
+    WHERE recommendation_session_id = :recommendation_session_id
+    ORDER BY request_seq
+    """
+)
+
+
+@dataclass(frozen=True)
+class RequestTargetRow:
+    request_seq: int
+    target_scope_cd: str
+    target_outfit_id: int | None
+    result_deck_id: int | None
+
+
+async def complete_request(
+    db: AsyncSession, regeneration_request_id: int, result_deck_id: int
+) -> bool:
+    result = await db.execute(
+        COMPLETE_REQUEST_SQL,
+        {"regeneration_request_id": regeneration_request_id, "result_deck_id": result_deck_id},
+    )
+    return result.rowcount == 1
+
+
+async def fail_request(db: AsyncSession, regeneration_request_id: int) -> bool:
+    result = await db.execute(
+        FAIL_REQUEST_SQL, {"regeneration_request_id": regeneration_request_id}
+    )
+    return result.rowcount == 1
+
+
+async def delete_session_requests(db: AsyncSession, recommendation_session_id: int) -> int:
+    result = await db.execute(
+        DELETE_SESSION_REQUESTS_SQL, {"recommendation_session_id": recommendation_session_id}
+    )
+    return result.rowcount
+
+
+async def find_session_requests(
+    db: AsyncSession, recommendation_session_id: int
+) -> list[RequestTargetRow]:
+    result = await db.execute(
+        SELECT_SESSION_REQUESTS_SQL, {"recommendation_session_id": recommendation_session_id}
+    )
+    return [
+        RequestTargetRow(
+            request_seq=int(r.request_seq),
+            target_scope_cd=r.target_scope_cd,
+            target_outfit_id=int(r.target_outfit_id) if r.target_outfit_id is not None else None,
+            result_deck_id=int(r.result_deck_id) if r.result_deck_id is not None else None,
+        )
+        for r in result
+    ]
+
+
 def _to_intent(parsed_intent: str | dict) -> RegenerationIntent:
     data = json.loads(parsed_intent) if isinstance(parsed_intent, str) else parsed_intent
     return RegenerationIntent.from_dict(data)

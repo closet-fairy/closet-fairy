@@ -21,6 +21,7 @@ from app.services import regeneration_request as regeneration_service
 from app.services import session_end as session_end_service
 from app.services.llm import LLMClient, get_llm_client
 from app.services.recommendation_pipeline import run_recommendation_pipeline
+from app.services.regeneration_pipeline import run_regeneration_pipeline
 from app.services.storage import ImageStorage, get_image_storage
 
 router = APIRouter(prefix="/recommendation-sessions", tags=["recommendation"])
@@ -137,15 +138,20 @@ async def cancel_recommendation_session(
 async def request_regeneration(
     recommendation_session_id: int,
     body: RegenerationCreate,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     member_id: int = Depends(get_current_member_id),
     now: datetime = Depends(get_now),
     llm: LLMClient = Depends(get_llm_client),
 ) -> RegenerationCreated:
-    """재추천 요청. 요청을 검증하고 의도를 파악해 기록한 뒤 202를 돌려준다."""
+    """재추천 요청. 요청을 검증하고 의도를 파악해 기록한 뒤 202를 돌려준다.
+
+    코디 생성은 백그라운드에서 한다.
+    """
     accepted = await regeneration_service.request_regeneration(
         db, llm, recommendation_session_id, member_id, body, now
     )
+    background_tasks.add_task(run_regeneration_pipeline, accepted.regeneration_request_id, llm)
     return RegenerationCreated(
         recommendation_session_id=recommendation_session_id,
         regeneration_request_id=accepted.regeneration_request_id,

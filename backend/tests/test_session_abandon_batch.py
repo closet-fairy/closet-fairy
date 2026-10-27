@@ -43,7 +43,7 @@ def _patch(monkeypatch, *, inactive=(3, 4, 5), to_clean=(8, 9), abandon=None, cl
 
     async def cleanup_ended_session(db, session_id):
         calls.append(("cleanup", session_id))
-        result = cleanup.get(session_id, CleanupResult(3, 1))
+        result = cleanup.get(session_id, CleanupResult(3, 1, 0))
         if isinstance(result, Exception):
             raise result
         return result
@@ -92,6 +92,14 @@ async def test_timeout_comes_from_settings(monkeypatch):
         batch.get_settings.cache_clear()
 
     assert calls[0] == ("find_inactive", datetime(2026, 10, 9, 11, 0))
+
+
+async def test_session_with_only_requests_deleted_counts_as_cleaned(monkeypatch):
+    _patch(monkeypatch, inactive=(), to_clean=(8,), cleanup={8: CleanupResult(0, 0, 1)})
+
+    result = await batch.run(FIXED_NOW)
+
+    assert result == {"abandoned": 0, "cleaned": 1, "failed": 0}
 
 
 async def test_skipped_and_failed_sessions_are_counted_separately(monkeypatch, caplog):

@@ -17,6 +17,14 @@ class OutfitItemRow:
     image_url_snapshot: str | None
 
 
+NEXT_DECK_SEQ_SQL = text(
+    """
+    SELECT COALESCE(MAX(deck_seq), 0) + 1 AS next_seq
+    FROM recommendation_deck
+    WHERE recommendation_session_id = :recommendation_session_id
+    """
+)
+
 INSERT_DECK_SQL = text(
     """
     INSERT INTO recommendation_deck (recommendation_session_id, deck_seq, deck_trigger_cd)
@@ -42,6 +50,13 @@ INSERT_OUTFIT_ITEM_SQL = text(
     )
     """
 )
+
+
+async def next_deck_seq(db: AsyncSession, recommendation_session_id: int) -> int:
+    result = await db.execute(
+        NEXT_DECK_SEQ_SQL, {"recommendation_session_id": recommendation_session_id}
+    )
+    return int(result.scalar_one())
 
 
 async def insert_deck(
@@ -97,9 +112,17 @@ async def insert_outfit_items(
     )
 
 
-SELECT_SESSION_OUTFIT_IDS_SQL = text(
+@dataclass(frozen=True)
+class SessionOutfit:
+    outfit_id: int
+    recommendation_deck_id: int
+    deck_seq: int
+    outfit_seq: int
+
+
+SELECT_SESSION_OUTFITS_SQL = text(
     """
-    SELECT o.outfit_id
+    SELECT o.outfit_id, d.recommendation_deck_id, d.deck_seq, o.outfit_seq
     FROM outfit o
     JOIN recommendation_deck d ON d.recommendation_deck_id = o.recommendation_deck_id
     WHERE d.recommendation_session_id = :recommendation_session_id
@@ -108,11 +131,21 @@ SELECT_SESSION_OUTFIT_IDS_SQL = text(
 )
 
 
-async def find_session_outfit_ids(db: AsyncSession, recommendation_session_id: int) -> list[int]:
+async def find_session_outfits(
+    db: AsyncSession, recommendation_session_id: int
+) -> list[SessionOutfit]:
     result = await db.execute(
-        SELECT_SESSION_OUTFIT_IDS_SQL, {"recommendation_session_id": recommendation_session_id}
+        SELECT_SESSION_OUTFITS_SQL, {"recommendation_session_id": recommendation_session_id}
     )
-    return [int(r.outfit_id) for r in result]
+    return [
+        SessionOutfit(
+            outfit_id=int(r.outfit_id),
+            recommendation_deck_id=int(r.recommendation_deck_id),
+            deck_seq=int(r.deck_seq),
+            outfit_seq=int(r.outfit_seq),
+        )
+        for r in result
+    ]
 
 
 @dataclass(frozen=True)
