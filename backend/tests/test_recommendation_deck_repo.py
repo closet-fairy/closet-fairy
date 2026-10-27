@@ -95,17 +95,6 @@ async def test_insert_outfit_items_sends_all_items_at_once():
     assert not db.committed
 
 
-async def test_find_session_outfit_ids_spans_every_deck():
-    db = _FakeDb([{"outfit_id": 101}, {"outfit_id": 201}])
-
-    ids = await deck_repo.find_session_outfit_ids(db, 7)
-
-    sql, params = db.executed[0]
-    assert "d.recommendation_session_id = :recommendation_session_id" in sql
-    assert "ORDER BY d.deck_seq, o.outfit_seq" in sql
-    assert ids == [101, 201]
-
-
 async def test_next_deck_seq_follows_largest_deck_seq_of_session():
     db = _FakeDb([{"next_seq": 3}])
 
@@ -131,6 +120,7 @@ async def test_find_session_outfits_returns_deck_position_of_every_outfit():
 
     sql, params = db.executed[0]
     assert "d.recommendation_session_id = :recommendation_session_id" in sql
+    assert "ORDER BY d.deck_seq, o.outfit_seq" in sql
     assert params == {"recommendation_session_id": 7}
     assert outfits == [
         deck_repo.SessionOutfit(101, 11, 1, 1),

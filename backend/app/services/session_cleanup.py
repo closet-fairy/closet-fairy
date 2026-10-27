@@ -53,9 +53,9 @@ async def cleanup_locked_session(
         request_count = await regeneration_repo.delete_session_requests(
             db, recommendation_session_id
         )
-        outfit_ids = await deck_repo.find_session_outfit_ids(db, recommendation_session_id)
+        outfits = await deck_repo.find_session_outfits(db, recommendation_session_id)
         deck_count = await deck_repo.delete_session_decks(db, recommendation_session_id)
-        return CleanupResult(len(outfit_ids), deck_count, request_count)
+        return CleanupResult(len(outfits), deck_count, request_count)
 
     return NOTHING_DELETED
 

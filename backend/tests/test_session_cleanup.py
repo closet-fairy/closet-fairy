@@ -4,6 +4,7 @@ from datetime import datetime
 
 import pytest
 
+from app.repositories.recommendation_deck import SessionOutfit
 from app.repositories.recommendation_session import SessionStateRow
 from app.services import session_cleanup as cleanup
 from app.services.session_cleanup import CleanupResult
@@ -39,7 +40,11 @@ def _patch_repos(
     *,
     session=None,
     rated_outfit_id=102,
-    outfit_ids=(101, 102, 201),
+    outfits=(
+        SessionOutfit(101, 11, 1, 1),
+        SessionOutfit(102, 11, 1, 2),
+        SessionOutfit(201, 12, 2, 1),
+    ),
     deleted_outfits=2,
     deleted_decks=1,
     deleted_requests=3,
@@ -66,9 +71,9 @@ def _patch_repos(
         calls.append(("delete_empty_decks", session_id))
         return deleted_decks
 
-    async def find_session_outfit_ids(db, session_id):
-        calls.append(("outfit_ids", session_id))
-        return list(outfit_ids)
+    async def find_session_outfits(db, session_id):
+        calls.append(("outfits", session_id))
+        return list(outfits)
 
     async def delete_session_decks(db, session_id):
         calls.append(("delete_session_decks", session_id))
@@ -78,7 +83,7 @@ def _patch_repos(
     monkeypatch.setattr(cleanup.feedback_repo, "find_rated_outfit_id", find_rated_outfit_id)
     monkeypatch.setattr(cleanup.deck_repo, "delete_outfits_except", delete_outfits_except)
     monkeypatch.setattr(cleanup.deck_repo, "delete_empty_decks", delete_empty_decks)
-    monkeypatch.setattr(cleanup.deck_repo, "find_session_outfit_ids", find_session_outfit_ids)
+    monkeypatch.setattr(cleanup.deck_repo, "find_session_outfits", find_session_outfits)
     monkeypatch.setattr(cleanup.deck_repo, "delete_session_decks", delete_session_decks)
     monkeypatch.setattr(
         cleanup.regeneration_repo, "delete_session_requests", delete_session_requests
@@ -119,7 +124,7 @@ async def test_canceled_or_abandoned_session_loses_every_deck(monkeypatch, statu
 
     result = await cleanup.cleanup_locked_session(_FakeDb(), 7, status)
 
-    assert calls == [("delete_requests", 7), ("outfit_ids", 7), ("delete_session_decks", 7)]
+    assert calls == [("delete_requests", 7), ("outfits", 7), ("delete_session_decks", 7)]
     assert result == CleanupResult(
         deleted_outfit_count=3, deleted_deck_count=2, deleted_request_count=3
     )
