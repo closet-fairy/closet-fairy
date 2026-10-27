@@ -247,6 +247,14 @@ class RecommendationResult(BaseModel):
                                             "image_url": "/media/clothing/7/3002_cutout.webp",
                                             "style_cds": ["casual"],
                                         },
+                                        {
+                                            "slot_cd": "shoes",
+                                            "accessory_type_cd": None,
+                                            "item_source_cd": "owned",
+                                            "item_name": "화이트 스니커즈",
+                                            "image_url": "/media/clothing/7/4002_cutout.webp",
+                                            "style_cds": ["casual"],
+                                        },
                                     ],
                                 }
                             ],
