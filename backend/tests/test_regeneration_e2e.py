@@ -35,6 +35,7 @@ from scripts.regeneration_e2e import (
     regeneration_status,
     repeated_combos,
     run_session,
+    screen_record,
     too_long_text,
 )
 
@@ -344,6 +345,27 @@ async def test_get_error_fails_step_skips_rest_and_moves_to_next_session(down_se
     assert by_step["D2", "X3"]["verdict"] == PASS
     assert client.posts.count("/recommendation-sessions/1/cancel") == 1
     assert [r["ended_by"] for r in ctx.runs] == ["cancel", "cancel"]
+
+
+def test_screen_record_lists_items_per_outfit():
+    outfits = [{"outfit_id": 21, "outfit_seq": 1}, {"outfit_id": 24, "outfit_seq": 4}]
+    items = {21: [("top", "o165"), ("outer", "e7")], 24: []}
+
+    assert screen_record(outfits, items) == [
+        {"outfit_seq": 1, "outfit_id": 21, "item_keys": ["e7", "o165"]},
+        {"outfit_seq": 4, "outfit_id": 24, "item_keys": []},
+    ]
+
+
+async def test_screen_before_is_recorded_even_if_regeneration_does_not_finish(down_server):
+    ctx, _ = down_server
+    plan = SessionPlan("D1", "daily", (Step("R1", "all", FORMAL_TEXT, scope="all"),))
+
+    await run_session(ctx, plan, ARGS)
+
+    assert ctx.records[0]["screen_before"] == [
+        {"outfit_seq": 1, "outfit_id": 11, "item_keys": ["o1"]}
+    ]
 
 
 async def test_first_result_get_error_skips_session_and_cancels(down_server, monkeypatch):

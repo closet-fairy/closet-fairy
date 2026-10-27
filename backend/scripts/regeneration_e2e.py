@@ -725,6 +725,17 @@ def pick_target(
     return outfit["previous_outfits"][0]["outfit_id"], seq, None
 
 
+def screen_record(outfits: list[dict], items: dict[int, list[tuple[str, str]]]) -> list[dict]:
+    return [
+        {
+            "outfit_seq": o["outfit_seq"],
+            "outfit_id": o["outfit_id"],
+            "item_keys": sorted(key for _, key in items.get(o["outfit_id"], [])),
+        }
+        for o in outfits
+    ]
+
+
 async def screen_snapshot(state: SessionState) -> dict:
     outfits = state.data["outfits"]
     items = await outfit_items([o["outfit_id"] for o in outfits])
@@ -734,6 +745,7 @@ async def screen_snapshot(state: SessionState) -> dict:
         "items": items,
         "combos": [frozenset(key for _, key in items[o["outfit_id"]]) for o in outfits],
         "max_deck_seq": max((d.deck_seq for d in decks), default=0),
+        "screen": screen_record(outfits, items),
     }
 
 
@@ -816,6 +828,7 @@ async def run_regeneration(
             records.append(skipped(ctx, state.plan, state.session_id, follow_up, "앞 회차 실패"))
         return records
     before = await screen_snapshot(state)
+    record["screen_before"] = before["screen"]
 
     body = regeneration_body(step, target_outfit_id)
     record["request_text"] = body["request_text"]
@@ -937,6 +950,7 @@ async def run_end_during(ctx: Context, state: SessionState, step: Step) -> list[
         record.update(verdict=FAIL, failures=[error])
         return [record]
     before = await screen_snapshot(state)
+    record["screen_before"] = before["screen"]
     body = regeneration_body(step, target_outfit_id)
     record["request_text"] = body["request_text"]
     sent = await send(
