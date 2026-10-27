@@ -174,7 +174,7 @@ async def insert_request(
                 "status": status,
             },
         )
-    return int(result.lastrowid)
+        return int(result.lastrowid)
 
 
 async def insert_second_outfit_request(factory, seeded: Seeded) -> int:
