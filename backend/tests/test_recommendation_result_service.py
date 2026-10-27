@@ -1,15 +1,23 @@
 """REC-17 추천 결과 조회 서비스 테스트. 리포지토리는 가짜로 바꿔 끼운다."""
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 
 import pytest
 
+from app.core.config import get_settings
 from app.repositories.recommendation_result import OutfitItemResultRow, ResultSessionRow
+from app.repositories.regeneration_request import LatestRequestRow
 from app.services import recommendation_result as service
+from app.services.recommendation_session import to_db_utc
 from app.services.session_errors import SessionNotFoundError
+from app.services.weather.base_time import KST
 
 MEMBER_ID = 1
+NOW = datetime(2026, 10, 14, 21, 30, tzinfo=KST)
+STALE_BEFORE = to_db_utc(NOW) - timedelta(
+    seconds=get_settings().REGENERATION_PROCESSING_TIMEOUT_SECONDS
+)
 
 
 def _session(**overrides) -> ResultSessionRow:
@@ -52,9 +60,28 @@ def _item(outfit_item_id: int, slot_cd: str, **overrides) -> OutfitItemResultRow
     return OutfitItemResultRow(**{**fields, **overrides})
 
 
+def _request(**overrides) -> LatestRequestRow:
+    fields = dict(
+        request_seq=2,
+        regeneration_status_cd="processing",
+        target_scope_cd="single",
+        target_outfit_id=102,
+        target_slot_cd="shoes",
+        created_at=STALE_BEFORE + timedelta(seconds=30),
+    )
+    return LatestRequestRow(**{**fields, **overrides})
+
+
 @pytest.fixture
 def fake_repo(monkeypatch):
-    state = {"session": _session(), "rows": [], "styles": {}, "style_calls": []}
+    state = {
+        "session": _session(),
+        "rows": [],
+        "styles": {},
+        "style_calls": [],
+        "latest_request": None,
+        "request_calls": [],
+    }
 
     async def get_session(db, recommendation_session_id):
         return state["session"]
@@ -66,9 +93,14 @@ def fake_repo(monkeypatch):
         state["style_calls"].append(list(clothing_ids))
         return state["styles"]
 
+    async def find_latest_request(db, recommendation_session_id):
+        state["request_calls"].append(recommendation_session_id)
+        return state["latest_request"]
+
     monkeypatch.setattr(service.result_repo, "get_session", get_session)
     monkeypatch.setattr(service.result_repo, "get_outfit_items", get_outfit_items)
     monkeypatch.setattr(service.result_repo, "get_clothing_styles", get_clothing_styles)
+    monkeypatch.setattr(service.regeneration_repo, "find_latest_request", find_latest_request)
     return state
 
 
@@ -78,7 +110,7 @@ class _Storage:
 
 
 async def _get(member_id: int = MEMBER_ID):
-    return await service.get_recommendation_result(object(), _Storage(), 7, member_id)
+    return await service.get_recommendation_result(object(), _Storage(), 7, member_id, NOW)
 
 
 # ---------- 세션 ----------
@@ -199,7 +231,193 @@ async def test_latest_deck_wins_per_outfit_seq(fake_repo):
         (1, 101, "preferred"),
         (2, 201, "exploratory"),
     ]
-    assert fake_repo["style_calls"] == [[1, 3]]
+    assert [p.outfit_id for p in result.outfits[1].previous_outfits] == [102]
+
+
+# ---------- 이전 코디 ----------
+
+
+async def test_slot_regenerated_twice_keeps_previous_outfits_newest_first(fake_repo):
+    fake_repo["rows"] = [
+        *[
+            _item(seq, "top", deck_seq=1, outfit_id=100 + seq, outfit_seq=seq)
+            for seq in (1, 2, 3, 4)
+        ],
+        _item(5, "top", deck_seq=2, outfit_id=202, outfit_seq=2, reason="두 번째"),
+        _item(6, "top", deck_seq=3, outfit_id=302, outfit_seq=2, reason="세 번째"),
+    ]
+
+    result = await _get()
+
+    assert [(o.outfit_seq, o.outfit_id) for o in result.outfits] == [
+        (1, 101),
+        (2, 302),
+        (3, 103),
+        (4, 104),
+    ]
+    second = result.outfits[1]
+    assert [(p.outfit_id, p.reason) for p in second.previous_outfits] == [
+        (202, "두 번째"),
+        (102, "이유"),
+    ]
+    assert [p.outfit_seq for p in second.previous_outfits] == [2, 2]
+    assert [o.previous_outfits for o in result.outfits if o.outfit_seq != 2] == [[], [], []]
+
+
+async def test_slot_left_out_of_partial_regeneration_keeps_earlier_outfit(fake_repo):
+    fake_repo["rows"] = [
+        *[
+            _item(seq, "top", deck_seq=1, outfit_id=100 + seq, outfit_seq=seq)
+            for seq in (1, 2, 3, 4)
+        ],
+        *[
+            _item(10 + seq, "top", deck_seq=2, outfit_id=200 + seq, outfit_seq=seq)
+            for seq in (1, 2, 3)
+        ],
+    ]
+
+    result = await _get()
+
+    assert [(o.outfit_seq, o.outfit_id) for o in result.outfits] == [
+        (1, 201),
+        (2, 202),
+        (3, 203),
+        (4, 104),
+    ]
+    assert [[p.outfit_id for p in o.previous_outfits] for o in result.outfits] == [
+        [101],
+        [102],
+        [103],
+        [],
+    ]
+
+
+async def test_slot_first_filled_by_later_deck_is_placed_by_outfit_seq(fake_repo):
+    fake_repo["rows"] = [
+        _item(1, "top", deck_seq=1, outfit_id=101, outfit_seq=1),
+        _item(2, "top", deck_seq=1, outfit_id=102, outfit_seq=2),
+        _item(4, "top", deck_seq=1, outfit_id=104, outfit_seq=4),
+        _item(5, "top", deck_seq=2, outfit_id=203, outfit_seq=3),
+    ]
+
+    result = await _get()
+
+    assert [(o.outfit_seq, o.outfit_id) for o in result.outfits] == [
+        (1, 101),
+        (2, 102),
+        (3, 203),
+        (4, 104),
+    ]
+
+
+async def test_previous_outfit_items_get_clothing_styles(fake_repo):
+    fake_repo["rows"] = [
+        _item(1, "top", deck_seq=1, outfit_id=101, clothing_id=11),
+        _item(2, "top", deck_seq=2, outfit_id=201, clothing_id=21),
+    ]
+    fake_repo["styles"] = {11: ["casual"], 21: ["minimal"]}
+
+    result = await _get()
+
+    assert result.outfits[0].items[0].style_cds == ["minimal"]
+    assert result.outfits[0].previous_outfits[0].items[0].style_cds == ["casual"]
+    assert fake_repo["style_calls"] == [[11, 21]]
+
+
+# ---------- 재추천 상태 ----------
+
+
+async def test_latest_regeneration_is_null_without_request(fake_repo):
+    result = await _get()
+
+    assert result.latest_regeneration is None
+    assert fake_repo["request_calls"] == [7]
+
+
+@pytest.mark.parametrize("status", ["processing", "completed", "failed"])
+async def test_latest_regeneration_returns_request_as_is(fake_repo, status):
+    fake_repo["latest_request"] = _request(regeneration_status_cd=status)
+
+    result = await _get()
+
+    assert result.latest_regeneration.model_dump() == {
+        "request_seq": 2,
+        "regeneration_status_cd": status,
+        "target_scope_cd": "single",
+        "target_outfit_id": 102,
+        "target_slot_cd": "shoes",
+    }
+
+
+async def test_latest_regeneration_for_all_has_no_target(fake_repo):
+    fake_repo["latest_request"] = _request(
+        target_scope_cd="all", target_outfit_id=None, target_slot_cd=None
+    )
+
+    result = await _get()
+
+    assert result.latest_regeneration.target_scope_cd == "all"
+    assert result.latest_regeneration.target_outfit_id is None
+    assert result.latest_regeneration.target_slot_cd is None
+
+
+@pytest.mark.parametrize(
+    ("created_at", "expected"),
+    [
+        (STALE_BEFORE, "processing"),
+        (STALE_BEFORE - timedelta(seconds=1), "failed"),
+    ],
+)
+async def test_timed_out_processing_is_shown_as_failed_without_writing(
+    fake_repo, monkeypatch, created_at, expected
+):
+    fake_repo["latest_request"] = _request(created_at=created_at)
+    writes = []
+    for name in ("fail_stale_processing", "fail_request", "complete_request"):
+        monkeypatch.setattr(
+            service.regeneration_repo, name, lambda *args, _name=name: writes.append(_name)
+        )
+
+    result = await _get()
+
+    assert result.latest_regeneration.regeneration_status_cd == expected
+    assert fake_repo["latest_request"].regeneration_status_cd == "processing"
+    assert writes == []
+
+
+@pytest.mark.parametrize("status", ["completed", "failed"])
+async def test_finished_request_is_not_affected_by_timeout(fake_repo, status):
+    fake_repo["latest_request"] = _request(
+        regeneration_status_cd=status, created_at=STALE_BEFORE - timedelta(hours=1)
+    )
+
+    result = await _get()
+
+    assert result.latest_regeneration.regeneration_status_cd == status
+
+
+@pytest.mark.parametrize("session_status", ["completed", "canceled", "abandoned"])
+async def test_latest_regeneration_is_null_for_ended_session(fake_repo, session_status):
+    fake_repo["session"] = _session(session_status_cd=session_status)
+    fake_repo["latest_request"] = _request()
+
+    result = await _get()
+
+    assert result.latest_regeneration is None
+    assert fake_repo["request_calls"] == []
+
+
+@pytest.mark.parametrize("generation_status", ["processing", "failed"])
+async def test_latest_regeneration_is_null_until_first_recommendation_completes(
+    fake_repo, generation_status
+):
+    fake_repo["session"] = _session(generation_status_cd=generation_status)
+    fake_repo["latest_request"] = _request()
+
+    result = await _get()
+
+    assert result.latest_regeneration is None
+    assert fake_repo["request_calls"] == []
 
 
 async def test_snapshot_name_and_image_url_are_used(fake_repo):

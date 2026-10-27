@@ -183,7 +183,7 @@ async def session_row(factory, session_id: int):
 async def result_outfit_ids(factory, session_id: int, member_id: int) -> list[int]:
     async with factory() as db:
         result = await result_service.get_recommendation_result(
-            db, get_image_storage(), session_id, member_id
+            db, get_image_storage(), session_id, member_id, datetime.now(KST)
         )
     return [o.outfit_id for o in result.outfits]
 
