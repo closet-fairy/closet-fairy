@@ -6,6 +6,11 @@
   - 1차·2차 실패율, 후보 축소율, 재생성 횟수, 폴백 수: 서버 로그 기준
 --e2e를 주면 그 기록에 있는 세션만 집계하고, 없으면 로그에 있는 세션을 모두 집계한다.
 
+재추천도 같은 세션 id로 검증 로그를 남기므로 request_id로 나눈다. 백그라운드 작업의 로그는 그 작업을
+띄운 POST와 request_id가 같아서, regeneration.requested와 request_id가 같은 로그는 첫 추천에서 뺀다.
+같은 재추천 요청의 접수 로그와 끝 로그(completed·failed·discarded)의 request_id가 다르면 이렇게 나눌
+수 없으므로 경고를 출력한다.
+
 backend/ 폴더에서 실행한다:
     python scripts/aggregate_metrics.py e2e_server.log --e2e e2e_dev.json e2e_sparse.json
 """
@@ -16,6 +21,7 @@ import argparse
 import json
 import sys
 import unicodedata
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -39,6 +45,9 @@ TRACKED_EVENTS = frozenset(
         Event.HARD_RULE_FAIL,
         Event.REVIEWER_FAIL,
     }
+)
+REGENERATION_END_EVENTS = frozenset(
+    {Event.REGENERATION_COMPLETED, Event.REGENERATION_FAILED, Event.REGENERATION_DISCARDED}
 )
 HEADER = [
     ("세션", 6),
@@ -104,11 +113,36 @@ def parse_events(lines: list[str]) -> list[dict]:
     return events
 
 
+def regeneration_request_ids(events: list[dict]) -> set[str]:
+    return {
+        e["request_id"]
+        for e in events
+        if e["event"] == Event.REGENERATION_REQUESTED and e.get("request_id", "-") != "-"
+    }
+
+
+def mismatched_regenerations(events: list[dict]) -> list[int]:
+    requested: dict[int, str] = {}
+    ended: dict[int, set[str]] = {}
+    for e in events:
+        regeneration_id = e.get("regeneration_request_id")
+        if regeneration_id is None:
+            continue
+        if e["event"] == Event.REGENERATION_REQUESTED:
+            requested[regeneration_id] = e.get("request_id")
+        elif e["event"] in REGENERATION_END_EVENTS:
+            ended.setdefault(regeneration_id, set()).add(e.get("request_id"))
+    return sorted(rid for rid, ids in ended.items() if rid in requested and ids != {requested[rid]})
+
+
 def collect_sessions(events: list[dict]) -> dict[int, SessionMetrics]:
+    regeneration_ids = regeneration_request_ids(events)
     sessions: dict[int, SessionMetrics] = {}
     for e in events:
         session_id = e.get("recommendation_session_id")
         if not session_id or e["event"] not in TRACKED_EVENTS:
+            continue
+        if e.get("request_id") in regeneration_ids:
             continue
         m = sessions.setdefault(session_id, SessionMetrics(session_id))
         event = e["event"]
@@ -231,6 +265,7 @@ def print_report(
     summary: dict,
     models: list[tuple[str, str, str]],
     missing: list[int],
+    mismatched: Sequence[int] = (),
 ) -> None:
     print(" ".join(pad(text, width) for text, width in HEADER))
     for m in sessions:
@@ -242,6 +277,11 @@ def print_report(
         )
     if missing:
         print(f"\n경고: E2E 기록에는 있지만 로그에 없는 세션 {missing}")
+    if mismatched:
+        print(
+            f"\n경고: 접수와 끝 로그의 request_id가 다른 재추천 요청 {list(mismatched)}."
+            " 이 요청의 검증 로그가 첫 추천에 섞였을 수 있음"
+        )
 
     s = summary
     print(f"\n=== 전체 요약 (세션 {s['session_count']}개) ===")
@@ -291,7 +331,9 @@ def main() -> int:
     if not sessions:
         print("집계할 세션이 없습니다. 로그 파일과 --e2e 기록을 확인하세요.", file=sys.stderr)
         return 1
-    print_report(sessions, summarize(sessions), llm_models(events), missing)
+    print_report(
+        sessions, summarize(sessions), llm_models(events), missing, mismatched_regenerations(events)
+    )
     return 0
 
 

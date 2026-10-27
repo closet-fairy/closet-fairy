@@ -8,6 +8,7 @@ from scripts.aggregate_metrics import (
     collect_sessions,
     incomplete_note,
     load_e2e_runs,
+    mismatched_regenerations,
     pad,
     parse_events,
     print_report,
@@ -57,6 +58,91 @@ def test_requested_is_target_plus_regenerate_count():
     assert sessions[1].regenerations == 1
     assert sessions[2].target == 3
     assert sessions[2].requested == 3
+
+
+def _regeneration(session_id: int, regeneration_id: int, request_id: str) -> list[str]:
+    return [
+        _line(
+            event="regeneration.requested",
+            request_id=request_id,
+            recommendation_session_id=session_id,
+            regeneration_request_id=regeneration_id,
+            target_scope_cd="all",
+        ),
+        _line(
+            event="validation.hard_rule.fail",
+            request_id=request_id,
+            recommendation_session_id=session_id,
+            round=1,
+        ),
+        _line(
+            event="validation.reviewer.fail",
+            request_id=request_id,
+            recommendation_session_id=session_id,
+            round=1,
+        ),
+        _line(
+            event="recommend.regenerate",
+            request_id=request_id,
+            recommendation_session_id=session_id,
+            round=1,
+            regenerate_count=1,
+        ),
+        _line(
+            event="recommend.target_capped",
+            request_id=request_id,
+            recommendation_session_id=session_id,
+            requested=4,
+            target=2,
+        ),
+        _line(
+            event="recommend.fallback",
+            request_id=request_id,
+            recommendation_session_id=session_id,
+            requested=1,
+            built=0,
+        ),
+        _line(
+            event="regeneration.completed",
+            request_id=request_id,
+            recommendation_session_id=session_id,
+            regeneration_request_id=regeneration_id,
+        ),
+    ]
+
+
+def test_regeneration_logs_do_not_change_first_recommendation_metrics():
+    mixed = LOG_LINES + _regeneration(1, 10, "req-a") + _regeneration(2, 11, "req-b")
+
+    sessions = collect_sessions(parse_events(mixed))
+
+    assert sessions == collect_sessions(parse_events(LOG_LINES))
+
+
+def test_regeneration_ends_logged_with_other_request_id_are_reported(capsys):
+    lines = _regeneration(1, 10, "req-a") + _regeneration(2, 11, "req-b")
+    lines[-1] = _line(
+        event="regeneration.completed",
+        request_id="worker-1",
+        recommendation_session_id=2,
+        regeneration_request_id=11,
+    )
+
+    mismatched = mismatched_regenerations(parse_events(lines))
+    print_report([], summarize([]), [], [], mismatched)
+
+    assert mismatched == [11]
+    assert "접수와 끝 로그의 request_id가 다른 재추천 요청 [11]" in capsys.readouterr().out
+
+
+def test_no_warning_when_regeneration_logs_share_request_id(capsys):
+    events = parse_events(_regeneration(1, 10, "req-a"))
+
+    mismatched = mismatched_regenerations(events)
+    print_report([], summarize([]), [], [], mismatched)
+
+    assert mismatched == []
+    assert "request_id가 다른" not in capsys.readouterr().out
 
 
 def test_scenario_script_session_zero_is_excluded():
