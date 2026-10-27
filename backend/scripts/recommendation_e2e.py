@@ -47,6 +47,10 @@ API는 개발용 로그인(GET /auth/dev-login)으로 서버의 DEV_MEMBER_ID �
        python scripts/aggregate_metrics.py e2e_server.log --e2e e2e_dev.json e2e_sparse.json
   7. 끝나면 .env의 DEV_MEMBER_ID를 원래 값으로 되돌린다.
 
+외출 날짜: 기본값은 --date today다. 외출 시작이 내일로 넘어가는 자정 직전에는 today로 실행할 수
+없어 --date tomorrow로 돌릴 수 있다. 내일 외출은 날씨·프롬프트 조건이 달라지므로 정식 기록은
+today로 남긴다. 어느 쪽으로 돌렸는지는 결과 JSON의 meta.going_out_date_cd에 남는다.
+
 비 오는 날: 실제 날씨로는 비 오는 날을 고를 수 없다. rainy 회차는 TPO만 비 오는 날이고 날씨는 실제
 값이다. 비 예보 날씨는 아래로 따로 확인하고, 이 결과는 API를 거치지 않은 것(날씨 고정, 저장·폴링
 없음)이므로 실제 API 결과와 구분해 밝힌다:
@@ -184,15 +188,20 @@ class PreflightError(Exception):
     pass
 
 
-def going_out_window(now: datetime, hours: int) -> tuple[datetime, datetime]:
+def going_out_window(
+    now: datetime, hours: int, date_cd: str = "today"
+) -> tuple[datetime, datetime]:
     earliest = now + START_MARGIN
     start = earliest.replace(minute=0, second=0, microsecond=0)
     while start < earliest:
         start += timedelta(minutes=30)
-    if start.date() != now.date():
+    if date_cd == "tomorrow":
+        # 서버도 tomorrow면 서버 기준 오늘 + 1일로 보고 지난 시각 검사를 하지 않는다
+        start = datetime.combine(now.date() + timedelta(days=1), start.timetz())
+    elif start.date() != now.date():
         raise PreflightError(
-            "외출 시작 시각이 내일로 넘어갑니다. API는 오늘 날짜 기준이라 자정 직전에는 "
-            "실행할 수 없습니다. 자정이 지난 뒤 다시 실행하세요."
+            "외출 시작 시각이 내일로 넘어갑니다. --date today로는 자정 직전에 실행할 수 "
+            "없습니다. 자정이 지난 뒤 다시 실행하거나 --date tomorrow로 실행하세요."
         )
     return start, start + timedelta(hours=hours)
 
@@ -300,6 +309,7 @@ def request_body(scenario: Scenario, start: datetime, end: datetime, args) -> di
         "tpo_text": scenario.tpo_text,
         "going_out_start_time": start.strftime("%H:%M"),
         "going_out_end_time": end.strftime("%H:%M"),
+        "going_out_date_cd": args.date,
     }
 
 
@@ -310,7 +320,7 @@ async def start_session(
     member_id: int,
     args,
 ) -> tuple[dict, float]:
-    start, end = going_out_window(datetime.now(KST), scenario.hours)
+    start, end = going_out_window(datetime.now(KST), scenario.hours, args.date)
     run = {
         "scenario": scenario.name,
         "tpo_cd": scenario.tpo_cd,
@@ -443,6 +453,7 @@ def build_meta(settings: Settings, member: Member, member_id: int, args) -> dict
         "member_id": member_id,
         "base_url": args.base_url,
         "location": f"{args.sido} {args.sigungu}",
+        "going_out_date_cd": args.date,
         "rate_last": args.rate,
     }
 
@@ -483,6 +494,7 @@ async def main() -> int:
     parser.add_argument("--base-url", default="http://127.0.0.1:8000")
     parser.add_argument("--sido", default="서울특별시")
     parser.add_argument("--sigungu", default="성동구")
+    parser.add_argument("--date", choices=["today", "tomorrow"], default="today", help="외출 날짜")
     parser.add_argument("--json", type=Path, help="결과를 JSON 파일로도 저장")
     args = parser.parse_args()
 
