@@ -125,7 +125,8 @@ async def check_regenerated_twice(factory, member_ids: list[int]) -> tuple[bool,
         regeneration_of(result),
         (2, "completed", "single", second_outfit),
     )
-    oldest = result.outfits[1].previous_outfits[-1] if len(result.outfits) == 2 else None
+    previous = result.outfits[1].previous_outfits if len(result.outfits) == 2 else []
+    oldest = previous[-1] if previous else None
     expect(
         failures,
         "가장 오래된 이전 코디 스타일",
