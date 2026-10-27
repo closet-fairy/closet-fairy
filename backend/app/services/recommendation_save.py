@@ -3,6 +3,7 @@
 첫 덱(deck_seq 1, initial) → 코디 → 코디 아이템을 한 트랜잭션으로 저장하고, 같은 트랜잭션에서
 세션의 generation_status_cd를 completed로 바꾼다. 아이템에는 이름·이미지 스냅샷을 남겨
 옷이 나중에 지워져도 추천 당시대로 보이게 한다(FR-HIST-08).
+덱·코디·아이템을 넣는 insert_deck_outfits는 재추천 저장(regeneration_save)도 같이 쓴다.
 """
 
 import logging
