@@ -319,6 +319,7 @@ async def start_session(
     member: Member,
     member_id: int,
     args,
+    request_id: str | None = None,
 ) -> tuple[dict, float]:
     start, end = going_out_window(datetime.now(KST), scenario.hours, args.date)
     run = {
@@ -327,10 +328,16 @@ async def start_session(
         "tpo_text": scenario.tpo_text,
         "going_out": f"{start:%H:%M}-{end:%H:%M}",
     }
+    headers = {}
+    if request_id is not None:
+        headers["X-Request-ID"] = request_id
+        run["request_id"] = request_id
     started = time.perf_counter()
     response = await client.post(
-        "/recommendation-sessions", json=request_body(scenario, start, end, args)
+        "/recommendation-sessions", json=request_body(scenario, start, end, args), headers=headers
     )
+    if request_id is not None:
+        run["request_id_echoed"] = response.headers.get("x-request-id")
     if response.status_code != 202:
         return {
             **run,
