@@ -9,12 +9,13 @@ from app.core.config import get_settings
 from app.repositories.recommendation_result import OutfitItemResultRow, ResultSessionRow
 from app.repositories.regeneration_request import LatestRequestRow
 from app.services import recommendation_result as service
+from app.services.recommendation_session import to_db_utc
 from app.services.session_errors import SessionNotFoundError
 from app.services.weather.base_time import KST
 
 MEMBER_ID = 1
 NOW = datetime(2026, 10, 14, 21, 30, tzinfo=KST)
-STALE_BEFORE = datetime(2026, 10, 14, 12, 30) - timedelta(
+STALE_BEFORE = to_db_utc(NOW) - timedelta(
     seconds=get_settings().REGENERATION_PROCESSING_TIMEOUT_SECONDS
 )
 
