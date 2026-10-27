@@ -100,19 +100,32 @@ def regeneration_of(result: RecommendationResult) -> tuple | None:
     return (r.request_seq, r.regeneration_status_cd, r.target_scope_cd, r.target_outfit_id)
 
 
+async def latest_new_outfit(
+    factory, seeded: Seeded, failures: list[str], expected_count: int
+) -> int | None:
+    ids = await new_outfit_ids(factory, seeded)
+    expect(failures, "재추천 덱 코디 수", len(ids), expected_count)
+    return ids[-1] if len(ids) == expected_count else None
+
+
 async def check_regenerated_twice(factory, member_ids: list[int]) -> tuple[bool, Seeded, int]:
+    label = "(a) 2번 두 번 재추천 → 현재 코디 + 이전 코디 2벌(최신순)"
     member_id, w = await seed_member(factory, member_ids)
     seeded = await seed_session(factory, member_id, w)
+    failures: list[str] = []
     first = await insert_request(factory, seeded.session_id, 1, "single", seeded.outfit2, CASUAL)
     await run_pipeline(first, w, [new_second_outfit(w)])
-    [second_outfit] = await new_outfit_ids(factory, seeded)
+    second_outfit = await latest_new_outfit(factory, seeded, failures, 1)
+    if second_outfit is None:
+        return report(label, failures), seeded, member_id
     second = await insert_request(factory, seeded.session_id, 2, "single", second_outfit, WARMER)
     await run_pipeline(second, w, [new_second_outfit(w)])
-    third_outfit = (await new_outfit_ids(factory, seeded))[-1]
+    third_outfit = await latest_new_outfit(factory, seeded, failures, 2)
+    if third_outfit is None:
+        return report(label, failures), seeded, member_id
 
     result = await get_result(factory, seeded, member_id)
 
-    failures: list[str] = []
     expect(
         failures,
         "화면 (seq, 현재, 이전)",
@@ -133,7 +146,7 @@ async def check_regenerated_twice(factory, member_ids: list[int]) -> tuple[bool,
         [i.style_cds for i in oldest.items] if oldest else None,
         [["street"], ["classic"], [w.essential_style_cd]],
     )
-    ok = report("(a) 2번 두 번 재추천 → 현재 코디 + 이전 코디 2벌(최신순)", failures)
+    ok = report(label, failures)
     return ok, seeded, member_id
 
 
@@ -161,17 +174,20 @@ async def check_failed_keeps_outfits(factory, member_ids: list[int]) -> bool:
 
 
 async def check_latest_failed_after_completed(factory, member_ids: list[int]) -> bool:
+    label = "(c) 앞 요청 completed + 최근 요청 failed → failed"
     member_id, w = await seed_member(factory, member_ids)
     seeded = await seed_session(factory, member_id, w)
+    failures: list[str] = []
     first = await insert_request(factory, seeded.session_id, 1, "single", seeded.outfit2, CASUAL)
     await run_pipeline(first, w, [new_second_outfit(w)])
-    [new_outfit] = await new_outfit_ids(factory, seeded)
+    new_outfit = await latest_new_outfit(factory, seeded, failures, 1)
+    if new_outfit is None:
+        return report(label, failures)
     second = await insert_request(factory, seeded.session_id, 2, "all", None, WARMER)
     await run_pipeline(second, w, [])
 
     result = await get_result(factory, seeded, member_id)
 
-    failures: list[str] = []
     expect(
         failures,
         "요청 (seq, 상태)",
@@ -185,7 +201,7 @@ async def check_latest_failed_after_completed(factory, member_ids: list[int]) ->
         screen(result.outfits),
         [(1, seeded.outfit1, []), (2, new_outfit, [seeded.outfit2])],
     )
-    return report("(c) 앞 요청 completed + 최근 요청 failed → failed", failures)
+    return report(label, failures)
 
 
 async def check_timed_out_processing(factory, member_ids: list[int]) -> bool:
