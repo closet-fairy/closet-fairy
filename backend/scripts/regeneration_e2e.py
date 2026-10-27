@@ -103,7 +103,7 @@ VERDICT_LABELS = {
 }
 
 FORMAL_TEXT = "좀 더 포멀하게 입고 싶어"
-COMFORT_TEXT = "더 편하게 입고 싶어"
+CASUAL_STYLE_TEXT = "좀 더 캐주얼하게"
 CALM_TEXT = "좀 더 차분한 색으로 입고 싶어"
 SHOES_TEXT = "신발만 다른 걸로 바꿔 줘"
 TOP_TEXT = "상의만 다른 걸로 바꿔 줘"
@@ -216,7 +216,7 @@ PLANS = {
             "daily",
             (
                 Step("R1", "all", FORMAL_TEXT, scope="all"),
-                Step("R2", "single", COMFORT_TEXT, target="current:0"),
+                Step("R2", "single", CASUAL_STYLE_TEXT, target="current:0"),
                 Step(
                     "X1",
                     "not_latest",
@@ -321,7 +321,7 @@ PLANS = {
             "daily",
             (
                 Step("R1", "all", CALM_TEXT, scope="all"),
-                Step("R2", "single", COMFORT_TEXT, target="current:0"),
+                Step("R2", "single", CASUAL_STYLE_TEXT, target="current:0"),
                 Step("R3", "parts", TOP_TEXT, target="current:1", slot="top"),
                 Step(
                     "R4",
