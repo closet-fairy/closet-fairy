@@ -86,9 +86,7 @@ async def request_regeneration(
     now: datetime,
 ) -> AcceptedRegeneration:
     settings = get_settings()
-    stale_before = to_db_utc(
-        now - timedelta(seconds=settings.REGENERATION_PROCESSING_TIMEOUT_SECONDS)
-    )
+    stale_before = processing_stale_before(now)
     request_text = req.request_text.strip()
 
     async with db.begin():
@@ -160,6 +158,11 @@ async def request_regeneration(
         },
     )
     return AcceptedRegeneration(regeneration_request_id, request_seq)
+
+
+def processing_stale_before(now: datetime) -> datetime:
+    timeout = timedelta(seconds=get_settings().REGENERATION_PROCESSING_TIMEOUT_SECONDS)
+    return to_db_utc(now - timeout)
 
 
 def ensure_regeneratable(session: SessionStateRow | None, member_id: int) -> None:
