@@ -303,14 +303,13 @@ def request_body(scenario: Scenario, start: datetime, end: datetime, args) -> di
     }
 
 
-async def run_one(
+async def start_session(
     client: httpx.AsyncClient,
     scenario: Scenario,
     member: Member,
     member_id: int,
-    rate: bool,
     args,
-) -> dict:
+) -> tuple[dict, float]:
     start, end = going_out_window(datetime.now(KST), scenario.hours)
     run = {
         "scenario": scenario.name,
@@ -328,7 +327,7 @@ async def run_one(
             "passed": False,
             "failures": [f"POST {response.status_code}"],
             "error": response.text,
-        }
+        }, started
     session_id = response.json()["recommendation_session_id"]
     run["recommendation_session_id"] = session_id
 
@@ -341,14 +340,19 @@ async def run_one(
             f"{member.label} id {member_id}와 다릅니다. "
             ".env를 바꾼 뒤 서버를 다시 띄웠는지 확인하세요."
         )
+    return run, started
 
+
+async def inspect_session(
+    client: httpx.AsyncClient, run: dict, started: float, member: Member, member_id: int
+) -> tuple[dict, list[str], dict]:
+    session_id = run["recommendation_session_id"]
     data = await poll(client, session_id)
     elapsed_s = round(time.perf_counter() - started, 1)
     outfits = data["outfits"]
     weather = data["weather"] or {}
     # 취소하면 코디가 지워지므로 세션을 끝내기 전에 검사한다
     db_outfit_count, invalid_item_count = await check_saved_items(session_id, member_id)
-    ended_by, end_status_code = await end_session(client, session_id, outfits, rate)
 
     status = data["generation_status_cd"]
     failures = []
@@ -362,10 +366,8 @@ async def run_one(
         failures.append("API·DB 코디 수 다름")
     if data["is_clothing_shortage"] != member.is_clothing_shortage:
         failures.append("의류 부족 표시가 기대와 다름")
-    if end_status_code != 200:
-        failures.append(f"{ended_by} {end_status_code}")
 
-    return {
+    inspected = {
         **run,
         "elapsed_s": elapsed_s,
         "generation_status_cd": status,
@@ -379,6 +381,29 @@ async def run_one(
         "weather_is_fallback": weather.get("is_fallback"),
         "weather_condition_cd": weather.get("weather_condition_cd"),
         "temperature": weather.get("temperature"),
+    }
+    return inspected, failures, data
+
+
+async def run_one(
+    client: httpx.AsyncClient,
+    scenario: Scenario,
+    member: Member,
+    member_id: int,
+    rate: bool,
+    args,
+) -> dict:
+    run, started = await start_session(client, scenario, member, member_id, args)
+    if "recommendation_session_id" not in run:
+        return run
+    run, failures, data = await inspect_session(client, run, started, member, member_id)
+    ended_by, end_status_code = await end_session(
+        client, run["recommendation_session_id"], data["outfits"], rate
+    )
+    if end_status_code != 200:
+        failures.append(f"{ended_by} {end_status_code}")
+    return {
+        **run,
         "ended_by": ended_by,
         "end_status_code": end_status_code,
         "passed": not failures,
