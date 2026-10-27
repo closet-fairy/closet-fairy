@@ -113,8 +113,11 @@ async def test_empty_generation_marks_failed_without_saving(
     assert "save" not in [c[0] for c in calls]
     assert calls[-1] == ("mark_failed", 9)
     record = _event(caplog, "regeneration.failed")
+    assert record.levelname == "WARNING"
     assert record.reason == "empty"
     assert record.status_recorded is recorded
+    assert not hasattr(record, "error_type")
+    assert not record.exc_info
 
 
 async def test_empty_generation_for_request_no_longer_processing_is_discarded(monkeypatch, caplog):
@@ -122,7 +125,9 @@ async def test_empty_generation_for_request_no_longer_processing_is_discarded(mo
 
     await _run()
 
-    assert _event(caplog, "regeneration.discarded").reason == "not_processing"
+    record = _event(caplog, "regeneration.discarded")
+    assert record.reason == "not_processing"
+    assert not hasattr(record, "error_type")
     assert not [r for r in caplog.records if getattr(r, "event", None) == "regeneration.failed"]
 
 
@@ -134,10 +139,11 @@ async def test_error_marks_failed_and_logs_exception(monkeypatch, caplog, mark_r
 
     assert calls[-1] == ("mark_failed", 9)
     record = _event(caplog, "regeneration.failed")
+    assert record.levelname == "ERROR"
     assert record.reason == "error"
     assert record.error_type == "RuntimeError"
     assert record.status_recorded is recorded
-    assert record.exc_info is not None
+    assert record.exc_info[0] is RuntimeError
 
 
 async def test_error_after_request_was_deleted_is_discarded_not_failed(monkeypatch, caplog):

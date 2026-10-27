@@ -25,20 +25,7 @@ async def run_regeneration_pipeline(regeneration_request_id: int, llm: LLMClient
         outcome = await regenerate_outfits(ctx, llm)
         outfits = outcome.generation.outfits
         if not outfits:
-            changed = await mark_regeneration_failed(regeneration_request_id)
-            fields = _fields(regeneration_request_id, session_id, started)
-            if changed is False:
-                _log_discarded(fields, "not_processing")
-            else:
-                logger.warning(
-                    "재추천 실패",
-                    extra={
-                        **fields,
-                        "event": Event.REGENERATION_FAILED,
-                        "reason": "empty",
-                        "status_recorded": changed is True,
-                    },
-                )
+            await _record_failure(regeneration_request_id, session_id, started, "empty")
             return
         deck_seq = await save_regeneration_result(
             regeneration_request_id,
@@ -51,23 +38,14 @@ async def run_regeneration_pipeline(regeneration_request_id: int, llm: LLMClient
         _log_discarded(_fields(regeneration_request_id, session_id, started), e.reason)
         return
     except Exception as e:
-        changed = await mark_regeneration_failed(regeneration_request_id)
-        fields = _fields(regeneration_request_id, session_id, started)
-        # 정리로 요청이 지워졌거나(취소 시 대상 코디와 함께) 시간 초과로 failed된 경우라
-        # 그때 난 예외는 버림으로 본다
-        if changed is False:
-            _log_discarded(fields, "not_processing", error_type=type(e).__name__)
-        else:
-            logger.exception(
-                "재추천 실패",
-                extra={
-                    **fields,
-                    "event": Event.REGENERATION_FAILED,
-                    "reason": "error",
-                    "error_type": type(e).__name__,
-                    "status_recorded": changed is True,
-                },
-            )
+        await _record_failure(
+            regeneration_request_id,
+            session_id,
+            started,
+            "error",
+            exc_info=True,
+            error_type=type(e).__name__,
+        )
         return
 
     generation = outcome.generation
@@ -84,6 +62,36 @@ async def run_regeneration_pipeline(regeneration_request_id: int, llm: LLMClient
             "hard_rule_retries": generation.hard_rule_retries,
             "reviewer_retries": generation.reviewer_retries,
             "shortfall_retries": generation.shortfall_retries,
+        },
+    )
+
+
+async def _record_failure(
+    regeneration_request_id: int,
+    session_id: int | None,
+    started: float,
+    reason: str,
+    *,
+    exc_info: bool = False,
+    **extra: str,
+) -> None:
+    changed = await mark_regeneration_failed(regeneration_request_id)
+    fields = _fields(regeneration_request_id, session_id, started)
+    # 정리로 요청이 지워졌거나(취소 시 대상 코디와 함께) 시간 초과로 failed된 경우라
+    # 버림으로 본다
+    if changed is False:
+        _log_discarded(fields, "not_processing", **extra)
+        return
+    logger.log(
+        logging.ERROR if exc_info else logging.WARNING,
+        "재추천 실패",
+        exc_info=exc_info,
+        extra={
+            **fields,
+            "event": Event.REGENERATION_FAILED,
+            "reason": reason,
+            "status_recorded": changed is True,
+            **extra,
         },
     )
 
