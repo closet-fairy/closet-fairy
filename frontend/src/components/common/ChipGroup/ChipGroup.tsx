@@ -4,7 +4,6 @@ import { FormFieldContext } from '@/components/common/FormField/FormField.contex
 import * as S from './ChipGroup.styled';
 
 interface ChipGroupBaseProps {
-  value: string | null;
   children: ReactNode;
   'aria-label'?: string;
   'aria-labelledby'?: string;
@@ -12,46 +11,69 @@ interface ChipGroupBaseProps {
 }
 
 interface RequiredChipGroupProps extends ChipGroupBaseProps {
+  isMultiple?: false;
   isDeselectable?: false;
+  value: string | null;
   onChange: (value: string) => void;
 }
 
 interface DeselectableChipGroupProps extends ChipGroupBaseProps {
+  isMultiple?: false;
   isDeselectable: true;
+  value: string | null;
   onChange: (value: string | null) => void;
 }
 
-type ChipGroupProps = RequiredChipGroupProps | DeselectableChipGroupProps;
+interface MultipleChipGroupProps extends ChipGroupBaseProps {
+  isMultiple: true;
+  isDeselectable?: never;
+  value: string[];
+  onChange: (value: string[]) => void;
+}
+
+type ChipGroupProps =
+  RequiredChipGroupProps | DeselectableChipGroupProps | MultipleChipGroupProps;
 
 const ChipGroup = (props: ChipGroupProps) => {
   const {
-    value,
     children,
     'aria-label': ariaLabel,
     'aria-labelledby': ariaLabelledBy,
     isDisabled = false,
-    isDeselectable,
-    onChange,
   } = props;
 
   const formField = useContext(FormFieldContext);
 
   const handleValueChange = (groupValue: string[]) => {
-    const nextValue = groupValue.at(0);
-
-    if (nextValue !== undefined) {
-      onChange(nextValue);
+    if (props.isMultiple === true) {
+      props.onChange(groupValue);
       return;
     }
 
-    if (isDeselectable === true) {
-      onChange(null);
+    const nextValue = groupValue.at(0);
+
+    if (nextValue !== undefined) {
+      props.onChange(nextValue);
+      return;
+    }
+
+    if (props.isDeselectable === true) {
+      props.onChange(null);
     }
   };
 
+  const groupValue = (() => {
+    if (props.isMultiple === true) {
+      return props.value;
+    }
+
+    return props.value === null ? [] : [props.value];
+  })();
+
   return (
     <S.Container
-      value={value === null ? [] : [value]}
+      value={groupValue}
+      multiple={props.isMultiple === true}
       onValueChange={handleValueChange}
       disabled={isDisabled}
       aria-label={ariaLabel}

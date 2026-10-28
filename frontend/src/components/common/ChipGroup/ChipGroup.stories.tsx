@@ -40,6 +40,12 @@ const meta = {
       control: 'boolean',
       table: { defaultValue: { summary: 'false' } },
     },
+    isMultiple: {
+      description:
+        '`true`면 칩을 여러 개 고를 수 있습니다. 이때 `value`는 고른 칩 `value`의 배열이고, `onChange`도 바뀐 배열로 호출합니다. 선택된 칩을 다시 누르면 그 값만 빠집니다.',
+      control: false,
+      table: { defaultValue: { summary: 'false' } },
+    },
     children: {
       description: '묶을 `Chip`들입니다.',
       control: false,
@@ -70,9 +76,15 @@ const meta = {
   render: function Render(args) {
     const [, updateArgs] = useArgs();
 
+    if (args.isMultiple === true) {
+      return <ChipGroup {...args} />;
+    }
+
+    const { onChange } = args;
+
     const handleChange = (value: string | null) => {
       if (value !== null) {
-        args.onChange(value);
+        onChange(value);
       }
 
       updateArgs({ value });
@@ -106,6 +118,24 @@ export const Deselectable: Story = {
         <Chip value="더위 많이 탐">더위 많이 탐</Chip>
       </>
     ),
+  },
+};
+
+const SEASONS = ['봄', '여름', '가을', '겨울'];
+
+export const Multiple: Story = {
+  render: function Render() {
+    const [value, setValue] = useState<string[]>(['가을', '겨울']);
+
+    return (
+      <ChipGroup isMultiple value={value} onChange={setValue} aria-label="계절">
+        {SEASONS.map((season) => (
+          <Chip key={season} value={season}>
+            {season}
+          </Chip>
+        ))}
+      </ChipGroup>
+    );
   },
 };
 
@@ -152,9 +182,15 @@ export const CustomSituationInput: Story = {
     const [, updateArgs] = useArgs();
     const [customSituation, setCustomSituation] = useState<string | null>(null);
 
+    if (args.isMultiple === true) {
+      return <ChipGroup {...args} />;
+    }
+
+    const { onChange } = args;
+
     const handleChange = (value: string | null) => {
       if (value !== null) {
-        args.onChange(value);
+        onChange(value);
       }
 
       updateArgs({ value });

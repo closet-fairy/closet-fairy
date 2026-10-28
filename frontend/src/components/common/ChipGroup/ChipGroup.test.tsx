@@ -70,3 +70,53 @@ describe('선택 해제를 허용한 칩 묶음', () => {
     expect(handleChange).toHaveBeenCalledWith('남');
   });
 });
+
+describe('여러 개를 고르는 칩 묶음', () => {
+  const renderMultiple = (value: string[]) => {
+    const onChange = vi.fn();
+    render(
+      <ChipGroup isMultiple value={value} onChange={onChange} aria-label="계절">
+        <Chip value="spring">봄</Chip>
+        <Chip value="summer">여름</Chip>
+        <Chip value="fall">가을</Chip>
+      </ChipGroup>,
+    );
+
+    return { onChange };
+  };
+
+  test('선택되지 않은 칩을 누르면 이미 고른 값에 더해 알려야 한다.', async () => {
+    const user = userEvent.setup();
+    const { onChange } = renderMultiple(['spring']);
+
+    await user.click(screen.getByRole('button', { name: '여름' }));
+
+    expect(onChange).toHaveBeenCalledWith(['spring', 'summer']);
+  });
+
+  test('선택된 칩을 다시 누르면 그 값만 빼고 알려야 한다.', async () => {
+    const user = userEvent.setup();
+    const { onChange } = renderMultiple(['spring', 'fall']);
+
+    await user.click(screen.getByRole('button', { name: '봄' }));
+
+    expect(onChange).toHaveBeenCalledWith(['fall']);
+  });
+
+  test('고른 값마다 칩이 눌린 상태로 보여야 한다.', () => {
+    renderMultiple(['spring', 'fall']);
+
+    expect(screen.getByRole('button', { name: '봄' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(screen.getByRole('button', { name: '여름' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+    expect(screen.getByRole('button', { name: '가을' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+  });
+});
