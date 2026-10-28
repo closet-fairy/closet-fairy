@@ -2,6 +2,7 @@ import Add from '@material-symbols/svg-400/outlined/add.svg?react';
 import AddAPhoto from '@material-symbols/svg-400/outlined/add_a_photo.svg?react';
 import ArrowBack from '@material-symbols/svg-400/outlined/arrow_back.svg?react';
 import ArrowForward from '@material-symbols/svg-400/outlined/arrow_forward.svg?react';
+import Block from '@material-symbols/svg-400/outlined/block.svg?react';
 import Brush from '@material-symbols/svg-400/outlined/brush.svg?react';
 import Cancel from '@material-symbols/svg-400/outlined/cancel.svg?react';
 import ChatBubble from '@material-symbols/svg-400/outlined/chat_bubble.svg?react';
@@ -35,6 +36,8 @@ import PartlyCloudyDay from '@material-symbols/svg-400/outlined/partly_cloudy_da
 import Person from '@material-symbols/svg-400/outlined/person.svg?react';
 import PersonFill from '@material-symbols/svg-400/outlined/person-fill.svg?react';
 import PersonRemove from '@material-symbols/svg-400/outlined/person_remove.svg?react';
+import PhotoCamera from '@material-symbols/svg-400/outlined/photo_camera.svg?react';
+import PhotoLibrary from '@material-symbols/svg-400/outlined/photo_library.svg?react';
 import ProgressActivity from '@material-symbols/svg-400/outlined/progress_activity.svg?react';
 import RadioButtonUnchecked from '@material-symbols/svg-400/outlined/radio_button_unchecked.svg?react';
 import Rainy from '@material-symbols/svg-400/outlined/rainy.svg?react';
@@ -50,6 +53,7 @@ import StarFill from '@material-symbols/svg-400/outlined/star-fill.svg?react';
 import StarShine from '@material-symbols/svg-400/outlined/star_shine.svg?react';
 import StarShineFill from '@material-symbols/svg-400/outlined/star_shine-fill.svg?react';
 import Sunny from '@material-symbols/svg-400/outlined/sunny.svg?react';
+import SyncProblem from '@material-symbols/svg-400/outlined/sync_problem.svg?react';
 import Undo from '@material-symbols/svg-400/outlined/undo.svg?react';
 import WeatherMix from '@material-symbols/svg-400/outlined/weather_mix.svg?react';
 import WeatherSnowy from '@material-symbols/svg-400/outlined/weather_snowy.svg?react';
@@ -59,6 +63,7 @@ export const icons = {
   add_a_photo: AddAPhoto,
   arrow_back: ArrowBack,
   arrow_forward: ArrowForward,
+  block: Block,
   brush: Brush,
   cancel: Cancel,
   chat_bubble: ChatBubble,
@@ -92,6 +97,8 @@ export const icons = {
   person: Person,
   'person-fill': PersonFill,
   person_remove: PersonRemove,
+  photo_camera: PhotoCamera,
+  photo_library: PhotoLibrary,
   progress_activity: ProgressActivity,
   radio_button_unchecked: RadioButtonUnchecked,
   rainy: Rainy,
@@ -107,6 +114,7 @@ export const icons = {
   star_shine: StarShine,
   'star_shine-fill': StarShineFill,
   sunny: Sunny,
+  sync_problem: SyncProblem,
   undo: Undo,
   weather_mix: WeatherMix,
   weather_snowy: WeatherSnowy,
