@@ -544,7 +544,7 @@ export const clothingHandlers = [
       .split(',')
       .map(parsePositiveInt);
 
-    if (ids.length === 0 || ids.some((id) => id === null)) {
+    if (ids.some((id) => id === null)) {
       return errorResponse<ClothingStatusList>(ERRORS.VALIDATION);
     }
 
@@ -589,6 +589,7 @@ export const clothingHandlers = [
 
     return HttpResponse.json<ClothingProgress | ErrorResponse>(
       toClothingProgress(retried),
+      { status: 202 },
     );
   }),
 

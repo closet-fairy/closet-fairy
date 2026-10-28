@@ -40,6 +40,9 @@ const meta = {
     onRetry: fn(),
     onClose: fn(),
   },
+  parameters: {
+    docs: { story: { inline: false, height: '440px' } },
+  },
 } satisfies Meta<typeof ClothingStatusDialog>;
 
 export default meta;
