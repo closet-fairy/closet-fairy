@@ -83,3 +83,35 @@ export const patchClothingCard = (
       },
   );
 };
+
+// 받는 중인 목록이 있으면, 그 응답이 방금 고친 캐시를 옛 값으로 덮지 않도록 끊고 새로 받는다.
+export const refetchInflightClothingList = (queryClient: QueryClient) => {
+  const listQueryKey = getListClothingClothingGetInfiniteQueryKey();
+
+  if (queryClient.isFetching({ queryKey: listQueryKey }) > 0) {
+    void queryClient.invalidateQueries({ queryKey: listQueryKey });
+  }
+};
+
+// 지운 옷의 카드를 받아 둔 목록에서 뺀다. 처리 중이던 옷이면 상태 조회 대상에서도 함께 빠진다.
+export const removeClothingCard = (
+  queryClient: QueryClient,
+  clothingId: number,
+) => {
+  const listQueryKey = getListClothingClothingGetInfiniteQueryKey();
+
+  queryClient.setQueriesData<InfiniteData<ClothingPage>>(
+    { queryKey: listQueryKey },
+    (data) =>
+      data && {
+        ...data,
+        pages: data.pages.map((page) => ({
+          ...page,
+          items: page.items.filter((card) => card.clothing_id !== clothingId),
+        })),
+      },
+  );
+
+  // 지우기 전에 보낸 목록 요청이 늦게 오면 지운 카드를 되살린다.
+  refetchInflightClothingList(queryClient);
+};

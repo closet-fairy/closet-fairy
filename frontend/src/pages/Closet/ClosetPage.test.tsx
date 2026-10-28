@@ -462,6 +462,176 @@ describe('처리 중·실패 카드 다이얼로그', () => {
   });
 });
 
+describe('옷장에서 옷 삭제', () => {
+  // MSW 상태는 그대로 두고 204만 돌려준다. 목록을 다시 받아 카드가 빠지는 게 아니라, 화면이 직접 카드를 빼는지 본다.
+  const recordDeletes = () => {
+    const deletedIds: string[] = [];
+    server.use(
+      http.delete('/api/clothing/:clothingId', ({ params }) => {
+        deletedIds.push(String(params.clothingId));
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+
+    return deletedIds;
+  };
+
+  const openDeleteDialog = async (
+    user: ReturnType<typeof userEvent.setup>,
+    cardName: string,
+    statusDialogName: string,
+  ) => {
+    await user.click(
+      (await screen.findAllByRole('button', { name: cardName }))[0],
+    );
+    const statusDialog = await screen.findByRole('dialog', {
+      name: statusDialogName,
+    });
+    await user.click(
+      within(statusDialog).getByRole('button', { name: '삭제' }),
+    );
+
+    return screen.findByRole('dialog', { name: '이 옷을 삭제할까요?' });
+  };
+
+  test('처리 중 카드의 [삭제]에서 확인하면 카드를 빼고 삭제했다고 알려야 한다.', async () => {
+    const user = userEvent.setup();
+    const deletedIds = recordDeletes();
+    await renderCloset();
+    await screen.findAllByRole('button', { name: '처리 중인 옷' });
+    const cardCount = screen.getAllByRole('listitem').length;
+
+    const dialog = await openDeleteDialog(
+      user,
+      '처리 중인 옷',
+      '아직 처리 중이에요',
+    );
+    // 삭제 확인 모달이 열려 뒤쪽은 접근성 트리에서 숨겨지므로, 숨은 요소까지 찾아 상태 다이얼로그가 닫혔는지 본다.
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('dialog', {
+          name: '아직 처리 중이에요',
+          hidden: true,
+        }),
+      ).not.toBeInTheDocument();
+    });
+    expect(dialog).toHaveAccessibleDescription(
+      '사진과 속성이 함께 지워지며 되돌릴 수 없습니다.',
+    );
+    await user.click(within(dialog).getByRole('button', { name: '삭제' }));
+
+    expect(await screen.findByText('옷을 삭제했어요')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('dialog', { name: '이 옷을 삭제할까요?' }),
+      ).not.toBeInTheDocument();
+    });
+    expect(screen.getAllByRole('listitem')).toHaveLength(cardCount - 1);
+    expect(deletedIds).toHaveLength(1);
+  });
+
+  test('지우는 요청을 보내는 동안에는 모달을 닫을 수 없어야 한다.', async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.delete('/api/clothing/:clothingId', async () => {
+        await delay('infinite');
+      }),
+    );
+    await renderCloset();
+
+    const dialog = await openDeleteDialog(
+      user,
+      '등록에 실패한 옷',
+      '등록하지 못했어요',
+    );
+    await user.click(within(dialog).getByRole('button', { name: '삭제' }));
+    await user.keyboard('{Escape}');
+
+    expect(
+      screen.getByRole('dialog', { name: '이 옷을 삭제할까요?' }),
+    ).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: '취소' })).toBeDisabled();
+  });
+
+  test('실패 카드의 [삭제]에서 취소하면 아무것도 지우지 않아야 한다.', async () => {
+    const user = userEvent.setup();
+    const deletedIds = recordDeletes();
+    await renderCloset();
+
+    const dialog = await openDeleteDialog(
+      user,
+      '등록에 실패한 옷',
+      '등록하지 못했어요',
+    );
+    await user.click(within(dialog).getByRole('button', { name: '취소' }));
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('dialog', { name: '이 옷을 삭제할까요?' }),
+      ).not.toBeInTheDocument();
+    });
+    expect(deletedIds).toEqual([]);
+    expect(
+      screen.getByRole('button', { name: '등록에 실패한 옷' }),
+    ).toBeInTheDocument();
+  });
+
+  test('이미 지워진 옷이면 지운 것으로 보고 카드를 빼야 한다.', async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.delete('/api/clothing/:clothingId', () =>
+        HttpResponse.json(
+          { code: 'CLOTHING_NOT_FOUND', message: '옷을 찾을 수 없습니다.' },
+          { status: 404 },
+        ),
+      ),
+    );
+    await renderCloset();
+
+    const dialog = await openDeleteDialog(
+      user,
+      '등록에 실패한 옷',
+      '등록하지 못했어요',
+    );
+    await user.click(within(dialog).getByRole('button', { name: '삭제' }));
+
+    expect(await screen.findByText('옷을 삭제했어요')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('button', { name: '등록에 실패한 옷' }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  test('지우지 못하면 모달을 열어 둔 채 서버 문구를 보여 줘야 한다.', async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.delete('/api/clothing/:clothingId', () =>
+        HttpResponse.json(
+          { code: 'INTERNAL_ERROR', message: '처리 중 오류가 발생했습니다.' },
+          { status: 500 },
+        ),
+      ),
+    );
+    await renderCloset();
+
+    const dialog = await openDeleteDialog(
+      user,
+      '등록에 실패한 옷',
+      '등록하지 못했어요',
+    );
+    await user.click(within(dialog).getByRole('button', { name: '삭제' }));
+
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      '처리 중 오류가 발생했습니다.',
+    );
+    // 모달이 열려 있어 뒤쪽 카드는 접근성 트리에서 숨겨져 있다.
+    expect(
+      screen.getByRole('button', { name: '등록에 실패한 옷', hidden: true }),
+    ).toBeInTheDocument();
+  });
+});
+
 const photoFile = (name: string, type = 'image/jpeg') =>
   new File(['photo'], name, { type });
 

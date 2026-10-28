@@ -4,6 +4,7 @@ import { ApiError } from '@/apis/apiError';
 import { isUnauthorizedError } from '@/apis/authSession';
 import { patchClothingCard } from '@/apis/clothingListCache';
 import { showToast } from '@/components/common/ToastProvider/ToastProvider.toast';
+import { CLOTHING_NOT_FOUND_CODE } from '@/constants/clothingErrorCode';
 import {
   getGetClothingClothingClothingIdGetQueryKey,
   updateClothingClothingClothingIdPatch,
@@ -113,9 +114,15 @@ const useClothingAttributeSave = (clothingId: number) => {
             ? error.message
             : UNKNOWN_SAVE_ERROR;
 
-        // 응답이 오기 전에 상세를 떠났다면 행 아래 문구를 볼 수 없으므로, 마지막으로 바꾼 값의 실패만 토스트로 알린다.
+        /*
+         * 응답이 오기 전에 상세를 떠났다면 행 아래 문구를 볼 수 없으므로, 마지막으로 바꾼 값의 실패만 토스트로 알린다.
+         * 저장을 기다리는 사이 옷을 지워 떠난 경우는 저장할 옷이 없으므로 알리지 않는다.
+         */
         if (!isMountedRef.current) {
-          if (isLatest()) {
+          const isDeleted =
+            error instanceof ApiError && error.code === CLOTHING_NOT_FOUND_CODE;
+
+          if (isLatest() && !isDeleted) {
             showToast({
               tone: 'error',
               title: failureTitle,

@@ -14,6 +14,7 @@ import ChevronLeft from '@material-symbols/svg-400/outlined/chevron_left.svg?rea
 import ChevronRight from '@material-symbols/svg-400/outlined/chevron_right.svg?react';
 import Close from '@material-symbols/svg-400/outlined/close.svg?react';
 import Cloud from '@material-symbols/svg-400/outlined/cloud.svg?react';
+import Delete from '@material-symbols/svg-400/outlined/delete.svg?react';
 import Edit from '@material-symbols/svg-400/outlined/edit.svg?react';
 import EditLocationAlt from '@material-symbols/svg-400/outlined/edit_location_alt.svg?react';
 import ErrorIcon from '@material-symbols/svg-400/outlined/error.svg?react';
@@ -75,6 +76,7 @@ export const icons = {
   chevron_right: ChevronRight,
   close: Close,
   cloud: Cloud,
+  delete: Delete,
   edit: Edit,
   edit_location_alt: EditLocationAlt,
   error: ErrorIcon,

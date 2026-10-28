@@ -8,12 +8,20 @@ interface ClothingStatusDialogProps {
   failureReason: string | null;
   isRetrying: boolean;
   onRetry: () => void;
+  onDelete: () => void;
   onClose: () => void;
 }
 
 const ClothingStatusDialog = (props: ClothingStatusDialogProps) => {
-  const { isOpen, variant, failureReason, isRetrying, onRetry, onClose } =
-    props;
+  const {
+    isOpen,
+    variant,
+    failureReason,
+    isRetrying,
+    onRetry,
+    onDelete,
+    onClose,
+  } = props;
 
   const handleOpenChange = (nextIsOpen: boolean) => {
     if (!nextIsOpen) {
@@ -33,7 +41,12 @@ const ClothingStatusDialog = (props: ClothingStatusDialogProps) => {
             <Button isFullWidth onClick={onClose}>
               닫기
             </Button>
-            <Button variant="text" isFullWidth>
+            <Button
+              variant="text"
+              isFullWidth
+              aria-haspopup="dialog"
+              onClick={onDelete}
+            >
               삭제
             </Button>
           </>
@@ -58,7 +71,12 @@ const ClothingStatusDialog = (props: ClothingStatusDialogProps) => {
           >
             재시도
           </Button>
-          <Button variant="outline" isFullWidth>
+          <Button
+            variant="outline"
+            isFullWidth
+            aria-haspopup="dialog"
+            onClick={onDelete}
+          >
             삭제
           </Button>
           <Button variant="text" isFullWidth onClick={onClose}>

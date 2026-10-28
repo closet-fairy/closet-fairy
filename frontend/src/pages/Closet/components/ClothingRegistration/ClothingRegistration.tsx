@@ -199,7 +199,7 @@ const ClothingRegistration = (props: ClothingRegistrationProps) => {
         onChange={handleCameraChange}
       />
       <CameraCaptureDialog
-        key={capture.key}
+        key={`capture-${capture.key}`}
         isOpen={isCameraOpen}
         photo={capture.photo}
         onRegister={registerCapturedPhoto}
@@ -214,7 +214,7 @@ const ClothingRegistration = (props: ClothingRegistrationProps) => {
         }}
       />
       <PhotoConfirmDialog
-        key={pick.key}
+        key={`pick-${pick.key}`}
         isOpen={isConfirmOpen}
         photos={pick.photos}
         onClose={() => setIsConfirmOpen(false)}

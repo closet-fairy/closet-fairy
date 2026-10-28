@@ -702,6 +702,18 @@ export const clothingHandlers = [
     },
   ),
 
+  http.delete<ClothingParams>('/api/clothing/:clothingId', ({ params }) => {
+    const clothingId = Number(params.clothingId);
+
+    if (!clothings.delete(clothingId)) {
+      return errorResponse(ERRORS.NOT_FOUND);
+    }
+
+    pollCounts.delete(clothingId);
+
+    return new HttpResponse(null, { status: 204 });
+  }),
+
   http.get<ClothingParams>('/api/clothing/:clothingId', ({ params }) => {
     if (!CLOTHING_ID_PATTERN.test(params.clothingId)) {
       return undefined;
