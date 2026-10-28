@@ -4,6 +4,9 @@ import { Outlet, useMatches } from '@tanstack/react-router';
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
 import AuthGate from '@/components/AuthGate';
 import BottomTabBar from '@/components/BottomTabBar';
+import { BOTTOM_TAB_BAR_HEIGHT } from '@/components/BottomTabBar/BottomTabBar.styled';
+import Toaster from '@/components/common/Toaster';
+import ToastProvider from '@/components/common/ToastProvider';
 import SessionExpiredDialog from '@/components/SessionExpiredDialog';
 import { globalStyles } from '@/styles/globalStyles';
 import * as S from './RootLayout.styled';
@@ -20,7 +23,7 @@ const RootLayout = () => {
   });
 
   return (
-    <>
+    <ToastProvider>
       <Global styles={globalStyles} />
       <AuthGate>
         <S.Container>
@@ -31,9 +34,10 @@ const RootLayout = () => {
         </S.Container>
       </AuthGate>
       <SessionExpiredDialog />
+      <Toaster bottomOffset={isFullScreen ? 0 : BOTTOM_TAB_BAR_HEIGHT} />
       <ReactQueryDevtools />
       <TanStackRouterDevtools />
-    </>
+    </ToastProvider>
   );
 };
 
