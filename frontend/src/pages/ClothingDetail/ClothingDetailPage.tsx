@@ -248,7 +248,10 @@ const ClothingDetailPage = () => {
         isOpen={isDeleteDialogOpen}
         onOpenChange={setIsDeleteDialogOpen}
         // 지운 옷의 상세로 뒤로 가기가 돌아오지 않도록 기록을 바꿔치기한다.
-        onDeleted={() => void navigate({ to: '/closet', replace: true })}
+        onDeleted={() => {
+          setIsDeleteDialogOpen(false);
+          void navigate({ to: '/closet', replace: true });
+        }}
       />
     </S.Container>
   );

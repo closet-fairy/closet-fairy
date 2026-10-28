@@ -7,7 +7,10 @@ import { showToast } from '@/components/common/ToastProvider/ToastProvider.toast
 import { useDeleteClothingClothingClothingIdDelete } from '@/generated/endpoints/clothing/clothing';
 import * as S from './DeleteClothingDialog.styled';
 
-const NOT_FOUND_STATUS = 404;
+// 프록시나 경로 문제로 난 404와 구분하려고, 서버가 옷을 찾지 못했다고 답한 경우만 이미 지워진 옷으로 본다.
+const CLOTHING_NOT_FOUND_CODE = 'CLOTHING_NOT_FOUND';
+
+const UNKNOWN_DELETE_ERROR = '삭제하지 못했어요.';
 
 interface DeleteClothingDialogProps {
   clothingId: number;
@@ -19,23 +22,35 @@ interface DeleteClothingDialogProps {
 const DeleteClothingDialog = (props: DeleteClothingDialogProps) => {
   const { clothingId, isOpen, onOpenChange, onDeleted } = props;
   const queryClient = useQueryClient();
-  const deletion = useDeleteClothingClothingClothingIdDelete();
 
-  const finishDeletion = () => {
-    removeClothingCard(queryClient, clothingId);
+  const finishDeletion = (deletedId: number) => {
+    removeClothingCard(queryClient, deletedId);
     showToast({ tone: 'success', title: '옷을 삭제했어요' });
-    onDeleted();
   };
+
+  /*
+   * 요청 중에 뒤로 가기 등으로 모달이 사라져도 목록 정리와 토스트는 빠지지 않도록, mutate 콜백이 아닌 훅 옵션에서 처리한다.
+   * 이미 지워진 옷이면 지우려던 목적은 이룬 것이다.
+   */
+  const deletion = useDeleteClothingClothingClothingIdDelete({
+    mutation: {
+      onSuccess: (_data, variables) => finishDeletion(variables.clothingId),
+      onError: (error, variables) => {
+        if (error.code === CLOTHING_NOT_FOUND_CODE) {
+          finishDeletion(variables.clothingId);
+        }
+      },
+    },
+  });
 
   const handleDelete = () => {
     deletion.mutate(
       { clothingId },
       {
-        onSuccess: finishDeletion,
+        onSuccess: onDeleted,
         onError: (error) => {
-          // 이미 지워진 옷이면 지우려던 목적은 이룬 것이다.
-          if (error.status === NOT_FOUND_STATUS) {
-            finishDeletion();
+          if (error.code === CLOTHING_NOT_FOUND_CODE) {
+            onDeleted();
           }
         },
       },
@@ -53,9 +68,9 @@ const DeleteClothingDialog = (props: DeleteClothingDialogProps) => {
   // 로그인 만료는 전역 다이얼로그가 안내하므로 여기서는 보여 주지 않는다.
   const errorMessage =
     deletion.isError &&
-    deletion.error.status !== NOT_FOUND_STATUS &&
+    deletion.error.code !== CLOTHING_NOT_FOUND_CODE &&
     !isUnauthorizedError(deletion.error)
-      ? deletion.error.message
+      ? deletion.error.message || UNKNOWN_DELETE_ERROR
       : null;
 
   return (

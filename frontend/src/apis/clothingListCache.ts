@@ -89,8 +89,10 @@ export const removeClothingCard = (
   queryClient: QueryClient,
   clothingId: number,
 ) => {
+  const listQueryKey = getListClothingClothingGetInfiniteQueryKey();
+
   queryClient.setQueriesData<InfiniteData<ClothingPage>>(
-    { queryKey: getListClothingClothingGetInfiniteQueryKey() },
+    { queryKey: listQueryKey },
     (data) =>
       data && {
         ...data,
@@ -100,4 +102,9 @@ export const removeClothingCard = (
         })),
       },
   );
+
+  // 지우기 전에 보낸 목록 요청이 늦게 오면 지운 카드를 되살리므로, 받는 중이던 목록은 새로 받는다.
+  if (queryClient.isFetching({ queryKey: listQueryKey }) > 0) {
+    void queryClient.invalidateQueries({ queryKey: listQueryKey });
+  }
 };

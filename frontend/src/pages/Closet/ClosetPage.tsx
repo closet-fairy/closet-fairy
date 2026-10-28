@@ -2,12 +2,12 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useCallback, useEffect, useState } from 'react';
 import { isUnauthorizedError } from '@/apis/authSession';
-import DeleteClothingDialog from '@/components/DeleteClothingDialog';
 import Button from '@/components/common/Button';
 import Icon from '@/components/common/Icon';
 import StatusView from '@/components/common/StatusView';
 import { useToastStackHeight } from '@/components/common/Toaster/Toaster.hooks';
 import TopBar from '@/components/common/TopBar';
+import DeleteClothingDialog from '@/components/DeleteClothingDialog';
 import type { ClothingCard as ClothingCardData } from '@/generated/models';
 import {
   dismissClothingUpload,
