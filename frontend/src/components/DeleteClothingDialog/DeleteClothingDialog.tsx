@@ -1,14 +1,10 @@
-import type { InfiniteData } from '@tanstack/react-query';
 import { useQueryClient } from '@tanstack/react-query';
 import { isUnauthorizedError } from '@/apis/authSession';
+import { removeClothingCard } from '@/apis/clothingListCache';
 import Button from '@/components/common/Button';
 import Dialog from '@/components/common/Dialog';
 import { showToast } from '@/components/common/ToastProvider/ToastProvider.toast';
-import {
-  getListClothingClothingGetInfiniteQueryKey,
-  useDeleteClothingClothingClothingIdDelete,
-} from '@/generated/endpoints/clothing/clothing';
-import type { ClothingPage } from '@/generated/models';
+import { useDeleteClothingClothingClothingIdDelete } from '@/generated/endpoints/clothing/clothing';
 import * as S from './DeleteClothingDialog.styled';
 
 const NOT_FOUND_STATUS = 404;
@@ -26,18 +22,7 @@ const DeleteClothingDialog = (props: DeleteClothingDialogProps) => {
   const deletion = useDeleteClothingClothingClothingIdDelete();
 
   const finishDeletion = () => {
-    // 목록 전체를 다시 받지 않고 그 카드만 뺀다. 처리 중이던 옷이면 상태 조회 대상에서도 함께 빠진다.
-    queryClient.setQueriesData<InfiniteData<ClothingPage>>(
-      { queryKey: getListClothingClothingGetInfiniteQueryKey() },
-      (data) =>
-        data && {
-          ...data,
-          pages: data.pages.map((page) => ({
-            ...page,
-            items: page.items.filter((card) => card.clothing_id !== clothingId),
-          })),
-        },
-    );
+    removeClothingCard(queryClient, clothingId);
     showToast({ tone: 'success', title: '옷을 삭제했어요' });
     onDeleted();
   };

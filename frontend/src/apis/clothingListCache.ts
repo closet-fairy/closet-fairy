@@ -83,3 +83,21 @@ export const patchClothingCard = (
       },
   );
 };
+
+// 지운 옷의 카드를 받아 둔 목록에서 뺀다. 처리 중이던 옷이면 상태 조회 대상에서도 함께 빠진다.
+export const removeClothingCard = (
+  queryClient: QueryClient,
+  clothingId: number,
+) => {
+  queryClient.setQueriesData<InfiniteData<ClothingPage>>(
+    { queryKey: getListClothingClothingGetInfiniteQueryKey() },
+    (data) =>
+      data && {
+        ...data,
+        pages: data.pages.map((page) => ({
+          ...page,
+          items: page.items.filter((card) => card.clothing_id !== clothingId),
+        })),
+      },
+  );
+};
