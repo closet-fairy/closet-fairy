@@ -2,7 +2,7 @@ import { useState } from 'react';
 import Icon from '@/components/common/Icon';
 import Tag from '@/components/common/Tag';
 import type { ClothingCard as ClothingCardData } from '@/generated/models';
-import { CLOTHING_CATEGORY_LABEL } from '@/pages/Closet/constants';
+import { CLOTHING_CATEGORY_LABEL } from '@/constants/clothingAttribute';
 import * as S from './ClothingCard.styled';
 
 interface ClothingCardProps {
