@@ -55,7 +55,6 @@ const toWaterproofSummary = (isWaterproof: boolean | null) => {
 
 const ClothingAttributes = (props: ClothingAttributesProps) => {
   const { clothing, errors, onSave } = props;
-  // 한 번에 한 행만 펼친다. 다른 행을 누르면 열린 행은 접힌다.
   const [openField, setOpenField] = useState<string | null>(null);
   const styleLabels = clothing.style_cds.map(
     (style) => STYLE_LABEL.get(style) ?? style,

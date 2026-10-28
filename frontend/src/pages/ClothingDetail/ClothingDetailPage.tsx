@@ -1,4 +1,3 @@
-import type { InfiniteData } from '@tanstack/react-query';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams, useRouter } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';
@@ -12,15 +11,11 @@ import { showToast } from '@/components/common/ToastProvider/ToastProvider.toast
 import TopBar from '@/components/common/TopBar';
 import {
   getGetClothingClothingClothingIdGetQueryKey,
-  getListClothingClothingGetInfiniteQueryKey,
   useGetClothingClothingClothingIdGet,
   useMarkClothingReviewedClothingClothingIdReviewedPost,
 } from '@/generated/endpoints/clothing/clothing';
-import type {
-  ClothingDetail,
-  ClothingPage,
-  ClothingUpdate,
-} from '@/generated/models';
+import type { ClothingDetail, ClothingUpdate } from '@/generated/models';
+import { patchClothingCard } from './clothingListCache';
 import ClothingAttributes from './components/ClothingAttributes';
 import ClothingNameField from './components/ClothingNameField';
 import useClothingAttributeSave from './hooks/useClothingAttributeSave';
@@ -91,22 +86,9 @@ const ClothingDetailPage = () => {
             getGetClothingClothingClothingIdGetQueryKey(variables.clothingId),
             (current) => current && { ...current, is_new: false },
           );
-          // 목록 전체를 다시 받지 않고 그 카드의 신규 표시만 끈다.
-          queryClient.setQueriesData<InfiniteData<ClothingPage>>(
-            { queryKey: getListClothingClothingGetInfiniteQueryKey() },
-            (data) =>
-              data && {
-                ...data,
-                pages: data.pages.map((page) => ({
-                  ...page,
-                  items: page.items.map((card) =>
-                    card.clothing_id === variables.clothingId
-                      ? { ...card, is_new: false }
-                      : card,
-                  ),
-                })),
-              },
-          );
+          patchClothingCard(queryClient, variables.clothingId, {
+            is_new: false,
+          });
         },
       },
     });
@@ -230,7 +212,7 @@ const ClothingDetailPage = () => {
         </S.ImageBox>
         <ClothingNameField
           key={clothing.clothing_id}
-          name={clothing.item_name}
+          name={shownClothing.item_name}
           errorMessage={errors.item_name}
           onSave={(name) =>
             save('item_name', { item_name: name }, '이름을 저장하지 못했어요')
