@@ -326,7 +326,9 @@ const RecommendationPage = () => {
                   size="sm"
                   icon="add_a_photo"
                   isFullWidth
-                  onClick={() => void navigate({ to: '/closet' })}
+                  onClick={() =>
+                    void navigate({ to: '/closet', search: { register: true } })
+                  }
                 >
                   옷 등록하기
                 </Button>

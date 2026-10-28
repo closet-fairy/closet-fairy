@@ -7,6 +7,7 @@ import type {
   ClothingPage,
   ClothingProgress,
   ClothingStatusList,
+  ClothingUploadResult,
   ErrorResponse,
 } from '@/generated/models';
 import {
@@ -121,6 +122,20 @@ const ERRORS = {
     body: {
       code: 'CLOTHING_DISPLAY_IMAGE_INVALID',
       message: '사진을 읽을 수 없습니다. 다른 사진으로 다시 올려 주세요.',
+    },
+  },
+  FILES_REQUIRED: {
+    status: 422,
+    body: {
+      code: 'CLOTHING_FILES_REQUIRED',
+      message: '올릴 사진을 골라 주세요.',
+    },
+  },
+  TOO_MANY_FILES: {
+    status: 422,
+    body: {
+      code: 'CLOTHING_TOO_MANY_FILES',
+      message: '사진은 한 번에 20장까지 올릴 수 있습니다.',
     },
   },
   NOT_RETRYABLE: {
@@ -304,6 +319,14 @@ const advanceProcessing = (clothing: ClothingDetail) => {
   return clothing;
 };
 
+const UPLOAD_FILE_LIMIT = 20;
+
+// 파일 이름에 이 말이 들어간 사진은 서버가 읽지 못해 제외한 것으로 흉내 낸다.
+const UNREADABLE_FILE_MARK = 'unreadable';
+
+const UNREADABLE_MESSAGE =
+  '사진을 읽을 수 없습니다. 다른 사진으로 다시 올려 주세요.';
+
 const parsePositiveInt = (value: string | null) =>
   value !== null && CLOTHING_ID_PATTERN.test(value) && Number(value) > 0
     ? Number(value)
@@ -455,6 +478,64 @@ export const clothingHandlers = [
         rest.length > limit && lastItem !== undefined
           ? lastItem.clothing_id
           : null,
+    });
+  }),
+
+  http.post('/api/clothing', async ({ request }) => {
+    const files = (await request.formData())
+      .getAll('files')
+      .filter((value) => value instanceof File);
+
+    if (files.length === 0) {
+      return errorResponse<ClothingUploadResult>(ERRORS.FILES_REQUIRED);
+    }
+
+    if (files.length > UPLOAD_FILE_LIMIT) {
+      return errorResponse<ClothingUploadResult>(ERRORS.TOO_MANY_FILES);
+    }
+
+    const result: ClothingUploadResult = { accepted: [], rejected: [] };
+    let nextId = Math.max(...clothings.keys()) + 1;
+
+    for (const file of files) {
+      if (file.name.includes(UNREADABLE_FILE_MARK)) {
+        result.rejected.push({
+          file_name: file.name,
+          reason_cd: 'unreadable',
+          message: UNREADABLE_MESSAGE,
+        });
+        continue;
+      }
+
+      const originUrl = `${MEMBER_MEDIA_PATH}/${crypto.randomUUID()}.webp`;
+      uploadedMedia.set(originUrl, file);
+      clothings.set(nextId, {
+        ...createClothing(nextId, null),
+        processing_status_cd: 'processing',
+        is_queued: true,
+        image_url: originUrl,
+        origin_image_url: originUrl,
+        cutout_image_url: null,
+        category_cd: null,
+        item_name: null,
+        color_cd: null,
+        color_text: null,
+        thickness_cd: null,
+        is_waterproof: null,
+        style_cds: [],
+        season_cds: [],
+      });
+      result.accepted.push({
+        clothing_id: nextId,
+        processing_status_cd: 'processing',
+        image_url: originUrl,
+        file_name: file.name,
+      });
+      nextId += 1;
+    }
+
+    return HttpResponse.json<ClothingUploadResult | ErrorResponse>(result, {
+      status: 202,
     });
   }),
 

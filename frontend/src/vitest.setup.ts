@@ -30,6 +30,14 @@ vi.stubGlobal(
 // 라우터의 스크롤 복원이 부르는 window.scrollTo를 jsdom은 구현하지 않아 경고만 남기므로 막아 둔다.
 window.scrollTo = () => {};
 
+// jsdom은 URL.createObjectURL을 구현하지 않아, 고른 사진의 미리보기 주소를 흉내 낸다.
+let objectUrlCount = 0;
+URL.createObjectURL = () => {
+  objectUrlCount += 1;
+  return `blob:test/${objectUrlCount}`;
+};
+URL.revokeObjectURL = () => {};
+
 const unhandledRequests: string[] = [];
 
 beforeAll(() => {

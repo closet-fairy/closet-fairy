@@ -1,3 +1,4 @@
+import { Blob as NodeBlob, File as NodeFile } from 'node:buffer';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   createMemoryHistory,
@@ -7,14 +8,16 @@ import {
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { delay, http, HttpResponse } from 'msw';
-import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { getListClothingClothingGetInfiniteQueryKey } from '@/generated/endpoints/clothing/clothing';
 import type {
   ClothingCard,
   ClothingPage,
   ClothingProgress,
 } from '@/generated/models';
+import { resetSession } from '@/apis/authSession';
 import { server } from '@/mocks/node';
+import { startClothingUpload } from '@/pages/Closet/clothingUploadStore';
 import { CLOSET_LIST_PARAMS } from '@/pages/Closet/constants';
 import { routeTree } from '@/routeTree.gen';
 
@@ -68,11 +71,11 @@ beforeEach(() => {
   );
 });
 
-const renderCloset = async () => {
+const renderCloset = async (initialPath = '/closet') => {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-  const history = createMemoryHistory({ initialEntries: ['/closet'] });
+  const history = createMemoryHistory({ initialEntries: [initialPath] });
   const router = createRouter({ routeTree, history, context: { queryClient } });
   await router.load();
 
@@ -453,5 +456,362 @@ describe('처리 중·실패 카드 다이얼로그', () => {
       expect(listRequestCount).toBe(2);
     });
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+});
+
+const photoFile = (name: string, type = 'image/jpeg') =>
+  new File(['photo'], name, { type });
+
+const getGalleryInput = () => screen.getByLabelText('갤러리에서 고를 사진');
+
+const openGalleryPicker = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(await screen.findByRole('button', { name: '옷 등록하기' }));
+  await user.click(
+    await screen.findByRole('button', { name: /갤러리에서 선택/ }),
+  );
+};
+
+const submitPhotos = async (
+  user: ReturnType<typeof userEvent.setup>,
+  buttonName: string,
+) => {
+  const dialog = await screen.findByRole('dialog', { name: '사진 확인' });
+  await user.click(within(dialog).getByRole('button', { name: buttonName }));
+};
+
+describe('갤러리로 옷 등록', () => {
+  /*
+   * jsdom의 FormData에 jsdom File을 담아 보내면 MSW가 본문을 읽지 못해 응답이 오지 않는다.
+   * 사진을 보내는 이 묶음에서만 Node 기본 구현으로 바꿔 쓰고 끝나면 되돌린다.
+   */
+  const jsdomGlobals = { FormData, File, Blob };
+
+  beforeEach(async () => {
+    const nodeFormData = await new Response(new URLSearchParams()).formData();
+    vi.stubGlobal('FormData', nodeFormData.constructor);
+    vi.stubGlobal('File', NodeFile);
+    vi.stubGlobal('Blob', NodeBlob);
+  });
+
+  afterEach(() => {
+    vi.stubGlobal('FormData', jsdomGlobals.FormData);
+    vi.stubGlobal('File', jsdomGlobals.File);
+    vi.stubGlobal('Blob', jsdomGlobals.Blob);
+  });
+
+  test('고른 사진을 확인해 등록하면 맨 앞에 처리 중 카드가 생기고, 업로드가 끝나면 서버 카드로 바뀌어야 한다.', async () => {
+    const user = userEvent.setup();
+    const uploadedFileNames: string[] = [];
+    let releaseUpload = () => {};
+    const uploadGate = new Promise<void>((resolve) => {
+      releaseUpload = resolve;
+    });
+    server.use(
+      // 처리 중인 옷이 그사이 끝나거나 차례가 바뀌지 않도록 상태를 그대로 둔다.
+      http.get('/api/clothing/status', ({ request }) =>
+        HttpResponse.json({
+          items: readStatusIds(request).map((id) => toProgress(id, {})),
+        }),
+      ),
+      http.post('/api/clothing', async ({ request }) => {
+        const formData = await request.clone().formData();
+        uploadedFileNames.push(
+          ...formData
+            .getAll('files')
+            .flatMap((value) => (value instanceof File ? [value.name] : [])),
+        );
+        // 업로드를 붙잡아 두고, 응답이 오기 전의 임시 카드를 확인한다.
+        await uploadGate;
+        return undefined;
+      }),
+    );
+    await renderCloset();
+    await screen.findByText('처리 중');
+
+    await openGalleryPicker(user);
+    await user.upload(getGalleryInput(), [
+      photoFile('IMG_0001.JPG'),
+      photoFile('IMG_0002.JPG'),
+      photoFile('IMG_1983.GIF', 'image/gif'),
+    ]);
+
+    const dialog = await screen.findByRole('dialog', { name: '사진 확인' });
+    expect(
+      within(dialog).getByText('1장은 형식·용량 때문에 제외됐어요'),
+    ).toBeInTheDocument();
+    await user.click(
+      within(dialog).getByRole('button', { name: 'IMG_0002.JPG' }),
+    );
+    expect(within(dialog).getByText('버림')).toBeInTheDocument();
+
+    await submitPhotos(user, '1벌 등록하기');
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('dialog', { name: '사진 확인' }),
+      ).not.toBeInTheDocument();
+    });
+    await waitFor(() => {
+      expect(uploadedFileNames).toEqual(['IMG_0001.JPG']);
+    });
+    // 응답이 오기 전에는 누를 수 없는 처리 중 임시 카드가 목록 맨 앞에 있다.
+    const [grid] = screen.getAllByRole('list');
+    const firstCard = within(grid).getAllByRole('listitem')[0];
+    expect(within(firstCard).getByText('처리 중')).toBeInTheDocument();
+    expect(within(firstCard).queryByRole('button')).not.toBeInTheDocument();
+
+    releaseUpload();
+    /*
+     * 업로드가 끝나면 누를 수 없는 임시 카드가 사라지고, 서버가 만든 카드가 상태 다이얼로그를 여는 카드로 들어온다.
+     * 원래 처리 중이던 두 벌과 새로 등록한 한 벌이 모두 누를 수 있는 처리 중 카드여야 한다.
+     */
+    await waitFor(() => {
+      expect(
+        screen.getAllByRole('button', { name: '처리 중인 옷' }),
+      ).toHaveLength(3);
+    });
+    expect(screen.getAllByText('처리 중')).toHaveLength(3);
+  });
+
+  test('20장보다 많이 고르면 안내한 뒤 앞의 20장만 고른 채로 사진 확인을 열어야 한다.', async () => {
+    const user = userEvent.setup();
+    await renderCloset();
+    await openGalleryPicker(user);
+
+    await user.upload(
+      getGalleryInput(),
+      Array.from({ length: 22 }, (_, index) =>
+        photoFile(`IMG_${String(index + 1).padStart(4, '0')}.JPG`),
+      ),
+    );
+
+    const notice = await screen.findByRole('dialog', {
+      name: '최대 20장까지 등록할 수 있어요',
+    });
+    await user.click(within(notice).getByRole('button', { name: '확인' }));
+
+    const dialog = await screen.findByRole('dialog', { name: '사진 확인' });
+    expect(within(dialog).getByText('20 / 20장')).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole('button', { name: '20벌 등록하기' }),
+    ).toBeEnabled();
+    expect(
+      within(dialog).getByRole('button', { name: 'IMG_0021.JPG' }),
+    ).toBeDisabled();
+    expect(within(dialog).getAllByText('더 고를 수 없어요')).toHaveLength(2);
+  });
+
+  test('형식·용량 때문에 거른 사진은 20장을 셀 때 빼야 한다.', async () => {
+    const user = userEvent.setup();
+    await renderCloset();
+    await openGalleryPicker(user);
+
+    await user.upload(getGalleryInput(), [
+      ...Array.from({ length: 20 }, (_, index) =>
+        photoFile(`IMG_${String(index + 1).padStart(4, '0')}.JPG`),
+      ),
+      photoFile('IMG_1983.GIF', 'image/gif'),
+      photoFile('IMG_1984.GIF', 'image/gif'),
+    ]);
+
+    const dialog = await screen.findByRole('dialog', { name: '사진 확인' });
+    expect(
+      screen.queryByRole('dialog', { name: '최대 20장까지 등록할 수 있어요' }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(dialog).getByText('2장은 형식·용량 때문에 제외됐어요'),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole('button', { name: '20벌 등록하기' }),
+    ).toBeEnabled();
+  });
+
+  test('사진 확인에서 뒤로 가면 아무것도 등록하지 않고 닫아야 한다.', async () => {
+    const user = userEvent.setup();
+    let uploadRequestCount = 0;
+    server.use(
+      http.post('/api/clothing', () => {
+        uploadRequestCount += 1;
+        return undefined;
+      }),
+    );
+    await renderCloset();
+    await openGalleryPicker(user);
+    await user.upload(getGalleryInput(), [photoFile('IMG_0001.JPG')]);
+
+    const dialog = await screen.findByRole('dialog', { name: '사진 확인' });
+    await user.click(within(dialog).getByRole('button', { name: '뒤로 가기' }));
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('dialog', { name: '사진 확인' }),
+      ).not.toBeInTheDocument();
+    });
+    expect(uploadRequestCount).toBe(0);
+    expect(screen.queryByText('올리기 실패')).not.toBeInTheDocument();
+  });
+
+  test('업로드 요청이 실패하면 올리기 실패 카드로 남기고, 다시 보내거나 치울 수 있어야 한다.', async () => {
+    const user = userEvent.setup();
+    let isFailing = true;
+    server.use(
+      http.post('/api/clothing', () =>
+        isFailing
+          ? HttpResponse.json(
+              {
+                code: 'CLOTHING_TOO_MANY_REQUESTS',
+                message:
+                  '옷 등록 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.',
+              },
+              { status: 429 },
+            )
+          : undefined,
+      ),
+    );
+    await renderCloset();
+    await openGalleryPicker(user);
+    await user.upload(getGalleryInput(), [
+      photoFile('IMG_0001.JPG'),
+      photoFile('IMG_0002.JPG'),
+    ]);
+    await submitPhotos(user, '2벌 등록하기');
+
+    expect(await screen.findAllByText('올리기 실패')).toHaveLength(2);
+    expect(
+      screen.getAllByText(
+        '옷 등록 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.',
+      ),
+    ).toHaveLength(2);
+
+    // 보내지 못한 사진이 남아 있으면 앱을 닫기 전에 브라우저가 묻는다.
+    const unloadEvent = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(unloadEvent);
+    expect(unloadEvent.defaultPrevented).toBe(true);
+
+    await user.click(
+      screen.getByRole('button', { name: 'IMG_0001.JPG 치우기' }),
+    );
+    expect(screen.getAllByText('올리기 실패')).toHaveLength(1);
+
+    isFailing = false;
+    await user.click(
+      screen.getByRole('button', { name: 'IMG_0002.JPG 다시 보내기' }),
+    );
+
+    // 다시 보낸 사진이 서버에 들어가 남은 사진이 없으면 더는 묻지 않는다.
+    await waitFor(() => {
+      const afterEvent = new Event('beforeunload', { cancelable: true });
+      window.dispatchEvent(afterEvent);
+      expect(afterEvent.defaultPrevented).toBe(false);
+    });
+    expect(screen.queryByText('올리기 실패')).not.toBeInTheDocument();
+  });
+
+  test('목록을 불러오지 못해도 올리기 실패 카드는 보여 치울 수 있어야 한다.', async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.post('/api/clothing', () =>
+        HttpResponse.json(
+          { code: 'INTERNAL_ERROR', message: '처리 중 오류가 발생했습니다.' },
+          { status: 500 },
+        ),
+      ),
+      http.get('/api/clothing', () =>
+        HttpResponse.json(
+          { code: 'INTERNAL_ERROR', message: '처리 중 오류가 발생했습니다.' },
+          { status: 500 },
+        ),
+      ),
+    );
+    // 옷장을 떠나 있는 동안 업로드가 실패해 사진이 남은 상태에서 옷장에 들어온다.
+    await startClothingUpload(new QueryClient(), [
+      { file: photoFile('IMG_0001.JPG'), previewUrl: 'blob:test/upload' },
+    ]);
+    await renderCloset();
+
+    expect(
+      await screen.findByText('옷장을 불러오지 못했어요'),
+    ).toBeInTheDocument();
+    expect(screen.getByText('올리기 실패')).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole('button', { name: 'IMG_0001.JPG 치우기' }),
+    );
+
+    expect(screen.queryByText('올리기 실패')).not.toBeInTheDocument();
+  });
+
+  test('세션이 끝나면 남아 있던 올리기 실패 카드를 비워야 한다.', async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.post('/api/clothing', () =>
+        HttpResponse.json(
+          { code: 'INTERNAL_ERROR', message: '처리 중 오류가 발생했습니다.' },
+          { status: 500 },
+        ),
+      ),
+    );
+    await renderCloset();
+    await openGalleryPicker(user);
+    await user.upload(getGalleryInput(), [photoFile('IMG_0001.JPG')]);
+    await submitPhotos(user, '1벌 등록하기');
+    expect(await screen.findByText('올리기 실패')).toBeInTheDocument();
+
+    // 로그아웃·세션 만료 뒤 같은 탭에서 다른 계정이 들어와도 이전 계정의 사진이 남지 않는다.
+    act(() => {
+      resetSession();
+    });
+
+    expect(screen.queryByText('올리기 실패')).not.toBeInTheDocument();
+  });
+
+  test('서버가 제외한 사진이 있으면 업로드가 끝난 뒤 파일 이름과 서버 문구로 한 번 알려야 한다.', async () => {
+    const user = userEvent.setup();
+    await renderCloset();
+    await openGalleryPicker(user);
+    await user.upload(getGalleryInput(), [
+      photoFile('IMG_0001.JPG'),
+      photoFile('IMG_unreadable.JPG'),
+    ]);
+    await submitPhotos(user, '2벌 등록하기');
+
+    const notice = await screen.findByRole('dialog', {
+      name: '1장은 등록하지 못했어요',
+    });
+    expect(within(notice).getByText('IMG_unreadable.JPG')).toBeInTheDocument();
+    expect(
+      within(notice).getByText(
+        '사진을 읽을 수 없습니다. 다른 사진으로 다시 올려 주세요.',
+      ),
+    ).toBeInTheDocument();
+
+    await user.click(within(notice).getByRole('button', { name: '확인' }));
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('dialog', { name: '1장은 등록하지 못했어요' }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  test('다른 화면의 옷 등록하기로 들어오면 등록 방법 시트를 연 채로 시작해야 한다.', async () => {
+    await renderCloset('/closet?register=true');
+
+    expect(
+      await screen.findByRole('dialog', { name: '옷 등록' }),
+    ).toBeInTheDocument();
+  });
+
+  test('빈 옷장의 옷 등록하기를 누르면 등록 방법 시트를 열어야 한다.', async () => {
+    const user = userEvent.setup();
+    server.use(http.get('/api/clothing', () => HttpResponse.json(emptyPage)));
+    await renderCloset();
+
+    await user.click(
+      await screen.findByRole('button', { name: '옷 등록하기' }),
+    );
+
+    expect(
+      await screen.findByRole('dialog', { name: '옷 등록' }),
+    ).toBeInTheDocument();
   });
 });
