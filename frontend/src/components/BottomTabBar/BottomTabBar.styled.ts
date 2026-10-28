@@ -12,7 +12,11 @@ import {
 } from '@/styles/tokens';
 
 const BAR_HEIGHT = 66;
+const BORDER_WIDTH = 1;
 const PRESSED_SCALE = 0.94;
+
+// 위쪽 테두리까지 더한, 화면 아래에서 탭 바가 차지하는 높이다. 아래쪽 안전 영역은 뺀 값이다.
+export const BOTTOM_TAB_BAR_HEIGHT = BAR_HEIGHT + BORDER_WIDTH;
 
 export const Container = styled.nav`
   position: sticky;
@@ -21,7 +25,7 @@ export const Container = styled.nav`
   flex: none;
   width: 100%;
   padding-bottom: env(safe-area-inset-bottom, 0px);
-  border-top: 1px solid ${border.neutral.default};
+  border-top: ${BORDER_WIDTH}px solid ${border.neutral.default};
   background-color: ${bg.white};
 `;
 
