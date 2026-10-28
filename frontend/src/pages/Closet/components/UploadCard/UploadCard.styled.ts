@@ -173,8 +173,12 @@ export const Caption = styled.div`
   margin-top: ${spacing[6]};
 `;
 
+// 실패 사유를 알 수 있는 곳은 이 자리뿐이라, 비워 둔 두 줄까지 쓰고 넘치면 말줄임한다.
 export const ErrorMessage = styled.span`
   ${typography.label1}
-  ${ellipsis}
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   color: ${fg.neutral.default};
 `;
