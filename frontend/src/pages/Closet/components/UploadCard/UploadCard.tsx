@@ -16,34 +16,38 @@ const UploadCard = (props: UploadCardProps) => {
 
   if (upload.status === 'failed') {
     return (
-      <div>
+      <S.Container>
         <S.ImageBox $isFailed>
           <S.Overlay>
             <S.FailedIcon>
               <Icon name="sync_problem" size="md" />
             </S.FailedIcon>
             <S.StatusLabel>올리기 실패</S.StatusLabel>
-            <S.ResendButton type="button" onClick={onResend}>
+            <S.ResendButton
+              type="button"
+              aria-label={`${upload.file.name} 다시 보내기`}
+              onClick={onResend}
+            >
               다시 보내기
             </S.ResendButton>
           </S.Overlay>
-          <S.DismissButton
-            type="button"
-            aria-label="올리기 실패한 사진 치우기"
-            onClick={onDismiss}
-          >
-            <Icon name="close" size="sm" />
-          </S.DismissButton>
         </S.ImageBox>
+        <S.DismissButton
+          type="button"
+          aria-label={`${upload.file.name} 치우기`}
+          onClick={onDismiss}
+        >
+          <Icon name="close" size="sm" />
+        </S.DismissButton>
         <S.Caption>
           <S.ErrorMessage>{upload.errorMessage}</S.ErrorMessage>
         </S.Caption>
-      </div>
+      </S.Container>
     );
   }
 
   return (
-    <div>
+    <S.Container>
       <S.ImageBox $isFailed={false}>
         {isPreviewBroken ? (
           <S.Placeholder>
@@ -64,7 +68,7 @@ const UploadCard = (props: UploadCardProps) => {
         </S.Overlay>
       </S.ImageBox>
       <S.Caption />
-    </div>
+    </S.Container>
   );
 };
 

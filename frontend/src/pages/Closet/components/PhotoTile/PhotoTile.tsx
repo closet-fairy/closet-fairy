@@ -41,6 +41,8 @@ const PhotoTile = (props: PhotoTileProps) => {
           <S.Image
             src={previewUrl}
             alt=""
+            loading="lazy"
+            decoding="async"
             onError={() => setIsPreviewBroken(true)}
           />
         )}

@@ -33,6 +33,11 @@ const ellipsis = css`
   text-overflow: ellipsis;
 `;
 
+// 치우기 버튼의 넓힌 누르는 영역이 사진 칸의 overflow에 잘리지 않도록 카드에 붙인다.
+export const Container = styled.div`
+  position: relative;
+`;
+
 export const ImageBox = styled.div<{ $isFailed: boolean }>`
   position: relative;
   overflow: hidden;

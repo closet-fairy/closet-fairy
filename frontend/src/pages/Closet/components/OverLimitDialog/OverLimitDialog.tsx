@@ -1,6 +1,6 @@
 import Button from '@/components/common/Button';
 import Dialog from '@/components/common/Dialog';
-import { UPLOAD_PHOTO_LIMIT } from '@/domains/clothing/uploadPhoto';
+import { UPLOAD_PHOTO_LIMIT } from '@/domains/clothing/validateUploadPhoto';
 
 interface OverLimitDialogProps {
   isOpen: boolean;

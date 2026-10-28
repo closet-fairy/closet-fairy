@@ -122,10 +122,10 @@ const ClosetPage = () => {
     onLoadMore: loadNextPage,
   });
 
-  // 로그인이 만료되면 전역 다이얼로그가 안내하므로, 그 뒤에 실패 화면을 겹치지 않고 로딩 화면을 둔다.
   const openRegisterSheet = () => setIsRegisterSheetOpen(true);
 
   const renderBody = () => {
+    // 로그인이 만료되면 전역 다이얼로그가 안내하므로, 그 뒤에 실패 화면을 겹치지 않고 로딩 화면을 둔다.
     if (
       listQuery.isPending ||
       (listQuery.data === undefined && isUnauthorizedError(listQuery.error))

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import Button from '@/components/common/Button';
 import FullScreenDialog from '@/components/common/FullScreenDialog';
 import Notice from '@/components/common/Notice';
-import { UPLOAD_PHOTO_LIMIT } from '@/domains/clothing/uploadPhoto';
+import { UPLOAD_PHOTO_LIMIT } from '@/domains/clothing/validateUploadPhoto';
 import ExcludedPhotosSheet from '@/pages/Closet/components/ExcludedPhotosSheet';
 import PhotoTile from '@/pages/Closet/components/PhotoTile';
 import type { PhotoTileState, PickedPhoto } from '@/pages/Closet/types';

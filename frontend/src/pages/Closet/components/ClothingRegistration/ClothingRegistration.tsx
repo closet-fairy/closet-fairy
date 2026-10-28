@@ -4,7 +4,7 @@ import type { ChangeEvent } from 'react';
 import {
   UPLOAD_PHOTO_LIMIT,
   validateUploadPhoto,
-} from '@/domains/clothing/uploadPhoto';
+} from '@/domains/clothing/validateUploadPhoto';
 import { startClothingUpload } from '@/pages/Closet/clothingUploadStore';
 import OverLimitDialog from '@/pages/Closet/components/OverLimitDialog';
 import PhotoConfirmDialog from '@/pages/Closet/components/PhotoConfirmDialog';
