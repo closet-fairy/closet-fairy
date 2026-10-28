@@ -8,7 +8,6 @@ import ChipGroup from '@/components/common/ChipGroup';
 import FormField from '@/components/common/FormField';
 import Icon from '@/components/common/Icon';
 import Notice from '@/components/common/Notice';
-import Picker from '@/components/common/Picker';
 import TopBar from '@/components/common/TopBar';
 import {
   PENDING_RECOMMENDATION_STORAGE_KEY,
@@ -18,10 +17,13 @@ import {
   CLOTHING_SHORTAGE_DESCRIPTION,
   formatClothingShortageTitle,
 } from '@/domains/recommendation/clothingShortage';
-import type { GoingOutStart } from '@/domains/recommendation/goingOutTime';
+import type {
+  GoingOutDateTime,
+  GoingOutStart,
+} from '@/domains/recommendation/goingOutTime';
 import {
-  createEndTimeSlots,
-  createStartOptions,
+  createEndDayOptions,
+  createStartDayOptions,
   getCurrentTimeSlot,
   getDayOffset,
   getDefaultEndTime,
@@ -50,6 +52,7 @@ import {
   writeSessionJson,
 } from '@/utils/sessionStorageJson';
 import CustomTpoSheet from './components/CustomTpoSheet';
+import GoingOutTimeField from './components/GoingOutTimeField';
 import LocationField from './components/LocationField';
 import LocationSheet from './components/LocationSheet';
 import * as S from './RecommendationPage.styled';
@@ -60,26 +63,27 @@ const LOCATION_REQUIRED_MESSAGE = '위치를 선택해 주세요.';
 const GOING_OUT_DATE_OUT_OF_RANGE_MESSAGE =
   '외출 날짜는 오늘이나 내일만 고를 수 있습니다.';
 
-const DAY_PREFIXES: Readonly<Partial<Record<number, string>>> = {
-  [-1]: '어제 ',
-  0: '',
-  1: '내일 ',
-  2: '모레 ',
+const DAY_NAMES: Readonly<Partial<Record<number, string>>> = {
+  [-1]: '어제',
+  0: '오늘',
+  1: '내일',
+  2: '모레',
 };
 
-const formatDayTime = (dayOffset: number, date: string, time: string) => {
-  const prefix = DAY_PREFIXES[dayOffset];
+const formatDayName = (dayOffset: number, date: string) => {
+  const dayName = DAY_NAMES[dayOffset];
 
-  if (prefix !== undefined) {
-    return `${prefix}${time}`;
+  if (dayName !== undefined) {
+    return dayName;
   }
 
   const [, month, day] = date.split('-').map(Number);
 
-  return `${month}/${day} ${time}`;
+  return `${month}/${day}`;
 };
 
-const toStartValue = (start: GoingOutStart) => `${start.date} ${start.time}`;
+const formatDayTime = (dayOffset: number, date: string, time: string) =>
+  dayOffset === 0 ? time : `${formatDayName(dayOffset, date)} ${time}`;
 
 const useTimeSlotNow = () => {
   const [now, setNow] = useState(() => new Date());
@@ -181,45 +185,13 @@ const RecommendationPage = () => {
   };
   const startDayOffset = getDayOffset(start.date, now);
   const end = selectedEnd ?? getDefaultEndTime(start.time);
-  const startCandidates = createStartOptions(now);
-  const dayOffsets = new Map<string, number>();
-  const getCachedDayOffset = (date: string) => {
-    const cached = dayOffsets.get(date);
-
-    if (cached !== undefined) {
-      return cached;
-    }
-
-    const dayOffset = getDayOffset(date, now);
-    dayOffsets.set(date, dayOffset);
-
-    return dayOffset;
+  const endExtraDays = isNextDayReturn(start.time, end) ? 1 : 0;
+  const endDateTime = {
+    date: shiftKstDate(start.date, endExtraDays),
+    time: end,
   };
-  const startSlots = startCandidates.some(
-    (candidate) => toStartValue(candidate) === toStartValue(start),
-  )
-    ? startCandidates
-    : [start, ...startCandidates];
-  const endSlots =
-    end === start.time
-      ? [end, ...createEndTimeSlots(start.time)]
-      : createEndTimeSlots(start.time);
-  const startOptions = startSlots.map((slot) => ({
-    value: toStartValue(slot),
-    label: formatDayTime(getCachedDayOffset(slot.date), slot.date, slot.time),
-  }));
-  const endOptions = endSlots.map((slot) => {
-    const extraDays = isNextDayReturn(start.time, slot) ? 1 : 0;
-
-    return {
-      value: slot,
-      label: formatDayTime(
-        startDayOffset + extraDays,
-        shiftKstDate(start.date, extraDays),
-        slot,
-      ),
-    };
-  });
+  const getDayLabel = (date: string) =>
+    formatDayName(getDayOffset(date, now), date);
   const requestErrorMessage =
     error && !isUnauthorizedError(error) ? error.message : null;
   const errorMessage = validationMessage ?? requestErrorMessage;
@@ -264,18 +236,18 @@ const RecommendationPage = () => {
 
   const isCustomTpoEditable = customTpoText === null || tpo.cd === 'custom';
 
-  const handleStartChange = (value: string) => {
-    const nextStart = startSlots.find((slot) => toStartValue(slot) === value);
-
-    if (nextStart) {
+  const handleStartConfirm = (nextStart: GoingOutStart) => {
+    if (nextStart.date !== start.date || nextStart.time !== start.time) {
       setSelectedStart(nextStart);
       clearErrors();
     }
   };
 
-  const handleEndChange = (value: string) => {
-    setSelectedEnd(value);
-    clearErrors();
+  const handleEndConfirm = (nextEnd: GoingOutDateTime) => {
+    if (nextEnd.time !== end) {
+      setSelectedEnd(nextEnd.time);
+      clearErrors();
+    }
   };
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -395,20 +367,33 @@ const RecommendationPage = () => {
           <FormField label="외출 시간" hint="30분 단위">
             <S.TimeRow>
               <S.TimePicker>
-                <Picker
+                <GoingOutTimeField
                   label="나가는 시간"
-                  options={startOptions}
-                  value={toStartValue(start)}
-                  onChange={handleStartChange}
+                  valueText={formatDayTime(
+                    startDayOffset,
+                    start.date,
+                    start.time,
+                  )}
+                  days={createStartDayOptions(now)}
+                  value={start}
+                  getDayLabel={getDayLabel}
+                  onConfirm={handleStartConfirm}
                 />
               </S.TimePicker>
               <Icon name="arrow_forward" size="sm" />
               <S.TimePicker>
-                <Picker
+                <GoingOutTimeField
                   label="돌아오는 시간"
-                  options={endOptions}
-                  value={end}
-                  onChange={handleEndChange}
+                  valueText={formatDayTime(
+                    startDayOffset + endExtraDays,
+                    endDateTime.date,
+                    end,
+                  )}
+                  description={`나가는 시간 ${getDayLabel(start.date)} ${start.time}`}
+                  days={createEndDayOptions(start)}
+                  value={endDateTime}
+                  getDayLabel={getDayLabel}
+                  onConfirm={handleEndConfirm}
                 />
               </S.TimePicker>
             </S.TimeRow>

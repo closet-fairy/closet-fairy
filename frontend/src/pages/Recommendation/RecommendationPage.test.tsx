@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type * as TanStackRouter from '@tanstack/react-router';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
@@ -57,6 +57,35 @@ const chooseLocationBySearch = async (
   });
 };
 
+const pickGoingOutTime = async (
+  user: ReturnType<typeof userEvent.setup>,
+  trigger: HTMLElement,
+  time: string,
+  day?: string,
+) => {
+  await user.click(trigger);
+
+  if (day !== undefined) {
+    await user.click(
+      within(await screen.findByRole('listbox', { name: '날짜' })).getByRole(
+        'option',
+        { name: day },
+      ),
+    );
+  }
+
+  await user.click(
+    within(await screen.findByRole('listbox', { name: '시각' })).getByRole(
+      'option',
+      { name: time },
+    ),
+  );
+  await user.click(screen.getByRole('button', { name: /선택$/ }));
+  await waitFor(() => {
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+};
+
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] });
   vi.setSystemTime(new Date('2026-10-14T09:10:00+09:00'));
@@ -108,11 +137,7 @@ describe('기본 외출 시간 갱신', () => {
     const user = userEvent.setup();
     renderPage();
 
-    await user.click(startTrigger('09:00'));
-    await user.click(await screen.findByRole('option', { name: '12:00' }));
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    });
+    await pickGoingOutTime(user, startTrigger('09:00'), '12:00');
     vi.setSystemTime(new Date('2026-10-14T09:40:00+09:00'));
     act(() => {
       document.dispatchEvent(new Event('visibilitychange'));
@@ -125,11 +150,7 @@ describe('기본 외출 시간 갱신', () => {
     const user = userEvent.setup();
     renderPage();
 
-    await user.click(startTrigger('09:00'));
-    await user.click(await screen.findByRole('option', { name: '14:30' }));
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    });
+    await pickGoingOutTime(user, startTrigger('09:00'), '14:30');
 
     expect(
       screen.getByRole('button', { name: '외출 시간 돌아오는 시간 19:30' }),
@@ -309,20 +330,16 @@ describe('오류 안내', () => {
     renderPage();
     await chooseLocationBySearch(user);
 
-    await user.click(
+    await pickGoingOutTime(
+      user,
       screen.getByRole('button', { name: '외출 시간 돌아오는 시간 14:00' }),
+      '15:00',
     );
-    await user.click(await screen.findByRole('option', { name: '15:00' }));
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    });
-    await user.click(
+    await pickGoingOutTime(
+      user,
       screen.getByRole('button', { name: '외출 시간 나가는 시간 09:00' }),
+      '15:00',
     );
-    await user.click(await screen.findByRole('option', { name: '15:00' }));
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    });
     await user.click(submitButton());
 
     await waitFor(() => {
@@ -593,30 +610,106 @@ describe('외출 날짜', () => {
   const endTrigger = (label: string) =>
     screen.getByRole('button', { name: `외출 시간 돌아오는 시간 ${label}` });
 
-  const pickOption = async (
-    user: ReturnType<typeof userEvent.setup>,
-    trigger: HTMLElement,
-    option: string,
-  ) => {
-    await user.click(trigger);
-    await user.click(await screen.findByRole('option', { name: option }));
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    });
-  };
+  const optionLabels = (listboxName: string) =>
+    within(screen.getByRole('listbox', { name: listboxName }))
+      .getAllByRole('option')
+      .map((option) => option.textContent);
 
-  test('나가는 시각 목록은 오늘 남은 시각 뒤에 내일의 모든 시각을 이어 보여 줘야 한다.', async () => {
+  test('나가는 시간 시트는 날짜 휠에 오늘과 내일을 두고, 오늘이면 지금 시각부터, 내일이면 모든 시각을 보여 줘야 한다.', async () => {
     const user = userEvent.setup();
     renderPage();
 
     await user.click(startTrigger('09:00'));
-    const options = await screen.findAllByRole('option');
-    const labels = options.map((option) => option.textContent);
+    await screen.findByRole('dialog');
 
-    expect(labels.at(0)).toBe('09:00');
-    expect(labels).toContain('23:30');
-    expect(labels).toContain('내일 00:00');
-    expect(labels.at(-1)).toBe('내일 23:30');
+    expect(optionLabels('날짜')).toEqual(['오늘', '내일']);
+    expect(optionLabels('시각').at(0)).toBe('09:00');
+    expect(optionLabels('시각').at(-1)).toBe('23:30');
+
+    await user.click(screen.getByRole('option', { name: '내일' }));
+
+    expect(optionLabels('시각')).toHaveLength(48);
+    expect(optionLabels('시각').at(0)).toBe('00:00');
+  });
+
+  test('돌아오는 시간 시트는 설명에 나가는 시간을 보여 주고, 나간 뒤 30분부터 23시간 30분까지만 보여 줘야 한다.', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await pickGoingOutTime(user, startTrigger('09:00'), '21:00');
+    await user.click(endTrigger('내일 02:00'));
+    const dialog = await screen.findByRole('dialog');
+
+    expect(dialog).toHaveAccessibleDescription('나가는 시간 오늘 21:00');
+    expect(optionLabels('날짜')).toEqual(['오늘', '내일']);
+    expect(screen.getByRole('option', { name: '내일' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    expect(optionLabels('시각').at(0)).toBe('00:00');
+    expect(optionLabels('시각').at(-1)).toBe('20:30');
+
+    await user.click(screen.getByRole('option', { name: '오늘' }));
+
+    expect(optionLabels('시각')).toEqual([
+      '21:30',
+      '22:00',
+      '22:30',
+      '23:00',
+      '23:30',
+    ]);
+  });
+
+  test('날짜를 바꿔 고른 시각이 범위를 벗어나면 범위의 가까운 끝으로 맞춰야 한다.', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(startTrigger('09:00'));
+    await user.click(await screen.findByRole('option', { name: '내일' }));
+    await user.click(screen.getByRole('option', { name: '08:00' }));
+
+    expect(
+      screen.getByRole('button', { name: '내일 08:00 선택' }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole('option', { name: '오늘' }));
+
+    expect(
+      screen.getByRole('button', { name: '오늘 09:00 선택' }),
+    ).toBeInTheDocument();
+  });
+
+  test('시각 휠의 끝에서 더 내려도 날짜는 바뀌지 않아야 한다.', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(startTrigger('09:00'));
+    screen.getByRole('listbox', { name: '시각' }).focus();
+    await user.keyboard('{End}{ArrowDown}');
+
+    expect(
+      screen.getByRole('button', { name: '오늘 23:30 선택' }),
+    ).toBeInTheDocument();
+  });
+
+  test('선택 버튼을 누르지 않고 시트를 닫으면 휠에서 바꾼 값을 버려야 한다.', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(startTrigger('09:00'));
+    await user.click(await screen.findByRole('option', { name: '12:00' }));
+    await user.keyboard('{Escape}');
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    expect(startTrigger('09:00')).toBeInTheDocument();
+
+    await user.click(startTrigger('09:00'));
+
+    expect(
+      await screen.findByRole('button', { name: '오늘 09:00 선택' }),
+    ).toBeInTheDocument();
   });
 
   test('내일 시각을 고르면 지금보다 이른 시각이어도 tomorrow로 추천을 요청해야 한다.', async () => {
@@ -634,7 +727,7 @@ describe('외출 날짜', () => {
     renderPage();
     await chooseLocationBySearch(user);
 
-    await pickOption(user, startTrigger('09:00'), '내일 08:00');
+    await pickGoingOutTime(user, startTrigger('09:00'), '08:00', '내일');
 
     expect(endTrigger('내일 13:00')).toBeInTheDocument();
 
@@ -653,11 +746,11 @@ describe('외출 날짜', () => {
     const user = userEvent.setup();
     renderPage();
 
-    await pickOption(user, startTrigger('09:00'), '22:00');
+    await pickGoingOutTime(user, startTrigger('09:00'), '22:00');
 
     expect(endTrigger('내일 03:00')).toBeInTheDocument();
 
-    await pickOption(user, startTrigger('22:00'), '내일 22:00');
+    await pickGoingOutTime(user, startTrigger('22:00'), '22:00', '내일');
 
     expect(endTrigger('모레 03:00')).toBeInTheDocument();
   });
@@ -678,7 +771,7 @@ describe('외출 날짜', () => {
     renderPage();
     await chooseLocationBySearch(user);
 
-    await pickOption(user, startTrigger('23:30'), '내일 09:00');
+    await pickGoingOutTime(user, startTrigger('23:30'), '09:00', '내일');
     vi.setSystemTime(new Date('2026-10-15T00:10:00+09:00'));
     act(() => {
       document.dispatchEvent(new Event('visibilitychange'));
@@ -701,7 +794,7 @@ describe('외출 날짜', () => {
     vi.setSystemTime(new Date('2026-10-14T23:40:00+09:00'));
     renderPage();
 
-    await pickOption(user, startTrigger('23:30'), '내일 09:00');
+    await pickGoingOutTime(user, startTrigger('23:30'), '09:00', '내일');
 
     expect(endTrigger('내일 14:00')).toBeInTheDocument();
 
@@ -729,7 +822,7 @@ describe('외출 날짜', () => {
     renderPage();
     await chooseLocationBySearch(user);
 
-    await pickOption(user, startTrigger('23:00'), '23:30');
+    await pickGoingOutTime(user, startTrigger('23:00'), '23:30');
     vi.setSystemTime(new Date('2026-10-15T00:10:00+09:00'));
     act(() => {
       document.dispatchEvent(new Event('visibilitychange'));
@@ -752,7 +845,7 @@ describe('외출 날짜', () => {
     renderPage();
     await chooseLocationBySearch(user);
 
-    await pickOption(user, startTrigger('09:00'), '09:30');
+    await pickGoingOutTime(user, startTrigger('09:00'), '09:30');
     vi.setSystemTime(new Date('2026-10-14T10:10:00+09:00'));
     act(() => {
       document.dispatchEvent(new Event('visibilitychange'));
@@ -772,7 +865,7 @@ describe('외출 날짜', () => {
     renderPage();
     await chooseLocationBySearch(user);
 
-    await pickOption(user, startTrigger('22:00'), '23:30');
+    await pickGoingOutTime(user, startTrigger('22:00'), '23:30');
     vi.setSystemTime(new Date('2026-10-16T10:00:00+09:00'));
     act(() => {
       document.dispatchEvent(new Event('visibilitychange'));

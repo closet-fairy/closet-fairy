@@ -1,9 +1,13 @@
 import { describe, expect, test } from 'vitest';
 import {
+  clampTimeSlot,
+  createEndDayOptions,
   createEndTimeSlots,
+  createStartDayOptions,
   createStartOptions,
   createStartTimeSlots,
   createTimeSlots,
+  fitGoingOutDateTime,
   getCurrentTimeSlot,
   getDayOffset,
   getDefaultEndTime,
@@ -235,5 +239,109 @@ describe('나가는 시각 선택지', () => {
     expect(options.slice(4)).toHaveLength(48);
     expect(options.at(4)).toEqual(tomorrow('00:00'));
     expect(options.at(-1)).toEqual(tomorrow('23:30'));
+  });
+});
+
+describe('나가는 날짜별 시각', () => {
+  test('오늘은 현재 슬롯부터, 내일은 모든 슬롯을 고를 수 있어야 한다.', () => {
+    const [todayOption, tomorrowOption] = createStartDayOptions(at('22:10'));
+
+    expect(todayOption).toEqual({
+      date: '2026-10-14',
+      times: ['22:00', '22:30', '23:00', '23:30'],
+    });
+    expect(tomorrowOption?.date).toBe('2026-10-15');
+    expect(tomorrowOption?.times).toHaveLength(48);
+  });
+
+  test('자정 직전에도 오늘에는 현재 슬롯 하나가 남아야 한다.', () => {
+    const [todayOption] = createStartDayOptions(at('23:45'));
+
+    expect(todayOption?.times).toEqual(['23:30']);
+  });
+});
+
+describe('돌아오는 날짜별 시각', () => {
+  test('나가는 날은 나간 뒤 시각만, 다음 날은 나간 시각보다 이른 시각만 고를 수 있어야 한다.', () => {
+    const [sameDay, nextDay] = createEndDayOptions(today('21:00'));
+
+    expect(sameDay).toEqual({
+      date: '2026-10-14',
+      times: ['21:30', '22:00', '22:30', '23:00', '23:30'],
+    });
+    expect(nextDay?.date).toBe('2026-10-15');
+    expect(nextDay?.times.at(0)).toBe('00:00');
+    expect(nextDay?.times.at(-1)).toBe('20:30');
+  });
+
+  test('내일 나가면 내일과 모레를 고를 수 있어야 한다.', () => {
+    const dates = createEndDayOptions(tomorrow('08:30')).map((day) => day.date);
+
+    expect(dates).toEqual(['2026-10-15', '2026-10-16']);
+  });
+
+  test('23:30에 나가면 나가는 날에는 고를 시각이 없어 다음 날만 남아야 한다.', () => {
+    const days = createEndDayOptions(today('23:30'));
+
+    expect(days).toHaveLength(1);
+    expect(days.at(0)?.date).toBe('2026-10-15');
+    expect(days.at(0)?.times.at(-1)).toBe('23:00');
+  });
+
+  test('00:00에 나가면 다음 날에는 고를 시각이 없어 나가는 날만 남아야 한다.', () => {
+    const days = createEndDayOptions(today('00:00'));
+
+    expect(days).toHaveLength(1);
+    expect(days.at(0)?.times.at(0)).toBe('00:30');
+    expect(days.at(0)?.times.at(-1)).toBe('23:30');
+  });
+});
+
+describe('범위 밖 시각 맞추기', () => {
+  const slots = ['21:00', '21:30', '22:00'];
+
+  test('범위 안의 시각은 그대로 두어야 한다.', () => {
+    expect(clampTimeSlot('21:30', slots)).toBe('21:30');
+  });
+
+  test('범위보다 이른 시각은 첫 시각으로 맞춰야 한다.', () => {
+    expect(clampTimeSlot('08:30', slots)).toBe('21:00');
+  });
+
+  test('범위보다 늦은 시각은 마지막 시각으로 맞춰야 한다.', () => {
+    expect(clampTimeSlot('23:30', slots)).toBe('22:00');
+  });
+});
+
+describe('고를 수 있는 날짜와 시각으로 맞추기', () => {
+  test('내일 08:30에서 날짜만 오늘로 바꾸면 오늘의 첫 시각으로 맞춰야 한다.', () => {
+    const days = createStartDayOptions(at('21:10'));
+
+    expect(fitGoingOutDateTime(days, today('08:30'))).toEqual(today('21:00'));
+  });
+
+  test('돌아오는 시간을 다음 날로 바꿨을 때 시각이 늦으면 다음 날의 마지막 시각으로 맞춰야 한다.', () => {
+    const days = createEndDayOptions(today('21:00'));
+
+    expect(fitGoingOutDateTime(days, tomorrow('23:00'))).toEqual(
+      tomorrow('20:30'),
+    );
+  });
+
+  test('돌아오는 시각이 나가는 시각과 같으면 나간 뒤 첫 시각으로 맞춰야 한다.', () => {
+    const days = createEndDayOptions(today('21:00'));
+
+    expect(fitGoingOutDateTime(days, today('21:00'))).toEqual(today('21:30'));
+  });
+
+  test('고를 수 있는 날짜보다 이른 날짜는 첫 날짜로, 늦은 날짜는 마지막 날짜로 맞춰야 한다.', () => {
+    const days = createStartDayOptions(at('09:10'));
+
+    expect(
+      fitGoingOutDateTime(days, { date: '2026-10-13', time: '23:30' }),
+    ).toEqual(today('23:30'));
+    expect(
+      fitGoingOutDateTime(days, { date: '2026-10-16', time: '10:00' }),
+    ).toEqual(tomorrow('10:00'));
   });
 });
