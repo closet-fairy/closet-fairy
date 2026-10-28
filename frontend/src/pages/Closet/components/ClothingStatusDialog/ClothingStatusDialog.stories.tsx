@@ -28,6 +28,10 @@ const meta = {
     onRetry: {
       description: '[재시도]를 누르면 알립니다.',
     },
+    onDelete: {
+      description:
+        '[삭제]를 누르면 알립니다. 받는 쪽은 이 다이얼로그를 닫고 삭제 확인 모달을 엽니다.',
+    },
     onClose: {
       description: '[닫기]를 누르거나 딤 터치·Esc로 닫으면 알립니다.',
     },
@@ -38,6 +42,7 @@ const meta = {
     failureReason: null,
     isRetrying: false,
     onRetry: fn(),
+    onDelete: fn(),
     onClose: fn(),
   },
   parameters: {

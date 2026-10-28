@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useCallback, useEffect, useState } from 'react';
 import { isUnauthorizedError } from '@/apis/authSession';
+import DeleteClothingDialog from '@/components/DeleteClothingDialog';
 import Button from '@/components/common/Button';
 import Icon from '@/components/common/Icon';
 import StatusView from '@/components/common/StatusView';
@@ -38,6 +39,11 @@ interface StatusDialogState extends StatusDialogContent {
   isOpen: boolean;
 }
 
+interface DeleteDialogState {
+  clothingId: number;
+  isOpen: boolean;
+}
+
 const toDialogContent = (
   clothing: ClothingCardData,
 ): StatusDialogContent | null => {
@@ -55,6 +61,9 @@ const ClosetPage = () => {
   const listQuery = useClosetClothingList();
   const clothings = listQuery.data?.pages.flatMap((page) => page.items) ?? [];
   const [statusDialog, setStatusDialog] = useState<StatusDialogState | null>(
+    null,
+  );
+  const [deleteDialog, setDeleteDialog] = useState<DeleteDialogState | null>(
     null,
   );
   const toastStackHeight = useToastStackHeight();
@@ -268,6 +277,13 @@ const ClosetPage = () => {
             failureReason={statusDialog.failureReason}
             isRetrying={retryingIds.has(statusDialog.clothingId)}
             onRetry={() => retry(statusDialog.clothingId)}
+            onDelete={() => {
+              closeStatusDialog(statusDialog.clothingId);
+              setDeleteDialog({
+                clothingId: statusDialog.clothingId,
+                isOpen: true,
+              });
+            }}
             onClose={() => closeStatusDialog(statusDialog.clothingId)}
           />
         )}
@@ -280,6 +296,18 @@ const ClosetPage = () => {
     <S.Container>
       <TopBar title="옷장" />
       {renderBody()}
+      {/* 마지막 옷을 지워 본문이 빈 화면으로 바뀌어도 모달이 닫히는 모습을 마저 보여 주도록 본문 밖에 둔다. */}
+      {deleteDialog !== null && (
+        <DeleteClothingDialog
+          key={deleteDialog.clothingId}
+          clothingId={deleteDialog.clothingId}
+          isOpen={deleteDialog.isOpen}
+          onOpenChange={(isOpen) =>
+            setDeleteDialog({ ...deleteDialog, isOpen })
+          }
+          onDeleted={() => setDeleteDialog({ ...deleteDialog, isOpen: false })}
+        />
+      )}
       <ClothingRegistration
         isSheetOpen={isRegisterSheetOpen}
         onSheetOpenChange={setIsRegisterSheetOpen}
