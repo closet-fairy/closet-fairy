@@ -25,16 +25,21 @@ interface SheetState {
   preferredTime: string;
 }
 
+const createSheetState = (
+  days: GoingOutDayOption[],
+  value: GoingOutDateTime,
+): SheetState => ({
+  days,
+  draft: fitGoingOutDateTime(days, value),
+  preferredTime: value.time,
+});
+
 const GoingOutTimeField = (props: GoingOutTimeFieldProps) => {
   const { label, valueText, description, days, value, getDayLabel, onConfirm } =
     props;
   const [isOpen, setIsOpen] = useState(false);
   // 시트를 연 동안 시각이 지나도 고를 수 있는 범위가 바뀌지 않도록, 연 순간의 범위를 붙잡아 둔다.
-  const [sheet, setSheet] = useState<SheetState>(() => ({
-    days,
-    draft: value,
-    preferredTime: value.time,
-  }));
+  const [sheet, setSheet] = useState(() => createSheetState(days, value));
 
   const selectedDay = sheet.days.find((day) => day.date === sheet.draft.date);
   const dayOptions = sheet.days.map((day) => ({
@@ -47,11 +52,7 @@ const GoingOutTimeField = (props: GoingOutTimeFieldProps) => {
   }));
 
   const handleTriggerClick = () => {
-    setSheet({
-      days,
-      draft: fitGoingOutDateTime(days, value),
-      preferredTime: value.time,
-    });
+    setSheet(createSheetState(days, value));
     setIsOpen(true);
   };
 

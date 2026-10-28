@@ -26,7 +26,44 @@ const meta = {
     },
   },
   args: {
-    columns: [],
+    columns: [
+      {
+        'aria-label': '날짜',
+        options: DAY_OPTIONS,
+        value: 'today',
+        onChange: fn(),
+      },
+      {
+        'aria-label': '시각',
+        options: TIME_OPTIONS,
+        value: '09:00',
+        onChange: fn(),
+      },
+    ],
+  },
+  render: function Render(args) {
+    const [values, setValues] = useState(() =>
+      args.columns.map((column) => column.value),
+    );
+
+    const handleChange = (columnIndex: number, value: string) => {
+      args.columns[columnIndex]?.onChange(value);
+      setValues((prev) =>
+        prev.map((prevValue, index) =>
+          index === columnIndex ? value : prevValue,
+        ),
+      );
+    };
+
+    return (
+      <WheelPicker
+        columns={args.columns.map((column, columnIndex) => ({
+          ...column,
+          value: values[columnIndex] ?? column.value,
+          onChange: (value) => handleChange(columnIndex, value),
+        }))}
+      />
+    );
   },
 } satisfies Meta<typeof WheelPicker>;
 
@@ -34,59 +71,17 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-const handleDayChange = fn();
-const handleTimeChange = fn();
-
-export const Default: Story = {
-  render: function Render() {
-    const [day, setDay] = useState('today');
-    const [time, setTime] = useState('09:00');
-
-    return (
-      <WheelPicker
-        columns={[
-          {
-            'aria-label': '날짜',
-            options: DAY_OPTIONS,
-            value: day,
-            onChange: (value) => {
-              handleDayChange(value);
-              setDay(value);
-            },
-          },
-          {
-            'aria-label': '시각',
-            options: TIME_OPTIONS,
-            value: time,
-            onChange: (value) => {
-              handleTimeChange(value);
-              setTime(value);
-            },
-          },
-        ]}
-      />
-    );
-  },
-};
+export const Default: Story = {};
 
 export const FewOptions: Story = {
-  render: function Render() {
-    const [time, setTime] = useState('23:00');
-
-    return (
-      <WheelPicker
-        columns={[
-          {
-            'aria-label': '시각',
-            options: TIME_OPTIONS.slice(-2),
-            value: time,
-            onChange: (value) => {
-              handleTimeChange(value);
-              setTime(value);
-            },
-          },
-        ]}
-      />
-    );
+  args: {
+    columns: [
+      {
+        'aria-label': '시각',
+        options: TIME_OPTIONS.slice(-2),
+        value: '23:00',
+        onChange: fn(),
+      },
+    ],
   },
 };
