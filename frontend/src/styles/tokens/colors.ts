@@ -23,6 +23,21 @@ const colorValues = {
   'border-neutral-soft': palette.gray100,
   'border-neutral-dashed': palette.gray250,
   'border-error-default': palette.red500,
+
+  'swatch-black': palette.clothingBlack,
+  'swatch-white': palette.clothingWhite,
+  'swatch-gray': palette.clothingGray,
+  'swatch-beige': palette.clothingBeige,
+  'swatch-brown': palette.clothingBrown,
+  'swatch-navy': palette.clothingNavy,
+  'swatch-blue': palette.clothingBlue,
+  'swatch-sky-blue': palette.clothingSkyBlue,
+  'swatch-green': palette.clothingGreen,
+  'swatch-khaki': palette.clothingKhaki,
+  'swatch-yellow': palette.clothingYellow,
+  'swatch-orange': palette.clothingOrange,
+  'swatch-red': palette.clothingRed,
+  'swatch-pink': palette.clothingPink,
 } as const;
 
 type ColorName = keyof typeof colorValues;
@@ -72,4 +87,21 @@ export const border = {
   error: {
     default: colorVar('border-error-default'),
   },
+} as const;
+
+export const swatch = {
+  black: colorVar('swatch-black'),
+  white: colorVar('swatch-white'),
+  gray: colorVar('swatch-gray'),
+  beige: colorVar('swatch-beige'),
+  brown: colorVar('swatch-brown'),
+  navy: colorVar('swatch-navy'),
+  blue: colorVar('swatch-blue'),
+  skyBlue: colorVar('swatch-sky-blue'),
+  green: colorVar('swatch-green'),
+  khaki: colorVar('swatch-khaki'),
+  yellow: colorVar('swatch-yellow'),
+  orange: colorVar('swatch-orange'),
+  red: colorVar('swatch-red'),
+  pink: colorVar('swatch-pink'),
 } as const;

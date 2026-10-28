@@ -18,4 +18,19 @@ export const palette = {
   red500: '#e5484d',
 
   dim: 'rgba(20, 20, 22, 0.4)',
+
+  clothingBlack: '#1c1c1e',
+  clothingWhite: '#ffffff',
+  clothingGray: '#9a9a9f',
+  clothingBeige: '#d8c6a6',
+  clothingBrown: '#7a5236',
+  clothingNavy: '#1f2b4d',
+  clothingBlue: '#2f6bd1',
+  clothingSkyBlue: '#8dc3ec',
+  clothingGreen: '#3c8a4e',
+  clothingKhaki: '#7b7550',
+  clothingYellow: '#f1cc3d',
+  clothingOrange: '#ec8233',
+  clothingRed: '#d23b3b',
+  clothingPink: '#f0a6be',
 } as const;
