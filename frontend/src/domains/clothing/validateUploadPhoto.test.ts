@@ -1,5 +1,8 @@
 import { describe, expect, test } from 'vitest';
-import { UPLOAD_PHOTO_MAX_BYTES, validateUploadPhoto } from './uploadPhoto';
+import {
+  UPLOAD_PHOTO_MAX_BYTES,
+  validateUploadPhoto,
+} from './validateUploadPhoto';
 
 const photo = (name: string, type: string, size = 1024) => ({
   name,

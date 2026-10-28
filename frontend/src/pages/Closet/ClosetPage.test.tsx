@@ -15,6 +15,7 @@ import type {
   ClothingPage,
   ClothingProgress,
 } from '@/generated/models';
+import { resetSession } from '@/apis/authSession';
 import { server } from '@/mocks/node';
 import { CLOSET_LIST_PARAMS } from '@/pages/Closet/constants';
 import { routeTree } from '@/routeTree.gen';
@@ -500,6 +501,10 @@ describe('갤러리로 옷 등록', () => {
   test('고른 사진을 확인해 등록하면 맨 앞에 처리 중 카드가 생기고, 업로드가 끝나면 서버 카드로 바뀌어야 한다.', async () => {
     const user = userEvent.setup();
     const uploadedFileNames: string[] = [];
+    let releaseUpload = () => {};
+    const uploadGate = new Promise<void>((resolve) => {
+      releaseUpload = resolve;
+    });
     server.use(
       // 처리 중인 옷이 그사이 끝나거나 차례가 바뀌지 않도록 상태를 그대로 둔다.
       http.get('/api/clothing/status', ({ request }) =>
@@ -514,6 +519,8 @@ describe('갤러리로 옷 등록', () => {
             .getAll('files')
             .flatMap((value) => (value instanceof File ? [value.name] : [])),
         );
+        // 업로드를 붙잡아 두고, 응답이 오기 전의 임시 카드를 확인한다.
+        await uploadGate;
         return undefined;
       }),
     );
@@ -546,6 +553,13 @@ describe('갤러리로 옷 등록', () => {
     await waitFor(() => {
       expect(uploadedFileNames).toEqual(['IMG_0001.JPG']);
     });
+    // 응답이 오기 전에는 누를 수 없는 처리 중 임시 카드가 목록 맨 앞에 있다.
+    const [grid] = screen.getAllByRole('list');
+    const firstCard = within(grid).getAllByRole('listitem')[0];
+    expect(within(firstCard).getByText('처리 중')).toBeInTheDocument();
+    expect(within(firstCard).queryByRole('button')).not.toBeInTheDocument();
+
+    releaseUpload();
     /*
      * 업로드가 끝나면 누를 수 없는 임시 카드가 사라지고, 서버가 만든 카드가 상태 다이얼로그를 여는 카드로 들어온다.
      * 원래 처리 중이던 두 벌과 새로 등록한 한 벌이 모두 누를 수 있는 처리 중 카드여야 한다.
@@ -586,6 +600,56 @@ describe('갤러리로 옷 등록', () => {
     expect(within(dialog).getAllByText('더 고를 수 없어요')).toHaveLength(2);
   });
 
+  test('형식·용량 때문에 거른 사진은 20장을 셀 때 빼야 한다.', async () => {
+    const user = userEvent.setup();
+    await renderCloset();
+    await openGalleryPicker(user);
+
+    await user.upload(getGalleryInput(), [
+      ...Array.from({ length: 20 }, (_, index) =>
+        photoFile(`IMG_${String(index + 1).padStart(4, '0')}.JPG`),
+      ),
+      photoFile('IMG_1983.GIF', 'image/gif'),
+      photoFile('IMG_1984.GIF', 'image/gif'),
+    ]);
+
+    const dialog = await screen.findByRole('dialog', { name: '사진 확인' });
+    expect(
+      screen.queryByRole('dialog', { name: '최대 20장까지 등록할 수 있어요' }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(dialog).getByText('2장은 형식·용량 때문에 제외됐어요'),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole('button', { name: '20벌 등록하기' }),
+    ).toBeEnabled();
+  });
+
+  test('사진 확인에서 뒤로 가면 아무것도 등록하지 않고 닫아야 한다.', async () => {
+    const user = userEvent.setup();
+    let uploadRequestCount = 0;
+    server.use(
+      http.post('/api/clothing', () => {
+        uploadRequestCount += 1;
+        return undefined;
+      }),
+    );
+    await renderCloset();
+    await openGalleryPicker(user);
+    await user.upload(getGalleryInput(), [photoFile('IMG_0001.JPG')]);
+
+    const dialog = await screen.findByRole('dialog', { name: '사진 확인' });
+    await user.click(within(dialog).getByRole('button', { name: '뒤로 가기' }));
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('dialog', { name: '사진 확인' }),
+      ).not.toBeInTheDocument();
+    });
+    expect(uploadRequestCount).toBe(0);
+    expect(screen.queryByText('올리기 실패')).not.toBeInTheDocument();
+  });
+
   test('업로드 요청이 실패하면 올리기 실패 카드로 남기고, 다시 보내거나 치울 수 있어야 한다.', async () => {
     const user = userEvent.setup();
     let isFailing = true;
@@ -624,19 +688,46 @@ describe('갤러리로 옷 등록', () => {
     expect(unloadEvent.defaultPrevented).toBe(true);
 
     await user.click(
-      screen.getAllByRole('button', { name: '올리기 실패한 사진 치우기' })[0],
+      screen.getByRole('button', { name: 'IMG_0001.JPG 치우기' }),
     );
     expect(screen.getAllByText('올리기 실패')).toHaveLength(1);
 
     isFailing = false;
-    await user.click(screen.getByRole('button', { name: '다시 보내기' }));
+    await user.click(
+      screen.getByRole('button', { name: 'IMG_0002.JPG 다시 보내기' }),
+    );
 
+    // 다시 보낸 사진이 서버에 들어가 남은 사진이 없으면 더는 묻지 않는다.
     await waitFor(() => {
-      expect(screen.queryByText('올리기 실패')).not.toBeInTheDocument();
+      const afterEvent = new Event('beforeunload', { cancelable: true });
+      window.dispatchEvent(afterEvent);
+      expect(afterEvent.defaultPrevented).toBe(false);
     });
-    const afterEvent = new Event('beforeunload', { cancelable: true });
-    window.dispatchEvent(afterEvent);
-    expect(afterEvent.defaultPrevented).toBe(false);
+    expect(screen.queryByText('올리기 실패')).not.toBeInTheDocument();
+  });
+
+  test('세션이 끝나면 남아 있던 올리기 실패 카드를 비워야 한다.', async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.post('/api/clothing', () =>
+        HttpResponse.json(
+          { code: 'INTERNAL_ERROR', message: '처리 중 오류가 발생했습니다.' },
+          { status: 500 },
+        ),
+      ),
+    );
+    await renderCloset();
+    await openGalleryPicker(user);
+    await user.upload(getGalleryInput(), [photoFile('IMG_0001.JPG')]);
+    await submitPhotos(user, '1벌 등록하기');
+    expect(await screen.findByText('올리기 실패')).toBeInTheDocument();
+
+    // 로그아웃·세션 만료 뒤 같은 탭에서 다른 계정이 들어와도 이전 계정의 사진이 남지 않는다.
+    act(() => {
+      resetSession();
+    });
+
+    expect(screen.queryByText('올리기 실패')).not.toBeInTheDocument();
   });
 
   test('서버가 제외한 사진이 있으면 업로드가 끝난 뒤 파일 이름과 서버 문구로 한 번 알려야 한다.', async () => {
