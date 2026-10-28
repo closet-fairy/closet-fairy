@@ -6,7 +6,7 @@ import { snapCorners } from '@/domains/clothingImageEdit/perspective';
 import type { SaveRequest } from '@/domains/clothingImageEdit/saveRequests';
 import {
   getGetClothingClothingClothingIdGetQueryKey,
-  getListClothingClothingGetQueryKey,
+  getListClothingClothingGetInfiniteQueryKey,
   resetClothingEditClothingClothingIdEditDelete,
   saveClothingDisplayImageClothingClothingIdEditDisplayPut,
   saveClothingEditClothingClothingIdEditPut,
@@ -159,7 +159,7 @@ const useSaveClothingImageEdit = (clothingId: number) => {
       if (lastResponse !== null) {
         queryClient.setQueryData(detailQueryKey, lastResponse);
         void queryClient.invalidateQueries({
-          queryKey: getListClothingClothingGetQueryKey(),
+          queryKey: getListClothingClothingGetInfiniteQueryKey(),
         });
       }
 
@@ -176,7 +176,7 @@ const useSaveClothingImageEdit = (clothingId: number) => {
             outcome.error.status === NOT_FOUND_STATUS
           ) {
             void queryClient.invalidateQueries({
-              queryKey: getListClothingClothingGetQueryKey(),
+              queryKey: getListClothingClothingGetInfiniteQueryKey(),
             });
             setErrorMessage(null);
             setIsNotFound(true);
