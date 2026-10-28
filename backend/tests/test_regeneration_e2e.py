@@ -9,7 +9,7 @@ import pytest
 
 from app.services.input_guard import is_harmful
 from app.services.weather.base_time import KST
-from scripts.recommendation_e2e import MEMBERS
+from scripts.recommendation_e2e import MEMBERS, SCENARIOS
 from scripts.regeneration_e2e import (
     EXPECTED_FAILED,
     FAIL,
@@ -403,6 +403,10 @@ async def test_run_is_kept_for_json_even_if_session_stops_midway(down_server, mo
 @pytest.mark.parametrize("member_key", list(PLANS))
 def test_plans_are_consistent(member_key):
     for plan in PLANS[member_key]:
+        assert any(s.name == plan.scenario for s in SCENARIOS[member_key]), (
+            plan.label,
+            plan.scenario,
+        )
         names = [s.name for s in plan.steps]
         assert len(names) == len(set(names))
         for i, step in enumerate(plan.steps):
