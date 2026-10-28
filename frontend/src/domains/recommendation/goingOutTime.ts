@@ -32,8 +32,6 @@ export interface GoingOutDateTime {
   time: string;
 }
 
-export type GoingOutStart = GoingOutDateTime;
-
 export interface GoingOutDayOption {
   date: string;
   times: string[];
@@ -102,7 +100,7 @@ export const isPastTimeSlot = (time: string, now: Date) =>
 export const createStartTimeSlots = (now: Date) =>
   createTimeSlots().filter((slot) => !isPastTimeSlot(slot, now));
 
-export const createStartOptions = (now: Date): GoingOutStart[] => {
+export const createStartOptions = (now: Date): GoingOutDateTime[] => {
   const today = getKstDate(now);
   const tomorrow = shiftKstDate(today, 1);
 
@@ -130,7 +128,7 @@ export const createStartDayOptions = (now: Date): GoingOutDayOption[] => {
 };
 
 export const createEndDayOptions = (
-  start: GoingOutStart,
+  start: GoingOutDateTime,
 ): GoingOutDayOption[] => {
   const endTimes = createEndTimeSlots(start.time);
   const days = [
@@ -182,7 +180,7 @@ export const isNextDayReturn = (start: string, end: string) =>
   parseTimeToMinutes(end) < parseTimeToMinutes(start);
 
 interface ValidateGoingOutTimeParams {
-  start: GoingOutStart;
+  start: GoingOutDateTime;
   end: string;
   now: Date;
 }

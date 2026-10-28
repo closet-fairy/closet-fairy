@@ -28,6 +28,9 @@ const getCenteredIndex = (list: HTMLElement, optionCount: number) =>
     optionCount - 1,
   );
 
+const getValueIndex = (column: WheelPickerColumn) =>
+  column.options.findIndex((option) => option.value === column.value);
+
 const prefersReducedMotion = () =>
   typeof window.matchMedia === 'function' &&
   window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -85,9 +88,7 @@ const WheelPicker = (props: WheelPickerProps) => {
 
     columns.forEach((column, columnIndex) => {
       const list = listRefs.current[columnIndex];
-      const valueIndex = column.options.findIndex(
-        (option) => option.value === column.value,
-      );
+      const valueIndex = getValueIndex(column);
 
       if (!list || valueIndex < 0) {
         return;
@@ -179,9 +180,7 @@ const WheelPicker = (props: WheelPickerProps) => {
       return;
     }
 
-    const valueIndex = column.options.findIndex(
-      (option) => option.value === column.value,
-    );
+    const valueIndex = getValueIndex(column);
     const nextIndex = getKeyTargetIndex(
       event.key,
       Math.max(valueIndex, 0),
@@ -204,9 +203,7 @@ const WheelPicker = (props: WheelPickerProps) => {
     <S.Container data-base-ui-swipe-ignore="">
       <S.Band aria-hidden />
       {columns.map((column, columnIndex) => {
-        const valueIndex = column.options.findIndex(
-          (option) => option.value === column.value,
-        );
+        const valueIndex = getValueIndex(column);
 
         return (
           <S.List

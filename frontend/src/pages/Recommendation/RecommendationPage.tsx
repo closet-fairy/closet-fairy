@@ -17,10 +17,7 @@ import {
   CLOTHING_SHORTAGE_DESCRIPTION,
   formatClothingShortageTitle,
 } from '@/domains/recommendation/clothingShortage';
-import type {
-  GoingOutDateTime,
-  GoingOutStart,
-} from '@/domains/recommendation/goingOutTime';
+import type { GoingOutDateTime } from '@/domains/recommendation/goingOutTime';
 import {
   createEndDayOptions,
   createStartDayOptions,
@@ -142,7 +139,7 @@ const RecommendationPage = () => {
     restoredForm?.customTpoText ?? null,
   );
   const [isCustomTpoSheetOpen, setIsCustomTpoSheetOpen] = useState(false);
-  const [selectedStart, setSelectedStart] = useState<GoingOutStart | null>(
+  const [selectedStart, setSelectedStart] = useState<GoingOutDateTime | null>(
     restoredForm?.start ?? null,
   );
   const [selectedEnd, setSelectedEnd] = useState<string | null>(
@@ -236,7 +233,7 @@ const RecommendationPage = () => {
 
   const isCustomTpoEditable = customTpoText === null || tpo.cd === 'custom';
 
-  const handleStartConfirm = (nextStart: GoingOutStart) => {
+  const handleStartConfirm = (nextStart: GoingOutDateTime) => {
     if (nextStart.date !== start.date || nextStart.time !== start.time) {
       setSelectedStart(nextStart);
       clearErrors();
