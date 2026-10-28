@@ -9,21 +9,27 @@ interface ClothingNameFieldProps {
   onSave: (name: string | null) => void;
 }
 
-const toSavedName = (draft: string) => {
-  const trimmed = draft.trim();
-
-  return trimmed === '' ? null : trimmed;
-};
+// BE가 저장할 때와 같이 앞뒤 공백을 지우고 사이의 공백을 하나로 줄인다.
+const normalizeName = (draft: string) =>
+  draft.split(/\s+/).filter(Boolean).join(' ');
 
 const ClothingNameField = (props: ClothingNameFieldProps) => {
   const { name, errorMessage, onSave } = props;
   const [draft, setDraft] = useState(name ?? '');
 
-  // 입력칸을 벗어나거나 키보드의 완료를 누르면, 바뀐 경우에만 저장한다.
-  const commit = (nextDraft: string) => {
-    const nextName = toSavedName(nextDraft);
+  const commit = () => {
+    const normalized = normalizeName(draft);
 
-    if (nextName !== name) {
+    // 글자 수를 넘기면 입력칸의 글자 수 표시가 알리므로 보내지 않는다.
+    if (normalized.length > clothingUpdateItemNameOneMax) {
+      return;
+    }
+
+    setDraft(normalized);
+    const nextName = normalized === '' ? null : normalized;
+
+    // 저장하지 못한 채라면 같은 이름이어도 다시 보내 실패 문구를 걷을 수 있게 한다.
+    if (nextName !== name || errorMessage !== undefined) {
       onSave(nextName);
     }
   };
@@ -39,15 +45,11 @@ const ClothingNameField = (props: ClothingNameFieldProps) => {
           placeholder="옷 이름을 입력해 주세요"
           maxLength={clothingUpdateItemNameOneMax}
           hasClearButton
-          onClear={() => {
-            setDraft('');
-            commit('');
-          }}
           enterKeyHint="done"
           errorMessage={errorMessage}
-          onBlur={() => commit(draft)}
+          onBlur={commit}
           onKeyDown={(event) => {
-            if (event.key === 'Enter') {
+            if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
               event.currentTarget.blur();
             }
           }}
