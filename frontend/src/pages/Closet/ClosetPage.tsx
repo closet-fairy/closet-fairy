@@ -124,6 +124,20 @@ const ClosetPage = () => {
 
   const openRegisterSheet = () => setIsRegisterSheetOpen(true);
 
+  const uploadCards = uploads.map((upload) => (
+    <S.GridItem key={upload.id}>
+      <UploadCard
+        upload={upload}
+        onResend={() => void resendClothingUpload(queryClient, upload.id)}
+        onDismiss={() => dismissClothingUpload(upload.id)}
+      />
+    </S.GridItem>
+  ));
+  // 목록을 아직 못 받았어도 보내는 중이거나 실패한 사진은 치우거나 다시 보낼 수 있게 위에 그려 둔다.
+  const pendingUploadGrid = uploads.length > 0 && (
+    <S.Grid>{uploadCards}</S.Grid>
+  );
+
   const renderBody = () => {
     // 로그인이 만료되면 전역 다이얼로그가 안내하므로, 그 뒤에 실패 화면을 겹치지 않고 로딩 화면을 둔다.
     if (
@@ -131,35 +145,41 @@ const ClosetPage = () => {
       (listQuery.data === undefined && isUnauthorizedError(listQuery.error))
     ) {
       return (
-        <StatusView
-          visual={
-            <S.Spinner>
-              <Icon name="progress_activity" size="xl" />
-            </S.Spinner>
-          }
-          title="옷장을 불러오는 중이에요"
-        />
+        <>
+          {pendingUploadGrid}
+          <StatusView
+            visual={
+              <S.Spinner>
+                <Icon name="progress_activity" size="xl" />
+              </S.Spinner>
+            }
+            title="옷장을 불러오는 중이에요"
+          />
+        </>
       );
     }
 
     // 다음 묶음을 불러오다 실패해도 쿼리 전체가 error가 되므로, 받아 둔 목록이 없을 때만 실패 화면을 보여 준다.
     if (listQuery.data === undefined) {
       return (
-        <StatusView
-          visual={<Icon name="error" size="xl" />}
-          title="옷장을 불러오지 못했어요"
-          description={listQuery.error?.message}
-          actions={
-            <Button
-              icon="refresh"
-              isFullWidth
-              isLoading={listQuery.isFetching}
-              onClick={() => void listQuery.refetch()}
-            >
-              다시 시도
-            </Button>
-          }
-        />
+        <>
+          {pendingUploadGrid}
+          <StatusView
+            visual={<Icon name="error" size="xl" />}
+            title="옷장을 불러오지 못했어요"
+            description={listQuery.error?.message}
+            actions={
+              <Button
+                icon="refresh"
+                isFullWidth
+                isLoading={listQuery.isFetching}
+                onClick={() => void listQuery.refetch()}
+              >
+                다시 시도
+              </Button>
+            }
+          />
+        </>
       );
     }
 
@@ -190,17 +210,7 @@ const ClosetPage = () => {
     return (
       <>
         <S.Grid>
-          {uploads.map((upload) => (
-            <S.GridItem key={upload.id}>
-              <UploadCard
-                upload={upload}
-                onResend={() =>
-                  void resendClothingUpload(queryClient, upload.id)
-                }
-                onDismiss={() => dismissClothingUpload(upload.id)}
-              />
-            </S.GridItem>
-          ))}
+          {uploadCards}
           {clothings.map((clothing) => (
             <S.GridItem key={clothing.clothing_id}>
               <ClothingCard

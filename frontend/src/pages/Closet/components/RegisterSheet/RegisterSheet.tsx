@@ -1,5 +1,6 @@
 import BottomSheet from '@/components/common/BottomSheet';
 import ListItem from '@/components/common/ListItem';
+import { UPLOAD_PHOTO_LIMIT } from '@/domains/clothing/validateUploadPhoto';
 import * as S from './RegisterSheet.styled';
 
 interface RegisterSheetProps {
@@ -24,7 +25,7 @@ const RegisterSheet = (props: RegisterSheetProps) => {
         <ListItem
           icon="photo_library"
           title="갤러리에서 선택"
-          description="최대 20장까지 고를 수 있어요"
+          description={`최대 ${UPLOAD_PHOTO_LIMIT}장까지 고를 수 있어요`}
           hasChevron
           onClick={onSelectGallery}
         />

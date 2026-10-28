@@ -44,19 +44,41 @@ const ClothingRegistration = (props: ClothingRegistrationProps) => {
     isRegistered: false,
   });
   const [isCameraOpen, setIsCameraOpen] = useState(false);
-  // 닫히는 동안에도 미리보기가 보여야 해서, 등록하지 않은 사진의 주소는 다음에 고를 때나 화면을 떠날 때 푼다.
-  const staleUrlsRef = useRef<string[]>([]);
+  /*
+   * 이 화면이 만든 미리보기 주소 중 업로드 쪽에 넘기지 않은 것을 모아 둔다. 닫히는 동안에도 미리보기가
+   * 보여야 해서 바로 풀지 않고, 다음에 사진을 고를 때나 화면을 떠날 때 푼다.
+   */
+  const ownedUrlsRef = useRef(new Set<string>());
 
-  useEffect(
-    () => () => {
-      staleUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
-    },
-    [],
-  );
+  useEffect(() => {
+    const ownedUrls = ownedUrlsRef.current;
 
-  const releaseStaleUrls = () => {
-    staleUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
-    staleUrlsRef.current = [];
+    return () => {
+      ownedUrls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, []);
+
+  const releaseOwnedUrls = () => {
+    ownedUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+    ownedUrlsRef.current.clear();
+  };
+
+  const createPreviewUrl = (file: File) => {
+    const url = URL.createObjectURL(file);
+    ownedUrlsRef.current.add(url);
+    return url;
+  };
+
+  // 등록한 사진의 주소는 임시 카드가 이어서 쓰므로 업로드 쪽에서 푼다.
+  const handOverPhotos = (photos: PickedPhoto[]) => {
+    photos.forEach((photo) => ownedUrlsRef.current.delete(photo.previewUrl));
+    void startClothingUpload(
+      queryClient,
+      photos.map((photo) => ({
+        file: photo.file,
+        previewUrl: photo.previewUrl,
+      })),
+    );
   };
 
   const openGallery = () => {
@@ -69,13 +91,6 @@ const ClothingRegistration = (props: ClothingRegistrationProps) => {
     cameraInputRef.current?.click();
   };
 
-  // 등록하지 않은 촬영 사진의 주소는 화면에서 내려간 뒤에 풀도록 미뤄 둔다.
-  const retireCapturedPhoto = () => {
-    if (capture.photo !== null && !capture.isRegistered) {
-      staleUrlsRef.current.push(capture.photo.previewUrl);
-    }
-  };
-
   const handleCameraChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = '';
@@ -85,13 +100,12 @@ const ClothingRegistration = (props: ClothingRegistrationProps) => {
       return;
     }
 
-    retireCapturedPhoto();
     setCapture((previous) => ({
       key: previous.key + 1,
       photo: {
         id: crypto.randomUUID(),
         file,
-        previewUrl: URL.createObjectURL(file),
+        previewUrl: createPreviewUrl(file),
         rejectMessage: validateUploadPhoto(file),
       },
       isRegistered: false,
@@ -100,21 +114,14 @@ const ClothingRegistration = (props: ClothingRegistrationProps) => {
   };
 
   const registerCapturedPhoto = () => {
-    if (capture.photo === null) {
+    // 같은 사진을 두 번 보내지 않는다.
+    if (capture.photo === null || capture.isRegistered) {
       return;
     }
 
-    // 사진 주소는 임시 카드가 이어서 쓰므로 업로드 쪽에서 푼다.
     setCapture((previous) => ({ ...previous, isRegistered: true }));
     window.scrollTo({ top: 0 });
-    void startClothingUpload(queryClient, [
-      { file: capture.photo.file, previewUrl: capture.photo.previewUrl },
-    ]);
-  };
-
-  const finishCapture = () => {
-    setIsCameraOpen(false);
-    retireCapturedPhoto();
+    handOverPhotos([capture.photo]);
   };
 
   const handleGalleryChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -126,11 +133,11 @@ const ClothingRegistration = (props: ClothingRegistrationProps) => {
       return;
     }
 
-    releaseStaleUrls();
+    releaseOwnedUrls();
     const photos = files.map((file): PickedPhoto => ({
       id: crypto.randomUUID(),
       file,
-      previewUrl: URL.createObjectURL(file),
+      previewUrl: createPreviewUrl(file),
       rejectMessage: validateUploadPhoto(file),
     }));
     const acceptedCount = photos.filter(
@@ -147,27 +154,16 @@ const ClothingRegistration = (props: ClothingRegistrationProps) => {
     setIsConfirmOpen(true);
   };
 
-  const closeConfirm = () => {
-    setIsConfirmOpen(false);
-    staleUrlsRef.current = pick.photos.map((photo) => photo.previewUrl);
-  };
-
   const submit = (selectedPhotos: PickedPhoto[]) => {
-    const selectedIds = new Set(selectedPhotos.map((photo) => photo.id));
+    // 닫히는 동안 버튼이 한 번 더 눌려도 같은 사진을 두 번 보내지 않는다.
+    if (!isConfirmOpen) {
+      return;
+    }
+
     setIsConfirmOpen(false);
-    // 등록한 사진의 주소는 임시 카드가 이어서 쓰므로 업로드 쪽에서 푼다.
-    staleUrlsRef.current = pick.photos
-      .filter((photo) => !selectedIds.has(photo.id))
-      .map((photo) => photo.previewUrl);
     // 스크롤을 내린 채 등록해도 맨 앞에 생긴 임시 카드가 보이게 한다.
     window.scrollTo({ top: 0 });
-    void startClothingUpload(
-      queryClient,
-      selectedPhotos.map((photo) => ({
-        file: photo.file,
-        previewUrl: photo.previewUrl,
-      })),
-    );
+    handOverPhotos(selectedPhotos);
   };
 
   return (
@@ -200,7 +196,7 @@ const ClothingRegistration = (props: ClothingRegistrationProps) => {
         photo={capture.photo}
         onRegister={registerCapturedPhoto}
         onContinue={() => cameraInputRef.current?.click()}
-        onFinish={finishCapture}
+        onFinish={() => setIsCameraOpen(false)}
       />
       <OverLimitDialog
         isOpen={isOverLimitOpen}
@@ -213,7 +209,7 @@ const ClothingRegistration = (props: ClothingRegistrationProps) => {
         key={pick.key}
         isOpen={isConfirmOpen}
         photos={pick.photos}
-        onClose={closeConfirm}
+        onClose={() => setIsConfirmOpen(false)}
         onSubmit={submit}
       />
     </>

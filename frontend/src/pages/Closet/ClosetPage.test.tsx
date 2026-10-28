@@ -17,6 +17,7 @@ import type {
 } from '@/generated/models';
 import { resetSession } from '@/apis/authSession';
 import { server } from '@/mocks/node';
+import { startClothingUpload } from '@/pages/Closet/clothingUploadStore';
 import { CLOSET_LIST_PARAMS } from '@/pages/Closet/constants';
 import { routeTree } from '@/routeTree.gen';
 
@@ -814,6 +815,40 @@ describe('사진으로 옷 등록', () => {
       ).not.toBeInTheDocument();
     });
     expect(uploadRequestCount).toBe(0);
+  });
+
+  test('목록을 불러오지 못해도 올리기 실패 카드는 보여 치울 수 있어야 한다.', async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.post('/api/clothing', () =>
+        HttpResponse.json(
+          { code: 'INTERNAL_ERROR', message: '처리 중 오류가 발생했습니다.' },
+          { status: 500 },
+        ),
+      ),
+      http.get('/api/clothing', () =>
+        HttpResponse.json(
+          { code: 'INTERNAL_ERROR', message: '처리 중 오류가 발생했습니다.' },
+          { status: 500 },
+        ),
+      ),
+    );
+    // 옷장을 떠나 있는 동안 업로드가 실패해 사진이 남은 상태에서 옷장에 들어온다.
+    await startClothingUpload(new QueryClient(), [
+      { file: photoFile('IMG_0001.JPG'), previewUrl: 'blob:test/upload' },
+    ]);
+    await renderCloset();
+
+    expect(
+      await screen.findByText('옷장을 불러오지 못했어요'),
+    ).toBeInTheDocument();
+    expect(screen.getByText('올리기 실패')).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole('button', { name: 'IMG_0001.JPG 치우기' }),
+    );
+
+    expect(screen.queryByText('올리기 실패')).not.toBeInTheDocument();
   });
 
   test('세션이 끝나면 남아 있던 올리기 실패 카드를 비워야 한다.', async () => {
