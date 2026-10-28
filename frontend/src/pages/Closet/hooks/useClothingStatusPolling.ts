@@ -1,6 +1,6 @@
 import { useQueries } from '@tanstack/react-query';
-import { isUnauthorizedError } from '@/apis/authSession';
 import type { QueryFunctionContext } from '@tanstack/react-query';
+import { isUnauthorizedError } from '@/apis/authSession';
 import {
   getClothingStatusClothingStatusGet,
   getGetClothingStatusClothingStatusGetQueryKey,
