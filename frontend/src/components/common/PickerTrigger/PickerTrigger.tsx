@@ -1,4 +1,3 @@
-import type { Ref } from 'react';
 import { useContext, useId } from 'react';
 import { FormFieldContext } from '@/components/common/FormField/FormField.context';
 import * as S from './PickerTrigger.styled';
@@ -12,7 +11,6 @@ interface PickerTriggerProps {
   isDisabled?: boolean;
   isInvalid?: boolean;
   'aria-describedby'?: string;
-  ref?: Ref<HTMLButtonElement>;
 }
 
 const PickerTrigger = (props: PickerTriggerProps) => {
@@ -25,7 +23,6 @@ const PickerTrigger = (props: PickerTriggerProps) => {
     isDisabled = false,
     isInvalid = false,
     'aria-describedby': ariaDescribedBy,
-    ref,
   } = props;
   const formField = useContext(FormFieldContext);
   const captionId = useId();
@@ -45,7 +42,6 @@ const PickerTrigger = (props: PickerTriggerProps) => {
 
   return (
     <S.Trigger
-      ref={ref}
       type="button"
       aria-haspopup="dialog"
       aria-expanded={isExpanded}

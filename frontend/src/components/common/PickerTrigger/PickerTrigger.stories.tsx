@@ -45,11 +45,6 @@ const meta = {
         '트리거의 설명으로 읽힐 요소의 id입니다. `FormField`의 안내 문구가 있으면 함께 연결합니다.',
       control: 'text',
     },
-    ref: {
-      description:
-        '트리거 버튼 요소를 받습니다. 시트를 닫은 뒤 포커스를 돌려줄 대상으로 쓸 때 넘깁니다.',
-      control: false,
-    },
   },
   args: {
     label: '나가는 시간',
