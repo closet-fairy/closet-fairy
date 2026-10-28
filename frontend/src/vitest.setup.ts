@@ -17,6 +17,16 @@ vi.stubGlobal(
   },
 );
 
+// IntersectionObserver도 jsdom에 없다. 목록 끝에 닿는 동작을 확인할 테스트는 자기 파일에서 다시 덮어쓴다.
+vi.stubGlobal(
+  'IntersectionObserver',
+  class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  },
+);
+
 // 라우터의 스크롤 복원이 부르는 window.scrollTo를 jsdom은 구현하지 않아 경고만 남기므로 막아 둔다.
 window.scrollTo = () => {};
 
