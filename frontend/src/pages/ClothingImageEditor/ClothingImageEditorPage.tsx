@@ -1,4 +1,4 @@
-import { useNavigate, useParams } from '@tanstack/react-router';
+import { useNavigate, useParams, useRouter } from '@tanstack/react-router';
 import { useState } from 'react';
 import { ApiError } from '@/apis/apiError';
 import { isUnauthorizedError } from '@/apis/authSession';
@@ -19,15 +19,34 @@ const LOAD_ERROR_MESSAGE = '옷 정보를 불러오지 못했어요.';
 const ClothingImageEditorPage = () => {
   const { clothingId } = useParams({ from: '/closet_/$clothingId_/edit' });
   const navigate = useNavigate();
+  const router = useRouter();
   const [isSupported] = useState(isWebGL2Supported);
   const [mountedAt] = useState(Date.now);
   const clothingQuery = useGetClothingClothingClothingIdGet(clothingId, {
     query: { enabled: isSupported },
   });
 
-  // 닫기는 확인을 이미 거쳤거나 확인이 필요 없는 경우에만 불린다.
+  /*
+   * 닫기는 확인을 이미 거쳤거나 확인이 필요 없는 경우에만 불린다. 편집기는 옷 상세에서 열리므로
+   * 뒤로 가 상세로 돌아가고, 주소로 바로 들어와 돌아갈 곳이 없으면 상세로 바꿔치기한다.
+   */
   const close = () => {
-    void navigate({ to: '/closet', ignoreBlocker: true });
+    if (router.history.canGoBack()) {
+      router.history.back({ ignoreBlocker: true });
+      return;
+    }
+
+    void navigate({
+      to: '/closet/$clothingId',
+      params: { clothingId },
+      replace: true,
+      ignoreBlocker: true,
+    });
+  };
+
+  // 없는 옷이면 상세로 돌아갈 수 없으므로 옷장으로 보낸다.
+  const closeToCloset = () => {
+    void navigate({ to: '/closet', replace: true, ignoreBlocker: true });
   };
 
   if (!isSupported) {
@@ -79,8 +98,8 @@ const ClothingImageEditorPage = () => {
   if (error instanceof ApiError && error.status === NOT_FOUND_STATUS) {
     return (
       <>
-        <EditorStatusView onClose={close} />
-        <ClothingNotFoundDialog isOpen onConfirm={close} />
+        <EditorStatusView onClose={closeToCloset} />
+        <ClothingNotFoundDialog isOpen onConfirm={closeToCloset} />
       </>
     );
   }
