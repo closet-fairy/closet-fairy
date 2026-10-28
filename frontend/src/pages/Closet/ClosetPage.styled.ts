@@ -95,7 +95,9 @@ export const Fab = styled.button<{ $toastStackHeight: string | null }>`
           : `${$toastStackHeight} + ${spacing[12]}`} +
       env(safe-area-inset-bottom, 0px)
   );
-  transition: bottom ${duration.normal} ${easing.standard};
+  transition:
+    bottom ${duration.normal} ${easing.standard},
+    transform ${duration.fast} ${easing.standard};
   z-index: ${zIndex.sticky};
   display: flex;
   align-items: center;
@@ -106,7 +108,6 @@ export const Fab = styled.button<{ $toastStackHeight: string | null }>`
   background-color: ${bg.neutral.strong};
   box-shadow: ${shadow.lg};
   color: ${fg.white};
-  transition: transform ${duration.fast} ${easing.standard};
 
   &:active {
     transform: scale(${FAB_PRESSED_SCALE});
