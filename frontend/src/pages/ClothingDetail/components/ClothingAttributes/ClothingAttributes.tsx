@@ -15,7 +15,11 @@ import {
   CLOTHING_THICKNESS_LABEL,
   CLOTHING_THICKNESSES,
 } from '@/constants/clothingAttribute';
-import { STYLE_OPTIONS } from '@/domains/member/memberSettingOptions';
+import {
+  getStyleLabel,
+  sortStyleCds,
+  STYLE_OPTIONS,
+} from '@/domains/member/memberSettingOptions';
 import type { ClothingDetail, ClothingUpdate } from '@/generated/models';
 import ColorSwatch from '@/pages/ClothingDetail/components/ColorSwatch';
 import type { AttributeField } from '@/pages/ClothingDetail/hooks/useClothingAttributeSave';
@@ -36,10 +40,6 @@ const WATERPROOF_OPTIONS = [
   { value: 'false', label: '아니오' },
 ] as const;
 
-const STYLE_LABEL = new Map(
-  STYLE_OPTIONS.map((option) => [option.value, option.label]),
-);
-
 const isOneOf = <T extends string>(
   options: readonly T[],
   value: string,
@@ -56,9 +56,7 @@ const toWaterproofSummary = (isWaterproof: boolean | null) => {
 const ClothingAttributes = (props: ClothingAttributesProps) => {
   const { clothing, errors, onSave } = props;
   const [openField, setOpenField] = useState<string | null>(null);
-  const styleLabels = clothing.style_cds.map(
-    (style) => STYLE_LABEL.get(style) ?? style,
-  );
+  const styleLabels = clothing.style_cds.map(getStyleLabel);
   const seasonLabels = clothing.season_cds.map(
     (season) => CLOTHING_SEASON_LABEL[season],
   );
@@ -185,12 +183,9 @@ const ClothingAttributes = (props: ClothingAttributesProps) => {
           aria-label="스타일"
           onChange={(values) => {
             // 누른 순서와 상관없이 칩 순서대로 보낸다.
-            const styles = STYLE_OPTIONS.map((option) => option.value).filter(
-              (style) => values.includes(style),
-            );
             onSave(
               'style_cds',
-              { style_cds: styles },
+              { style_cds: sortStyleCds(values) },
               '스타일을 저장하지 못했어요',
             );
           }}

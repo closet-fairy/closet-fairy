@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import TextField from '@/components/common/TextField';
 import { clothingUpdateItemNameOneMax } from '@/generated/models';
 import * as S from './ClothingNameField.styled';
@@ -15,6 +15,7 @@ const normalizeName = (draft: string) =>
 
 const ClothingNameField = (props: ClothingNameFieldProps) => {
   const { name, errorMessage, onSave } = props;
+  const inputId = useId();
   const [draft, setDraft] = useState(name ?? '');
 
   const commit = () => {
@@ -36,10 +37,10 @@ const ClothingNameField = (props: ClothingNameFieldProps) => {
 
   return (
     <S.Row>
-      <S.Label htmlFor="clothing-name">옷 이름</S.Label>
+      <S.Label htmlFor={inputId}>옷 이름</S.Label>
       <S.Field>
         <TextField
-          id="clothing-name"
+          id={inputId}
           value={draft}
           onChange={setDraft}
           placeholder="옷 이름을 입력해 주세요"

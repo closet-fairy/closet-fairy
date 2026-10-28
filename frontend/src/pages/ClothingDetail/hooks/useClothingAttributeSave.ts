@@ -2,13 +2,13 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { ApiError } from '@/apis/apiError';
 import { isUnauthorizedError } from '@/apis/authSession';
+import { patchClothingCard } from '@/apis/clothingListCache';
 import { showToast } from '@/components/common/ToastProvider/ToastProvider.toast';
 import {
   getGetClothingClothingClothingIdGetQueryKey,
   updateClothingClothingClothingIdPatch,
 } from '@/generated/endpoints/clothing/clothing';
 import type { ClothingDetail, ClothingUpdate } from '@/generated/models';
-import { patchClothingCard } from '@/pages/ClothingDetail/clothingListCache';
 
 export type AttributeField = keyof ClothingUpdate;
 
@@ -109,15 +109,19 @@ const useClothingAttributeSave = (clothingId: number) => {
         }
 
         const message =
-          error instanceof ApiError ? error.message : UNKNOWN_SAVE_ERROR;
+          error instanceof ApiError && error.message !== ''
+            ? error.message
+            : UNKNOWN_SAVE_ERROR;
 
-        // 응답이 오기 전에 상세를 떠났다면 행 아래 문구를 볼 수 없으므로 토스트로 알린다.
+        // 응답이 오기 전에 상세를 떠났다면 행 아래 문구를 볼 수 없으므로, 마지막으로 바꾼 값의 실패만 토스트로 알린다.
         if (!isMountedRef.current) {
-          showToast({
-            tone: 'error',
-            title: failureTitle,
-            description: message,
-          });
+          if (isLatest()) {
+            showToast({
+              tone: 'error',
+              title: failureTitle,
+              description: message,
+            });
+          }
           return;
         }
 

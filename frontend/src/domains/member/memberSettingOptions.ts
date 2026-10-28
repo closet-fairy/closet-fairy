@@ -89,7 +89,7 @@ export const getGenderLabel = (value: GenderCd) => GENDER_LABEL[value];
 
 export const getStyleLabel = (value: StyleCd) => STYLE_TEXT[value].label;
 
-export const sortStyleCds = (values: readonly StyleCd[]) =>
+export const sortStyleCds = (values: readonly string[]) =>
   STYLE_OPTIONS.map((option) => option.value).filter((value) =>
     values.includes(value),
   );

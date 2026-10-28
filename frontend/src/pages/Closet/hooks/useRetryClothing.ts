@@ -9,7 +9,7 @@ import {
 import {
   patchClothingProgress,
   refetchClothingList,
-} from '@/pages/Closet/clothingListCache';
+} from '@/apis/clothingListCache';
 
 const NOT_FOUND_STATUS = 404;
 const CONFLICT_STATUS = 409;
