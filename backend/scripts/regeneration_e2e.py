@@ -35,7 +35,8 @@
   5. 끝나면 .env의 DEV_MEMBER_ID를 원래 값으로 되돌린다.
 
 --server-log는 재생성 중 별점·취소 뒤 백그라운드 작업이 끝났는지(regeneration.discarded 등)를
-확인하는 데만 쓴다. 없으면 DB를 상한 시간까지 지켜본 뒤 "확정 못 함"으로 둔다.
+확인하는 데만 쓴다. 없으면 상한 시간만큼 기다린 뒤 DB를 한 번 검사해, 통과하면 "확정 못 함",
+걸리면 실패로 둔다.
 """
 
 from __future__ import annotations
