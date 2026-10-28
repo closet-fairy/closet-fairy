@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { isUnauthorizedError } from '@/apis/authSession';
 import Button from '@/components/common/Button';
 import Icon from '@/components/common/Icon';
 import StatusView from '@/components/common/StatusView';
@@ -25,7 +26,11 @@ const ClosetPage = () => {
     onLoadMore: loadNextPage,
   });
 
-  if (listQuery.isPending) {
+  // 로그인이 만료되면 전역 다이얼로그가 안내하므로, 그 뒤에 실패 화면을 겹치지 않고 로딩 화면을 둔다.
+  if (
+    listQuery.isPending ||
+    (listQuery.data === undefined && isUnauthorizedError(listQuery.error))
+  ) {
     return (
       <S.Container>
         <TopBar title="옷장" />
@@ -93,7 +98,9 @@ const ClosetPage = () => {
       <TopBar title="옷장" />
       <S.Grid>
         {clothings.map((clothing) => (
-          <ClothingCard key={clothing.clothing_id} clothing={clothing} />
+          <S.GridItem key={clothing.clothing_id}>
+            <ClothingCard clothing={clothing} />
+          </S.GridItem>
         ))}
       </S.Grid>
       <S.ListEnd ref={loadMoreRef}>

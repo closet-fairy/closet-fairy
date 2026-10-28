@@ -8,8 +8,10 @@ import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { getListClothingClothingGetInfiniteQueryKey } from '@/generated/endpoints/clothing/clothing';
 import type { ClothingPage } from '@/generated/models';
 import { server } from '@/mocks/node';
+import { CLOSET_LIST_PARAMS } from '@/pages/Closet/constants';
 import { routeTree } from '@/routeTree.gen';
 
 type IntersectionCallback = (entries: { isIntersecting: boolean }[]) => void;
@@ -75,6 +77,8 @@ const renderCloset = async () => {
       <RouterProvider router={router} />
     </QueryClientProvider>,
   );
+
+  return { queryClient };
 };
 
 const emptyPage: ClothingPage = { items: [], next_cursor: null };
@@ -181,5 +185,32 @@ describe('빈 옷장과 불러오기 실패', () => {
     await user.click(screen.getByRole('button', { name: '다시 시도' }));
 
     expect(await screen.findByText('처리 중')).toBeInTheDocument();
+  });
+
+  test('로그인이 만료되어 불러오지 못하면 실패 화면 대신 로딩 화면을 유지해야 한다.', async () => {
+    server.use(
+      http.get('/api/clothing', () =>
+        HttpResponse.json(
+          { code: 'UNAUTHORIZED', message: '로그인이 필요합니다.' },
+          { status: 401 },
+        ),
+      ),
+    );
+    const { queryClient } = await renderCloset();
+
+    await vi.waitFor(() => {
+      expect(
+        queryClient.getQueryState(
+          getListClothingClothingGetInfiniteQueryKey(CLOSET_LIST_PARAMS),
+        )?.status,
+      ).toBe('error');
+    });
+    // 쿼리가 실패로 바뀐 뒤 화면이 다시 그려질 때까지 기다린다.
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+
+    expect(screen.getByText('옷장을 불러오는 중이에요')).toBeInTheDocument();
+    expect(
+      screen.queryByText('옷장을 불러오지 못했어요'),
+    ).not.toBeInTheDocument();
   });
 });
