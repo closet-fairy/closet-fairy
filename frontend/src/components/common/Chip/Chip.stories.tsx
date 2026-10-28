@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { fn } from 'storybook/test';
 import { ICON_NAMES } from '../../../../.storybook/storyIconNames';
 import ChipGroup from '@/components/common/ChipGroup';
+import Icon from '@/components/common/Icon';
 import Chip from './Chip';
 
 const meta = {
@@ -16,6 +17,11 @@ const meta = {
       description:
         '칩에 보이는 글자입니다. 칩 너비를 넘으면 말줄임표로 줄입니다.',
       control: 'text',
+    },
+    leading: {
+      description:
+        '글자 앞에 붙는 시각 요소입니다. 옷 색처럼 글자를 거들기만 하는 장식에 쓰므로 스크린리더에서 숨깁니다.',
+      control: false,
     },
     trailingIcon: {
       description:
@@ -72,6 +78,13 @@ export const Dashed: Story = {
     variant: 'dashed',
     trailingIcon: 'edit',
     onClick: fn(),
+  },
+};
+
+export const WithLeading: Story = {
+  args: {
+    children: '사진',
+    leading: <Icon name="image" size="xs" />,
   },
 };
 
