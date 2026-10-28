@@ -463,12 +463,13 @@ describe('처리 중·실패 카드 다이얼로그', () => {
 });
 
 describe('옷장에서 옷 삭제', () => {
+  // MSW 상태는 그대로 두고 204만 돌려준다. 목록을 다시 받아 카드가 빠지는 게 아니라, 화면이 직접 카드를 빼는지 본다.
   const recordDeletes = () => {
     const deletedIds: string[] = [];
     server.use(
       http.delete('/api/clothing/:clothingId', ({ params }) => {
         deletedIds.push(String(params.clothingId));
-        return undefined;
+        return new HttpResponse(null, { status: 204 });
       }),
     );
 
@@ -497,18 +498,23 @@ describe('옷장에서 옷 삭제', () => {
     const user = userEvent.setup();
     const deletedIds = recordDeletes();
     await renderCloset();
-    const processingCount = (
-      await screen.findAllByRole('button', { name: '처리 중인 옷' })
-    ).length;
+    await screen.findAllByRole('button', { name: '처리 중인 옷' });
+    const cardCount = screen.getAllByRole('listitem').length;
 
     const dialog = await openDeleteDialog(
       user,
       '처리 중인 옷',
       '아직 처리 중이에요',
     );
-    expect(
-      screen.queryByRole('dialog', { name: '아직 처리 중이에요' }),
-    ).not.toBeInTheDocument();
+    // 삭제 확인 모달이 열려 뒤쪽은 접근성 트리에서 숨겨지므로, 숨은 요소까지 찾아 상태 다이얼로그가 닫혔는지 본다.
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('dialog', {
+          name: '아직 처리 중이에요',
+          hidden: true,
+        }),
+      ).not.toBeInTheDocument();
+    });
     expect(dialog).toHaveAccessibleDescription(
       '사진과 속성이 함께 지워지며 되돌릴 수 없습니다.',
     );
@@ -517,15 +523,34 @@ describe('옷장에서 옷 삭제', () => {
     expect(await screen.findByText('옷을 삭제했어요')).toBeInTheDocument();
     await waitFor(() => {
       expect(
-        screen.queryAllByRole('button', { name: '처리 중인 옷' }),
-      ).toHaveLength(processingCount - 1);
-    });
-    expect(deletedIds).toHaveLength(1);
-    await waitFor(() => {
-      expect(
         screen.queryByRole('dialog', { name: '이 옷을 삭제할까요?' }),
       ).not.toBeInTheDocument();
     });
+    expect(screen.getAllByRole('listitem')).toHaveLength(cardCount - 1);
+    expect(deletedIds).toHaveLength(1);
+  });
+
+  test('지우는 요청을 보내는 동안에는 모달을 닫을 수 없어야 한다.', async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.delete('/api/clothing/:clothingId', async () => {
+        await delay('infinite');
+      }),
+    );
+    await renderCloset();
+
+    const dialog = await openDeleteDialog(
+      user,
+      '등록에 실패한 옷',
+      '등록하지 못했어요',
+    );
+    await user.click(within(dialog).getByRole('button', { name: '삭제' }));
+    await user.keyboard('{Escape}');
+
+    expect(
+      screen.getByRole('dialog', { name: '이 옷을 삭제할까요?' }),
+    ).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: '취소' })).toBeDisabled();
   });
 
   test('실패 카드의 [삭제]에서 취소하면 아무것도 지우지 않아야 한다.', async () => {

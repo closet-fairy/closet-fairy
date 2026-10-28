@@ -166,6 +166,38 @@ describe('상세에서 옷 삭제', () => {
     });
     expect(history.canGoBack()).toBe(false);
   });
+
+  test('저장을 기다리던 속성이 옷을 지운 뒤 실패해도 저장하지 못했다고 알리지 않아야 한다.', async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.patch('/api/clothing/:clothingId', async () => {
+        await delay(300);
+        return HttpResponse.json(
+          { code: 'CLOTHING_NOT_FOUND', message: '옷을 찾을 수 없습니다.' },
+          { status: 404 },
+        );
+      }),
+    );
+    const { history } = await renderDetail(COMPLETED_ID);
+    await screen.findByDisplayValue('스트라이프 반팔 티셔츠');
+
+    await user.click(getRow('색상'));
+    await user.click(screen.getByRole('button', { name: '검정' }));
+    await user.click(screen.getByRole('button', { name: '이 옷 삭제' }));
+    const dialog = await screen.findByRole('dialog', {
+      name: '이 옷을 삭제할까요?',
+    });
+    await user.click(within(dialog).getByRole('button', { name: '삭제' }));
+
+    await waitFor(() => {
+      expect(history.location.pathname).toBe('/closet');
+    });
+    expect(await screen.findByText('옷을 삭제했어요')).toBeInTheDocument();
+    await act(() => new Promise((resolve) => setTimeout(resolve, 400)));
+    expect(
+      screen.queryByText('색상을 저장하지 못했어요'),
+    ).not.toBeInTheDocument();
+  });
 });
 
 describe('옷 속성 바로 저장', () => {
