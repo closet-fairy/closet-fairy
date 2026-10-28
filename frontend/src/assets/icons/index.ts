@@ -15,13 +15,16 @@ import Cloud from '@material-symbols/svg-400/outlined/cloud.svg?react';
 import Edit from '@material-symbols/svg-400/outlined/edit.svg?react';
 import EditLocationAlt from '@material-symbols/svg-400/outlined/edit_location_alt.svg?react';
 import ErrorIcon from '@material-symbols/svg-400/outlined/error.svg?react';
+import ErrorFill from '@material-symbols/svg-400/outlined/error-fill.svg?react';
 import Exposure from '@material-symbols/svg-400/outlined/exposure.svg?react';
 import FitScreen from '@material-symbols/svg-400/outlined/fit_screen.svg?react';
 import History from '@material-symbols/svg-400/outlined/history.svg?react';
 import HistoryFill from '@material-symbols/svg-400/outlined/history-fill.svg?react';
 import Image from '@material-symbols/svg-400/outlined/image.svg?react';
 import Info from '@material-symbols/svg-400/outlined/info.svg?react';
+import InfoFill from '@material-symbols/svg-400/outlined/info-fill.svg?react';
 import InkEraser from '@material-symbols/svg-400/outlined/ink_eraser.svg?react';
+import KeyboardArrowDown from '@material-symbols/svg-400/outlined/keyboard_arrow_down.svg?react';
 import KeyboardArrowUp from '@material-symbols/svg-400/outlined/keyboard_arrow_up.svg?react';
 import Layers from '@material-symbols/svg-400/outlined/layers.svg?react';
 import LocationOn from '@material-symbols/svg-400/outlined/location_on.svg?react';
@@ -67,13 +70,16 @@ export const icons = {
   edit: Edit,
   edit_location_alt: EditLocationAlt,
   error: ErrorIcon,
+  'error-fill': ErrorFill,
   exposure: Exposure,
   fit_screen: FitScreen,
   history: History,
   'history-fill': HistoryFill,
   image: Image,
   info: Info,
+  'info-fill': InfoFill,
   ink_eraser: InkEraser,
+  keyboard_arrow_down: KeyboardArrowDown,
   keyboard_arrow_up: KeyboardArrowUp,
   layers: Layers,
   location_on: LocationOn,
