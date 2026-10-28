@@ -4,6 +4,7 @@ import {
   duration,
   easing,
   fg,
+  opacity,
   radius,
   spacing,
   typography,
@@ -11,8 +12,14 @@ import {
 import { ROW_HEIGHT, VISIBLE_ROW_COUNT } from './WheelPicker.constants';
 
 const EDGE_ROW_COUNT = Math.floor(VISIBLE_ROW_COUNT / 2);
-const ROW_OPACITIES = [1, 0.55, 0.25] as const;
-const FARTHEST_ROW_OPACITY = 0.25;
+
+const getRowOpacity = (distance: number) => {
+  if (distance === 0) {
+    return 1;
+  }
+
+  return distance === 1 ? opacity.muted : opacity.faint;
+};
 
 export const Container = styled.div`
   position: relative;
@@ -64,8 +71,7 @@ export const Option = styled.li<{ $isSelected: boolean; $distance: number }>`
   height: ${ROW_HEIGHT}px;
   color: ${({ $isSelected }) =>
     $isSelected ? fg.neutral.strong : fg.neutral.default};
-  opacity: ${({ $distance }) =>
-    ROW_OPACITIES[$distance] ?? FARTHEST_ROW_OPACITY};
+  opacity: ${({ $distance }) => getRowOpacity($distance)};
   cursor: pointer;
   user-select: none;
   scroll-snap-align: center;

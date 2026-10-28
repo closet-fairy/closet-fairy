@@ -34,6 +34,8 @@ export const shadow = {
 
 export const opacity = {
   disabled: 0.4,
+  muted: 0.55,
+  faint: 0.25,
 } as const;
 
 export const zIndex = {
