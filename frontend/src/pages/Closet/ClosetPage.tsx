@@ -8,28 +8,38 @@ import TopBar from '@/components/common/TopBar';
 import type { ClothingCard as ClothingCardData } from '@/generated/models';
 import ClothingCard from './components/ClothingCard';
 import ClothingStatusDialog from './components/ClothingStatusDialog';
-import type { ClothingStatusDialogVariant } from './components/ClothingStatusDialog/ClothingStatusDialog';
 import useClosetClothingList from './hooks/useClosetClothingList';
 import useClothingStatusPolling from './hooks/useClothingStatusPolling';
 import useLoadMoreTrigger from './hooks/useLoadMoreTrigger';
 import useRetryClothing from './hooks/useRetryClothing';
+import type { ClothingStatusDialogVariant } from './types';
 import * as S from './ClosetPage.styled';
 
-interface StatusDialogState {
-  clothingId: number;
-  isOpen: boolean;
-  // 닫히는 동안 내용이 다른 상태로 바뀌어 보이지 않도록, 열 때와 닫을 때의 상태를 기억해 둔다.
+interface StatusDialogContent {
   variant: ClothingStatusDialogVariant;
+  failureReason: string | null;
 }
 
-const toDialogVariant = (
+/*
+ * 다이얼로그에 그리는 내용을 상태로 들고 있는다. 열려 있는 동안에는 옷의 실제 상태를 따라가고,
+ * 닫히는 동안에는 마지막 내용을 그대로 둬서 닫히는 모습이 다른 내용으로 바뀌어 보이지 않게 한다.
+ */
+interface StatusDialogState extends StatusDialogContent {
+  clothingId: number;
+  isOpen: boolean;
+}
+
+const toDialogContent = (
   clothing: ClothingCardData,
-): ClothingStatusDialogVariant | null => {
+): StatusDialogContent | null => {
   if (clothing.processing_status_cd === 'completed') {
     return null;
   }
 
-  return clothing.processing_status_cd;
+  return {
+    variant: clothing.processing_status_cd,
+    failureReason: clothing.failure_reason,
+  };
 };
 
 const ClosetPage = () => {
@@ -38,31 +48,34 @@ const ClosetPage = () => {
   const [statusDialog, setStatusDialog] = useState<StatusDialogState | null>(
     null,
   );
-  const dialogClothing = clothings.find(
-    (clothing) => clothing.clothing_id === statusDialog?.clothingId,
-  );
-  const liveDialogVariant =
-    dialogClothing === undefined ? null : toDialogVariant(dialogClothing);
   const toastStackHeight = useToastStackHeight();
 
-  const closeStatusDialog = () => {
+  if (statusDialog?.isOpen && listQuery.data !== undefined) {
+    const dialogClothing = clothings.find(
+      (clothing) => clothing.clothing_id === statusDialog.clothingId,
+    );
+    const liveContent =
+      dialogClothing === undefined ? null : toDialogContent(dialogClothing);
+
+    // 처리가 끝났거나 지워진 옷이면 닫고, 아직이면 바뀐 상태(처리 중 → 실패 등)를 따라간다.
+    if (liveContent === null) {
+      setStatusDialog({ ...statusDialog, isOpen: false });
+    } else if (
+      liveContent.variant !== statusDialog.variant ||
+      liveContent.failureReason !== statusDialog.failureReason
+    ) {
+      setStatusDialog({ ...statusDialog, ...liveContent });
+    }
+  }
+
+  const closeStatusDialog = (clothingId: number) => {
     setStatusDialog((dialog) =>
-      dialog === null
-        ? dialog
-        : {
-            ...dialog,
-            isOpen: false,
-            variant: liveDialogVariant ?? dialog.variant,
-          },
+      dialog?.clothingId === clothingId ? { ...dialog, isOpen: false } : dialog,
     );
   };
 
   const { retry, retryingIds } = useRetryClothing({
-    onRetried: (clothingId) => {
-      if (statusDialog?.clothingId === clothingId) {
-        closeStatusDialog();
-      }
-    },
+    onRetried: closeStatusDialog,
   });
 
   // 목록을 다시 받는 동안에는 묻지 않는다. 그사이 끝난 옷을 또 끝났다고 받아 재조회가 겹치지 않게 한다.
@@ -158,13 +171,13 @@ const ClosetPage = () => {
               clothing={clothing}
               isRetrying={retryingIds.has(clothing.clothing_id)}
               onShowStatus={() => {
-                const variant = toDialogVariant(clothing);
+                const content = toDialogContent(clothing);
 
-                if (variant !== null) {
+                if (content !== null) {
                   setStatusDialog({
                     clothingId: clothing.clothing_id,
                     isOpen: true,
-                    variant,
+                    ...content,
                   });
                 }
               }}
@@ -204,17 +217,12 @@ const ClosetPage = () => {
       </S.Fab>
       {statusDialog !== null && (
         <ClothingStatusDialog
-          // 처리가 끝났거나 지워진 옷이면 다이얼로그를 닫는다.
-          isOpen={statusDialog.isOpen && liveDialogVariant !== null}
-          variant={
-            statusDialog.isOpen && liveDialogVariant !== null
-              ? liveDialogVariant
-              : statusDialog.variant
-          }
-          failureReason={dialogClothing?.failure_reason ?? null}
+          isOpen={statusDialog.isOpen}
+          variant={statusDialog.variant}
+          failureReason={statusDialog.failureReason}
           isRetrying={retryingIds.has(statusDialog.clothingId)}
           onRetry={() => retry(statusDialog.clothingId)}
-          onClose={closeStatusDialog}
+          onClose={() => closeStatusDialog(statusDialog.clothingId)}
         />
       )}
     </S.Container>

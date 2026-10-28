@@ -1,7 +1,6 @@
 import Button from '@/components/common/Button';
 import Dialog from '@/components/common/Dialog';
-
-export type ClothingStatusDialogVariant = 'processing' | 'failed';
+import type { ClothingStatusDialogVariant } from '@/pages/Closet/types';
 
 interface ClothingStatusDialogProps {
   isOpen: boolean;

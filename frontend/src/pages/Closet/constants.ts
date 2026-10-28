@@ -14,8 +14,3 @@ export const CLOTHING_CATEGORY_LABEL: Record<ClothingCategory, string> = {
   socks: '양말',
   accessories: '악세서리',
 };
-
-export const STATUS_POLL_INTERVAL_MS = 1000;
-
-// 상태 조회 API가 한 번에 받는 옷 id 개수의 상한이다.
-export const STATUS_POLL_BATCH_SIZE = 50;

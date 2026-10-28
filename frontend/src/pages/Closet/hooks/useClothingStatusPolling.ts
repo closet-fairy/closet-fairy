@@ -1,4 +1,5 @@
 import { useQueries } from '@tanstack/react-query';
+import { isUnauthorizedError } from '@/apis/authSession';
 import type { QueryFunctionContext } from '@tanstack/react-query';
 import {
   getClothingStatusClothingStatusGet,
@@ -9,10 +10,11 @@ import {
   patchClothingProgress,
   refetchClothingList,
 } from '@/pages/Closet/clothingListCache';
-import {
-  STATUS_POLL_BATCH_SIZE,
-  STATUS_POLL_INTERVAL_MS,
-} from '@/pages/Closet/constants';
+
+const STATUS_POLL_INTERVAL_MS = 1000;
+
+// 상태 조회 API가 한 번에 받는 옷 id 개수의 상한이다.
+const STATUS_POLL_BATCH_SIZE = 50;
 
 interface UseClothingStatusPollingParams {
   clothings: ClothingCard[];
@@ -67,7 +69,11 @@ const useClothingStatusPolling = (params: UseClothingStatusPollingParams) => {
           return status;
         },
         enabled: isEnabled,
-        refetchInterval: STATUS_POLL_INTERVAL_MS,
+        // 로그인이 만료되면 다시 로그인할 때까지 묻지 않는다.
+        refetchInterval: (query: { state: { error: unknown } }) =>
+          isUnauthorizedError(query.state.error)
+            ? false
+            : STATUS_POLL_INTERVAL_MS,
         gcTime: 0,
       };
     }),
