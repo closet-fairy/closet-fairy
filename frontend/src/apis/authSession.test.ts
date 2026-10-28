@@ -6,6 +6,7 @@ import {
   markSessionActive,
   reportUnauthorized,
   resetSession,
+  subscribeSessionEnd,
   subscribeSessionExpiry,
 } from './authSession';
 
@@ -48,6 +49,20 @@ describe('세션 만료 판정', () => {
     reportUnauthorized();
 
     expect(getIsSessionExpired()).toBe(false);
+  });
+});
+
+describe('세션 종료 알림', () => {
+  test('세션을 초기화하면 등록한 곳에 알리고, 등록을 풀면 더 알리지 않아야 한다.', () => {
+    const listener = vi.fn();
+    const unsubscribe = subscribeSessionEnd(listener);
+
+    resetSession();
+    expect(listener).toHaveBeenCalledTimes(1);
+
+    unsubscribe();
+    resetSession();
+    expect(listener).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -5,6 +5,8 @@ const UNAUTHORIZED_STATUS = 401;
 type Listener = () => void;
 
 const listeners = new Set<Listener>();
+// 세션이 끝날 때 계정마다 따로 들고 있던 상태를 비우려는 곳들이 등록한다.
+const sessionEndListeners = new Set<Listener>();
 let hasActiveSession = false;
 let isExpired = false;
 
@@ -30,6 +32,7 @@ export const reportUnauthorized = () => {
 
 export const resetSession = () => {
   hasActiveSession = false;
+  sessionEndListeners.forEach((listener) => listener());
 
   if (isExpired) {
     isExpired = false;
@@ -44,5 +47,13 @@ export const subscribeSessionExpiry = (listener: Listener) => {
 
   return () => {
     listeners.delete(listener);
+  };
+};
+
+export const subscribeSessionEnd = (listener: Listener) => {
+  sessionEndListeners.add(listener);
+
+  return () => {
+    sessionEndListeners.delete(listener);
   };
 };

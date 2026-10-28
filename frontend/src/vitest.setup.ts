@@ -6,7 +6,6 @@ import { resetClothingMocks } from '@/mocks/handlers/clothing';
 import { resetMemberMocks } from '@/mocks/handlers/member';
 import { resetRecommendationMocks } from '@/mocks/handlers/recommendation';
 import { server } from '@/mocks/node';
-import { resetClothingUploads } from '@/pages/Closet/clothingUploadStore';
 
 // jsdom에는 ResizeObserver가 없어서, 크기 변화를 지켜보는 컴포넌트가 테스트에서 멈추지 않도록 빈 구현을 둔다.
 vi.stubGlobal(
@@ -56,7 +55,6 @@ afterEach(() => {
   resetClothingMocks();
   resetMemberMocks();
   resetRecommendationMocks();
-  resetClothingUploads();
   resetSession();
 
   if (unhandledRequests.length > 0) {

@@ -1,5 +1,6 @@
 import type { QueryClient } from '@tanstack/react-query';
 import { ApiError } from '@/apis/apiError';
+import { subscribeSessionEnd } from '@/apis/authSession';
 import {
   getListClothingClothingGetInfiniteQueryKey,
   uploadClothingClothingPost,
@@ -34,11 +35,16 @@ const UNKNOWN_FILE_NAME = '이름 없는 사진';
  */
 let state: ClothingUploadState = { uploads: [], rejectedPhotos: [] };
 
+// 저장소를 비울 때마다 올린다. 그 전에 보낸 요청의 응답이 비운 뒤의 상태를 고치지 못하게 한다.
+let generation = 0;
+
 const listeners = new Set<() => void>();
 
 // 보내는 중이거나 실패해 남은 사진이 있으면 앱을 닫기 전에 브라우저가 한 번 묻게 한다.
 const warnBeforeUnload = (event: BeforeUnloadEvent) => {
   event.preventDefault();
+  // preventDefault만으로는 묻지 않는 예전 브라우저를 위해 함께 둔다.
+  event.returnValue = '';
 };
 
 const setState = (nextState: ClothingUploadState) => {
@@ -84,16 +90,28 @@ const sendUploads = async (
   uploads: ClothingUpload[],
 ) => {
   const ids = new Set(uploads.map((upload) => upload.id));
+  const sentGeneration = generation;
+  /*
+   * 받는 중이던 목록은 이 사진들이 빠진 응답이라 끊고 새로 받는다. 옷장을 떠나 있어도 미리 받아 둬야
+   * 돌아왔을 때 임시 카드가 사라진 자리가 비어 보이지 않는다.
+   */
+  const refetchList = () =>
+    queryClient.invalidateQueries({
+      queryKey: getListClothingClothingGetInfiniteQueryKey(),
+      refetchType: 'all',
+    });
 
   try {
     const result = await uploadClothingClothingPost({
       files: uploads.map((upload) => upload.file),
     });
 
-    // 받는 중이던 목록은 이 사진들이 빠진 응답이라, 끊고 새로 받은 뒤에 임시 카드를 치운다.
-    await queryClient.invalidateQueries({
-      queryKey: getListClothingClothingGetInfiniteQueryKey(),
-    });
+    await refetchList();
+
+    if (sentGeneration !== generation) {
+      return;
+    }
+
     updateUploads(ids, () => null);
 
     if (result.rejected.length > 0) {
@@ -109,9 +127,15 @@ const sendUploads = async (
       });
     }
   } catch (error) {
+    if (sentGeneration !== generation) {
+      return;
+    }
+
     const errorMessage =
       error instanceof ApiError ? error.message : '사진을 올리지 못했어요.';
 
+    // 서버가 받은 뒤 응답만 끊겼을 수도 있어서, 실제로 등록됐는지 목록으로 확인할 수 있게 다시 받는다.
+    void refetchList();
     updateUploads(ids, (upload) => ({
       ...upload,
       status: 'failed',
@@ -176,6 +200,10 @@ export const subscribeClothingUploads = (listener: () => void) => {
 };
 
 export const resetClothingUploads = () => {
+  generation += 1;
   state.uploads.forEach((upload) => URL.revokeObjectURL(upload.previewUrl));
   setState({ uploads: [], rejectedPhotos: [] });
 };
+
+// 같은 탭에서 다른 계정으로 로그인해도 이전 계정의 사진이 남거나 그 계정으로 다시 보내지지 않게 한다.
+subscribeSessionEnd(resetClothingUploads);
