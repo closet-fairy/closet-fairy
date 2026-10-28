@@ -1,8 +1,8 @@
 import { Toast } from '@base-ui/react/toast';
 import type { IconName } from '@/assets/icons';
 import Icon from '@/components/common/Icon';
-import type { ToastTone } from '@/components/common/ToastProvider/toast';
-import { isToastTone } from '@/components/common/ToastProvider/toast';
+import type { ToastTone } from '@/components/common/ToastProvider/ToastProvider.toast';
+import { isToastTone } from '@/components/common/ToastProvider/ToastProvider.toast';
 import * as S from './Toaster.styled';
 
 interface ToasterProps {

@@ -2,7 +2,7 @@ import { act, render, screen } from '@testing-library/react';
 import { useEffect } from 'react';
 import { afterEach, describe, expect, test } from 'vitest';
 import Toaster from '@/components/common/Toaster';
-import { showToast, toastManager } from './toast';
+import { showToast, toastManager } from './ToastProvider.toast';
 import ToastProvider from './ToastProvider';
 
 afterEach(() => {

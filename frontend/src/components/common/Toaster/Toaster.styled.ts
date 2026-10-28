@@ -1,6 +1,6 @@
 import { Toast } from '@base-ui/react/toast';
 import styled from '@emotion/styled';
-import type { ToastTone } from '@/components/common/ToastProvider/toast';
+import type { ToastTone } from '@/components/common/ToastProvider/ToastProvider.toast';
 import {
   bg,
   border,

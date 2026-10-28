@@ -1,7 +1,11 @@
 import { Toast } from '@base-ui/react/toast';
 import { useEffect } from 'react';
 import type { ReactNode } from 'react';
-import { markToastReady, TOAST_LIMIT, toastManager } from './toast';
+import {
+  markToastReady,
+  TOAST_LIMIT,
+  toastManager,
+} from './ToastProvider.toast';
 
 interface ToastProviderProps {
   children: ReactNode;

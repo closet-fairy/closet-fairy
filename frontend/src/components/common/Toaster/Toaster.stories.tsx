@@ -3,11 +3,11 @@ import { useEffect } from 'react';
 import StoryStack from '../../../../.storybook/StoryStack';
 import Button from '@/components/common/Button';
 import ToastProvider from '@/components/common/ToastProvider';
-import type { ToastTone } from '@/components/common/ToastProvider/toast';
+import type { ToastTone } from '@/components/common/ToastProvider/ToastProvider.toast';
 import {
   showToast,
   toastManager,
-} from '@/components/common/ToastProvider/toast';
+} from '@/components/common/ToastProvider/ToastProvider.toast';
 import Toaster from './Toaster';
 
 interface StoryToast {

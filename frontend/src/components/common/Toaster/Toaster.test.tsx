@@ -4,7 +4,7 @@ import ToastProvider from '@/components/common/ToastProvider';
 import {
   showToast,
   toastManager,
-} from '@/components/common/ToastProvider/toast';
+} from '@/components/common/ToastProvider/ToastProvider.toast';
 import Toaster from './Toaster';
 
 const renderToaster = () =>
