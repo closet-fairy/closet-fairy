@@ -22,6 +22,7 @@ interface GoingOutTimeFieldProps {
 interface SheetState {
   days: GoingOutDayOption[];
   draft: GoingOutDateTime;
+  preferredTime: string;
 }
 
 const GoingOutTimeField = (props: GoingOutTimeFieldProps) => {
@@ -32,6 +33,7 @@ const GoingOutTimeField = (props: GoingOutTimeFieldProps) => {
   const [sheet, setSheet] = useState<SheetState>(() => ({
     days,
     draft: value,
+    preferredTime: value.time,
   }));
 
   const selectedDay = sheet.days.find((day) => day.date === sheet.draft.date);
@@ -45,19 +47,28 @@ const GoingOutTimeField = (props: GoingOutTimeFieldProps) => {
   }));
 
   const handleTriggerClick = () => {
-    setSheet({ days, draft: fitGoingOutDateTime(days, value) });
+    setSheet({
+      days,
+      draft: fitGoingOutDateTime(days, value),
+      preferredTime: value.time,
+    });
     setIsOpen(true);
   };
 
+  // 날짜 휠을 지나가기만 해도 시각이 깎이지 않도록, 시각 휠에서 고른 시각을 기준으로 맞춘다.
   const handleDayChange = (date: string) => {
     setSheet((prev) => ({
       ...prev,
-      draft: fitGoingOutDateTime(prev.days, { date, time: prev.draft.time }),
+      draft: fitGoingOutDateTime(prev.days, { date, time: prev.preferredTime }),
     }));
   };
 
   const handleTimeChange = (time: string) => {
-    setSheet((prev) => ({ ...prev, draft: { ...prev.draft, time } }));
+    setSheet((prev) => ({
+      ...prev,
+      draft: { ...prev.draft, time },
+      preferredTime: time,
+    }));
   };
 
   const handleConfirm = () => {

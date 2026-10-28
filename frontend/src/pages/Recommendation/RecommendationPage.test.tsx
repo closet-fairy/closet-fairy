@@ -165,6 +165,38 @@ describe('기본 외출 시간 갱신', () => {
       screen.getByRole('button', { name: '외출 시간 돌아오는 시간 19:30' }),
     ).toBeInTheDocument();
   });
+
+  test('나가는 시간 시트에서 지금 값 그대로 선택하면 고른 값으로 남기지 않아, 슬롯이 바뀌면 현재 슬롯을 따라가야 한다.', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await pickGoingOutTime(user, startTrigger('09:00'), '09:00');
+    vi.setSystemTime(new Date('2026-10-14T09:40:00+09:00'));
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+
+    expect(startTrigger('09:30')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: '외출 시간 돌아오는 시간 14:30' }),
+    ).toBeInTheDocument();
+  });
+
+  test('돌아오는 시간 시트에서 지금 값 그대로 선택하면 고른 값으로 남기지 않아, 나가는 시간을 바꾸면 5시간 뒤를 따라가야 한다.', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await pickGoingOutTime(
+      user,
+      screen.getByRole('button', { name: '외출 시간 돌아오는 시간 14:00' }),
+      '14:00',
+    );
+    await pickGoingOutTime(user, startTrigger('09:00'), '12:00');
+
+    expect(
+      screen.getByRole('button', { name: '외출 시간 돌아오는 시간 17:00' }),
+    ).toBeInTheDocument();
+  });
 });
 
 describe('추천 요청 보내기', () => {
@@ -679,7 +711,27 @@ describe('외출 날짜', () => {
     ).toBeInTheDocument();
   });
 
-  test('시각 휠의 끝에서 더 내려도 날짜는 바뀌지 않아야 한다.', async () => {
+  test('날짜를 오가며 시각이 맞춰져도, 원래 날짜로 돌아오면 시각 휠에서 고른 시각으로 돌아가야 한다.', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(startTrigger('09:00'));
+    await user.click(await screen.findByRole('option', { name: '내일' }));
+    await user.click(screen.getByRole('option', { name: '08:00' }));
+    await user.click(screen.getByRole('option', { name: '오늘' }));
+
+    expect(
+      screen.getByRole('button', { name: '오늘 09:00 선택' }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole('option', { name: '내일' }));
+
+    expect(
+      screen.getByRole('button', { name: '내일 08:00 선택' }),
+    ).toBeInTheDocument();
+  });
+
+  test('시각 휠의 마지막 시각에서 아래 키를 눌러도 마지막 시각에 머물고 날짜는 그대로여야 한다.', async () => {
     const user = userEvent.setup();
     renderPage();
 
