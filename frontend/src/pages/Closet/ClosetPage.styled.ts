@@ -47,7 +47,6 @@ export const ListEnd = styled.div`
   flex-direction: column;
   align-items: center;
   gap: ${spacing[10]};
-  min-height: ${spacing[40]};
   /* 마지막 줄이 FAB에 가리지 않게 FAB 높이만큼 더 띄운다. */
   padding: ${spacing[16]} ${spacing[20]} calc(${FAB_SIZE}px + ${spacing[32]});
 `;
