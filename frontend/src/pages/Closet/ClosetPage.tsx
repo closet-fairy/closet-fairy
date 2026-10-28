@@ -1,4 +1,6 @@
-import { useCallback, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useNavigate, useSearch } from '@tanstack/react-router';
+import { useCallback, useEffect, useState } from 'react';
 import { isUnauthorizedError } from '@/apis/authSession';
 import Button from '@/components/common/Button';
 import Icon from '@/components/common/Icon';
@@ -6,10 +8,19 @@ import StatusView from '@/components/common/StatusView';
 import { useToastStackHeight } from '@/components/common/Toaster/Toaster.hooks';
 import TopBar from '@/components/common/TopBar';
 import type { ClothingCard as ClothingCardData } from '@/generated/models';
+import {
+  clearRejectedClothingPhotos,
+  dismissClothingUpload,
+  resendClothingUpload,
+} from './clothingUploadStore';
 import ClothingCard from './components/ClothingCard';
+import ClothingRegistration from './components/ClothingRegistration';
 import ClothingStatusDialog from './components/ClothingStatusDialog';
+import ServerRejectedDialog from './components/ServerRejectedDialog';
+import UploadCard from './components/UploadCard';
 import useClosetClothingList from './hooks/useClosetClothingList';
 import useClothingStatusPolling from './hooks/useClothingStatusPolling';
+import useClothingUploads from './hooks/useClothingUploads';
 import useLoadMoreTrigger from './hooks/useLoadMoreTrigger';
 import useRetryClothing from './hooks/useRetryClothing';
 import type { ClothingStatusDialogVariant } from './types';
@@ -49,6 +60,21 @@ const ClosetPage = () => {
     null,
   );
   const toastStackHeight = useToastStackHeight();
+  const queryClient = useQueryClient();
+  const { uploads, rejectedPhotos } = useClothingUploads();
+  const search = useSearch({ from: '/closet' });
+  const navigate = useNavigate();
+  // 다른 화면의 [옷 등록하기]로 들어오면 등록 방법 시트를 열어 둔 채로 시작한다.
+  const [isRegisterSheetOpen, setIsRegisterSheetOpen] = useState(
+    search.register === true,
+  );
+  const hasSearch = search.register !== undefined;
+
+  useEffect(() => {
+    if (hasSearch) {
+      void navigate({ to: '/closet', search: {}, replace: true });
+    }
+  }, [hasSearch, navigate]);
 
   if (statusDialog?.isOpen && listQuery.data !== undefined) {
     const dialogClothing = clothings.find(
@@ -97,13 +123,14 @@ const ClosetPage = () => {
   });
 
   // 로그인이 만료되면 전역 다이얼로그가 안내하므로, 그 뒤에 실패 화면을 겹치지 않고 로딩 화면을 둔다.
-  if (
-    listQuery.isPending ||
-    (listQuery.data === undefined && isUnauthorizedError(listQuery.error))
-  ) {
-    return (
-      <S.Container>
-        <TopBar title="옷장" />
+  const openRegisterSheet = () => setIsRegisterSheetOpen(true);
+
+  const renderBody = () => {
+    if (
+      listQuery.isPending ||
+      (listQuery.data === undefined && isUnauthorizedError(listQuery.error))
+    ) {
+      return (
         <StatusView
           visual={
             <S.Spinner>
@@ -112,15 +139,12 @@ const ClosetPage = () => {
           }
           title="옷장을 불러오는 중이에요"
         />
-      </S.Container>
-    );
-  }
+      );
+    }
 
-  // 다음 묶음을 불러오다 실패해도 쿼리 전체가 error가 되므로, 받아 둔 목록이 없을 때만 실패 화면을 보여 준다.
-  if (listQuery.data === undefined) {
-    return (
-      <S.Container>
-        <TopBar title="옷장" />
+    // 다음 묶음을 불러오다 실패해도 쿼리 전체가 error가 되므로, 받아 둔 목록이 없을 때만 실패 화면을 보여 준다.
+    if (listQuery.data === undefined) {
+      return (
         <StatusView
           visual={<Icon name="error" size="xl" />}
           title="옷장을 불러오지 못했어요"
@@ -136,14 +160,11 @@ const ClosetPage = () => {
             </Button>
           }
         />
-      </S.Container>
-    );
-  }
+      );
+    }
 
-  if (clothings.length === 0) {
-    return (
-      <S.Container>
-        <TopBar title="옷장" />
+    if (clothings.length === 0 && uploads.length === 0) {
+      return (
         <StatusView
           visual={
             <S.EmptyVisual>
@@ -153,79 +174,112 @@ const ClosetPage = () => {
           title="옷장이 비어 있어요"
           description="옷을 등록하면 그 옷으로 코디를 추천받을 수 있어요."
           actions={
-            <Button icon="add_a_photo" isFullWidth>
+            <Button
+              icon="add_a_photo"
+              isFullWidth
+              aria-haspopup="dialog"
+              onClick={openRegisterSheet}
+            >
               옷 등록하기
             </Button>
           }
         />
-      </S.Container>
-    );
-  }
+      );
+    }
 
+    return (
+      <>
+        <S.Grid>
+          {uploads.map((upload) => (
+            <S.GridItem key={upload.id}>
+              <UploadCard
+                upload={upload}
+                onResend={() =>
+                  void resendClothingUpload(queryClient, upload.id)
+                }
+                onDismiss={() => dismissClothingUpload(upload.id)}
+              />
+            </S.GridItem>
+          ))}
+          {clothings.map((clothing) => (
+            <S.GridItem key={clothing.clothing_id}>
+              <ClothingCard
+                clothing={clothing}
+                isRetrying={retryingIds.has(clothing.clothing_id)}
+                onShowStatus={() => {
+                  const content = toDialogContent(clothing);
+
+                  if (content !== null) {
+                    setStatusDialog({
+                      clothingId: clothing.clothing_id,
+                      isOpen: true,
+                      ...content,
+                    });
+                  }
+                }}
+                onRetry={() => retry(clothing.clothing_id)}
+              />
+            </S.GridItem>
+          ))}
+        </S.Grid>
+        <S.ListEnd ref={loadMoreRef}>
+          {isFetchingNextPage && (
+            <S.Spinner>
+              <Icon name="progress_activity" size="md" label="더 불러오는 중" />
+            </S.Spinner>
+          )}
+          {isNextPageFailed && (
+            <>
+              <S.ListEndMessage role="alert">
+                더 불러오지 못했어요
+              </S.ListEndMessage>
+              <Button
+                variant="outline"
+                size="sm"
+                icon="refresh"
+                onClick={loadNextPage}
+              >
+                다시 시도
+              </Button>
+            </>
+          )}
+        </S.ListEnd>
+        <S.Fab
+          type="button"
+          aria-label="옷 등록하기"
+          aria-haspopup="dialog"
+          $toastStackHeight={toastStackHeight}
+          onClick={openRegisterSheet}
+        >
+          <Icon name="add" size="lg" />
+        </S.Fab>
+        {statusDialog !== null && (
+          <ClothingStatusDialog
+            isOpen={statusDialog.isOpen}
+            variant={statusDialog.variant}
+            failureReason={statusDialog.failureReason}
+            isRetrying={retryingIds.has(statusDialog.clothingId)}
+            onRetry={() => retry(statusDialog.clothingId)}
+            onClose={() => closeStatusDialog(statusDialog.clothingId)}
+          />
+        )}
+      </>
+    );
+  };
+
+  // 상태가 바뀌어 본문이 바뀌어도 등록 흐름은 그대로 남도록 본문과 따로 둔다.
   return (
     <S.Container>
       <TopBar title="옷장" />
-      <S.Grid>
-        {clothings.map((clothing) => (
-          <S.GridItem key={clothing.clothing_id}>
-            <ClothingCard
-              clothing={clothing}
-              isRetrying={retryingIds.has(clothing.clothing_id)}
-              onShowStatus={() => {
-                const content = toDialogContent(clothing);
-
-                if (content !== null) {
-                  setStatusDialog({
-                    clothingId: clothing.clothing_id,
-                    isOpen: true,
-                    ...content,
-                  });
-                }
-              }}
-              onRetry={() => retry(clothing.clothing_id)}
-            />
-          </S.GridItem>
-        ))}
-      </S.Grid>
-      <S.ListEnd ref={loadMoreRef}>
-        {isFetchingNextPage && (
-          <S.Spinner>
-            <Icon name="progress_activity" size="md" label="더 불러오는 중" />
-          </S.Spinner>
-        )}
-        {isNextPageFailed && (
-          <>
-            <S.ListEndMessage role="alert">
-              더 불러오지 못했어요
-            </S.ListEndMessage>
-            <Button
-              variant="outline"
-              size="sm"
-              icon="refresh"
-              onClick={loadNextPage}
-            >
-              다시 시도
-            </Button>
-          </>
-        )}
-      </S.ListEnd>
-      <S.Fab
-        type="button"
-        aria-label="옷 등록하기"
-        $toastStackHeight={toastStackHeight}
-      >
-        <Icon name="add" size="lg" />
-      </S.Fab>
-      {statusDialog !== null && (
-        <ClothingStatusDialog
-          isOpen={statusDialog.isOpen}
-          variant={statusDialog.variant}
-          failureReason={statusDialog.failureReason}
-          isRetrying={retryingIds.has(statusDialog.clothingId)}
-          onRetry={() => retry(statusDialog.clothingId)}
-          onClose={() => closeStatusDialog(statusDialog.clothingId)}
-        />
-      )}
+      {renderBody()}
+      <ClothingRegistration
+        isSheetOpen={isRegisterSheetOpen}
+        onSheetOpenChange={setIsRegisterSheetOpen}
+      />
+      <ServerRejectedDialog
+        photos={rejectedPhotos}
+        onConfirm={clearRejectedClothingPhotos}
+      />
     </S.Container>
   );
 };
