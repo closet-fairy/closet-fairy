@@ -14,6 +14,8 @@ export type AttributeField = keyof ClothingUpdate;
 
 const UNKNOWN_SAVE_ERROR = '저장하지 못했어요.';
 
+const NOT_FOUND_STATUS = 404;
+
 /*
  * 속성은 바꾸는 즉시 그 필드만 저장한다. 화면에는 먼저 바꾼 값을 보여 주고(낙관적 반영), 한 옷의 요청은
  * 차례대로 보내 빠르게 여러 번 눌러도 마지막 값이 남게 한다. 실패하면 그 필드만 서버 값으로 되돌린다.
@@ -113,9 +115,15 @@ const useClothingAttributeSave = (clothingId: number) => {
             ? error.message
             : UNKNOWN_SAVE_ERROR;
 
-        // 응답이 오기 전에 상세를 떠났다면 행 아래 문구를 볼 수 없으므로, 마지막으로 바꾼 값의 실패만 토스트로 알린다.
+        /*
+         * 응답이 오기 전에 상세를 떠났다면 행 아래 문구를 볼 수 없으므로, 마지막으로 바꾼 값의 실패만 토스트로 알린다.
+         * 저장을 기다리는 사이 옷을 지워 떠난 경우(404)는 저장할 옷이 없으므로 알리지 않는다.
+         */
         if (!isMountedRef.current) {
-          if (isLatest()) {
+          const isDeleted =
+            error instanceof ApiError && error.status === NOT_FOUND_STATUS;
+
+          if (isLatest() && !isDeleted) {
             showToast({
               tone: 'error',
               title: failureTitle,
