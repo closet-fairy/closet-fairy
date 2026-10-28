@@ -4,7 +4,7 @@ import {
   createRouter,
   RouterProvider,
 } from '@tanstack/react-router';
-import { act, render, screen, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { delay, http, HttpResponse } from 'msw';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
@@ -147,7 +147,7 @@ describe('옷장 목록', () => {
     isListEndAlwaysVisible = true;
     await renderCloset();
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(screen.getAllByText(SECOND_PAGE_ITEM_NAME)).toHaveLength(
         SECOND_PAGE_ITEM_TOTAL,
       );
@@ -202,7 +202,7 @@ describe('빈 옷장과 불러오기 실패', () => {
     );
     const { queryClient } = await renderCloset();
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(
         queryClient.getQueryState(
           getListClothingClothingGetInfiniteQueryKey(CLOSET_LIST_PARAMS),
@@ -290,7 +290,7 @@ describe('처리 상태 갱신', () => {
     await renderCloset();
     await screen.findByText('대기 중');
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(screen.queryByText('대기 중')).not.toBeInTheDocument();
     });
     expect(screen.getAllByText('처리 중')).toHaveLength(2);
@@ -311,7 +311,7 @@ describe('처리 중·실패 카드 다이얼로그', () => {
     });
     await user.click(within(dialog).getByRole('button', { name: '닫기' }));
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(
         screen.queryByRole('dialog', { name: '아직 처리 중이에요' }),
       ).not.toBeInTheDocument();
@@ -332,7 +332,7 @@ describe('처리 중·실패 카드 다이얼로그', () => {
 
     await user.click(within(dialog).getByRole('button', { name: '재시도' }));
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(
         screen.queryByRole('dialog', { name: '등록하지 못했어요' }),
       ).not.toBeInTheDocument();
@@ -355,7 +355,7 @@ describe('처리 중·실패 카드 다이얼로그', () => {
     const retryButton = await screen.findByRole('button', { name: '재시도' });
     await user.click(retryButton);
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(retryButton).toBeDisabled();
     });
     await user.click(retryButton);
@@ -408,7 +408,7 @@ describe('처리 중·실패 카드 다이얼로그', () => {
 
     await user.click(await screen.findByRole('button', { name: '재시도' }));
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(listRequestCount).toBe(2);
     });
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();

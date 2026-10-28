@@ -4,6 +4,8 @@ import styled from '@emotion/styled';
 import {
   bg,
   border,
+  duration,
+  easing,
   fg,
   opacity,
   radius,
@@ -17,6 +19,7 @@ type ImageTone = 'default' | 'processing' | 'failed';
 const PROCESSING_BLUR = '3px';
 const STATUS_BADGE_SIZE = 36;
 const RETRY_BUTTON_HEIGHT = 32;
+const RETRY_PRESSED_SCALE = 0.98;
 // 이름·분류 두 줄 높이. 처리 중 카드처럼 글이 없어도 줄이 밀리지 않게 자리를 남긴다.
 const CAPTION_MIN_HEIGHT = 38;
 
@@ -165,6 +168,11 @@ export const RetryButton = styled.button`
   border-radius: ${radius.sm};
   background-color: ${bg.neutral.strong};
   color: ${fg.white};
+  transition: transform ${duration.fast} ${easing.standard};
+
+  &:active:not(:disabled) {
+    transform: scale(${RETRY_PRESSED_SCALE});
+  }
 
   /* 보이는 크기는 32px이지만 누르는 영역은 44px로 넓힌다. */
   &::after {

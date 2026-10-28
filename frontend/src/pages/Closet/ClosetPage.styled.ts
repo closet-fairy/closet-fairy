@@ -15,6 +15,7 @@ import {
 } from '@/styles/tokens';
 
 const FAB_SIZE = 56;
+const FAB_PRESSED_SCALE = 0.94;
 const EMPTY_VISUAL_SIZE = 88;
 
 const spin = keyframes`
@@ -106,10 +107,10 @@ export const Fab = styled.button<{ $toastStackHeight: string | null }>`
   background-color: ${bg.neutral.strong};
   box-shadow: ${shadow.lg};
   color: ${fg.white};
+  transition: transform ${duration.fast} ${easing.standard};
 
-  &:focus-visible {
-    outline: 2px solid ${border.neutral.strong};
-    outline-offset: 2px;
+  &:active {
+    transform: scale(${FAB_PRESSED_SCALE});
   }
 
   @media (prefers-reduced-motion: reduce) {
