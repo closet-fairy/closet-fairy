@@ -51,7 +51,6 @@ const ellipsis = css`
 export const Container = styled.div`
   position: relative;
   isolation: isolate;
-  min-width: 0;
 `;
 
 // 처리 중·실패 카드는 어디를 눌러도 상태 다이얼로그가 열리도록 카드 전체를 덮는다.

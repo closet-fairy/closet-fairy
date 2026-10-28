@@ -129,6 +129,7 @@ const ClosetPage = () => {
             <Button
               icon="refresh"
               isFullWidth
+              isLoading={listQuery.isFetching}
               onClick={() => void listQuery.refetch()}
             >
               다시 시도
