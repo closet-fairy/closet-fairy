@@ -24,6 +24,7 @@ const ClothingCard = (props: ClothingCardProps) => {
     <S.Image
       src={clothing.image_url}
       alt=""
+      loading="lazy"
       $isDimmed={isProcessing}
       onError={() => setBrokenImageUrl(clothing.image_url)}
     />

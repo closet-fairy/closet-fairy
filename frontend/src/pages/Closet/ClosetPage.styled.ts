@@ -28,11 +28,15 @@ export const Container = styled.div`
   background-color: ${bg.white};
 `;
 
-export const Grid = styled.div`
+export const Grid = styled.ul`
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: ${spacing[14]} ${spacing[8]};
   padding: ${spacing[8]} ${spacing[20]} 0;
+`;
+
+export const GridItem = styled.li`
+  min-width: 0;
 `;
 
 export const ListEnd = styled.div`

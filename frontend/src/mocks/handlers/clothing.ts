@@ -28,7 +28,7 @@ const MOCK_CLOTHING_ID = {
  * 옷장 목록용 옷 id. 목록은 id 내림차순이라, 처리 중인 옷이 실제처럼 맨 앞에 오도록
  * 편집기용 옷(MOCK_CLOTHING_ID)보다 큰 구간을 쓴다.
  */
-export const MOCK_LIST_ID = {
+const MOCK_LIST_ID = {
   FIRST: 600,
   LAST: 635,
   PROCESSING: 635,
