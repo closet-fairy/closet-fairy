@@ -2,13 +2,11 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { isUnauthorizedError } from '@/apis/authSession';
 import { showToast } from '@/components/common/ToastProvider/ToastProvider.toast';
-import {
-  getListClothingClothingGetInfiniteQueryKey,
-  useRetryClothingClothingClothingIdRetryPost,
-} from '@/generated/endpoints/clothing/clothing';
+import { useRetryClothingClothingClothingIdRetryPost } from '@/generated/endpoints/clothing/clothing';
 import {
   patchClothingProgress,
   refetchClothingList,
+  refetchInflightClothingList,
 } from '@/apis/clothingListCache';
 
 const NOT_FOUND_STATUS = 404;
@@ -47,12 +45,8 @@ const useRetryClothing = (params: UseRetryClothingParams) => {
         onRetried(clothingId);
         patchClothingProgress(queryClient, [progress]);
 
-        // 재시도 전에 보낸 목록 요청이 늦게 오면 실패 상태로 덮으므로, 받는 중이던 목록은 새로 받는다.
-        const listQueryKey = getListClothingClothingGetInfiniteQueryKey();
-
-        if (queryClient.isFetching({ queryKey: listQueryKey }) > 0) {
-          void queryClient.invalidateQueries({ queryKey: listQueryKey });
-        }
+        // 재시도 전에 보낸 목록 요청이 늦게 오면 실패 상태로 덮는다.
+        refetchInflightClothingList(queryClient);
       },
       onError: (error, { clothingId }) => {
         // 로그인 만료는 전역 다이얼로그가 안내한다.

@@ -4,6 +4,7 @@ import { ApiError } from '@/apis/apiError';
 import { isUnauthorizedError } from '@/apis/authSession';
 import { patchClothingCard } from '@/apis/clothingListCache';
 import { showToast } from '@/components/common/ToastProvider/ToastProvider.toast';
+import { CLOTHING_NOT_FOUND_CODE } from '@/constants/clothingErrorCode';
 import {
   getGetClothingClothingClothingIdGetQueryKey,
   updateClothingClothingClothingIdPatch,
@@ -13,8 +14,6 @@ import type { ClothingDetail, ClothingUpdate } from '@/generated/models';
 export type AttributeField = keyof ClothingUpdate;
 
 const UNKNOWN_SAVE_ERROR = '저장하지 못했어요.';
-
-const CLOTHING_NOT_FOUND_CODE = 'CLOTHING_NOT_FOUND';
 
 /*
  * 속성은 바꾸는 즉시 그 필드만 저장한다. 화면에는 먼저 바꾼 값을 보여 주고(낙관적 반영), 한 옷의 요청은

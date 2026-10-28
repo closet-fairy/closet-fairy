@@ -4,11 +4,9 @@ import { removeClothingCard } from '@/apis/clothingListCache';
 import Button from '@/components/common/Button';
 import Dialog from '@/components/common/Dialog';
 import { showToast } from '@/components/common/ToastProvider/ToastProvider.toast';
+import { CLOTHING_NOT_FOUND_CODE } from '@/constants/clothingErrorCode';
 import { useDeleteClothingClothingClothingIdDelete } from '@/generated/endpoints/clothing/clothing';
 import * as S from './DeleteClothingDialog.styled';
-
-// 프록시나 경로 문제로 난 404와 구분하려고, 서버가 옷을 찾지 못했다고 답한 경우만 이미 지워진 옷으로 본다.
-const CLOTHING_NOT_FOUND_CODE = 'CLOTHING_NOT_FOUND';
 
 const UNKNOWN_DELETE_ERROR = '삭제하지 못했어요.';
 
@@ -30,7 +28,7 @@ const DeleteClothingDialog = (props: DeleteClothingDialogProps) => {
 
   /*
    * 요청 중에 뒤로 가기 등으로 모달이 사라져도 목록 정리와 토스트는 빠지지 않도록, mutate 콜백이 아닌 훅 옵션에서 처리한다.
-   * 이미 지워진 옷이면 지우려던 목적은 이룬 것이다.
+   * 서버가 옷을 찾지 못했다고 답하면 이미 지워진 것이라, 지우려던 목적은 이룬 것이다.
    */
   const deletion = useDeleteClothingClothingClothingIdDelete({
     mutation: {
