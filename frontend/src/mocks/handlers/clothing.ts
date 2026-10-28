@@ -401,7 +401,10 @@ const getEditableClothing = (clothingIdParam: string) => {
     return { clothing: undefined, error: ERRORS.NOT_FOUND };
   }
 
-  if (clothing.clothing_id === MOCK_CLOTHING_ID.NOT_EDITABLE) {
+  if (
+    clothing.clothing_id === MOCK_CLOTHING_ID.NOT_EDITABLE ||
+    clothing.processing_status_cd !== 'completed'
+  ) {
     return { clothing: undefined, error: ERRORS.NOT_EDITABLE };
   }
 
@@ -606,14 +609,10 @@ export const clothingHandlers = [
   http.patch<ClothingParams>(
     '/api/clothing/:clothingId',
     async ({ params, request }) => {
-      const clothing = clothings.get(Number(params.clothingId));
+      const { clothing, error } = getEditableClothing(params.clothingId);
 
       if (clothing === undefined) {
-        return errorResponse(ERRORS.NOT_FOUND);
-      }
-
-      if (clothing.processing_status_cd !== 'completed') {
-        return errorResponse(ERRORS.NOT_EDITABLE);
+        return errorResponse(error);
       }
 
       const result = strictClothingUpdate.safeParse(await request.json());
