@@ -1,7 +1,15 @@
 import { css, keyframes } from '@emotion/react';
 import type { SerializedStyles } from '@emotion/react';
 import styled from '@emotion/styled';
-import { bg, fg, opacity, radius, spacing, typography } from '@/styles/tokens';
+import {
+  bg,
+  border,
+  fg,
+  opacity,
+  radius,
+  spacing,
+  typography,
+} from '@/styles/tokens';
 
 type ImageTone = 'default' | 'processing' | 'failed';
 
@@ -38,7 +46,22 @@ const ellipsis = css`
 `;
 
 export const Container = styled.div`
+  position: relative;
+  isolation: isolate;
   min-width: 0;
+`;
+
+// 처리 중·실패 카드는 어디를 눌러도 상태 다이얼로그가 열리도록 카드 전체를 덮는다.
+export const StatusButton = styled.button`
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: ${radius.sm};
+
+  &:focus-visible {
+    outline: 2px solid ${border.neutral.strong};
+    outline-offset: 2px;
+  }
 `;
 
 export const ImageBox = styled.div<{ $tone: ImageTone }>`
@@ -133,6 +156,7 @@ export const FailedIcon = styled.span`
 export const RetryButton = styled.button`
   ${typography.caption1Strong}
   position: relative;
+  z-index: 2;
   display: flex;
   align-items: center;
   gap: ${spacing[4]};

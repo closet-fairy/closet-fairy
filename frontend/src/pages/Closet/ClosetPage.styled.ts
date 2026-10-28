@@ -4,6 +4,8 @@ import { BOTTOM_TAB_BAR_HEIGHT } from '@/components/BottomTabBar/BottomTabBar.st
 import {
   bg,
   border,
+  duration,
+  easing,
   fg,
   radius,
   shadow,
@@ -81,13 +83,19 @@ export const EmptyVisual = styled.span`
   color: ${fg.neutral.pale};
 `;
 
-export const Fab = styled.button`
+// 토스트가 떠 있으면 화면 폭을 가로지르는 토스트에 가리지 않도록 그 위로 올라간다.
+export const Fab = styled.button<{ $toastStackHeight: string | null }>`
   position: fixed;
   right: ${spacing[20]};
   bottom: calc(
-    ${BOTTOM_TAB_BAR_HEIGHT}px + ${spacing[16]} +
+    ${BOTTOM_TAB_BAR_HEIGHT}px +
+      ${({ $toastStackHeight }) =>
+        $toastStackHeight === null
+          ? spacing[16]
+          : `${$toastStackHeight} + ${spacing[12]}`} +
       env(safe-area-inset-bottom, 0px)
   );
+  transition: bottom ${duration.normal} ${easing.standard};
   z-index: ${zIndex.sticky};
   display: flex;
   align-items: center;
@@ -102,5 +110,9 @@ export const Fab = styled.button`
   &:focus-visible {
     outline: 2px solid ${border.neutral.strong};
     outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
   }
 `;

@@ -4,12 +4,16 @@ import {
   createRouter,
   RouterProvider,
 } from '@tanstack/react-router';
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { http, HttpResponse } from 'msw';
+import { delay, http, HttpResponse } from 'msw';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { getListClothingClothingGetInfiniteQueryKey } from '@/generated/endpoints/clothing/clothing';
-import type { ClothingPage } from '@/generated/models';
+import type {
+  ClothingCard,
+  ClothingPage,
+  ClothingProgress,
+} from '@/generated/models';
 import { server } from '@/mocks/node';
 import { CLOSET_LIST_PARAMS } from '@/pages/Closet/constants';
 import { routeTree } from '@/routeTree.gen';
@@ -212,5 +216,201 @@ describe('빈 옷장과 불러오기 실패', () => {
     expect(
       screen.queryByText('옷장을 불러오지 못했어요'),
     ).not.toBeInTheDocument();
+  });
+});
+
+const readStatusIds = (request: Request) =>
+  (new URL(request.url).searchParams.get('ids') ?? '').split(',').map(Number);
+
+const toProgress = (
+  clothingId: number,
+  progress: Partial<ClothingProgress>,
+): ClothingProgress => ({
+  clothing_id: clothingId,
+  processing_status_cd: 'processing',
+  is_queued: false,
+  image_url: '/media/clothing/1/sample.webp',
+  failure_reason: null,
+  ...progress,
+});
+
+const toCompletedCard = (clothingId: number): ClothingCard => ({
+  ...toProgress(clothingId, { processing_status_cd: 'completed' }),
+  is_new: true,
+  category_cd: 'top',
+  item_name: `완료된 옷 ${clothingId}`,
+  created_at: '2026-10-29T10:00:00+09:00',
+});
+
+describe('처리 상태 갱신', () => {
+  test('처리가 끝난 옷이 생기면 목록을 한 번만 다시 받아 이름을 채워야 한다.', async () => {
+    let listRequestCount = 0;
+    let finishedIds: number[] = [];
+    server.use(
+      http.get('/api/clothing/status', ({ request }) => {
+        finishedIds = readStatusIds(request);
+
+        return HttpResponse.json({
+          items: finishedIds.map((id) =>
+            toProgress(id, { processing_status_cd: 'completed' }),
+          ),
+        });
+      }),
+      http.get('/api/clothing', () => {
+        listRequestCount += 1;
+
+        return finishedIds.length === 0
+          ? undefined
+          : HttpResponse.json<ClothingPage>({
+              items: finishedIds.map(toCompletedCard),
+              next_cursor: null,
+            });
+      }),
+    );
+    await renderCloset();
+
+    expect(await screen.findAllByText(/^완료된 옷 /)).toHaveLength(2);
+    expect(screen.queryByText('처리 중')).not.toBeInTheDocument();
+    expect(listRequestCount).toBe(2);
+  });
+
+  test('대기 중이던 옷이 처리를 시작하면 목록을 다시 받지 않고 카드만 바꿔야 한다.', async () => {
+    let listRequestCount = 0;
+    server.use(
+      http.get('/api/clothing/status', ({ request }) =>
+        HttpResponse.json({
+          items: readStatusIds(request).map((id) => toProgress(id, {})),
+        }),
+      ),
+      http.get('/api/clothing', () => {
+        listRequestCount += 1;
+        return undefined;
+      }),
+    );
+    await renderCloset();
+    await screen.findByText('대기 중');
+
+    await vi.waitFor(() => {
+      expect(screen.queryByText('대기 중')).not.toBeInTheDocument();
+    });
+    expect(screen.getAllByText('처리 중')).toHaveLength(2);
+    expect(listRequestCount).toBe(1);
+  });
+});
+
+describe('처리 중·실패 카드 다이얼로그', () => {
+  test('처리 중인 카드를 누르면 아직 처리 중이라는 다이얼로그를 띄워야 한다.', async () => {
+    const user = userEvent.setup();
+    await renderCloset();
+
+    await user.click(
+      await screen.findByRole('button', { name: '처리 중인 옷' }),
+    );
+    const dialog = await screen.findByRole('dialog', {
+      name: '아직 처리 중이에요',
+    });
+    await user.click(within(dialog).getByRole('button', { name: '닫기' }));
+
+    await vi.waitFor(() => {
+      expect(
+        screen.queryByRole('dialog', { name: '아직 처리 중이에요' }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  test('실패 카드를 누르면 서버가 준 사유를 보여 주고, 재시도하면 닫히며 카드가 처리 중으로 바뀌어야 한다.', async () => {
+    const user = userEvent.setup();
+    await renderCloset();
+
+    await user.click(
+      await screen.findByRole('button', { name: '등록에 실패한 옷' }),
+    );
+    const dialog = await screen.findByRole('dialog', {
+      name: '등록하지 못했어요',
+    });
+    expect(dialog).toHaveAccessibleDescription('배경 제거에 실패했습니다.');
+
+    await user.click(within(dialog).getByRole('button', { name: '재시도' }));
+
+    await vi.waitFor(() => {
+      expect(
+        screen.queryByRole('dialog', { name: '등록하지 못했어요' }),
+      ).not.toBeInTheDocument();
+    });
+    expect(screen.queryByText('등록 실패')).not.toBeInTheDocument();
+    expect(screen.getAllByText('대기 중')).toHaveLength(2);
+  });
+
+  test('재시도 요청이 나가 있는 동안에는 카드의 재시도 버튼을 다시 누를 수 없어야 한다.', async () => {
+    const user = userEvent.setup();
+    let retryRequestCount = 0;
+    server.use(
+      http.post('/api/clothing/:clothingId/retry', async () => {
+        retryRequestCount += 1;
+        await delay('infinite');
+      }),
+    );
+    await renderCloset();
+
+    const retryButton = await screen.findByRole('button', { name: '재시도' });
+    await user.click(retryButton);
+
+    await vi.waitFor(() => {
+      expect(retryButton).toBeDisabled();
+    });
+    await user.click(retryButton);
+    expect(retryRequestCount).toBe(1);
+  });
+
+  test('재시도 요청이 너무 잦아 거절되면 서버 문구를 토스트로 알려야 한다.', async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.post('/api/clothing/:clothingId/retry', () =>
+        HttpResponse.json(
+          {
+            code: 'CLOTHING_TOO_MANY_REQUESTS',
+            message:
+              '옷 등록 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.',
+          },
+          { status: 429 },
+        ),
+      ),
+    );
+    await renderCloset();
+
+    await user.click(await screen.findByRole('button', { name: '재시도' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '옷 등록 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.',
+    );
+    expect(screen.getByText('등록 실패')).toBeInTheDocument();
+  });
+
+  test('이미 실패 상태가 아니라 재시도가 거절되면 알리지 않고 목록을 다시 받아야 한다.', async () => {
+    const user = userEvent.setup();
+    let listRequestCount = 0;
+    server.use(
+      http.post('/api/clothing/:clothingId/retry', () =>
+        HttpResponse.json(
+          {
+            code: 'CLOTHING_NOT_RETRYABLE',
+            message: '처리에 실패한 옷만 다시 처리할 수 있습니다.',
+          },
+          { status: 409 },
+        ),
+      ),
+      http.get('/api/clothing', () => {
+        listRequestCount += 1;
+        return undefined;
+      }),
+    );
+    await renderCloset();
+
+    await user.click(await screen.findByRole('button', { name: '재시도' }));
+
+    await vi.waitFor(() => {
+      expect(listRequestCount).toBe(2);
+    });
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });
