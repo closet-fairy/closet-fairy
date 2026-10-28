@@ -1,11 +1,20 @@
 """E2E 스크립트의 외출 시각 계산과 요약 출력 테스트."""
 
 from datetime import datetime, timedelta
+from types import SimpleNamespace
 
 import pytest
 
 from app.services.weather.base_time import KST
-from scripts.recommendation_e2e import PreflightError, going_out_window, print_runs
+from scripts.recommendation_e2e import (
+    MEMBERS,
+    SCENARIOS,
+    PreflightError,
+    going_out_window,
+    print_runs,
+    request_body,
+    start_session,
+)
 
 
 def _at(hour: int, minute: int) -> datetime:
@@ -38,6 +47,73 @@ def test_end_may_cross_midnight():
 def test_start_past_midnight_is_rejected(now):
     with pytest.raises(PreflightError):
         going_out_window(now, hours=4)
+
+
+@pytest.mark.parametrize(
+    ("now", "expected_start"),
+    [
+        (_at(14, 5), datetime(2026, 10, 11, 14, 30, tzinfo=KST)),
+        (_at(23, 45), datetime(2026, 10, 11, 0, 0, tzinfo=KST)),
+    ],
+)
+def test_tomorrow_moves_start_to_next_day_even_before_midnight(now, expected_start):
+    start, end = going_out_window(now, hours=4, date_cd="tomorrow")
+
+    assert start == expected_start
+    assert end == expected_start + timedelta(hours=4)
+
+
+@pytest.mark.parametrize("date_cd", ["today", "tomorrow"])
+def test_request_body_sends_going_out_date(date_cd):
+    args = SimpleNamespace(sido="서울특별시", sigungu="성동구", date=date_cd)
+    start, end = _at(14, 30), _at(18, 30)
+
+    body = request_body(SCENARIOS["dev"][0], start, end, args)
+
+    assert body["going_out_date_cd"] == date_cd
+    assert (body["going_out_start_time"], body["going_out_end_time"]) == ("14:30", "18:30")
+
+
+class _FakeResponse:
+    status_code = 202
+    text = ""
+
+    def __init__(self, echoed: str | None) -> None:
+        self.headers = {"x-request-id": echoed} if echoed else {}
+
+    def json(self) -> dict:
+        return {"recommendation_session_id": 7}
+
+
+class _FakeClient:
+    def __init__(self) -> None:
+        self.headers: list[dict] = []
+
+    async def post(self, url, json=None, headers=None):
+        self.headers.append(headers)
+        return _FakeResponse((headers or {}).get("X-Request-ID"))
+
+
+@pytest.mark.parametrize("request_id", [None, "e2e89-dev-D1-start-20261028T010203-1"])
+async def test_start_session_sends_request_id_only_when_given(monkeypatch, request_id):
+    async def owner(session_id):
+        return 3
+
+    monkeypatch.setattr("scripts.recommendation_e2e.find_session_member_id", owner)
+    client = _FakeClient()
+    args = SimpleNamespace(sido="서울특별시", sigungu="성동구", date="tomorrow")
+
+    run, _ = await start_session(
+        client, SCENARIOS["dev"][0], MEMBERS["dev"], 3, args, request_id=request_id
+    )
+
+    if request_id is None:
+        assert client.headers == [{}]
+        assert "request_id" not in run
+    else:
+        assert client.headers == [{"X-Request-ID": request_id}]
+        assert run["request_id"] == run["request_id_echoed"] == request_id
+    assert run["recommendation_session_id"] == 7
 
 
 def _run(status: str, elapsed_s: float) -> dict:

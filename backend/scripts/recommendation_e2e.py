@@ -47,6 +47,10 @@ API는 개발용 로그인(GET /auth/dev-login)으로 서버의 DEV_MEMBER_ID �
        python scripts/aggregate_metrics.py e2e_server.log --e2e e2e_dev.json e2e_sparse.json
   7. 끝나면 .env의 DEV_MEMBER_ID를 원래 값으로 되돌린다.
 
+외출 날짜: 기본값은 --date today다. 외출 시작이 내일로 넘어가는 자정 직전에는 today로 실행할 수
+없어 --date tomorrow로 돌릴 수 있다. 내일 외출은 날씨·프롬프트 조건이 달라지므로 정식 기록은
+today로 남긴다. 어느 쪽으로 돌렸는지는 결과 JSON의 meta.going_out_date_cd에 남는다.
+
 비 오는 날: 실제 날씨로는 비 오는 날을 고를 수 없다. rainy 회차는 TPO만 비 오는 날이고 날씨는 실제
 값이다. 비 예보 날씨는 아래로 따로 확인하고, 이 결과는 API를 거치지 않은 것(날씨 고정, 저장·폴링
 없음)이므로 실제 API 결과와 구분해 밝힌다:
@@ -184,15 +188,20 @@ class PreflightError(Exception):
     pass
 
 
-def going_out_window(now: datetime, hours: int) -> tuple[datetime, datetime]:
+def going_out_window(
+    now: datetime, hours: int, date_cd: str = "today"
+) -> tuple[datetime, datetime]:
     earliest = now + START_MARGIN
     start = earliest.replace(minute=0, second=0, microsecond=0)
     while start < earliest:
         start += timedelta(minutes=30)
-    if start.date() != now.date():
+    if date_cd == "tomorrow":
+        # 서버도 tomorrow면 서버 기준 오늘 + 1일로 보고 지난 시각 검사를 하지 않는다
+        start = datetime.combine(now.date() + timedelta(days=1), start.timetz())
+    elif start.date() != now.date():
         raise PreflightError(
-            "외출 시작 시각이 내일로 넘어갑니다. API는 오늘 날짜 기준이라 자정 직전에는 "
-            "실행할 수 없습니다. 자정이 지난 뒤 다시 실행하세요."
+            "외출 시작 시각이 내일로 넘어갑니다. --date today로는 자정 직전에 실행할 수 "
+            "없습니다. 자정이 지난 뒤 다시 실행하거나 --date tomorrow로 실행하세요."
         )
     return start, start + timedelta(hours=hours)
 
@@ -300,35 +309,42 @@ def request_body(scenario: Scenario, start: datetime, end: datetime, args) -> di
         "tpo_text": scenario.tpo_text,
         "going_out_start_time": start.strftime("%H:%M"),
         "going_out_end_time": end.strftime("%H:%M"),
+        "going_out_date_cd": args.date,
     }
 
 
-async def run_one(
+async def start_session(
     client: httpx.AsyncClient,
     scenario: Scenario,
     member: Member,
     member_id: int,
-    rate: bool,
     args,
-) -> dict:
-    start, end = going_out_window(datetime.now(KST), scenario.hours)
+    request_id: str | None = None,
+) -> tuple[dict, float]:
+    start, end = going_out_window(datetime.now(KST), scenario.hours, args.date)
     run = {
         "scenario": scenario.name,
         "tpo_cd": scenario.tpo_cd,
         "tpo_text": scenario.tpo_text,
         "going_out": f"{start:%H:%M}-{end:%H:%M}",
     }
+    headers = {}
+    if request_id is not None:
+        headers["X-Request-ID"] = request_id
+        run["request_id"] = request_id
     started = time.perf_counter()
     response = await client.post(
-        "/recommendation-sessions", json=request_body(scenario, start, end, args)
+        "/recommendation-sessions", json=request_body(scenario, start, end, args), headers=headers
     )
+    if request_id is not None:
+        run["request_id_echoed"] = response.headers.get("x-request-id")
     if response.status_code != 202:
         return {
             **run,
             "passed": False,
             "failures": [f"POST {response.status_code}"],
             "error": response.text,
-        }
+        }, started
     session_id = response.json()["recommendation_session_id"]
     run["recommendation_session_id"] = session_id
 
@@ -341,14 +357,19 @@ async def run_one(
             f"{member.label} id {member_id}와 다릅니다. "
             ".env를 바꾼 뒤 서버를 다시 띄웠는지 확인하세요."
         )
+    return run, started
 
+
+async def inspect_session(
+    client: httpx.AsyncClient, run: dict, started: float, member: Member, member_id: int
+) -> tuple[dict, list[str], dict]:
+    session_id = run["recommendation_session_id"]
     data = await poll(client, session_id)
     elapsed_s = round(time.perf_counter() - started, 1)
     outfits = data["outfits"]
     weather = data["weather"] or {}
     # 취소하면 코디가 지워지므로 세션을 끝내기 전에 검사한다
     db_outfit_count, invalid_item_count = await check_saved_items(session_id, member_id)
-    ended_by, end_status_code = await end_session(client, session_id, outfits, rate)
 
     status = data["generation_status_cd"]
     failures = []
@@ -362,10 +383,8 @@ async def run_one(
         failures.append("API·DB 코디 수 다름")
     if data["is_clothing_shortage"] != member.is_clothing_shortage:
         failures.append("의류 부족 표시가 기대와 다름")
-    if end_status_code != 200:
-        failures.append(f"{ended_by} {end_status_code}")
 
-    return {
+    inspected = {
         **run,
         "elapsed_s": elapsed_s,
         "generation_status_cd": status,
@@ -379,6 +398,29 @@ async def run_one(
         "weather_is_fallback": weather.get("is_fallback"),
         "weather_condition_cd": weather.get("weather_condition_cd"),
         "temperature": weather.get("temperature"),
+    }
+    return inspected, failures, data
+
+
+async def run_one(
+    client: httpx.AsyncClient,
+    scenario: Scenario,
+    member: Member,
+    member_id: int,
+    rate: bool,
+    args,
+) -> dict:
+    run, started = await start_session(client, scenario, member, member_id, args)
+    if "recommendation_session_id" not in run:
+        return run
+    run, failures, data = await inspect_session(client, run, started, member, member_id)
+    ended_by, end_status_code = await end_session(
+        client, run["recommendation_session_id"], data["outfits"], rate
+    )
+    if end_status_code != 200:
+        failures.append(f"{ended_by} {end_status_code}")
+    return {
+        **run,
         "ended_by": ended_by,
         "end_status_code": end_status_code,
         "passed": not failures,
@@ -418,6 +460,7 @@ def build_meta(settings: Settings, member: Member, member_id: int, args) -> dict
         "member_id": member_id,
         "base_url": args.base_url,
         "location": f"{args.sido} {args.sigungu}",
+        "going_out_date_cd": args.date,
         "rate_last": args.rate,
     }
 
@@ -458,6 +501,7 @@ async def main() -> int:
     parser.add_argument("--base-url", default="http://127.0.0.1:8000")
     parser.add_argument("--sido", default="서울특별시")
     parser.add_argument("--sigungu", default="성동구")
+    parser.add_argument("--date", choices=["today", "tomorrow"], default="today", help="외출 날짜")
     parser.add_argument("--json", type=Path, help="결과를 JSON 파일로도 저장")
     args = parser.parse_args()
 
