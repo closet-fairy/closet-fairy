@@ -1,3 +1,4 @@
+import Add from '@material-symbols/svg-400/outlined/add.svg?react';
 import AddAPhoto from '@material-symbols/svg-400/outlined/add_a_photo.svg?react';
 import ArrowBack from '@material-symbols/svg-400/outlined/arrow_back.svg?react';
 import ArrowForward from '@material-symbols/svg-400/outlined/arrow_forward.svg?react';
@@ -42,6 +43,7 @@ import Refresh from '@material-symbols/svg-400/outlined/refresh.svg?react';
 import RestartAlt from '@material-symbols/svg-400/outlined/restart_alt.svg?react';
 import RotateLeft from '@material-symbols/svg-400/outlined/rotate_left.svg?react';
 import RotateRight from '@material-symbols/svg-400/outlined/rotate_right.svg?react';
+import Schedule from '@material-symbols/svg-400/outlined/schedule.svg?react';
 import Search from '@material-symbols/svg-400/outlined/search.svg?react';
 import Star from '@material-symbols/svg-400/outlined/star.svg?react';
 import StarFill from '@material-symbols/svg-400/outlined/star-fill.svg?react';
@@ -53,6 +55,7 @@ import WeatherMix from '@material-symbols/svg-400/outlined/weather_mix.svg?react
 import WeatherSnowy from '@material-symbols/svg-400/outlined/weather_snowy.svg?react';
 
 export const icons = {
+  add: Add,
   add_a_photo: AddAPhoto,
   arrow_back: ArrowBack,
   arrow_forward: ArrowForward,
@@ -97,6 +100,7 @@ export const icons = {
   restart_alt: RestartAlt,
   rotate_left: RotateLeft,
   rotate_right: RotateRight,
+  schedule: Schedule,
   search: Search,
   star: Star,
   'star-fill': StarFill,
