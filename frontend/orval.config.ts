@@ -142,6 +142,13 @@ if (unsupportedResponseErrors.length > 0) {
   throw new Error(unsupportedResponseErrors.join('\n'));
 }
 
+// 옷장 목록은 cursor로 이어 받는 무한 스크롤이라 useInfiniteQuery 훅도 만든다.
+const infiniteOperations = {
+  list_clothing_clothing_get: {
+    query: { useInfinite: true, useInfiniteQueryParam: 'cursor' },
+  },
+};
+
 const noContentOperations = Object.fromEntries(
   operations
     .filter((operation) => !hasSuccessBody(operation))
@@ -173,7 +180,7 @@ export default defineConfig({
           path: MUTATOR_PATH,
           name: 'fetcher',
         },
-        operations: noContentOperations,
+        operations: { ...noContentOperations, ...infiniteOperations },
         includeZodSchemaInArguments: true,
         fetch: {
           runtimeValidation: true,

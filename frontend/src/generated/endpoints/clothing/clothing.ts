@@ -4,16 +4,20 @@
  * Outfit Recommendation API
  * OpenAPI spec version: 0.1.0
  */
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query';
 import type {
   DataTag,
   DefinedInitialDataOptions,
+  DefinedUseInfiniteQueryResult,
   DefinedUseQueryResult,
+  InfiniteData,
   MutationFunction,
   QueryClient,
   QueryFunction,
   QueryKey,
   UndefinedInitialDataOptions,
+  UseInfiniteQueryOptions,
+  UseInfiniteQueryResult,
   UseMutationOptions,
   UseMutationResult,
   UseQueryOptions,
@@ -203,11 +207,202 @@ export const listClothingClothingGet = async (
   });
 };
 
+export const getListClothingClothingGetInfiniteQueryKey = (
+  params?: ListClothingClothingGetParams,
+) => {
+  return ['infinite', `/clothing`, ...(params ? [params] : [])] as const;
+};
+
 export const getListClothingClothingGetQueryKey = (
   params?: ListClothingClothingGetParams,
 ) => {
   return [`/clothing`, ...(params ? [params] : [])] as const;
 };
+
+export const getListClothingClothingGetInfiniteQueryOptions = <
+  TData = InfiniteData<
+    Awaited<ReturnType<typeof listClothingClothingGet>>,
+    ListClothingClothingGetParams['cursor']
+  >,
+  TError = ErrorType<ErrorResponse>,
+>(
+  params?: ListClothingClothingGetParams,
+  options?: {
+    query?: Partial<
+      UseInfiniteQueryOptions<
+        Awaited<ReturnType<typeof listClothingClothingGet>>,
+        TError,
+        TData,
+        QueryKey,
+        ListClothingClothingGetParams['cursor']
+      >
+    >;
+    request?: SecondParameter<typeof fetcher>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ??
+    getListClothingClothingGetInfiniteQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listClothingClothingGet>>,
+    QueryKey,
+    ListClothingClothingGetParams['cursor']
+  > = ({ signal, pageParam }) =>
+    listClothingClothingGet(
+      { ...params, cursor: pageParam ?? params?.['cursor'] },
+      { signal, ...requestOptions },
+    );
+
+  return { queryKey, queryFn, ...queryOptions } as UseInfiniteQueryOptions<
+    Awaited<ReturnType<typeof listClothingClothingGet>>,
+    TError,
+    TData,
+    QueryKey,
+    ListClothingClothingGetParams['cursor']
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type ListClothingClothingGetInfiniteQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listClothingClothingGet>>
+>;
+export type ListClothingClothingGetInfiniteQueryError =
+  ErrorType<ErrorResponse>;
+
+export function useListClothingClothingGetInfinite<
+  TData = InfiniteData<
+    Awaited<ReturnType<typeof listClothingClothingGet>>,
+    ListClothingClothingGetParams['cursor']
+  >,
+  TError = ErrorType<ErrorResponse>,
+>(
+  params: undefined | ListClothingClothingGetParams,
+  options: {
+    query: Partial<
+      UseInfiniteQueryOptions<
+        Awaited<ReturnType<typeof listClothingClothingGet>>,
+        TError,
+        TData,
+        QueryKey,
+        ListClothingClothingGetParams['cursor']
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listClothingClothingGet>>,
+          TError,
+          Awaited<ReturnType<typeof listClothingClothingGet>>,
+          QueryKey
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof fetcher>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseInfiniteQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useListClothingClothingGetInfinite<
+  TData = InfiniteData<
+    Awaited<ReturnType<typeof listClothingClothingGet>>,
+    ListClothingClothingGetParams['cursor']
+  >,
+  TError = ErrorType<ErrorResponse>,
+>(
+  params?: ListClothingClothingGetParams,
+  options?: {
+    query?: Partial<
+      UseInfiniteQueryOptions<
+        Awaited<ReturnType<typeof listClothingClothingGet>>,
+        TError,
+        TData,
+        QueryKey,
+        ListClothingClothingGetParams['cursor']
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listClothingClothingGet>>,
+          TError,
+          Awaited<ReturnType<typeof listClothingClothingGet>>,
+          QueryKey
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof fetcher>;
+  },
+  queryClient?: QueryClient,
+): UseInfiniteQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useListClothingClothingGetInfinite<
+  TData = InfiniteData<
+    Awaited<ReturnType<typeof listClothingClothingGet>>,
+    ListClothingClothingGetParams['cursor']
+  >,
+  TError = ErrorType<ErrorResponse>,
+>(
+  params?: ListClothingClothingGetParams,
+  options?: {
+    query?: Partial<
+      UseInfiniteQueryOptions<
+        Awaited<ReturnType<typeof listClothingClothingGet>>,
+        TError,
+        TData,
+        QueryKey,
+        ListClothingClothingGetParams['cursor']
+      >
+    >;
+    request?: SecondParameter<typeof fetcher>;
+  },
+  queryClient?: QueryClient,
+): UseInfiniteQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+/**
+ * @summary List Clothing
+ */
+
+export function useListClothingClothingGetInfinite<
+  TData = InfiniteData<
+    Awaited<ReturnType<typeof listClothingClothingGet>>,
+    ListClothingClothingGetParams['cursor']
+  >,
+  TError = ErrorType<ErrorResponse>,
+>(
+  params?: ListClothingClothingGetParams,
+  options?: {
+    query?: Partial<
+      UseInfiniteQueryOptions<
+        Awaited<ReturnType<typeof listClothingClothingGet>>,
+        TError,
+        TData,
+        QueryKey,
+        ListClothingClothingGetParams['cursor']
+      >
+    >;
+    request?: SecondParameter<typeof fetcher>;
+  },
+  queryClient?: QueryClient,
+): UseInfiniteQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+} {
+  const queryOptions = getListClothingClothingGetInfiniteQueryOptions(
+    params,
+    options,
+  );
+
+  const query = useInfiniteQuery(
+    queryOptions,
+    queryClient,
+  ) as UseInfiniteQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
 
 export const getListClothingClothingGetQueryOptions = <
   TData = Awaited<ReturnType<typeof listClothingClothingGet>>,

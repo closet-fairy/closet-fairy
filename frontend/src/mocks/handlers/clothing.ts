@@ -1,10 +1,16 @@
 import { bypass, http, HttpResponse } from 'msw';
 import type {
+  ClothingCard,
   ClothingDetail,
   ClothingEdit,
+  ClothingPage,
   ErrorResponse,
 } from '@/generated/models';
-import { ClothingEditUpdate } from '@/generated/models';
+import {
+  ClothingEditUpdate,
+  listClothingClothingGetParamsLimitDefault,
+  listClothingClothingGetParamsLimitMax,
+} from '@/generated/models';
 import sampleCutoutUrl from '@/mocks/assets/clothing/cutout.webp';
 import sampleDisplayUrl from '@/mocks/assets/clothing/display.webp';
 import sampleMaskUrl from '@/mocks/assets/clothing/mask.png';
@@ -16,6 +22,20 @@ const MOCK_CLOTHING_ID = {
   NOT_EDITABLE: 409,
   DISPLAY_INVALID: 422,
   DISPLAY_SERVER_ERROR: 500,
+} as const;
+
+/*
+ * 옷장 목록용 옷 id. 목록은 id 내림차순이라, 처리 중인 옷이 실제처럼 맨 앞에 오도록
+ * 편집기용 옷(MOCK_CLOTHING_ID)보다 큰 구간을 쓴다.
+ */
+const MOCK_LIST_ID = {
+  FIRST: 600,
+  LAST: 635,
+  PROCESSING: 635,
+  QUEUED: 634,
+  FAILED: 633,
+  UNTAGGED: 632,
+  NEW_FROM: 630,
 } as const;
 
 const CUTOUT_SIZE = { width: 1536, height: 2048 } as const;
@@ -141,13 +161,93 @@ const createClothing = (
   edit,
 });
 
+const LIST_ITEM_NAMES = [
+  ['베이지 터틀넥', 'top'],
+  ['차콜 와이드 팬츠', 'bottom'],
+  ['네이비 볼캡', 'accessories'],
+  ['화이트 스니커즈', 'shoes'],
+  ['오트밀 가디건', 'outer'],
+  ['흰 양말', 'socks'],
+] as const;
+
+// 목록에서 보이는 카드 상태를 모두 갖추도록 처리 중·대기 중·실패·신규·이름 없음 옷을 섞는다.
+const createListClothing = (clothingId: number): ClothingDetail => {
+  const [itemName, category] =
+    LIST_ITEM_NAMES[clothingId % LIST_ITEM_NAMES.length];
+  const clothing: ClothingDetail = {
+    ...createClothing(clothingId, null),
+    item_name: itemName,
+    category_cd: category,
+    created_at: `2026-10-${String(1 + (clothingId % 28)).padStart(2, '0')}T10:00:00+09:00`,
+  };
+
+  if (clothingId === MOCK_LIST_ID.PROCESSING) {
+    return {
+      ...clothing,
+      processing_status_cd: 'processing',
+      image_url: SAMPLE_MEDIA.origin,
+      category_cd: null,
+      item_name: null,
+    };
+  }
+
+  if (clothingId === MOCK_LIST_ID.QUEUED) {
+    return {
+      ...clothing,
+      processing_status_cd: 'processing',
+      is_queued: true,
+      image_url: SAMPLE_MEDIA.origin,
+      category_cd: null,
+      item_name: null,
+    };
+  }
+
+  if (clothingId === MOCK_LIST_ID.FAILED) {
+    return {
+      ...clothing,
+      processing_status_cd: 'failed',
+      image_url: SAMPLE_MEDIA.origin,
+      failure_reason: '배경 제거에 실패했습니다.',
+      category_cd: null,
+      item_name: null,
+    };
+  }
+
+  if (clothingId === MOCK_LIST_ID.UNTAGGED) {
+    return { ...clothing, is_new: true, category_cd: null, item_name: null };
+  }
+
+  return { ...clothing, is_new: clothingId >= MOCK_LIST_ID.NEW_FROM };
+};
+
 const INITIAL_CLOTHINGS = [
   createClothing(MOCK_CLOTHING_ID.NO_EDIT, null),
   createClothing(MOCK_CLOTHING_ID.EDITED, SAMPLE_EDIT),
   createClothing(MOCK_CLOTHING_ID.NOT_EDITABLE, null),
   createClothing(MOCK_CLOTHING_ID.DISPLAY_INVALID, null),
   createClothing(MOCK_CLOTHING_ID.DISPLAY_SERVER_ERROR, null),
+  ...Array.from(
+    { length: MOCK_LIST_ID.LAST - MOCK_LIST_ID.FIRST + 1 },
+    (_, index) => createListClothing(MOCK_LIST_ID.FIRST + index),
+  ),
 ];
+
+const toClothingCard = (clothing: ClothingDetail): ClothingCard => ({
+  clothing_id: clothing.clothing_id,
+  processing_status_cd: clothing.processing_status_cd,
+  is_queued: clothing.is_queued,
+  image_url: clothing.image_url,
+  failure_reason: clothing.failure_reason,
+  is_new: clothing.is_new,
+  category_cd: clothing.category_cd,
+  item_name: clothing.item_name,
+  created_at: clothing.created_at,
+});
+
+const parsePositiveInt = (value: string | null) =>
+  value !== null && CLOTHING_ID_PATTERN.test(value) && Number(value) > 0
+    ? Number(value)
+    : null;
 
 const clothings = new Map<number, ClothingDetail>();
 
@@ -272,6 +372,29 @@ const toGrayscaleMask = async (image: ImageBitmap) => {
 };
 
 export const clothingHandlers = [
+  http.get('/api/clothing', ({ request }) => {
+    const searchParams = new URL(request.url).searchParams;
+    const cursor = parsePositiveInt(searchParams.get('cursor'));
+    const limit = Math.min(
+      parsePositiveInt(searchParams.get('limit')) ??
+        listClothingClothingGetParamsLimitDefault,
+      listClothingClothingGetParamsLimitMax,
+    );
+    const rest = [...clothings.values()]
+      .sort((a, b) => b.clothing_id - a.clothing_id)
+      .filter((clothing) => cursor === null || clothing.clothing_id < cursor);
+    const items = rest.slice(0, limit);
+    const lastItem = items.at(-1);
+
+    return HttpResponse.json<ClothingPage>({
+      items: items.map(toClothingCard),
+      next_cursor:
+        rest.length > limit && lastItem !== undefined
+          ? lastItem.clothing_id
+          : null,
+    });
+  }),
+
   http.get<ClothingParams>('/api/clothing/:clothingId', ({ params }) => {
     if (!CLOTHING_ID_PATTERN.test(params.clothingId)) {
       return undefined;
