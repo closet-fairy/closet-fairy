@@ -141,6 +141,33 @@ describe('옷 상세 보기', () => {
   });
 });
 
+describe('상세에서 옷 삭제', () => {
+  test('[이 옷 삭제]에서 확인하면 기록을 바꿔치기하며 옷장으로 돌아가고 삭제했다고 알려야 한다.', async () => {
+    const user = userEvent.setup();
+    const { history } = await renderDetail(COMPLETED_ID);
+    await screen.findByDisplayValue('스트라이프 반팔 티셔츠');
+
+    await user.click(screen.getByRole('button', { name: '이 옷 삭제' }));
+    const dialog = await screen.findByRole('dialog', {
+      name: '이 옷을 삭제할까요?',
+    });
+    await user.click(within(dialog).getByRole('button', { name: '삭제' }));
+
+    await waitFor(() => {
+      expect(history.location.pathname).toBe('/closet');
+    });
+    expect(await screen.findByText('옷을 삭제했어요')).toBeInTheDocument();
+    // 지운 옷의 상세 기록이 옷장으로 바뀌어, 뒤로 가도 지운 상세로 돌아가지 않는다.
+    act(() => {
+      history.back();
+    });
+    await waitFor(() => {
+      expect(history.location.pathname).toBe('/closet');
+    });
+    expect(history.canGoBack()).toBe(false);
+  });
+});
+
 describe('옷 속성 바로 저장', () => {
   test('칩을 누르면 그 속성만 저장하고 요약을 바로 바꿔야 한다.', async () => {
     const user = userEvent.setup();

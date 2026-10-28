@@ -9,6 +9,7 @@ import IconButton from '@/components/common/IconButton';
 import StatusView from '@/components/common/StatusView';
 import { showToast } from '@/components/common/ToastProvider/ToastProvider.toast';
 import TopBar from '@/components/common/TopBar';
+import DeleteClothingDialog from '@/components/DeleteClothingDialog';
 import {
   getGetClothingClothingClothingIdGetQueryKey,
   useGetClothingClothingClothingIdGet,
@@ -70,6 +71,7 @@ const ClothingDetailPage = () => {
   const clothingQuery = useGetClothingClothingClothingIdGet(clothingId);
   const { pending, errors, save } = useClothingAttributeSave(clothingId);
   const [brokenImageUrl, setBrokenImageUrl] = useState<string | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const reviewedIdRef = useRef<number | null>(null);
   const clothing = clothingQuery.data;
   const isNotFound =
@@ -223,7 +225,25 @@ const ClothingDetailPage = () => {
           errors={errors}
           onSave={save}
         />
+        <S.DeleteArea>
+          <Button
+            variant="text"
+            size="md"
+            icon="delete"
+            aria-haspopup="dialog"
+            onClick={() => setIsDeleteDialogOpen(true)}
+          >
+            이 옷 삭제
+          </Button>
+        </S.DeleteArea>
       </S.Content>
+      <DeleteClothingDialog
+        clothingId={clothingId}
+        isOpen={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        // 지운 옷의 상세로 뒤로 가기가 돌아오지 않도록 기록을 바꿔치기한다.
+        onDeleted={() => void navigate({ to: '/closet', replace: true })}
+      />
     </S.Container>
   );
 };

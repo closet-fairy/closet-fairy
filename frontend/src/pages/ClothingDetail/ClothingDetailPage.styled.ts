@@ -67,3 +67,9 @@ export const Spinner = styled.span`
     }
   }
 `;
+
+export const DeleteArea = styled.div`
+  display: flex;
+  justify-content: center;
+  margin-top: ${spacing[24]};
+`;
