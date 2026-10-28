@@ -3,6 +3,7 @@ import { useNavigate, useParams, useRouter } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';
 import { ApiError } from '@/apis/apiError';
 import { isUnauthorizedError } from '@/apis/authSession';
+import { patchClothingCard } from '@/apis/clothingListCache';
 import Button from '@/components/common/Button';
 import Icon from '@/components/common/Icon';
 import IconButton from '@/components/common/IconButton';
@@ -15,7 +16,6 @@ import {
   useMarkClothingReviewedClothingClothingIdReviewedPost,
 } from '@/generated/endpoints/clothing/clothing';
 import type { ClothingDetail, ClothingUpdate } from '@/generated/models';
-import { patchClothingCard } from './clothingListCache';
 import ClothingAttributes from './components/ClothingAttributes';
 import ClothingNameField from './components/ClothingNameField';
 import useClothingAttributeSave from './hooks/useClothingAttributeSave';
@@ -49,8 +49,14 @@ const applyPending = (
       pending.item_name === undefined ? clothing.item_name : pending.item_name,
     color_cd:
       pending.color_cd === undefined ? clothing.color_cd : pending.color_cd,
-    style_cds: pending.style_cds ?? clothing.style_cds,
-    season_cds: pending.season_cds ?? clothing.season_cds,
+    style_cds:
+      pending.style_cds === undefined
+        ? clothing.style_cds
+        : (pending.style_cds ?? []),
+    season_cds:
+      pending.season_cds === undefined
+        ? clothing.season_cds
+        : (pending.season_cds ?? []),
     thickness_cd:
       pending.thickness_cd === undefined
         ? clothing.thickness_cd
