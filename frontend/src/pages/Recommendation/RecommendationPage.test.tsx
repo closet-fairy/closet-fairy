@@ -1320,7 +1320,7 @@ describe('옷 부족 안내', () => {
     );
   };
 
-  test('2벌 미만인 카테고리가 있으면 그 카테고리를 담아 안내하고, 옷 등록하기를 누르면 옷장으로 이동해야 한다.', async () => {
+  test('2벌 미만인 카테고리가 있으면 그 카테고리를 담아 안내하고, 옷 등록하기를 누르면 등록 방법을 고르는 옷장으로 이동해야 한다.', async () => {
     const user = userEvent.setup();
     respondPrecheck({
       is_clothing_shortage: true,
@@ -1343,7 +1343,10 @@ describe('옷 부족 안내', () => {
 
     await user.click(screen.getByRole('button', { name: '옷 등록하기' }));
 
-    expect(navigate).toHaveBeenCalledWith({ to: '/closet' });
+    expect(navigate).toHaveBeenCalledWith({
+      to: '/closet',
+      search: { register: true },
+    });
   });
 
   test('옷이 부족하지 않으면 안내를 띄우지 않아야 한다.', async () => {
