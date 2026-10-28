@@ -103,6 +103,11 @@ const ClothingCard = (props: ClothingCardProps) => {
 
   return (
     <S.Container>
+      <S.DetailLink
+        to="/closet/$clothingId"
+        params={{ clothingId: clothing.clothing_id }}
+        aria-label={clothing.item_name ?? '이름 없는 옷'}
+      />
       <S.ImageBox $tone="default">
         {image}
         {clothing.is_new && (
