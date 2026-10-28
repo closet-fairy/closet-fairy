@@ -95,6 +95,7 @@ const useClothingAttributeSave = (clothingId: number) => {
         patchClothingCard(queryClient, clothingId, {
           item_name: updated.item_name,
           category_cd: updated.category_cd,
+          is_new: updated.is_new,
         });
 
         if (isLatest()) {
