@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { describe, expect, test, vi } from 'vitest';
@@ -102,5 +102,67 @@ describe('키보드 이동', () => {
     await user.keyboard('{ArrowDown}');
 
     expect(onChange).not.toHaveBeenCalled();
+  });
+});
+
+const mockScrollTop = (element: HTMLElement) => {
+  let scrollTop = 0;
+
+  Object.defineProperty(element, 'scrollTop', {
+    configurable: true,
+    get: () => scrollTop,
+    set: (nextScrollTop: number) => {
+      scrollTop = nextScrollTop;
+    },
+  });
+};
+
+const scrollListTo = (element: HTMLElement, scrollTop: number) => {
+  element.scrollTop = scrollTop;
+  fireEvent.scroll(element);
+};
+
+describe('스크롤과 값 맞추기', () => {
+  test('굴려서 가운데에 온 항목을 바로 알려야 한다.', () => {
+    const onChange = vi.fn();
+    render(<TestWheelPicker onChange={onChange} />);
+    const listbox = screen.getByRole('listbox', { name: '시각' });
+    mockScrollTop(listbox);
+
+    scrollListTo(listbox, 80);
+
+    expect(onChange).toHaveBeenLastCalledWith('22:00');
+  });
+
+  test('항목을 눌러 옮기는 동안 지나가는 항목은 알리지 않고, 도착한 뒤 굴리면 다시 알려야 한다.', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<TestWheelPicker onChange={onChange} />);
+    const listbox = screen.getByRole('listbox', { name: '시각' });
+    mockScrollTop(listbox);
+    listbox.scrollTo = vi.fn();
+
+    await user.click(screen.getByRole('option', { name: '22:00' }));
+    scrollListTo(listbox, 40);
+
+    expect(onChange.mock.calls).toEqual([['22:00']]);
+
+    scrollListTo(listbox, 80);
+    scrollListTo(listbox, 40);
+
+    expect(onChange).toHaveBeenLastCalledWith('21:30');
+  });
+
+  test('밖에서 값이 바뀌면 그 항목이 가운데에 오도록 스크롤 위치를 옮겨야 한다.', () => {
+    const columns = (value: string) => [
+      { 'aria-label': '시각', options: OPTIONS, value, onChange: vi.fn() },
+    ];
+    const { rerender } = render(<WheelPicker columns={columns('21:00')} />);
+    const listbox = screen.getByRole('listbox', { name: '시각' });
+    mockScrollTop(listbox);
+
+    rerender(<WheelPicker columns={columns('22:00')} />);
+
+    expect(listbox.scrollTop).toBe(80);
   });
 });

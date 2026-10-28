@@ -53,6 +53,7 @@ const WheelPicker = (props: WheelPickerProps) => {
   // 눌러서 옮기는 칸의 목표 위치다. 부드럽게 스크롤하는 동안 지나가는 칸으로 값을 바꾸지 않으려고 둔다.
   const targetIndexes = useRef<(number | null)[]>([]);
   const releaseTimers = useRef<(number | undefined)[]>([]);
+  const latestColumns = useRef(columns);
 
   const getOptionId = (columnIndex: number, optionIndex: number) =>
     `${baseId}-${columnIndex}-${optionIndex}`;
@@ -62,7 +63,25 @@ const WheelPicker = (props: WheelPickerProps) => {
     window.clearTimeout(releaseTimers.current[columnIndex]);
   };
 
+  const reportCenteredOption = (columnIndex: number) => {
+    const list = listRefs.current[columnIndex];
+    const column = latestColumns.current[columnIndex];
+
+    if (!list || !column) {
+      return;
+    }
+
+    const option =
+      column.options[getCenteredIndex(list, column.options.length)];
+
+    if (option && option.value !== column.value) {
+      column.onChange(option.value);
+    }
+  };
+
   useLayoutEffect(() => {
+    latestColumns.current = columns;
+
     columns.forEach((column, columnIndex) => {
       const list = listRefs.current[columnIndex];
       const valueIndex = column.options.findIndex(
@@ -110,11 +129,19 @@ const WheelPicker = (props: WheelPickerProps) => {
 
     const top = optionIndex * ROW_HEIGHT;
 
-    if (typeof list.scrollTo === 'function' && !prefersReducedMotion()) {
-      releaseTarget(columnIndex);
+    // 이미 그 칸에 있으면 스크롤 이벤트가 오지 않아 목표가 풀리지 않으므로 부드럽게 옮기지 않는다.
+    const canScrollSmoothly =
+      Math.abs(list.scrollTop - top) >= 1 &&
+      typeof list.scrollTo === 'function' &&
+      !prefersReducedMotion();
+
+    releaseTarget(columnIndex);
+
+    if (canScrollSmoothly) {
       targetIndexes.current[columnIndex] = optionIndex;
       releaseTimers.current[columnIndex] = window.setTimeout(() => {
         targetIndexes.current[columnIndex] = null;
+        reportCenteredOption(columnIndex);
       }, TARGET_RELEASE_DELAY);
       list.scrollTo({ top, behavior: 'smooth' });
     } else {
@@ -128,15 +155,9 @@ const WheelPicker = (props: WheelPickerProps) => {
 
   const handleScroll = (columnIndex: number) => {
     const list = listRefs.current[columnIndex];
-    const column = columns[columnIndex];
-
-    if (!list || !column) {
-      return;
-    }
-
     const targetIndex = targetIndexes.current[columnIndex];
 
-    if (targetIndex !== null && targetIndex !== undefined) {
+    if (list && targetIndex !== null && targetIndex !== undefined) {
       if (Math.abs(list.scrollTop - targetIndex * ROW_HEIGHT) < 1) {
         releaseTarget(columnIndex);
       }
@@ -144,12 +165,7 @@ const WheelPicker = (props: WheelPickerProps) => {
       return;
     }
 
-    const option =
-      column.options[getCenteredIndex(list, column.options.length)];
-
-    if (option && option.value !== column.value) {
-      column.onChange(option.value);
-    }
+    reportCenteredOption(columnIndex);
   };
 
   const handleKeyDown = (
@@ -172,6 +188,7 @@ const WheelPicker = (props: WheelPickerProps) => {
     );
 
     if (nextIndex === null) {
+      releaseTarget(columnIndex);
       return;
     }
 
