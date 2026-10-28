@@ -7,10 +7,13 @@ import * as S from './ClothingCard.styled';
 
 interface ClothingCardProps {
   clothing: ClothingCardData;
+  isRetrying: boolean;
+  onShowStatus: () => void;
+  onRetry: () => void;
 }
 
 const ClothingCard = (props: ClothingCardProps) => {
-  const { clothing } = props;
+  const { clothing, isRetrying, onShowStatus, onRetry } = props;
   const [brokenImageUrl, setBrokenImageUrl] = useState<string | null>(null);
   const isImageBroken = brokenImageUrl === clothing.image_url;
   const isProcessing = clothing.processing_status_cd === 'processing';
@@ -35,6 +38,12 @@ const ClothingCard = (props: ClothingCardProps) => {
 
     return (
       <S.Container>
+        <S.StatusButton
+          type="button"
+          aria-label={`${label}인 옷`}
+          aria-haspopup="dialog"
+          onClick={onShowStatus}
+        />
         <S.ImageBox $tone="processing">
           {image}
           <S.Overlay>
@@ -57,13 +66,23 @@ const ClothingCard = (props: ClothingCardProps) => {
   if (isFailed) {
     return (
       <S.Container>
+        <S.StatusButton
+          type="button"
+          aria-label="등록에 실패한 옷"
+          aria-haspopup="dialog"
+          onClick={onShowStatus}
+        />
         <S.ImageBox $tone="failed">
           <S.Overlay>
             <S.FailedIcon>
               <Icon name="error-fill" size="md" />
             </S.FailedIcon>
             <S.StatusLabel $isQueued={false}>등록 실패</S.StatusLabel>
-            <S.RetryButton type="button">
+            <S.RetryButton
+              type="button"
+              disabled={isRetrying}
+              onClick={onRetry}
+            >
               <Icon name="refresh" size="xs" />
               재시도
             </S.RetryButton>

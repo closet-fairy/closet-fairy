@@ -1,9 +1,12 @@
 import { bypass, http, HttpResponse } from 'msw';
+import type { JsonBodyType } from 'msw';
 import type {
   ClothingCard,
   ClothingDetail,
   ClothingEdit,
   ClothingPage,
+  ClothingProgress,
+  ClothingStatusList,
   ErrorResponse,
 } from '@/generated/models';
 import {
@@ -118,6 +121,13 @@ const ERRORS = {
     body: {
       code: 'CLOTHING_DISPLAY_IMAGE_INVALID',
       message: '사진을 읽을 수 없습니다. 다른 사진으로 다시 올려 주세요.',
+    },
+  },
+  NOT_RETRYABLE: {
+    status: 409,
+    body: {
+      code: 'CLOTHING_NOT_RETRYABLE',
+      message: '처리에 실패한 옷만 다시 처리할 수 있습니다.',
     },
   },
   INTERNAL: {
@@ -244,6 +254,56 @@ const toClothingCard = (clothing: ClothingDetail): ClothingCard => ({
   created_at: clothing.created_at,
 });
 
+const toClothingProgress = (clothing: ClothingDetail): ClothingProgress => ({
+  clothing_id: clothing.clothing_id,
+  processing_status_cd: clothing.processing_status_cd,
+  is_queued: clothing.is_queued,
+  image_url: clothing.image_url,
+  failure_reason: clothing.failure_reason,
+});
+
+/*
+ * 처리 중인 옷은 상태를 물을 때마다 한 단계씩 나아간다. 대기 중이던 옷은 처리를 시작하고,
+ * 그다음엔 이름·분류가 채워진 완료 상태가 된다. 1초 폴링 기준으로 몇 초 뒤에 끝난다.
+ * 옷장 테스트는 처음 두 번의 조회 동안 대기 중인 옷이 그대로 남는다고 보고 카드를 찾는다.
+ */
+const POLLS_TO_START = 3;
+const POLLS_TO_COMPLETE = 5;
+
+const pollCounts = new Map<number, number>();
+
+const advanceProcessing = (clothing: ClothingDetail) => {
+  const pollCount = (pollCounts.get(clothing.clothing_id) ?? 0) + 1;
+  pollCounts.set(clothing.clothing_id, pollCount);
+
+  if (pollCount >= POLLS_TO_COMPLETE) {
+    const [itemName, category] =
+      LIST_ITEM_NAMES[clothing.clothing_id % LIST_ITEM_NAMES.length];
+    const completed: ClothingDetail = {
+      ...clothing,
+      processing_status_cd: 'completed',
+      is_queued: false,
+      image_url: clothing.cutout_image_url ?? clothing.origin_image_url,
+      is_new: true,
+      item_name: itemName,
+      category_cd: category,
+    };
+    clothings.set(clothing.clothing_id, completed);
+    pollCounts.delete(clothing.clothing_id);
+
+    return completed;
+  }
+
+  if (pollCount >= POLLS_TO_START && clothing.is_queued) {
+    const started: ClothingDetail = { ...clothing, is_queued: false };
+    clothings.set(clothing.clothing_id, started);
+
+    return started;
+  }
+
+  return clothing;
+};
+
 const parsePositiveInt = (value: string | null) =>
   value !== null && CLOTHING_ID_PATTERN.test(value) && Number(value) > 0
     ? Number(value)
@@ -256,6 +316,7 @@ const uploadedMedia = new Map<string, Blob>();
 export const resetClothingMocks = () => {
   clothings.clear();
   uploadedMedia.clear();
+  pollCounts.clear();
 
   for (const clothing of INITIAL_CLOTHINGS) {
     clothings.set(clothing.clothing_id, clothing);
@@ -264,8 +325,10 @@ export const resetClothingMocks = () => {
 
 resetClothingMocks();
 
-const errorResponse = (error: MockError) =>
-  HttpResponse.json<ClothingResponseBody>(error.body, {
+const errorResponse = <SuccessBody extends JsonBodyType = ClothingDetail>(
+  error: MockError,
+) =>
+  HttpResponse.json<SuccessBody | ErrorResponse>(error.body, {
     status: error.status,
   });
 
@@ -393,6 +456,60 @@ export const clothingHandlers = [
           ? lastItem.clothing_id
           : null,
     });
+  }),
+
+  http.get('/api/clothing/status', ({ request }) => {
+    const ids = (new URL(request.url).searchParams.get('ids') ?? '')
+      .split(',')
+      .map(parsePositiveInt);
+
+    if (ids.some((id) => id === null)) {
+      return errorResponse<ClothingStatusList>(ERRORS.VALIDATION);
+    }
+
+    const items = ids.flatMap((id) => {
+      const clothing = id === null ? undefined : clothings.get(id);
+
+      if (clothing === undefined) {
+        return [];
+      }
+
+      return [
+        toClothingProgress(
+          clothing.processing_status_cd === 'processing'
+            ? advanceProcessing(clothing)
+            : clothing,
+        ),
+      ];
+    });
+
+    return HttpResponse.json<ClothingStatusList | ErrorResponse>({ items });
+  }),
+
+  http.post<ClothingParams>('/api/clothing/:clothingId/retry', ({ params }) => {
+    const clothing = clothings.get(Number(params.clothingId));
+
+    if (clothing === undefined) {
+      return errorResponse<ClothingProgress>(ERRORS.NOT_FOUND);
+    }
+
+    if (clothing.processing_status_cd !== 'failed') {
+      return errorResponse<ClothingProgress>(ERRORS.NOT_RETRYABLE);
+    }
+
+    const retried: ClothingDetail = {
+      ...clothing,
+      processing_status_cd: 'processing',
+      is_queued: true,
+      image_url: clothing.origin_image_url,
+      failure_reason: null,
+    };
+    clothings.set(clothing.clothing_id, retried);
+
+    return HttpResponse.json<ClothingProgress | ErrorResponse>(
+      toClothingProgress(retried),
+      { status: 202 },
+    );
   }),
 
   http.get<ClothingParams>('/api/clothing/:clothingId', ({ params }) => {
