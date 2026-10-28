@@ -265,6 +265,7 @@ const toClothingProgress = (clothing: ClothingDetail): ClothingProgress => ({
 /*
  * 처리 중인 옷은 상태를 물을 때마다 한 단계씩 나아간다. 대기 중이던 옷은 처리를 시작하고,
  * 그다음엔 이름·분류가 채워진 완료 상태가 된다. 1초 폴링 기준으로 몇 초 뒤에 끝난다.
+ * 옷장 테스트는 처음 두 번의 조회 동안 대기 중인 옷이 그대로 남는다고 보고 카드를 찾는다.
  */
 const POLLS_TO_START = 3;
 const POLLS_TO_COMPLETE = 5;

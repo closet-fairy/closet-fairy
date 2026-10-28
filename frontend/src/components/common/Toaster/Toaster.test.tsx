@@ -88,7 +88,7 @@ describe('토스트가 차지한 높이', () => {
     expect(result.current).toBeNull();
   });
 
-  test('토스트가 뜨면 쌓인 개수만큼 드러난 높이까지 더해 줘야 한다.', async () => {
+  test('토스트가 두 개 뜨면 맨 앞 토스트 높이에 뒤로 쌓인 한 개만큼 드러난 높이를 더해 줘야 한다.', async () => {
     const { result } = renderHook(() => useToastStackHeight(), {
       wrapper: ToastProvider,
     });
