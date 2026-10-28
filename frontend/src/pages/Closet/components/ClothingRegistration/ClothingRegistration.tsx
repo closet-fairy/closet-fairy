@@ -5,11 +5,16 @@ import {
   UPLOAD_PHOTO_LIMIT,
   validateUploadPhoto,
 } from '@/domains/clothing/validateUploadPhoto';
-import { startClothingUpload } from '@/pages/Closet/clothingUploadStore';
+import {
+  clearRejectedClothingPhotos,
+  startClothingUpload,
+} from '@/pages/Closet/clothingUploadStore';
 import CameraCaptureDialog from '@/pages/Closet/components/CameraCaptureDialog';
 import OverLimitDialog from '@/pages/Closet/components/OverLimitDialog';
 import PhotoConfirmDialog from '@/pages/Closet/components/PhotoConfirmDialog';
 import RegisterSheet from '@/pages/Closet/components/RegisterSheet';
+import ServerRejectedDialog from '@/pages/Closet/components/ServerRejectedDialog';
+import useClothingUploads from '@/pages/Closet/hooks/useClothingUploads';
 import type { PickedPhoto } from '@/pages/Closet/types';
 import * as S from './ClothingRegistration.styled';
 
@@ -30,6 +35,7 @@ interface Capture {
 const ClothingRegistration = (props: ClothingRegistrationProps) => {
   const { isSheetOpen, onSheetOpenChange } = props;
   const queryClient = useQueryClient();
+  const { rejectedPhotos } = useClothingUploads();
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const [pick, setPick] = useState<{ key: number; photos: PickedPhoto[] }>({
@@ -213,6 +219,11 @@ const ClothingRegistration = (props: ClothingRegistrationProps) => {
         photos={pick.photos}
         onClose={() => setIsConfirmOpen(false)}
         onSubmit={submit}
+      />
+      {/* 촬영하는 동안 보낸 사진이 거절돼도 다이얼로그가 겹치지 않도록, 열린 화면이 닫힌 뒤에 알린다. */}
+      <ServerRejectedDialog
+        photos={isCameraOpen || isConfirmOpen ? [] : rejectedPhotos}
+        onConfirm={clearRejectedClothingPhotos}
       />
     </>
   );

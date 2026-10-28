@@ -802,6 +802,43 @@ describe('사진으로 옷 등록', () => {
     expect(uploadRequestCount).toBe(0);
   });
 
+  test('형식이 맞지 않는 사진을 찍으면 사유를 보여 주고 등록을 막아야 한다.', async () => {
+    const user = userEvent.setup();
+    await renderCloset();
+    await openCameraPicker(user);
+    await user.upload(getCameraInput(), photoFile('IMG_1983.GIF', 'image/gif'));
+
+    const dialog = await screen.findByRole('dialog', { name: '옷 촬영' });
+    expect(within(dialog).getByRole('alert')).toHaveTextContent(
+      'JPG, PNG, WEBP, HEIC 사진만 올릴 수 있어요',
+    );
+    expect(within(dialog).getByRole('button', { name: '등록' })).toBeDisabled();
+    expect(
+      within(dialog).getByRole('button', { name: '버리기' }),
+    ).toBeEnabled();
+  });
+
+  test('촬영 중에 보낸 사진을 서버가 거절하면 촬영을 마친 뒤에 알려야 한다.', async () => {
+    const user = userEvent.setup();
+    await renderCloset();
+    await openCameraPicker(user);
+    await user.upload(getCameraInput(), photoFile('IMG_unreadable.JPG'));
+
+    const dialog = await screen.findByRole('dialog', { name: '옷 촬영' });
+    await user.click(within(dialog).getByRole('button', { name: '등록' }));
+    // 업로드 응답이 오고 목록을 다시 받을 때까지 기다린 뒤에도 안내가 촬영 위에 겹치지 않아야 한다.
+    await act(() => new Promise((resolve) => setTimeout(resolve, 300)));
+    expect(
+      screen.queryByRole('dialog', { name: '1장은 등록하지 못했어요' }),
+    ).not.toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole('button', { name: '촬영 종료' }));
+
+    expect(
+      await screen.findByRole('dialog', { name: '1장은 등록하지 못했어요' }),
+    ).toBeInTheDocument();
+  });
+
   test('촬영한 사진에 답하지 않고 닫으면 보내지 않아야 한다.', async () => {
     const user = userEvent.setup();
     let uploadRequestCount = 0;
