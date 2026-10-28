@@ -3,6 +3,7 @@ import styled from '@emotion/styled';
 import { TOP_BAR_HEIGHT } from '@/components/common/TopBar/TopBar.styled';
 import {
   bg,
+  border,
   duration,
   easing,
   fg,
@@ -63,6 +64,12 @@ export const Title = styled(Dialog.Title, transientOptions)`
 export const Header = styled.div`
   flex: none;
   padding: ${spacing[6]} ${spacing[20]} ${spacing[14]};
+`;
+
+export const Footer = styled.div`
+  flex: none;
+  padding: ${spacing[14]} ${spacing[20]} ${spacing[16]};
+  border-top: 1px solid ${border.neutral.soft};
 `;
 
 export const Body = styled.div`

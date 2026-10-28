@@ -1,10 +1,13 @@
 import { Dialog as BaseDialog } from '@base-ui/react/dialog';
 import { useRef, useSyncExternalStore } from 'react';
 import type { ReactNode, RefObject } from 'react';
+import type { IconName } from '@/assets/icons';
 import IconButton from '@/components/common/IconButton';
 import useKeyboardScrollableRegion from '@/hooks/useKeyboardScrollableRegion';
 import resolveInitialFocus from '@/utils/resolveInitialFocus';
 import * as S from './FullScreenDialog.styled';
+
+type FullScreenDialogCloseButton = 'back' | 'close';
 
 interface FullScreenDialogProps {
   isOpen: boolean;
@@ -12,9 +15,19 @@ interface FullScreenDialogProps {
   title: string;
   children: ReactNode;
   header?: ReactNode;
+  footer?: ReactNode;
+  closeButton?: FullScreenDialogCloseButton;
   initialFocus?: RefObject<HTMLElement | null>;
   finalFocus?: RefObject<HTMLElement | null>;
 }
+
+const CLOSE_BUTTON = {
+  back: { icon: 'arrow_back', label: '뒤로 가기' },
+  close: { icon: 'close', label: '닫기' },
+} as const satisfies Record<
+  FullScreenDialogCloseButton,
+  { icon: IconName; label: string }
+>;
 
 /*
  * 안드로이드 Chrome은 가상 키보드가 떠도 레이아웃 높이를 줄이지 않아, 화면 아래쪽 목록이 키보드에 가린다.
@@ -44,6 +57,8 @@ const FullScreenDialog = (props: FullScreenDialogProps) => {
     title,
     children,
     header,
+    footer,
+    closeButton = 'back',
     initialFocus,
     finalFocus,
   } = props;
@@ -76,14 +91,15 @@ const FullScreenDialog = (props: FullScreenDialogProps) => {
         >
           <S.TopBar>
             <IconButton
-              icon="arrow_back"
-              aria-label="뒤로 가기"
+              icon={CLOSE_BUTTON[closeButton].icon}
+              aria-label={CLOSE_BUTTON[closeButton].label}
               onClick={() => onOpenChange(false)}
             />
             <S.Title>{title}</S.Title>
           </S.TopBar>
           {header && <S.Header>{header}</S.Header>}
           <S.Body ref={bodyRef}>{children}</S.Body>
+          {footer && <S.Footer>{footer}</S.Footer>}
         </S.Popup>
       </BaseDialog.Portal>
     </BaseDialog.Root>
