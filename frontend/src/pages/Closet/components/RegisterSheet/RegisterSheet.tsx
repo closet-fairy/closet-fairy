@@ -6,7 +6,7 @@ import * as S from './RegisterSheet.styled';
 interface RegisterSheetProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onSelectCamera?: () => void;
+  onSelectCamera: () => void;
   onSelectGallery: () => void;
 }
 

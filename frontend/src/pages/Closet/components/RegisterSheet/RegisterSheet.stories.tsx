@@ -15,7 +15,7 @@ const meta = {
     },
     onSelectCamera: {
       description:
-        '[사진 촬영]을 누르면 알립니다. 넘기지 않으면 행이 눌리지 않는 모습으로 남습니다.',
+        '[사진 촬영]을 누르면 알립니다. 받는 쪽은 폰 기본 카메라를 엽니다.',
     },
     onSelectGallery: {
       description:

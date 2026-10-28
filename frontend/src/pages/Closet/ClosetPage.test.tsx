@@ -17,7 +17,10 @@ import type {
 } from '@/generated/models';
 import { resetSession } from '@/apis/authSession';
 import { server } from '@/mocks/node';
-import { startClothingUpload } from '@/pages/Closet/clothingUploadStore';
+import {
+  getClothingUploadState,
+  startClothingUpload,
+} from '@/pages/Closet/clothingUploadStore';
 import { CLOSET_LIST_PARAMS } from '@/pages/Closet/constants';
 import { routeTree } from '@/routeTree.gen';
 
@@ -471,6 +474,17 @@ const openGalleryPicker = async (user: ReturnType<typeof userEvent.setup>) => {
   );
 };
 
+const getCameraInput = () => screen.getByLabelText('촬영할 사진');
+
+const openCameraPicker = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(await screen.findByRole('button', { name: '옷 등록하기' }));
+  // 사진을 넣는 것과 별개로, [사진 촬영]이 실제로 카메라 입력을 여는지 본다.
+  const openCamera = vi.spyOn(getCameraInput(), 'click');
+  await user.click(await screen.findByRole('button', { name: '사진 촬영' }));
+  expect(openCamera).toHaveBeenCalledTimes(1);
+  openCamera.mockRestore();
+};
+
 const submitPhotos = async (
   user: ReturnType<typeof userEvent.setup>,
   buttonName: string,
@@ -479,7 +493,7 @@ const submitPhotos = async (
   await user.click(within(dialog).getByRole('button', { name: buttonName }));
 };
 
-describe('갤러리로 옷 등록', () => {
+describe('사진으로 옷 등록', () => {
   /*
    * jsdom의 FormData에 jsdom File을 담아 보내면 MSW가 본문을 읽지 못해 응답이 오지 않는다.
    * 사진을 보내는 이 묶음에서만 Node 기본 구현으로 바꿔 쓰고 끝나면 되돌린다.
@@ -705,6 +719,153 @@ describe('갤러리로 옷 등록', () => {
       expect(afterEvent.defaultPrevented).toBe(false);
     });
     expect(screen.queryByText('올리기 실패')).not.toBeInTheDocument();
+  });
+
+  test('촬영한 사진에 답하기 전에는 다음 촬영을 고를 수 없고, 등록하면 그 사진 한 장만 바로 보내야 한다.', async () => {
+    const user = userEvent.setup();
+    const uploadedFileNames: string[] = [];
+    server.use(
+      http.post('/api/clothing', async ({ request }) => {
+        const formData = await request.clone().formData();
+        uploadedFileNames.push(
+          ...formData
+            .getAll('files')
+            .flatMap((value) => (value instanceof File ? [value.name] : [])),
+        );
+        return undefined;
+      }),
+    );
+    await renderCloset();
+    await openCameraPicker(user);
+    await user.upload(getCameraInput(), photoFile('IMG_3001.JPG'));
+
+    const dialog = await screen.findByRole('dialog', { name: '옷 촬영' });
+    expect(
+      within(dialog).getByRole('button', { name: '계속 촬영' }),
+    ).toBeDisabled();
+    expect(
+      within(dialog).getByRole('button', { name: '촬영 종료' }),
+    ).toBeDisabled();
+
+    await user.click(within(dialog).getByRole('button', { name: '등록' }));
+
+    expect(within(dialog).getByRole('status')).toHaveTextContent('등록했어요');
+    expect(within(dialog).getByRole('button', { name: '등록' })).toBeDisabled();
+    expect(
+      within(dialog).getByRole('button', { name: '계속 촬영' }),
+    ).toBeEnabled();
+    await waitFor(() => {
+      expect(uploadedFileNames).toEqual(['IMG_3001.JPG']);
+    });
+
+    await user.click(within(dialog).getByRole('button', { name: '촬영 종료' }));
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('dialog', { name: '옷 촬영' }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  test('촬영한 사진을 버리면 보내지 않고, 계속 촬영해 새 사진이 오면 다시 답을 받아야 한다.', async () => {
+    const user = userEvent.setup();
+    let uploadRequestCount = 0;
+    server.use(
+      http.post('/api/clothing', () => {
+        uploadRequestCount += 1;
+        return undefined;
+      }),
+    );
+    await renderCloset();
+    await openCameraPicker(user);
+    await user.upload(getCameraInput(), photoFile('IMG_3001.JPG'));
+
+    const dialog = await screen.findByRole('dialog', { name: '옷 촬영' });
+    await user.click(within(dialog).getByRole('button', { name: '버리기' }));
+    expect(within(dialog).getByRole('status')).toHaveTextContent('버렸어요');
+
+    const reopenCamera = vi.spyOn(getCameraInput(), 'click');
+    await user.click(within(dialog).getByRole('button', { name: '계속 촬영' }));
+    expect(reopenCamera).toHaveBeenCalledTimes(1);
+    reopenCamera.mockRestore();
+    await user.upload(getCameraInput(), photoFile('IMG_3002.JPG'));
+
+    const nextDialog = await screen.findByRole('dialog', { name: '옷 촬영' });
+    await waitFor(() => {
+      expect(
+        within(nextDialog).getByRole('button', { name: '등록' }),
+      ).toBeEnabled();
+    });
+    expect(
+      within(nextDialog).getByRole('button', { name: '계속 촬영' }),
+    ).toBeDisabled();
+    expect(
+      within(nextDialog).queryByText(/등록했어요|버렸어요/),
+    ).not.toBeInTheDocument();
+    expect(uploadRequestCount).toBe(0);
+  });
+
+  test('형식이 맞지 않는 사진을 찍으면 사유를 보여 주고 등록을 막아야 한다.', async () => {
+    const user = userEvent.setup();
+    await renderCloset();
+    await openCameraPicker(user);
+    await user.upload(getCameraInput(), photoFile('IMG_1983.GIF', 'image/gif'));
+
+    const dialog = await screen.findByRole('dialog', { name: '옷 촬영' });
+    expect(within(dialog).getByRole('alert')).toHaveTextContent(
+      'JPG, PNG, WEBP, HEIC 사진만 올릴 수 있어요',
+    );
+    expect(within(dialog).getByRole('button', { name: '등록' })).toBeDisabled();
+    expect(
+      within(dialog).getByRole('button', { name: '버리기' }),
+    ).toBeEnabled();
+  });
+
+  test('촬영 중에 보낸 사진을 서버가 거절하면 촬영을 마친 뒤에 알려야 한다.', async () => {
+    const user = userEvent.setup();
+    await renderCloset();
+    await openCameraPicker(user);
+    await user.upload(getCameraInput(), photoFile('IMG_unreadable.JPG'));
+
+    const dialog = await screen.findByRole('dialog', { name: '옷 촬영' });
+    await user.click(within(dialog).getByRole('button', { name: '등록' }));
+    // 거절이 기록된 뒤에도 안내가 촬영 위에 겹치지 않아야 한다.
+    await waitFor(() => {
+      expect(getClothingUploadState().rejectedPhotos).toHaveLength(1);
+    });
+    expect(
+      screen.queryByRole('dialog', { name: '1장은 등록하지 못했어요' }),
+    ).not.toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole('button', { name: '촬영 종료' }));
+
+    expect(
+      await screen.findByRole('dialog', { name: '1장은 등록하지 못했어요' }),
+    ).toBeInTheDocument();
+  });
+
+  test('촬영한 사진에 답하지 않고 닫으면 보내지 않아야 한다.', async () => {
+    const user = userEvent.setup();
+    let uploadRequestCount = 0;
+    server.use(
+      http.post('/api/clothing', () => {
+        uploadRequestCount += 1;
+        return undefined;
+      }),
+    );
+    await renderCloset();
+    await openCameraPicker(user);
+    await user.upload(getCameraInput(), photoFile('IMG_3001.JPG'));
+
+    const dialog = await screen.findByRole('dialog', { name: '옷 촬영' });
+    await user.click(within(dialog).getByRole('button', { name: '닫기' }));
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('dialog', { name: '옷 촬영' }),
+      ).not.toBeInTheDocument();
+    });
+    expect(uploadRequestCount).toBe(0);
   });
 
   test('목록을 불러오지 못해도 올리기 실패 카드는 보여 치울 수 있어야 한다.', async () => {
