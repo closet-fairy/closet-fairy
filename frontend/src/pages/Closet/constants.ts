@@ -2,7 +2,7 @@ import type { ClothingCard } from '@/generated/models';
 
 type ClothingCategory = NonNullable<ClothingCard['category_cd']>;
 
-export const CLOSET_PAGE_SIZE = 20;
+const CLOSET_PAGE_SIZE = 20;
 
 export const CLOSET_LIST_PARAMS = { limit: CLOSET_PAGE_SIZE } as const;
 

@@ -4,7 +4,7 @@ import {
   createRouter,
   RouterProvider,
 } from '@tanstack/react-router';
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
@@ -143,7 +143,7 @@ describe('옷장 목록', () => {
     isListEndAlwaysVisible = true;
     await renderCloset();
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(screen.getAllByText(SECOND_PAGE_ITEM_NAME)).toHaveLength(
         SECOND_PAGE_ITEM_TOTAL,
       );
@@ -198,7 +198,7 @@ describe('빈 옷장과 불러오기 실패', () => {
     );
     const { queryClient } = await renderCloset();
 
-    await vi.waitFor(() => {
+    await waitFor(() => {
       expect(
         queryClient.getQueryState(
           getListClothingClothingGetInfiniteQueryKey(CLOSET_LIST_PARAMS),
