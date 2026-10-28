@@ -21,7 +21,7 @@ const ClothingNameField = (props: ClothingNameFieldProps) => {
     const normalized = normalizeName(draft);
 
     // 글자 수를 넘기면 입력칸의 글자 수 표시가 알리므로 보내지 않는다.
-    if (normalized.length > clothingUpdateItemNameOneMax) {
+    if ([...normalized].length > clothingUpdateItemNameOneMax) {
       return;
     }
 
