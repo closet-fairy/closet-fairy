@@ -38,7 +38,7 @@ export const validateUploadPhoto = (file: UploadPhotoFile) => {
   }
 
   if (file.size > UPLOAD_PHOTO_MAX_BYTES) {
-    return '20MB 이하 사진만 올릴 수 있어요';
+    return `${UPLOAD_PHOTO_MAX_BYTES / 1024 / 1024}MB 이하 사진만 올릴 수 있어요`;
   }
 
   return null;

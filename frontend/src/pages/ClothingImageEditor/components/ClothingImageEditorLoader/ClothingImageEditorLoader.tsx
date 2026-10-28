@@ -17,6 +17,7 @@ import {
 interface ClothingImageEditorLoaderProps {
   clothing: ClothingDetail;
   onClose: () => void;
+  onNotFound: () => void;
 }
 
 const LOAD_ERROR_MESSAGE = '이미지를 불러오지 못했어요.';
@@ -28,7 +29,7 @@ const getLoadErrorMessage = (error: unknown) =>
     : LOAD_ERROR_MESSAGE;
 
 const ClothingImageEditorLoader = (props: ClothingImageEditorLoaderProps) => {
-  const { clothing, onClose } = props;
+  const { clothing, onClose, onNotFound } = props;
   // 저장 응답으로 상세 캐시가 바뀌어도 편집 중인 그림을 다시 불러오지 않도록, 처음 받은 옷으로 편집기를 연다.
   const [initialClothing] = useState(clothing);
   const clothingId = initialClothing.clothing_id;
@@ -96,7 +97,7 @@ const ClothingImageEditorLoader = (props: ClothingImageEditorLoaderProps) => {
         }
         onClose={onClose}
       />
-      <ClothingNotFoundDialog isOpen={isNotFound} onConfirm={onClose} />
+      <ClothingNotFoundDialog isOpen={isNotFound} onConfirm={onNotFound} />
     </>
   );
 };

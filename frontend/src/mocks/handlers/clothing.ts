@@ -635,10 +635,15 @@ export const clothingHandlers = [
 
       const isColorChanged =
         update.color_cd !== undefined && update.color_cd !== clothing.color_cd;
+      // BE처럼 앞뒤 공백을 지우고 사이의 공백을 하나로 줄이며, 비면 null로 둔다.
+      const normalizedName = update.item_name
+        ?.split(/\s+/)
+        .filter(Boolean)
+        .join(' ');
       const itemName =
         update.item_name === undefined
           ? clothing.item_name
-          : (update.item_name?.trim() ?? null) || null;
+          : normalizedName || null;
       const nextClothing: ClothingDetail = {
         ...clothing,
         category_cd: category,

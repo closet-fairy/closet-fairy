@@ -7,7 +7,8 @@ import {
   getGetClothingClothingClothingIdGetQueryKey,
   updateClothingClothingClothingIdPatch,
 } from '@/generated/endpoints/clothing/clothing';
-import type { ClothingUpdate } from '@/generated/models';
+import type { ClothingDetail, ClothingUpdate } from '@/generated/models';
+import { patchClothingCard } from '@/pages/ClothingDetail/clothingListCache';
 
 export type AttributeField = keyof ClothingUpdate;
 
@@ -27,6 +28,8 @@ const useClothingAttributeSave = (clothingId: number) => {
   const latestTokenRef = useRef<Partial<Record<AttributeField, number>>>({});
   const tokenRef = useRef(0);
   const isMountedRef = useRef(true);
+  const detailQueryKey =
+    getGetClothingClothingClothingIdGetQueryKey(clothingId);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -44,6 +47,10 @@ const useClothingAttributeSave = (clothingId: number) => {
     });
   };
 
+  const clearError = (field: AttributeField) => {
+    setErrors((current) => ({ ...current, [field]: undefined }));
+  };
+
   const save = (
     field: AttributeField,
     update: ClothingUpdate,
@@ -56,20 +63,43 @@ const useClothingAttributeSave = (clothingId: number) => {
 
     setPending((current) => ({ ...current, ...update }));
 
+    // 악세서리가 아닌 분류로 바꾸면 종류 행이 사라지므로, 그 행에 남은 실패 문구도 함께 지운다.
+    if (field === 'category_cd' && update.category_cd !== 'accessories') {
+      clearError('accessory_type_cd');
+    }
+
     queueRef.current = queueRef.current.then(async () => {
+      /*
+       * 앞서 보낸 분류 변경이 실패해 악세서리가 아니게 됐다면, 기다리던 종류 저장은 서버가 거절하므로 보내지 않는다.
+       * 요청은 차례대로 나가므로 이때 캐시의 분류가 서버의 분류다.
+       */
+      if (
+        field === 'accessory_type_cd' &&
+        queryClient.getQueryData<ClothingDetail>(detailQueryKey)
+          ?.category_cd !== 'accessories'
+      ) {
+        if (isLatest()) {
+          clearPending(field);
+        }
+        return;
+      }
+
       try {
         const updated = await updateClothingClothingClothingIdPatch(
           clothingId,
           update,
         );
-        queryClient.setQueryData(
-          getGetClothingClothingClothingIdGetQueryKey(clothingId),
-          updated,
-        );
+        // 저장 전에 나간 상세 조회가 늦게 도착해 저장한 값을 옛 값으로 덮지 않게 한다.
+        await queryClient.cancelQueries({ queryKey: detailQueryKey });
+        queryClient.setQueryData(detailQueryKey, updated);
+        patchClothingCard(queryClient, clothingId, {
+          item_name: updated.item_name,
+          category_cd: updated.category_cd,
+        });
 
         if (isLatest()) {
           clearPending(field);
-          setErrors((current) => ({ ...current, [field]: undefined }));
+          clearError(field);
         }
       } catch (error) {
         // 로그인 만료는 전역 다이얼로그가 안내한다.

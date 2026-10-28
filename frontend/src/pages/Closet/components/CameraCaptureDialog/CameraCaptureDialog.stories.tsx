@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { fn } from 'storybook/test';
+import { fn, userEvent, within } from 'storybook/test';
 import type { PickedPhoto } from '@/pages/Closet/types';
 import CameraCaptureDialog from './CameraCaptureDialog';
 
@@ -69,5 +69,13 @@ export const Rejected: Story = {
       ...PHOTO,
       rejectMessage: '20MB 이하 사진만 올릴 수 있어요',
     },
+  },
+};
+
+export const Answered: Story = {
+  play: async () => {
+    await userEvent.click(
+      await within(document.body).findByRole('button', { name: '버리기' }),
+    );
   },
 };

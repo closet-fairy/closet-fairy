@@ -106,7 +106,7 @@ const ClothingCard = (props: ClothingCardProps) => {
       <S.DetailLink
         to="/closet/$clothingId"
         params={{ clothingId: clothing.clothing_id }}
-        aria-label={clothing.item_name ?? '이름 없는 옷'}
+        aria-label={clothing.item_name ?? '이름 없음'}
       />
       <S.ImageBox $tone="default">
         {image}

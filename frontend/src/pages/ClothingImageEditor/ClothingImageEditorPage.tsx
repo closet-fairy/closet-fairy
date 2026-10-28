@@ -87,6 +87,7 @@ const ClothingImageEditorPage = () => {
         key={clothingId}
         clothing={clothing}
         onClose={close}
+        onNotFound={closeToCloset}
       />
     );
   }

@@ -75,11 +75,10 @@ const CameraCaptureDialog = (props: CameraCaptureDialogProps) => {
               등록
             </Button>
           </S.Choices>
-          {answer !== null && (
-            <S.AnswerResult role="status">
-              {ANSWER_LABEL[answer]}
-            </S.AnswerResult>
-          )}
+          {/* 화면 읽기 프로그램이 바뀐 내용을 읽도록 알림 자리는 처음부터 둔다. */}
+          <S.AnswerResult role="status">
+            {answer === null ? '' : ANSWER_LABEL[answer]}
+          </S.AnswerResult>
           <S.Divider />
           <S.Question id={continueQuestionId} $isDimmed={!hasAnswered}>
             촬영을 계속할까요?
@@ -106,24 +105,26 @@ const CameraCaptureDialog = (props: CameraCaptureDialogProps) => {
         </S.Answers>
       }
     >
-      <S.Preview>
-        {photo !== null &&
-          (isPreviewBroken ? (
-            <S.Placeholder>
-              <Icon name="image" size="xl" />
-              <S.FileName>{photo.file.name}</S.FileName>
-            </S.Placeholder>
-          ) : (
-            <S.Image
-              src={photo.previewUrl}
-              alt="촬영한 옷"
-              onError={() => setIsPreviewBroken(true)}
-            />
-          ))}
-      </S.Preview>
-      {rejectMessage !== null && (
-        <S.RejectMessage role="alert">{rejectMessage}</S.RejectMessage>
-      )}
+      <S.Body>
+        <S.Preview>
+          {photo !== null &&
+            (isPreviewBroken ? (
+              <S.Placeholder>
+                <Icon name="image" size="xl" />
+                <S.FileName>{photo.file.name}</S.FileName>
+              </S.Placeholder>
+            ) : (
+              <S.Image
+                src={photo.previewUrl}
+                alt="촬영한 옷"
+                onError={() => setIsPreviewBroken(true)}
+              />
+            ))}
+        </S.Preview>
+        {rejectMessage !== null && (
+          <S.RejectMessage role="alert">{rejectMessage}</S.RejectMessage>
+        )}
+      </S.Body>
     </FullScreenDialog>
   );
 };
