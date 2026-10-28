@@ -46,12 +46,17 @@ const meta = {
     },
     onClose: {
       description:
-        '편집기를 닫을 때 알립니다. 저장 성공, 바뀐 게 없는 닫기, 버리기 확정, 옷을 찾을 수 없다는 안내의 [확인]에서 부릅니다.',
+        '편집기를 닫을 때 알립니다. 저장 성공, 바뀐 게 없는 닫기, 버리기 확정에서 부릅니다.',
+    },
+    onNotFound: {
+      description:
+        '저장하다 옷이 지워진 것을 알게 되면, 옷을 찾을 수 없다는 안내의 [확인]에서 알립니다. 받는 쪽은 돌아갈 상세가 없으므로 옷장으로 보냅니다.',
     },
   },
   args: {
     clothing: createClothing(1),
     onClose: fn(),
+    onNotFound: fn(),
   },
   parameters: {
     layout: 'fullscreen',

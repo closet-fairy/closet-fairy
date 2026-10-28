@@ -2,7 +2,7 @@ import { useState } from 'react';
 import Icon from '@/components/common/Icon';
 import Tag from '@/components/common/Tag';
 import type { ClothingCard as ClothingCardData } from '@/generated/models';
-import { CLOTHING_CATEGORY_LABEL } from '@/pages/Closet/constants';
+import { CLOTHING_CATEGORY_LABEL } from '@/constants/clothingAttribute';
 import * as S from './ClothingCard.styled';
 
 interface ClothingCardProps {
@@ -103,6 +103,11 @@ const ClothingCard = (props: ClothingCardProps) => {
 
   return (
     <S.Container>
+      <S.DetailLink
+        to="/closet/$clothingId"
+        params={{ clothingId: clothing.clothing_id }}
+        aria-label={clothing.item_name ?? '이름 없음'}
+      />
       <S.ImageBox $tone="default">
         {image}
         {clothing.is_new && (

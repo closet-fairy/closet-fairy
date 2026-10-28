@@ -19,6 +19,7 @@ const CHIP_HEIGHT = 36;
 export const Container = styled(Toggle, transientOptions)<{
   $variant: ChipVariant;
   $hasTrailingIcon: boolean;
+  $hasLeading: boolean;
 }>`
   ${typography.body3}
   display: inline-flex;
@@ -29,7 +30,7 @@ export const Container = styled(Toggle, transientOptions)<{
   height: ${CHIP_HEIGHT}px;
   padding: 0
     ${({ $hasTrailingIcon }) => ($hasTrailingIcon ? spacing[12] : spacing[14])}
-    0 ${spacing[14]};
+    0 ${({ $hasLeading }) => ($hasLeading ? spacing[10] : spacing[14])};
   border-width: 1px;
   border-style: ${({ $variant }) => ($variant === 'dashed' ? 'dashed' : 'solid')};
   border-color: ${({ $variant }) =>
@@ -76,4 +77,10 @@ export const TrailingIcon = styled.span`
   [data-pressed] > & {
     color: inherit;
   }
+`;
+
+export const Leading = styled.span`
+  display: flex;
+  flex: none;
+  align-items: center;
 `;

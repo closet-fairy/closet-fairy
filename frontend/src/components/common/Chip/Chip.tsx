@@ -9,6 +9,7 @@ export type ChipVariant = 'solid' | 'dashed';
 interface ChipProps {
   value: string;
   children: ReactNode;
+  leading?: ReactNode;
   trailingIcon?: IconName;
   variant?: ChipVariant;
   isDisabled?: boolean;
@@ -19,6 +20,7 @@ const Chip = (props: ChipProps) => {
   const {
     value,
     children,
+    leading,
     trailingIcon,
     variant = 'solid',
     isDisabled = false,
@@ -44,7 +46,9 @@ const Chip = (props: ChipProps) => {
       onPressedChange={handlePressedChange}
       $variant={variant}
       $hasTrailingIcon={trailingIcon !== undefined}
+      $hasLeading={leading !== undefined}
     >
+      {leading !== undefined && <S.Leading aria-hidden>{leading}</S.Leading>}
       <S.Label>{children}</S.Label>
       {trailingIcon && (
         <S.TrailingIcon>

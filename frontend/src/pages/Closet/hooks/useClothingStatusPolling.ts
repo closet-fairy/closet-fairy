@@ -9,7 +9,7 @@ import type { ClothingCard } from '@/generated/models';
 import {
   patchClothingProgress,
   refetchClothingList,
-} from '@/pages/Closet/clothingListCache';
+} from '@/apis/clothingListCache';
 
 const STATUS_POLL_INTERVAL_MS = 1000;
 

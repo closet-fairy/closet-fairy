@@ -1,6 +1,7 @@
 import { css, keyframes } from '@emotion/react';
 import type { SerializedStyles } from '@emotion/react';
 import styled from '@emotion/styled';
+import { createLink } from '@tanstack/react-router';
 import {
   bg,
   border,
@@ -154,6 +155,21 @@ export const FailedIcon = styled.span`
   display: flex;
   color: ${fg.error.default};
 `;
+
+// 완료 카드는 어디를 눌러도 상세로 가도록 카드 전체를 덮는다.
+const DetailAnchor = styled.a`
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: ${radius.sm};
+
+  &:focus-visible {
+    outline: 2px solid ${border.neutral.strong};
+    outline-offset: 2px;
+  }
+`;
+
+export const DetailLink = createLink(DetailAnchor);
 
 export const RetryButton = styled.button`
   ${typography.caption1Strong}

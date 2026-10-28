@@ -62,3 +62,24 @@ export const refetchClothingList = (queryClient: QueryClient) =>
     // 이미 다시 받는 중이면 그 요청을 이어서 쓴다. 여러 곳에서 한꺼번에 불러도 재조회는 한 번만 나간다.
     { cancelRefetch: false },
   );
+
+// 목록 전체를 다시 받지 않고, 받아 둔 목록에서 그 옷의 카드만 고친다.
+export const patchClothingCard = (
+  queryClient: QueryClient,
+  clothingId: number,
+  patch: Partial<ClothingCard>,
+) => {
+  queryClient.setQueriesData<InfiniteData<ClothingPage>>(
+    { queryKey: getListClothingClothingGetInfiniteQueryKey() },
+    (data) =>
+      data && {
+        ...data,
+        pages: data.pages.map((page) => ({
+          ...page,
+          items: page.items.map((card) =>
+            card.clothing_id === clothingId ? { ...card, ...patch } : card,
+          ),
+        })),
+      },
+  );
+};
