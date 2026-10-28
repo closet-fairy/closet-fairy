@@ -47,9 +47,7 @@ const ellipsis = css`
   text-overflow: ellipsis;
 `;
 
-export const Container = styled.div`
-  min-width: 0;
-`;
+export const Container = styled.div``;
 
 export const ImageBox = styled.div<{ $tone: ImageTone }>`
   position: relative;
