@@ -20,6 +20,7 @@ interface WheelPickerProps {
 }
 
 const TARGET_RELEASE_DELAY = 1000;
+const NATIVE_SCROLL_KEYS = new Set(['PageUp', 'PageDown', ' ']);
 
 const getCenteredIndex = (list: HTMLElement, optionCount: number) =>
   Math.min(
@@ -188,7 +189,10 @@ const WheelPicker = (props: WheelPickerProps) => {
     );
 
     if (nextIndex === null) {
-      releaseTarget(columnIndex);
+      if (NATIVE_SCROLL_KEYS.has(event.key)) {
+        releaseTarget(columnIndex);
+      }
+
       return;
     }
 
