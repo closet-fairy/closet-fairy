@@ -4,7 +4,7 @@ import {
   createRouter,
   RouterProvider,
 } from '@tanstack/react-router';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { delay, http, HttpResponse } from 'msw';
 import { describe, expect, test } from 'vitest';
@@ -30,6 +30,12 @@ const renderDetail = async (clothingId: number | string) => {
   });
   const router = createRouter({ routeTree, history, context: { queryClient } });
   await router.load();
+  // 옮겨 갈 화면의 코드를 미리 받아 둬야, 화면을 옮기는 테스트가 그 코드를 받는 시간에 좌우되지 않는다.
+  await router.preloadRoute({ to: '/closet' });
+  await router.preloadRoute({
+    to: '/closet/$clothingId/edit',
+    params: { clothingId: Number(clothingId) },
+  });
 
   render(
     <QueryClientProvider client={queryClient}>
@@ -92,6 +98,9 @@ describe('옷 상세 보기', () => {
     await waitFor(() => {
       expect(reviewedCount).toBe(1);
     });
+    // 한 번 보낸 뒤 더 보내지 않는지 보려고 잠시 더 기다린다.
+    await act(() => new Promise((resolve) => setTimeout(resolve, 100)));
+    expect(reviewedCount).toBe(1);
   });
 
   test('없는 옷이면 옷장으로 돌려보내고 찾을 수 없다고 알려야 한다.', async () => {
@@ -101,6 +110,25 @@ describe('옷 상세 보기', () => {
       expect(history.location.pathname).toBe('/closet');
     });
     expect(await screen.findByText('옷을 찾을 수 없어요')).toBeInTheDocument();
+  });
+
+  test('이미지 편집기를 열었다가 닫으면 상세로 돌아와야 한다.', async () => {
+    const user = userEvent.setup();
+    const { history } = await renderDetail(COMPLETED_ID);
+    await screen.findByDisplayValue('스트라이프 반팔 티셔츠');
+
+    await user.click(screen.getByRole('button', { name: '이미지 편집' }));
+    await waitFor(() => {
+      expect(history.location.pathname).toBe(`/closet/${COMPLETED_ID}/edit`);
+    });
+    await user.click(await screen.findByRole('button', { name: '닫기' }));
+
+    await waitFor(() => {
+      expect(history.location.pathname).toBe(`/closet/${COMPLETED_ID}`);
+    });
+    expect(
+      await screen.findByDisplayValue('스트라이프 반팔 티셔츠'),
+    ).toBeInTheDocument();
   });
 
   test('처리가 끝나지 않은 옷이면 옷장으로 돌려보내야 한다.', async () => {
@@ -162,6 +190,8 @@ describe('옷 속성 바로 저장', () => {
   test('빠르게 여러 번 바꿔도 요청을 차례로 보내 마지막 값이 남아야 한다.', async () => {
     const user = userEvent.setup();
     const patches: ClothingUpdate[] = [];
+    let isFirstAnswered = false;
+    let wasFirstAnsweredOnSecond: boolean | null = null;
     server.use(
       http.patch('/api/clothing/:clothingId', async ({ request }) => {
         const body: unknown = await request.clone().json();
@@ -170,8 +200,14 @@ describe('옷 속성 바로 저장', () => {
           patches.push(body);
         }
 
-        // 앞 요청이 늦게 끝나도 뒤 요청이 먼저 나가지 않는지 본다.
-        await delay(patches.length === 1 ? 200 : 0);
+        // 앞 요청이 늦게 끝나도 뒤 요청은 앞 요청의 응답을 받은 뒤에 나가야 한다.
+        if (patches.length === 1) {
+          await delay(200);
+          isFirstAnswered = true;
+        } else {
+          wasFirstAnsweredOnSecond = isFirstAnswered;
+        }
+
         return undefined;
       }),
     );
@@ -185,9 +221,51 @@ describe('옷 속성 바로 저장', () => {
     await waitFor(() => {
       expect(patches).toEqual([{ color_cd: 'black' }, { color_cd: 'white' }]);
     });
-    await waitFor(() => {
-      expect(getRow('색상')).toHaveTextContent('흰색');
+    expect(wasFirstAnsweredOnSecond).toBe(true);
+    expect(getRow('색상')).toHaveTextContent('흰색');
+  });
+
+  test('분류 저장이 실패해 악세서리가 아니게 되면, 기다리던 종류 저장은 보내지 않아야 한다.', async () => {
+    const user = userEvent.setup();
+    const patches: ClothingUpdate[] = [];
+    // 종류를 고를 때까지 분류 저장의 응답을 붙잡아 둔다.
+    let answerCategory = () => {};
+    const categoryAnswered = new Promise<void>((resolve) => {
+      answerCategory = resolve;
     });
+    server.use(
+      http.patch('/api/clothing/:clothingId', async ({ request }) => {
+        const body: unknown = await request.clone().json();
+
+        if (typeof body === 'object' && body !== null) {
+          patches.push(body);
+        }
+
+        await categoryAnswered;
+        return HttpResponse.json(
+          { code: 'INTERNAL_ERROR', message: '처리 중 오류가 발생했습니다.' },
+          { status: 500 },
+        );
+      }),
+    );
+    await renderDetail(COMPLETED_ID);
+    await screen.findByDisplayValue('스트라이프 반팔 티셔츠');
+
+    await user.click(getRow('분류'));
+    await user.click(screen.getByRole('button', { name: '악세서리' }));
+    await user.click(getRow('종류'));
+    await user.click(screen.getByRole('button', { name: '가방' }));
+    answerCategory();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '처리 중 오류가 발생했습니다.',
+    );
+    expect(getRow('분류')).toHaveTextContent('상의');
+    expect(
+      screen.queryByRole('button', { name: /^종류/ }),
+    ).not.toBeInTheDocument();
+    await act(() => new Promise((resolve) => setTimeout(resolve, 200)));
+    expect(patches).toEqual([{ category_cd: 'accessories' }]);
   });
 
   test('저장하지 못하면 그 속성만 이전 값으로 돌리고 행 아래에 서버 문구를 보여야 한다.', async () => {
@@ -236,12 +314,13 @@ describe('옷 속성 바로 저장', () => {
     const nameField = await screen.findByDisplayValue('스트라이프 반팔 티셔츠');
 
     await user.clear(nameField);
-    await user.type(nameField, '  여름 티셔츠 ');
+    await user.type(nameField, '  여름   티셔츠 ');
     await user.tab();
 
     await waitFor(() => {
       expect(patches).toEqual([{ item_name: '여름 티셔츠' }]);
     });
+    expect(nameField).toHaveValue('여름 티셔츠');
 
     await user.clear(nameField);
     await user.tab();
@@ -251,6 +330,25 @@ describe('옷 속성 바로 저장', () => {
         { item_name: '여름 티셔츠' },
         { item_name: null },
       ]);
+    });
+  });
+
+  test('지우기 버튼으로 비우고 다시 입력하면 입력칸을 벗어날 때 마지막 이름만 저장해야 한다.', async () => {
+    const user = userEvent.setup();
+    const patches = recordPatches();
+    await renderDetail(COMPLETED_ID);
+    const nameField = await screen.findByDisplayValue('스트라이프 반팔 티셔츠');
+
+    await user.click(nameField);
+    await user.click(screen.getByRole('button', { name: '입력 지우기' }));
+    await user.type(nameField, '반팔');
+
+    expect(patches).toEqual([]);
+
+    await user.tab();
+
+    await waitFor(() => {
+      expect(patches).toEqual([{ item_name: '반팔' }]);
     });
   });
 
