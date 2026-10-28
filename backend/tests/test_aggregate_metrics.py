@@ -1,6 +1,7 @@
 """로그 집계 스크립트의 계산 테스트."""
 
 import json
+import unicodedata
 
 import pytest
 
@@ -306,6 +307,23 @@ def test_e2e_record_selects_requests_and_supplies_completed_response_time(capsys
     assert summary["response_time_avg_s"] == pytest.approx((24.0 + 11.0) / 2)
     assert [m.request_id for m in summary["over_target"]] == ["r-all"]
     assert "요청 20: 응답 24.0초, 파싱 1.5초, 생성 9.0초, 라운드 2" in out
+
+
+def _display_width(text: str) -> int:
+    return sum(2 if unicodedata.east_asian_width(c) in "WF" else 1 for c in text)
+
+
+def test_regeneration_table_rows_line_up_with_header(capsys):
+    log = select_regenerations(
+        collect_regenerations(parse_events(REGENERATION_LINES)), E2E_REGENERATIONS
+    )
+    print_regeneration_report(log, summarize_regenerations(log, E2E_REGENERATIONS))
+
+    lines = capsys.readouterr().out.splitlines()
+    start = lines.index("=== 재추천 ===") + 1
+    table = lines[start : lines.index("", start)]
+    assert any(line.endswith("예외") for line in table[1:])
+    assert {_display_width(line) for line in table} == {_display_width(table[0])}
 
 
 def test_e2e_only_rejections_are_counted_from_record(capsys):

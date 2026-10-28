@@ -574,7 +574,7 @@ def print_regeneration_report(log: RegenerationLog, summary: dict) -> None:
             f" {_num(m.failure_kind or m.outcome):>14} {_num(intent_ms):>8}"
             f" {_num(m.generation_ms):>8} {m.llm_calls:>4} {m.requested:>4}"
             f" {m.hard_rule_fail:>8} {m.reviewer_fail:>8} {m.regenerations:>6}"
-            f" {_num(m.elapsed_s):>7} {'예외' if m.intentional else '-':>4}"
+            f" {_num(m.elapsed_s):>7} {pad('예외' if m.intentional else '-', 4)}"
         )
 
     rejected = s["rejected_by_reason"]
