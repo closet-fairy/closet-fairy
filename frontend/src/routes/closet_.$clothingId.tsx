@@ -1,6 +1,6 @@
 import { createFileRoute, notFound } from '@tanstack/react-router';
 import { z } from 'zod';
-import ClothingImageEditorPage from '@/pages/ClothingImageEditor';
+import ClothingDetailPage from '@/pages/ClothingDetail';
 
 const paramsSchema = z.object({
   clothingId: z
@@ -10,7 +10,7 @@ const paramsSchema = z.object({
     .pipe(z.int()),
 });
 
-export const Route = createFileRoute('/closet_/$clothingId/edit')({
+export const Route = createFileRoute('/closet_/$clothingId')({
   params: {
     parse: (params) => {
       const result = paramsSchema.safeParse(params);
@@ -24,5 +24,5 @@ export const Route = createFileRoute('/closet_/$clothingId/edit')({
     stringify: (params) => ({ clothingId: String(params.clothingId) }),
   },
   staticData: { isFullScreen: true },
-  component: ClothingImageEditorPage,
+  component: ClothingDetailPage,
 });

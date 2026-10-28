@@ -17,7 +17,7 @@ const NOT_FOUND_STATUS = 404;
 const LOAD_ERROR_MESSAGE = '옷 정보를 불러오지 못했어요.';
 
 const ClothingImageEditorPage = () => {
-  const { clothingId } = useParams({ from: '/closet_/$clothingId/edit' });
+  const { clothingId } = useParams({ from: '/closet_/$clothingId_/edit' });
   const navigate = useNavigate();
   const [isSupported] = useState(isWebGL2Supported);
   const [mountedAt] = useState(Date.now);
