@@ -1,6 +1,7 @@
 """재추천 E2E 스크립트의 판정·비교 함수 테스트. 서버·DB·LLM은 쓰지 않는다."""
 
 import re
+import unicodedata
 from datetime import datetime
 from types import SimpleNamespace
 
@@ -21,6 +22,7 @@ from scripts.regeneration_e2e import (
     RIGHT_AFTER_PREVIOUS,
     UNCLEAR_TEXT,
     UNCONFIRMED,
+    VERDICT_LABELS,
     Context,
     RequestIds,
     SessionPlan,
@@ -32,6 +34,7 @@ from scripts.regeneration_e2e import (
     error_failures,
     judge,
     pick_target,
+    print_records,
     regeneration_status,
     repeated_combos,
     run_session,
@@ -398,6 +401,40 @@ async def test_run_is_kept_for_json_even_if_session_stops_midway(down_server, mo
         await run_session(ctx, plan, ARGS)
 
     assert [r["recommendation_session_id"] for r in ctx.runs] == [1]
+
+
+def _width(text: str) -> int:
+    return sum(2 if unicodedata.east_asian_width(c) in "WF" else 1 for c in text)
+
+
+def _printed(step: str, kind: str, expected: str, verdict: str, failures: list[str]) -> dict:
+    return {
+        "session": "D1",
+        "step": step,
+        "kind": kind,
+        "expected": expected,
+        "post_status": 202,
+        "final_status": "completed",
+        "elapsed_s": 12.3,
+        "verdict": verdict,
+        "failures": failures,
+    }
+
+
+def test_result_table_columns_line_up_for_every_step_name(capsys):
+    records = [
+        _printed("R1", "all", "completed", PASS, []),
+        _printed("cancel", "cancel", "completed", FAIL, ["앞 회차 GET 오류"]),
+    ]
+
+    print_records(records)
+
+    lines = capsys.readouterr().out.splitlines()
+    header, rows = lines[1], lines[2:4]
+    header_prefix = header[: -len("판정")]
+    for record, row in zip(records, rows, strict=True):
+        row_prefix = row[: row.index(VERDICT_LABELS[record["verdict"]])]
+        assert _width(row_prefix) == _width(header_prefix), row
 
 
 @pytest.mark.parametrize("member_key", list(PLANS))

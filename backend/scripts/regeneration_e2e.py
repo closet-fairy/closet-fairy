@@ -116,7 +116,7 @@ CASUAL_TEXT = "좀 더 캐주얼하게 입고 싶어"
 
 REGENERATION_HEADER = [
     ("세션", 4, "<"),
-    ("step", 4, "<"),
+    ("step", 6, "<"),
     ("종류", 15, "<"),
     ("기대", 34, "<"),
     ("응답", 4, ">"),
@@ -1141,7 +1141,7 @@ def print_records(records: list[dict]) -> None:
             verdict += ": " + ", ".join(r["failures"])
         elapsed = r["elapsed_s"] if r["elapsed_s"] is not None else r.get("post_elapsed_s")
         print(
-            f"{r['session']:<4} {r['step']:<4} {r['kind']:<15} {r['expected']:<34}"
+            f"{r['session']:<4} {r['step']:<6} {r['kind']:<15} {r['expected']:<34}"
             f" {r['post_status'] or '-'!s:>4} {r['final_status'] or '-':<10}"
             f" {'-' if elapsed is None else elapsed!s:>7} {verdict}"
         )
