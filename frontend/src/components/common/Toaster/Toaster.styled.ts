@@ -15,8 +15,10 @@ import {
 } from '@/styles/tokens';
 import { transientOptions } from '@/styles/transientOptions';
 
+// 하단 탭 바와 맨 앞 토스트 사이의 간격이다.
+export const VIEWPORT_GAP = spacing[12];
 // 뒤로 쌓인 토스트가 한 단계마다 위로 드러나는 높이와, 한쪽에서 좁아지는 폭이다.
-const STACK_PEEK = spacing[8];
+export const STACK_PEEK = spacing[8];
 const STACK_INSET = spacing[6];
 const EXPANDED_GAP = spacing[8];
 // 아이콘을 제목 첫 줄(body3Strong, 14px × 1.5)의 가운데에 맞춘다.
@@ -28,7 +30,7 @@ export const Viewport = styled(Toast.Viewport, transientOptions)<{
   position: fixed;
   right: ${spacing[16]};
   bottom: calc(
-    ${({ $bottomOffset }) => $bottomOffset}px + ${spacing[12]} +
+    ${({ $bottomOffset }) => $bottomOffset}px + ${VIEWPORT_GAP} +
       env(safe-area-inset-bottom, 0px)
   );
   left: ${spacing[16]};

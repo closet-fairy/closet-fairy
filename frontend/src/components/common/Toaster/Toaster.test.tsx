@@ -1,11 +1,12 @@
-import { act, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, test } from 'vitest';
+import { act, render, renderHook, screen } from '@testing-library/react';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import ToastProvider from '@/components/common/ToastProvider';
 import {
   showToast,
   toastManager,
 } from '@/components/common/ToastProvider/ToastProvider.toast';
 import Toaster from './Toaster';
+import { useToastStackHeight } from './Toaster.hooks';
 
 const renderToaster = () =>
   render(
@@ -75,5 +76,30 @@ describe('토스트 띄우기', () => {
     expect(
       screen.getByRole('dialog', { name: '옷을 찾을 수 없어요' }),
     ).toBeInTheDocument();
+  });
+});
+
+describe('토스트가 차지한 높이', () => {
+  test('토스트가 없으면 높이를 주지 않아야 한다.', () => {
+    const { result } = renderHook(() => useToastStackHeight(), {
+      wrapper: ToastProvider,
+    });
+
+    expect(result.current).toBeNull();
+  });
+
+  test('토스트가 뜨면 쌓인 개수만큼 드러난 높이까지 더해 줘야 한다.', async () => {
+    const { result } = renderHook(() => useToastStackHeight(), {
+      wrapper: ToastProvider,
+    });
+
+    act(() => {
+      showToast({ tone: 'success', title: '옷을 삭제했어요' });
+      showToast({ tone: 'info', title: '옷을 찾을 수 없어요' });
+    });
+
+    await vi.waitFor(() => {
+      expect(result.current).toMatch(/\* 1\)$/);
+    });
   });
 });
