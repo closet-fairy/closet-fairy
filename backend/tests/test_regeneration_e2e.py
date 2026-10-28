@@ -448,6 +448,6 @@ def test_plans_are_consistent(member_key):
         assert len(names) == len(set(names))
         for i, step in enumerate(plan.steps):
             if step.kind in RIGHT_AFTER_PREVIOUS:
-                assert plan.steps[i - 1].kind in ("all", "single", "parts")
+                assert i > 0 and plan.steps[i - 1].kind in ("all", "single", "parts")
             if step.expected not in ("completed",):
                 assert step.intentional, step.name
