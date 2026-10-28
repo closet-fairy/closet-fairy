@@ -12,6 +12,7 @@ import type {
 } from '@/generated/models';
 import {
   ClothingEditUpdate,
+  ClothingUpdate,
   listClothingClothingGetParamsLimitDefault,
   listClothingClothingGetParamsLimitMax,
 } from '@/generated/models';
@@ -138,6 +139,13 @@ const ERRORS = {
       message: '사진은 한 번에 20장까지 올릴 수 있습니다.',
     },
   },
+  ACCESSORY_TYPE_NOT_ALLOWED: {
+    status: 422,
+    body: {
+      code: 'CLOTHING_ACCESSORY_TYPE_NOT_ALLOWED',
+      message: '악세서리 종류는 분류가 악세서리일 때만 정할 수 있습니다.',
+    },
+  },
   NOT_RETRYABLE: {
     status: 409,
     body: {
@@ -160,6 +168,8 @@ interface ClothingParams {
 type ClothingResponseBody = ClothingDetail | ErrorResponse;
 
 const strictClothingEditUpdate = ClothingEditUpdate.strict();
+
+const strictClothingUpdate = ClothingUpdate.strict();
 
 const createClothing = (
   clothingId: number,
@@ -592,6 +602,101 @@ export const clothingHandlers = [
       { status: 202 },
     );
   }),
+
+  http.patch<ClothingParams>(
+    '/api/clothing/:clothingId',
+    async ({ params, request }) => {
+      const clothing = clothings.get(Number(params.clothingId));
+
+      if (clothing === undefined) {
+        return errorResponse(ERRORS.NOT_FOUND);
+      }
+
+      if (clothing.processing_status_cd !== 'completed') {
+        return errorResponse(ERRORS.NOT_EDITABLE);
+      }
+
+      const result = strictClothingUpdate.safeParse(await request.json());
+
+      if (!result.success) {
+        return errorResponse(ERRORS.VALIDATION);
+      }
+
+      const update = result.data;
+      const category =
+        update.category_cd === undefined
+          ? clothing.category_cd
+          : update.category_cd;
+
+      // BE처럼 악세서리가 아닌 옷의 종류는 받지 않고, 분류를 바꾸면 남아 있던 종류를 비운다.
+      if (category !== 'accessories' && update.accessory_type_cd != null) {
+        return errorResponse(ERRORS.ACCESSORY_TYPE_NOT_ALLOWED);
+      }
+
+      const isColorChanged =
+        update.color_cd !== undefined && update.color_cd !== clothing.color_cd;
+      const itemName =
+        update.item_name === undefined
+          ? clothing.item_name
+          : (update.item_name?.trim() ?? null) || null;
+      const nextClothing: ClothingDetail = {
+        ...clothing,
+        category_cd: category,
+        accessory_type_cd:
+          category === 'accessories'
+            ? update.accessory_type_cd === undefined
+              ? clothing.accessory_type_cd
+              : update.accessory_type_cd
+            : null,
+        item_name: itemName,
+        color_cd:
+          update.color_cd === undefined ? clothing.color_cd : update.color_cd,
+        color_text:
+          update.color_text === undefined
+            ? isColorChanged
+              ? null
+              : clothing.color_text
+            : update.color_text,
+        style_cds:
+          update.style_cds === undefined
+            ? clothing.style_cds
+            : (update.style_cds ?? []),
+        season_cds:
+          update.season_cds === undefined
+            ? clothing.season_cds
+            : (update.season_cds ?? []),
+        thickness_cd:
+          update.thickness_cd === undefined
+            ? clothing.thickness_cd
+            : update.thickness_cd,
+        is_waterproof:
+          update.is_waterproof === undefined
+            ? clothing.is_waterproof
+            : update.is_waterproof,
+        is_new: false,
+      };
+      clothings.set(clothing.clothing_id, nextClothing);
+
+      return HttpResponse.json<ClothingResponseBody>(nextClothing);
+    },
+  ),
+
+  http.post<ClothingParams>(
+    '/api/clothing/:clothingId/reviewed',
+    ({ params }) => {
+      const clothing = clothings.get(Number(params.clothingId));
+
+      if (clothing === undefined) {
+        return errorResponse(ERRORS.NOT_FOUND);
+      }
+
+      if (clothing.processing_status_cd === 'completed') {
+        clothings.set(clothing.clothing_id, { ...clothing, is_new: false });
+      }
+
+      return new HttpResponse(null, { status: 204 });
+    },
+  ),
 
   http.get<ClothingParams>('/api/clothing/:clothingId', ({ params }) => {
     if (!CLOTHING_ID_PATTERN.test(params.clothingId)) {
