@@ -9,14 +9,12 @@ import { useToastStackHeight } from '@/components/common/Toaster/Toaster.hooks';
 import TopBar from '@/components/common/TopBar';
 import type { ClothingCard as ClothingCardData } from '@/generated/models';
 import {
-  clearRejectedClothingPhotos,
   dismissClothingUpload,
   resendClothingUpload,
 } from './clothingUploadStore';
 import ClothingCard from './components/ClothingCard';
 import ClothingRegistration from './components/ClothingRegistration';
 import ClothingStatusDialog from './components/ClothingStatusDialog';
-import ServerRejectedDialog from './components/ServerRejectedDialog';
 import UploadCard from './components/UploadCard';
 import useClosetClothingList from './hooks/useClosetClothingList';
 import useClothingStatusPolling from './hooks/useClothingStatusPolling';
@@ -61,7 +59,7 @@ const ClosetPage = () => {
   );
   const toastStackHeight = useToastStackHeight();
   const queryClient = useQueryClient();
-  const { uploads, rejectedPhotos } = useClothingUploads();
+  const { uploads } = useClothingUploads();
   const search = useSearch({ from: '/closet' });
   const navigate = useNavigate();
   // 다른 화면의 [옷 등록하기]로 들어오면 등록 방법 시트를 열어 둔 채로 시작한다.
@@ -285,10 +283,6 @@ const ClosetPage = () => {
       <ClothingRegistration
         isSheetOpen={isRegisterSheetOpen}
         onSheetOpenChange={setIsRegisterSheetOpen}
-      />
-      <ServerRejectedDialog
-        photos={rejectedPhotos}
-        onConfirm={clearRejectedClothingPhotos}
       />
     </S.Container>
   );
