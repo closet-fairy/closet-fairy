@@ -475,7 +475,11 @@ const getCameraInput = () => screen.getByLabelText('촬영할 사진');
 
 const openCameraPicker = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.click(await screen.findByRole('button', { name: '옷 등록하기' }));
+  // 사진을 넣는 것과 별개로, [사진 촬영]이 실제로 카메라 입력을 여는지 본다.
+  const openCamera = vi.spyOn(getCameraInput(), 'click');
   await user.click(await screen.findByRole('button', { name: '사진 촬영' }));
+  expect(openCamera).toHaveBeenCalledTimes(1);
+  openCamera.mockRestore();
 };
 
 const submitPhotos = async (
@@ -777,7 +781,10 @@ describe('사진으로 옷 등록', () => {
     await user.click(within(dialog).getByRole('button', { name: '버리기' }));
     expect(within(dialog).getByRole('status')).toHaveTextContent('버렸어요');
 
+    const reopenCamera = vi.spyOn(getCameraInput(), 'click');
     await user.click(within(dialog).getByRole('button', { name: '계속 촬영' }));
+    expect(reopenCamera).toHaveBeenCalledTimes(1);
+    reopenCamera.mockRestore();
     await user.upload(getCameraInput(), photoFile('IMG_3002.JPG'));
 
     const nextDialog = await screen.findByRole('dialog', { name: '옷 촬영' });
@@ -789,7 +796,9 @@ describe('사진으로 옷 등록', () => {
     expect(
       within(nextDialog).getByRole('button', { name: '계속 촬영' }),
     ).toBeDisabled();
-    expect(within(nextDialog).queryByRole('status')).not.toBeInTheDocument();
+    expect(
+      within(nextDialog).queryByText(/등록했어요|버렸어요/),
+    ).not.toBeInTheDocument();
     expect(uploadRequestCount).toBe(0);
   });
 

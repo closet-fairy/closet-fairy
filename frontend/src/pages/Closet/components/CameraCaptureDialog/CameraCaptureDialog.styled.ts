@@ -65,6 +65,7 @@ export const Choices = styled.div`
 
 export const AnswerResult = styled.p`
   ${typography.label1}
+  min-height: 1lh;
   color: ${fg.neutral.light};
 `;
 

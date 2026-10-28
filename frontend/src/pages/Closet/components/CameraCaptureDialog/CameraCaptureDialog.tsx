@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import Button from '@/components/common/Button';
 import FullScreenDialog from '@/components/common/FullScreenDialog';
 import Icon from '@/components/common/Icon';
@@ -25,11 +25,23 @@ const CameraCaptureDialog = (props: CameraCaptureDialogProps) => {
   const { isOpen, photo, onRegister, onContinue, onFinish } = props;
   const [answer, setAnswer] = useState<CaptureAnswer | null>(null);
   const [isPreviewBroken, setIsPreviewBroken] = useState(false);
+  const continueButtonRef = useRef<HTMLButtonElement>(null);
+  const registerQuestionId = useId();
+  const continueQuestionId = useId();
   const hasAnswered = answer !== null;
   const rejectMessage = photo?.rejectMessage ?? null;
 
+  /*
+   * 답한 버튼은 곧바로 꺼지므로, 키보드·화면 읽기 프로그램 사용자가 자리를 잃지 않게 이제 켜진
+   * 다음 물음으로 포커스를 옮긴다.
+   */
+  const answerWith = (nextAnswer: CaptureAnswer) => {
+    setAnswer(nextAnswer);
+    requestAnimationFrame(() => continueButtonRef.current?.focus());
+  };
+
   const register = () => {
-    setAnswer('registered');
+    answerWith('registered');
     onRegister();
   };
 
@@ -45,13 +57,13 @@ const CameraCaptureDialog = (props: CameraCaptureDialogProps) => {
       closeButton="close"
       footer={
         <S.Answers>
-          <S.Question>이 옷을 등록할까요?</S.Question>
-          <S.Choices>
+          <S.Question id={registerQuestionId}>이 옷을 등록할까요?</S.Question>
+          <S.Choices role="group" aria-labelledby={registerQuestionId}>
             <Button
               variant="outline"
               isFullWidth
               isDisabled={hasAnswered}
-              onClick={() => setAnswer('discarded')}
+              onClick={() => answerWith('discarded')}
             >
               버리기
             </Button>
@@ -69,8 +81,10 @@ const CameraCaptureDialog = (props: CameraCaptureDialogProps) => {
             </S.AnswerResult>
           )}
           <S.Divider />
-          <S.Question $isDimmed={!hasAnswered}>촬영을 계속할까요?</S.Question>
-          <S.Choices>
+          <S.Question id={continueQuestionId} $isDimmed={!hasAnswered}>
+            촬영을 계속할까요?
+          </S.Question>
+          <S.Choices role="group" aria-labelledby={continueQuestionId}>
             <Button
               variant="outline"
               isFullWidth
@@ -80,6 +94,7 @@ const CameraCaptureDialog = (props: CameraCaptureDialogProps) => {
               촬영 종료
             </Button>
             <Button
+              ref={continueButtonRef}
               variant="outline"
               isFullWidth
               isDisabled={!hasAnswered}
