@@ -17,6 +17,9 @@ vi.stubGlobal(
   },
 );
 
+// 라우터의 스크롤 복원이 부르는 window.scrollTo를 jsdom은 구현하지 않아 경고만 남기므로 막아 둔다.
+window.scrollTo = () => {};
+
 const unhandledRequests: string[] = [];
 
 beforeAll(() => {

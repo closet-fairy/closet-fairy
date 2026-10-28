@@ -9,6 +9,8 @@ import '@fontsource-variable/asta-sans';
 const router = createRouter({
   routeTree,
   context: { queryClient },
+  // 뒤로 가기로 돌아온 화면은 보던 위치로 되돌린다. 새로 들어가는 화면은 맨 위에서 시작한다.
+  scrollRestoration: true,
 });
 
 declare module '@tanstack/react-router' {
