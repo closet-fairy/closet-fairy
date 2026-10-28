@@ -27,9 +27,14 @@ export type GoingOutDateCd = NonNullable<
   RecommendationSessionCreate['going_out_date_cd']
 >;
 
-export interface GoingOutStart {
+export interface GoingOutDateTime {
   date: string;
   time: string;
+}
+
+export interface GoingOutDayOption {
+  date: string;
+  times: string[];
 }
 
 export const getKstDate = (now: Date) => {
@@ -95,7 +100,7 @@ export const isPastTimeSlot = (time: string, now: Date) =>
 export const createStartTimeSlots = (now: Date) =>
   createTimeSlots().filter((slot) => !isPastTimeSlot(slot, now));
 
-export const createStartOptions = (now: Date): GoingOutStart[] => {
+export const createStartOptions = (now: Date): GoingOutDateTime[] => {
   const today = getKstDate(now);
   const tomorrow = shiftKstDate(today, 1);
 
@@ -113,6 +118,60 @@ export const createEndTimeSlots = (start: string) => {
   );
 };
 
+export const createStartDayOptions = (now: Date): GoingOutDayOption[] => {
+  const today = getKstDate(now);
+
+  return [
+    { date: today, times: createStartTimeSlots(now) },
+    { date: shiftKstDate(today, 1), times: createTimeSlots() },
+  ];
+};
+
+export const createEndDayOptions = (
+  start: GoingOutDateTime,
+): GoingOutDayOption[] => {
+  const endTimes = createEndTimeSlots(start.time);
+  const days = [
+    {
+      date: start.date,
+      times: endTimes.filter((time) => !isNextDayReturn(start.time, time)),
+    },
+    {
+      date: shiftKstDate(start.date, 1),
+      times: endTimes.filter((time) => isNextDayReturn(start.time, time)),
+    },
+  ];
+
+  return days.filter((day) => day.times.length > 0);
+};
+
+export const clampTimeSlot = (time: string, slots: string[]) => {
+  const first = slots.at(0);
+  const last = slots.at(-1);
+
+  if (first === undefined || last === undefined || slots.includes(time)) {
+    return time;
+  }
+
+  return parseTimeToMinutes(time) < parseTimeToMinutes(first) ? first : last;
+};
+
+export const fitGoingOutDateTime = (
+  days: GoingOutDayOption[],
+  dateTime: GoingOutDateTime,
+): GoingOutDateTime => {
+  const firstDay = days.at(0);
+  const day =
+    days.find((option) => option.date === dateTime.date) ??
+    (firstDay && dateTime.date < firstDay.date ? firstDay : days.at(-1));
+
+  if (!day) {
+    return dateTime;
+  }
+
+  return { date: day.date, time: clampTimeSlot(dateTime.time, day.times) };
+};
+
 // KST는 UTC와 정시 단위로 차이 나므로, KST의 30분 경계는 epoch 기준 30분 경계와 같다.
 export const getMillisecondsUntilNextTimeSlot = (now: Date) =>
   SLOT_MILLISECONDS - (now.getTime() % SLOT_MILLISECONDS);
@@ -121,7 +180,7 @@ export const isNextDayReturn = (start: string, end: string) =>
   parseTimeToMinutes(end) < parseTimeToMinutes(start);
 
 interface ValidateGoingOutTimeParams {
-  start: GoingOutStart;
+  start: GoingOutDateTime;
   end: string;
   now: Date;
 }

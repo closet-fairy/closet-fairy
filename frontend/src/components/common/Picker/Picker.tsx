@@ -1,8 +1,8 @@
 import type { KeyboardEvent } from 'react';
-import { useContext, useId, useState } from 'react';
+import { useState } from 'react';
 import BottomSheet from '@/components/common/BottomSheet';
-import { FormFieldContext } from '@/components/common/FormField/FormField.context';
 import Icon from '@/components/common/Icon';
+import PickerTrigger from '@/components/common/PickerTrigger';
 import * as S from './Picker.styled';
 
 export interface PickerOption {
@@ -93,24 +93,10 @@ const Picker = (props: PickerProps) => {
   } = props;
   const [isOpen, setIsOpen] = useState(false);
   const [activeValue, setActiveValue] = useState<string | null>(null);
-  const formField = useContext(FormFieldContext);
-  const captionId = useId();
-  const displayTextId = useId();
 
   const selectedOption = options.find((option) => option.value === value);
   const tabbableValue =
     activeValue ?? selectedOption?.value ?? options.at(0)?.value;
-  const displayText = selectedOption?.label ?? placeholder;
-  const triggerLabelledBy = [
-    formField?.labelId,
-    captionId,
-    displayText ? displayTextId : undefined,
-  ]
-    .filter((id) => id !== undefined)
-    .join(' ');
-  const triggerDescribedBy = [formField?.hintId, ariaDescribedBy]
-    .filter((id) => id !== undefined)
-    .join(' ');
 
   const handleTriggerClick = () => {
     setActiveValue(null);
@@ -145,28 +131,16 @@ const Picker = (props: PickerProps) => {
 
   return (
     <>
-      <S.Trigger
-        type="button"
-        aria-haspopup="dialog"
-        aria-expanded={isOpen}
-        aria-labelledby={triggerLabelledBy}
-        aria-describedby={
-          triggerDescribedBy === '' ? undefined : triggerDescribedBy
-        }
-        aria-invalid={isInvalid || undefined}
-        disabled={isDisabled}
+      <PickerTrigger
+        label={label}
+        valueText={selectedOption?.label}
+        placeholder={placeholder}
+        isExpanded={isOpen}
         onClick={handleTriggerClick}
-        $isInvalid={isInvalid}
-      >
-        <S.Caption id={captionId}>{label}</S.Caption>
-        {selectedOption ? (
-          <S.Value id={displayTextId}>{selectedOption.label}</S.Value>
-        ) : (
-          placeholder && (
-            <S.Placeholder id={displayTextId}>{placeholder}</S.Placeholder>
-          )
-        )}
-      </S.Trigger>
+        isDisabled={isDisabled}
+        isInvalid={isInvalid}
+        aria-describedby={ariaDescribedBy}
+      />
       <BottomSheet isOpen={isOpen} onOpenChange={setIsOpen} title={label}>
         <S.List role="listbox" aria-label={label}>
           {options.map((option) => {
