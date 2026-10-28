@@ -2,11 +2,17 @@ import { css } from '@emotion/react';
 import styled from '@emotion/styled';
 import { bg, border, fg, opacity, spacing, typography } from '@/styles/tokens';
 
+// 사진이 남는 높이를 다 쓰되, 그 아래 사유 문구는 첫 화면 안에 남도록 세로로 나눈다.
+export const Body = styled.div`
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+`;
+
 export const Preview = styled.div`
   position: relative;
   flex: 1;
   min-height: 0;
-  height: 100%;
   background-color: ${bg.neutral.light};
 `;
 
@@ -36,7 +42,8 @@ export const FileName = styled.span`
 
 export const RejectMessage = styled.p`
   ${typography.label1}
-  padding: ${spacing[12]} ${spacing[20]} 0;
+  flex: none;
+  padding-top: ${spacing[12]};
   color: ${fg.error.default};
 `;
 

@@ -100,6 +100,8 @@ const ClothingRegistration = (props: ClothingRegistrationProps) => {
       return;
     }
 
+    // 지금 보던 사진은 새 사진으로 바로 바뀌므로, 등록하지 않은 이전 사진의 주소를 여기서 푼다.
+    releaseOwnedUrls();
     setCapture((previous) => ({
       key: previous.key + 1,
       photo: {
