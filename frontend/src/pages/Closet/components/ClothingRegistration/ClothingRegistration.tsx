@@ -222,7 +222,9 @@ const ClothingRegistration = (props: ClothingRegistrationProps) => {
       />
       {/* 촬영하는 동안 보낸 사진이 거절돼도 다이얼로그가 겹치지 않도록, 열린 화면이 닫힌 뒤에 알린다. */}
       <ServerRejectedDialog
-        photos={isCameraOpen || isConfirmOpen ? [] : rejectedPhotos}
+        photos={
+          isCameraOpen || isConfirmOpen || isOverLimitOpen ? [] : rejectedPhotos
+        }
         onConfirm={clearRejectedClothingPhotos}
       />
     </>

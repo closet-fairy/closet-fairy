@@ -17,7 +17,10 @@ import type {
 } from '@/generated/models';
 import { resetSession } from '@/apis/authSession';
 import { server } from '@/mocks/node';
-import { startClothingUpload } from '@/pages/Closet/clothingUploadStore';
+import {
+  getClothingUploadState,
+  startClothingUpload,
+} from '@/pages/Closet/clothingUploadStore';
 import { CLOSET_LIST_PARAMS } from '@/pages/Closet/constants';
 import { routeTree } from '@/routeTree.gen';
 
@@ -826,8 +829,10 @@ describe('사진으로 옷 등록', () => {
 
     const dialog = await screen.findByRole('dialog', { name: '옷 촬영' });
     await user.click(within(dialog).getByRole('button', { name: '등록' }));
-    // 업로드 응답이 오고 목록을 다시 받을 때까지 기다린 뒤에도 안내가 촬영 위에 겹치지 않아야 한다.
-    await act(() => new Promise((resolve) => setTimeout(resolve, 300)));
+    // 거절이 기록된 뒤에도 안내가 촬영 위에 겹치지 않아야 한다.
+    await waitFor(() => {
+      expect(getClothingUploadState().rejectedPhotos).toHaveLength(1);
+    });
     expect(
       screen.queryByRole('dialog', { name: '1장은 등록하지 못했어요' }),
     ).not.toBeInTheDocument();
