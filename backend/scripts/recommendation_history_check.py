@@ -7,8 +7,8 @@
       빠지고 별점으로 끝난 세션만 최신순
   (c) 페이지 경계: 정확히 limit개, limit+1개, 마지막 페이지 next_cursor null
   (d) 정리 전(코디 여러 벌 남음)에도 별점 코디의 아이템만 슬롯 순서대로
-  (e) 옷을 지운 뒤에도 스냅샷 이름·이미지 유지(목록·상세). 상세는 지운 옷만 삭제 표시,
-      스타일 태그 []·accessory_type_cd null, 기본 아이템은 삭제 표시 없이 style_cd
+  (e) 옷(상의·가방)을 지운 뒤에도 스냅샷 이름·이미지 유지(목록·상세). 상세는 지운 옷만 삭제 표시,
+      스타일 태그 []·가방의 accessory_type_cd는 bag → null, 기본 아이템은 삭제 표시 없이 style_cd
   (f) 날씨가 없는 세션은 weather null
   (g) 지역 이름이 저장된 글자 그대로
   (h) 별점·직접 입력 TPO·추천 시각(KST)
@@ -63,6 +63,7 @@ from scripts.settlement_concurrency import (  # noqa: E402
     count,
     create_session,
     delete_clothing,
+    insert_clothing,
     report,
 )
 
@@ -100,6 +101,7 @@ class Seeded:
     completed_unrated: SeededSession
     reopened: SeededSession
     other_rated: SeededSession
+    rated_bag: int
     ratings: dict[int, int]
 
 
@@ -180,6 +182,27 @@ async def seed_session(
     return seeded
 
 
+async def add_bag_to_rated_outfit(factory, member_id: int, seeded: SeededSession) -> int:
+    async with factory() as db, db.begin():
+        clothing_id = await insert_clothing(db, member_id, "accessories", "black", ["minimal"])
+        await db.execute(
+            text("UPDATE clothing SET accessory_type_cd = 'bag' WHERE clothing_id = :c"),
+            {"c": clothing_id},
+        )
+        await db.execute(
+            text(
+                """
+                INSERT INTO outfit_item (outfit_id, slot_cd, item_source_cd, clothing_id,
+                                         item_name_snapshot, image_url_snapshot)
+                VALUES (:o, 'accessories', 'owned', :c, '내역검증 가방',
+                        CONCAT('clothing/', :m, '/', :c, '_cutout.webp'))
+                """
+            ),
+            {"o": seeded.rated_outfit_id, "c": clothing_id, "m": member_id},
+        )
+    return clothing_id
+
+
 async def rate(
     factory, member_id: int, seeded: SeededSession, rating: int, *, skip_cleanup: bool = False
 ) -> None:
@@ -229,6 +252,7 @@ async def seed(factory, member_ids: list[int]) -> Seeded:
         other_rated.session_id: 3,
     }
     await rate(factory, member_id, rated, ratings[rated.session_id])
+    rated_bag = await add_bag_to_rated_outfit(factory, member_id, rated)
     await rate(factory, member_id, rated_sejong, ratings[rated_sejong.session_id])
     await rate(
         factory,
@@ -287,6 +311,7 @@ async def seed(factory, member_ids: list[int]) -> Seeded:
         completed_unrated=completed_unrated,
         reopened=reopened,
         other_rated=other_rated,
+        rated_bag=rated_bag,
         ratings=ratings,
     )
 
@@ -550,12 +575,19 @@ async def check_deleted_clothing(factory, s: Seeded) -> bool:
         {"o": s.rated.rated_outfit_id, "c": deleted_id},
     )
     expect(failures, "삭제할 옷이 별점 코디에 쓰임", used, 1)
+    bag_used = await count(
+        factory,
+        "SELECT COUNT(*) FROM outfit_item WHERE outfit_id = :o AND clothing_id = :c",
+        {"o": s.rated.rated_outfit_id, "c": s.rated_bag},
+    )
+    expect(failures, "삭제할 가방이 별점 코디에 쓰임", bag_used, 1)
 
     before_page = await fetch(factory, s.member_id, None, 50)
     before = find_item(failures, before_page, s.rated.session_id)
     before_detail = await fetch_detail(factory, s.member_id, s.rated.session_id)
     async with factory() as db, db.begin():
         await delete_clothing(db, deleted_id)
+        await delete_clothing(db, s.rated_bag)
     after_page = await fetch(factory, s.member_id, None, 50)
     after = find_item(failures, after_page, s.rated.session_id)
     after_detail = await fetch_detail(factory, s.member_id, s.rated.session_id)
@@ -568,7 +600,7 @@ async def check_deleted_clothing(factory, s: Seeded) -> bool:
         """,
         {"o": s.rated.rated_outfit_id},
     )
-    expect(failures, "clothing_id가 NULL이 된 아이템", orphaned, 1)
+    expect(failures, "clothing_id가 NULL이 된 아이템", orphaned, 2)
     if before is not None and after is not None:
         expect(failures, "삭제 전후 썸네일", thumbnails_of(after), thumbnails_of(before))
         expect(
@@ -604,23 +636,36 @@ async def check_deleted_clothing(factory, s: Seeded) -> bool:
         after_by_slot = {i.slot_cd: i for i in after_detail.outfit.items}
         expect(
             failures,
-            "슬롯별 삭제 표시 (top이 지운 옷, shoes가 기본 아이템)",
+            "슬롯별 삭제 표시 (top·accessories가 지운 옷, shoes가 기본 아이템)",
             {slot: i.is_clothing_deleted for slot, i in after_by_slot.items()},
-            {"top": True, "bottom": False, "shoes": False},
+            {"top": True, "bottom": False, "shoes": False, "accessories": True},
         )
-        top_before, top, bottom, shoes = (
+        top_before, top, bottom, shoes, bag_before, bag = (
             before_by_slot.get("top"),
             after_by_slot.get("top"),
             after_by_slot.get("bottom"),
             after_by_slot.get("shoes"),
+            before_by_slot.get("accessories"),
+            after_by_slot.get("accessories"),
         )
-        if top_before is None or top is None or bottom is None or shoes is None:
-            failures.append("상세에 top·bottom·shoes 중 빠진 슬롯이 있음")
+        if None in (top_before, top, bottom, shoes, bag_before, bag):
+            failures.append("상세에 top·bottom·shoes·accessories 중 빠진 슬롯이 있음")
         else:
             if not top_before.style_cds:
                 failures.append("지우기 전 top의 스타일 태그가 비어 있어 [] 확인이 의미 없음")
             expect(failures, "지운 옷 스타일 태그", top.style_cds, [])
-            expect(failures, "지운 옷 accessory_type_cd", top.accessory_type_cd, None)
+            expect(
+                failures,
+                "지운 가방 accessory_type_cd (지우기 전 → 뒤)",
+                (bag_before.accessory_type_cd, bag.accessory_type_cd),
+                ("bag", None),
+            )
+            expect(
+                failures,
+                "지운 가방 스타일 태그 (지우기 전 → 뒤)",
+                (bool(bag_before.style_cds), bag.style_cds),
+                (True, []),
+            )
             if not bottom.style_cds:
                 failures.append("지우지 않은 옷의 스타일 태그가 비어 있음")
             expect(
