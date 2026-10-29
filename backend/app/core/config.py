@@ -86,7 +86,7 @@ class Settings(BaseSettings):
     CLOTHING_IMAGE_WEBP_QUALITY: int = 90
     CLOTHING_IMAGE_MAX_PIXELS: int = 50_000_000
     CLOTHING_IMAGE_NORMALIZE_CONCURRENCY: int = 4
-    CLOTHING_REQUEST_LIMIT_PER_MINUTE: int = 10
+    CLOTHING_REQUEST_LIMIT_PER_MINUTE: int = 30
 
     # 끄면 lifespan에서 모델 로드와 워커 기동을 건너뛴다. 테스트 전용(tests/conftest.py)
     BG_REMOVAL_ENABLED: bool = True

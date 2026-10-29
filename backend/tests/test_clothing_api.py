@@ -149,7 +149,7 @@ def query_client(monkeypatch):
 
     async def get_clothing_page(db, storage, member_id, cursor, limit):
         calls.append(("page", storage, member_id, cursor, limit))
-        return ClothingPage(items=[], next_cursor=None)
+        return ClothingPage(items=[], next_cursor=None, total_count=0)
 
     async def get_clothing_status(db, storage, member_id, clothing_ids):
         calls.append(("status", storage, member_id, clothing_ids))
@@ -178,7 +178,7 @@ def test_list_passes_cursor_and_default_limit(query_client):
     res = query_client.get("/clothing", params={"cursor": 30})
 
     assert res.status_code == 200
-    assert res.json() == {"items": [], "next_cursor": None}
+    assert res.json() == {"items": [], "next_cursor": None, "total_count": 0}
     assert query_client.calls == [("page", STORAGE, 3, 30, 20)]
 
 

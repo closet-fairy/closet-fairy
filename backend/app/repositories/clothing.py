@@ -250,6 +250,8 @@ CLOTHING_PAGE_SQL = text(
     """
 )
 
+CLOTHING_COUNT_SQL = text("SELECT COUNT(*) FROM clothing WHERE member_id = :member_id")
+
 CLOTHING_CARDS_BY_IDS_SQL = text(
     f"""
     SELECT {_CARD_COLUMNS}
@@ -316,6 +318,10 @@ async def get_clothing_page(
         )
     ).all()
     return [_card(row) for row in rows]
+
+
+async def count_clothing(db: AsyncSession, member_id: int) -> int:
+    return (await db.execute(CLOTHING_COUNT_SQL, {"member_id": member_id})).scalar_one()
 
 
 async def get_clothing_cards(

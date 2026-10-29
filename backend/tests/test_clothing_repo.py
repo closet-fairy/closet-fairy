@@ -184,6 +184,10 @@ class _QueryResult:
     def first(self):
         return self._rows[0] if self._rows else None
 
+    def scalar_one(self):
+        (row,) = self._rows
+        return row[0]
+
 
 class _QueryDb:
     def __init__(self, *results):
@@ -223,6 +227,17 @@ async def test_get_clothing_page_filters_member_and_cursor():
     assert "c.clothing_id < :cursor" in sql and "ORDER BY c.clothing_id DESC" in sql
     assert "MAX(lj.clothing_job_id)" in sql
     assert [(r.clothing_id, r.job_id) for r in rows] == [(9, 90), (8, 80)]
+
+
+async def test_count_clothing_counts_only_member():
+    db = _QueryDb([(5,)])
+
+    assert await clothing_repo.count_clothing(db, 7) == 5
+
+    sql, params = db.executed[0]
+    assert params == {"member_id": 7}
+    assert "WHERE member_id = :member_id" in sql
+    assert "processing_status_cd" not in sql
 
 
 async def test_get_clothing_cards_skips_query_for_empty_ids():

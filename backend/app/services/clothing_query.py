@@ -40,9 +40,11 @@ async def get_clothing_page(
     rows = await clothing_repo.get_clothing_page(db, member_id, cursor, limit + 1)
     has_more = len(rows) > limit
     rows = rows[:limit]
+    total_count = await clothing_repo.count_clothing(db, member_id)
     return ClothingPage(
         items=[_to_card(row, storage) for row in rows],
         next_cursor=rows[-1].clothing_id if has_more else None,
+        total_count=total_count,
     )
 
 
