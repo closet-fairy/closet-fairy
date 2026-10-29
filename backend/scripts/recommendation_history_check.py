@@ -42,15 +42,13 @@ from app.services import session_cleanup, session_end  # noqa: E402
 from app.services.prompt.outfit_generation import CATEGORY_ORDER  # noqa: E402
 from app.services.storage import get_image_storage  # noqa: E402
 from app.services.weather.base_time import KST  # noqa: E402
-from scripts.session_cleanup_check import expect, insert_weather  # noqa: E402
+from scripts.session_cleanup_check import expect, insert_weather, seed_member  # noqa: E402
 from scripts.settlement_concurrency import (  # noqa: E402
     SeededSession,
     Wardrobe,
     cleanup,
     count,
-    create_member,
     create_session,
-    create_wardrobe,
     delete_clothing,
     report,
 )
@@ -73,14 +71,6 @@ class Seeded:
     abandoned: SeededSession
     other_rated: SeededSession
     ratings: dict[int, int]
-
-
-async def seed_member(factory, member_ids: list[int]) -> tuple[int, Wardrobe]:
-    async with factory() as db, db.begin():
-        member_id = await create_member(db)
-        member_ids.append(member_id)
-        wardrobe = await create_wardrobe(db, member_id)
-    return member_id, wardrobe
 
 
 async def seed_session(
