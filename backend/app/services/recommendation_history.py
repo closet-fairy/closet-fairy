@@ -64,7 +64,8 @@ async def get_history_detail(
     styles = await result_repo.get_clothing_styles(db, clothing_ids)
     ordered = sorted(items, key=lambda r: (CATEGORY_ORDER.index(r.slot_cd), r.outfit_item_id))
     return RecommendationHistoryDetail(
-        **{**_history_fields(row), "weather": _to_detail_weather(row)},
+        **_history_fields(row),
+        weather=_to_detail_weather(row),
         outfit=RecommendationHistoryOutfit(
             outfit_type_cd=row.outfit_type_cd,
             reason=row.reason,
@@ -85,6 +86,7 @@ def _to_item(
     ordered = sorted(thumbnails, key=lambda t: (CATEGORY_ORDER.index(t.slot_cd), t.outfit_item_id))
     return RecommendationHistoryItem(
         **_history_fields(row),
+        weather=to_session_weather(row),
         thumbnails=[
             RecommendationHistoryThumbnail(
                 slot_cd=t.slot_cd,
@@ -109,7 +111,6 @@ def _history_fields(row: HistorySessionRow) -> dict[str, Any]:
             sido_nm=row.sido_nm,
             sigungu_nm=row.sigungu_nm,
         ),
-        "weather": to_session_weather(row),
         "rating": row.rating,
     }
 
