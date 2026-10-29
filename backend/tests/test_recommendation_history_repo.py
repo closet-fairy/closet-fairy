@@ -1,4 +1,4 @@
-"""#173 추천 내역 목록 리포지토리 테스트."""
+"""#173·#174 추천 내역 목록·상세 리포지토리 테스트."""
 
 from datetime import datetime
 from decimal import Decimal
@@ -17,6 +17,9 @@ class _Result:
 
     def all(self):
         return self._rows
+
+    def first(self):
+        return self._rows[0] if self._rows else None
 
 
 class _FakeDb:
@@ -97,6 +100,69 @@ async def test_history_page_sql_filters_own_rated_completed_sessions_by_id():
     assert "s.member_id = :member_id" in sql
     assert "s.recommendation_session_id < :cursor" in sql
     assert "ORDER BY s.recommendation_session_id DESC" in sql
+
+
+DETAIL_FIELDS = dict(
+    SESSION_FIELDS,
+    outfit_type_cd="exploratory",
+    reason="비가 와서 방수 부츠를 골랐어요.",
+    precipitation=Decimal("1.5"),
+    wind_speed=Decimal("3.2"),
+)
+
+
+async def test_get_history_detail_maps_every_column():
+    session_id = SESSION_FIELDS["recommendation_session_id"]
+    params = {"member_id": 7, "recommendation_session_id": session_id}
+    db = _FakeDb(
+        _Result([_Row(**DETAIL_FIELDS, is_weather_fallback=0, weather_session_id=session_id)])
+    )
+
+    row = await history_repo.get_history_detail(db, **params)
+
+    assert row == history_repo.HistoryDetailRow(
+        **DETAIL_FIELDS, is_weather_fallback=False, has_weather=True
+    )
+    assert row.is_weather_fallback is False
+    assert db.executed[0][1] == params
+
+
+async def test_get_history_detail_returns_none_without_row():
+    db = _FakeDb(_Result([]))
+
+    assert await history_repo.get_history_detail(db, 7, 41) is None
+
+
+async def test_get_history_detail_keeps_missing_weather_as_none():
+    fields = dict(
+        DETAIL_FIELDS,
+        temperature=None,
+        feels_like_temperature=None,
+        precipitation=None,
+        wind_speed=None,
+        weather_condition_cd=None,
+        is_weather_fallback=None,
+        weather_session_id=None,
+    )
+    db = _FakeDb(_Result([_Row(**fields)]))
+
+    row = await history_repo.get_history_detail(db, 7, 41)
+
+    assert row.has_weather is False
+    assert (row.is_weather_fallback, row.precipitation, row.wind_speed) == (None, None, None)
+
+
+async def test_history_detail_sql_filters_own_rated_completed_session():
+    db = _FakeDb(_Result([]))
+
+    await history_repo.get_history_detail(db, 7, 41)
+
+    sql = db.executed[0][0]
+    assert "s.recommendation_session_id = :recommendation_session_id" in sql
+    assert "s.member_id = :member_id" in sql
+    assert "s.session_status_cd = 'completed'" in sql
+    assert "f.feedback_type_cd = 'rated'" in sql
+    assert "JOIN outfit o ON o.outfit_id = f.outfit_id" in sql
 
 
 async def test_get_thumbnails_maps_every_column():

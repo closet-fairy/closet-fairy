@@ -137,7 +137,9 @@ def _outfit_fields(
         "outfit_seq": first.outfit_seq,
         "outfit_type_cd": first.outfit_type_cd,
         "reason": first.reason,
-        "items": [_to_item(r, styles_by_clothing, storage) for r in ordered],
+        "items": [
+            OutfitItemResult(**outfit_item_fields(r, styles_by_clothing, storage)) for r in ordered
+        ],
     }
 
 
@@ -160,23 +162,23 @@ def _to_latest_regeneration(
     )
 
 
-def _to_item(
+def outfit_item_fields(
     row: OutfitItemResultRow,
     styles_by_clothing: Mapping[int, Sequence[str]],
     storage: ImageStorage,
-) -> OutfitItemResult:
+) -> dict[str, Any]:
     if row.item_source_cd == "essential":
         style_cds = [row.essential_style_cd] if row.essential_style_cd else []
     else:
         style_cds = list(styles_by_clothing.get(row.clothing_id, [])) if row.clothing_id else []
-    return OutfitItemResult(
-        slot_cd=row.slot_cd,
-        accessory_type_cd=row.accessory_type_cd,
-        item_source_cd=row.item_source_cd,
-        item_name=row.item_name_snapshot,
-        image_url=storage.url(row.image_url_snapshot) if row.image_url_snapshot else None,
-        style_cds=style_cds,
-    )
+    return {
+        "slot_cd": row.slot_cd,
+        "accessory_type_cd": row.accessory_type_cd,
+        "item_source_cd": row.item_source_cd,
+        "item_name": row.item_name_snapshot,
+        "image_url": storage.url(row.image_url_snapshot) if row.image_url_snapshot else None,
+        "style_cds": style_cds,
+    }
 
 
 def to_session_weather(row: WeatherColumns) -> SessionWeather | None:
