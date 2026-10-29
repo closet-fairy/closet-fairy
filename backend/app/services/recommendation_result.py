@@ -2,13 +2,14 @@
 
 from collections.abc import Mapping, Sequence
 from datetime import datetime
-from typing import Any
+from decimal import Decimal
+from typing import Any, Protocol
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.repositories import recommendation_result as result_repo
 from app.repositories import regeneration_request as regeneration_repo
-from app.repositories.recommendation_result import OutfitItemResultRow, ResultSessionRow
+from app.repositories.recommendation_result import OutfitItemResultRow
 from app.repositories.regeneration_request import LatestRequestRow
 from app.schemas.recommendation_result import (
     LatestRegeneration,
@@ -24,6 +25,23 @@ from app.services.recommendation_session import from_db_utc
 from app.services.regeneration_request import processing_stale_before
 from app.services.session_errors import SessionNotFoundError
 from app.services.storage import ImageStorage
+
+
+class WeatherColumns(Protocol):
+    @property
+    def has_weather(self) -> bool: ...
+
+    @property
+    def temperature(self) -> Decimal | None: ...
+
+    @property
+    def feels_like_temperature(self) -> Decimal | None: ...
+
+    @property
+    def weather_condition_cd(self) -> str | None: ...
+
+    @property
+    def is_weather_fallback(self) -> bool | None: ...
 
 
 async def get_recommendation_result(
@@ -62,7 +80,7 @@ async def get_recommendation_result(
             going_out_start_at=from_db_utc(session.going_out_start_at),
             going_out_end_at=from_db_utc(session.going_out_end_at),
         ),
-        weather=_to_weather(session),
+        weather=to_session_weather(session),
         outfits=outfits,
         latest_regeneration=latest_regeneration,
     )
@@ -161,12 +179,12 @@ def _to_item(
     )
 
 
-def _to_weather(session: ResultSessionRow) -> SessionWeather | None:
-    if not session.has_weather:
+def to_session_weather(row: WeatherColumns) -> SessionWeather | None:
+    if not row.has_weather:
         return None
     return SessionWeather(
-        temperature=float(session.temperature),
-        feels_like_temperature=float(session.feels_like_temperature),
-        weather_condition_cd=session.weather_condition_cd,
-        is_fallback=bool(session.is_weather_fallback),
+        temperature=float(row.temperature),
+        feels_like_temperature=float(row.feels_like_temperature),
+        weather_condition_cd=row.weather_condition_cd,
+        is_fallback=bool(row.is_weather_fallback),
     )

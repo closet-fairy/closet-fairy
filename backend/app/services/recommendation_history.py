@@ -12,8 +12,8 @@ from app.schemas.recommendation_history import (
     RecommendationHistoryPage,
     RecommendationHistoryThumbnail,
 )
-from app.schemas.recommendation_result import SessionWeather
 from app.services.prompt.outfit_generation import CATEGORY_ORDER
+from app.services.recommendation_result import to_session_weather
 from app.services.recommendation_session import from_db_utc
 from app.services.storage import ImageStorage
 
@@ -53,7 +53,7 @@ def _to_item(
             sido_nm=row.sido_nm,
             sigungu_nm=row.sigungu_nm,
         ),
-        weather=_to_weather(row),
+        weather=to_session_weather(row),
         rating=row.rating,
         thumbnails=[
             RecommendationHistoryThumbnail(
@@ -63,15 +63,4 @@ def _to_item(
             )
             for t in ordered
         ],
-    )
-
-
-def _to_weather(row: HistorySessionRow) -> SessionWeather | None:
-    if not row.has_weather:
-        return None
-    return SessionWeather(
-        temperature=float(row.temperature),
-        feels_like_temperature=float(row.feels_like_temperature),
-        weather_condition_cd=row.weather_condition_cd,
-        is_fallback=bool(row.is_weather_fallback),
     )
