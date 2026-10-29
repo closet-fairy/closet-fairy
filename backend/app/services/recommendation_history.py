@@ -1,4 +1,4 @@
-"""추천 내역 목록 조회 (#173)."""
+"""추천 내역 목록·상세 조회 (#173, #174)."""
 
 from collections.abc import Sequence
 from typing import Any
@@ -6,16 +6,26 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.repositories import recommendation_history as history_repo
-from app.repositories.recommendation_history import HistorySessionRow, HistoryThumbnailRow
+from app.repositories import recommendation_result as result_repo
+from app.repositories.recommendation_history import (
+    HistoryDetailRow,
+    HistorySessionRow,
+    HistoryThumbnailRow,
+)
 from app.schemas.recommendation_history import (
     RecommendationHistoryCondition,
+    RecommendationHistoryDetail,
     RecommendationHistoryItem,
+    RecommendationHistoryOutfit,
+    RecommendationHistoryOutfitItem,
     RecommendationHistoryPage,
     RecommendationHistoryThumbnail,
+    RecommendationHistoryWeather,
 )
 from app.services.prompt.outfit_generation import CATEGORY_ORDER
-from app.services.recommendation_result import to_session_weather
+from app.services.recommendation_result import outfit_item_fields, to_session_weather
 from app.services.recommendation_session import from_db_utc
+from app.services.session_errors import SessionNotFoundError
 from app.services.storage import ImageStorage
 
 
@@ -35,6 +45,37 @@ async def get_history_page(
             for row in rows
         ],
         next_cursor=rows[-1].recommendation_session_id if has_more else None,
+    )
+
+
+async def get_history_detail(
+    db: AsyncSession, storage: ImageStorage, member_id: int, recommendation_session_id: int
+) -> RecommendationHistoryDetail:
+    row = await history_repo.get_history_detail(db, member_id, recommendation_session_id)
+    if row is None:
+        raise SessionNotFoundError()
+    items = [
+        r
+        for r in await result_repo.get_outfit_items(db, recommendation_session_id)
+        # 별점 정산 뒤 정리는 별도 트랜잭션이라 다른 코디가 아직 남아 있을 수 있다
+        if r.outfit_id == row.rated_outfit_id
+    ]
+    clothing_ids = sorted({r.clothing_id for r in items if r.clothing_id is not None})
+    styles = await result_repo.get_clothing_styles(db, clothing_ids)
+    ordered = sorted(items, key=lambda r: (CATEGORY_ORDER.index(r.slot_cd), r.outfit_item_id))
+    return RecommendationHistoryDetail(
+        **{**_history_fields(row), "weather": _to_detail_weather(row)},
+        outfit=RecommendationHistoryOutfit(
+            outfit_type_cd=row.outfit_type_cd,
+            reason=row.reason,
+            items=[
+                RecommendationHistoryOutfitItem(
+                    **outfit_item_fields(r, styles, storage),
+                    is_clothing_deleted=r.item_source_cd == "owned" and r.clothing_id is None,
+                )
+                for r in ordered
+            ],
+        ),
     )
 
 
@@ -71,3 +112,14 @@ def _history_fields(row: HistorySessionRow) -> dict[str, Any]:
         "weather": to_session_weather(row),
         "rating": row.rating,
     }
+
+
+def _to_detail_weather(row: HistoryDetailRow) -> RecommendationHistoryWeather | None:
+    weather = to_session_weather(row)
+    if weather is None:
+        return None
+    return RecommendationHistoryWeather(
+        **weather.model_dump(),
+        precipitation=float(row.precipitation),
+        wind_speed=float(row.wind_speed),
+    )

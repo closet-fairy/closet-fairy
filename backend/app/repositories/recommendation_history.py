@@ -1,4 +1,4 @@
-"""추천 내역 목록 조회 (#173)."""
+"""추천 내역 목록·상세 조회 (#173, #174)."""
 
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -31,6 +31,14 @@ class HistorySessionRow:
 
 
 @dataclass(frozen=True)
+class HistoryDetailRow(HistorySessionRow):
+    outfit_type_cd: str
+    reason: str | None
+    precipitation: Decimal | None
+    wind_speed: Decimal | None
+
+
+@dataclass(frozen=True)
 class HistoryThumbnailRow:
     outfit_id: int
     outfit_item_id: int
@@ -60,6 +68,27 @@ HISTORY_PAGE_SQL = text(
     -- id 순서와 추천 시각 순서는 같다.
     ORDER BY s.recommendation_session_id DESC
     LIMIT :limit
+    """
+)
+
+HISTORY_DETAIL_SQL = text(
+    """
+    SELECT s.recommendation_session_id, s.created_at,
+           s.tpo_cd, s.tpo_text, s.season_cd, s.sido_nm, s.sigungu_nm,
+           s.going_out_start_at, s.going_out_end_at,
+           f.outfit_id AS rated_outfit_id, f.rating, o.outfit_type_cd, o.reason,
+           w.temperature, w.feels_like_temperature, w.precipitation, w.wind_speed,
+           w.weather_condition_cd, w.is_fallback AS is_weather_fallback,
+           w.recommendation_session_id AS weather_session_id
+    FROM recommendation_session s
+    JOIN outfit_feedback f
+      ON f.recommendation_session_id = s.recommendation_session_id
+     AND f.feedback_type_cd = 'rated'
+    JOIN outfit o ON o.outfit_id = f.outfit_id
+    LEFT JOIN weather_snapshot w ON w.recommendation_session_id = s.recommendation_session_id
+    WHERE s.recommendation_session_id = :recommendation_session_id
+      AND s.member_id = :member_id
+      AND s.session_status_cd = 'completed'
     """
 )
 
@@ -105,6 +134,26 @@ def _session_fields(row) -> dict[str, Any]:
         ),
         "has_weather": row.weather_session_id is not None,
     }
+
+
+async def get_history_detail(
+    db: AsyncSession, member_id: int, recommendation_session_id: int
+) -> HistoryDetailRow | None:
+    row = (
+        await db.execute(
+            HISTORY_DETAIL_SQL,
+            {"member_id": member_id, "recommendation_session_id": recommendation_session_id},
+        )
+    ).first()
+    if row is None:
+        return None
+    return HistoryDetailRow(
+        **_session_fields(row),
+        outfit_type_cd=row.outfit_type_cd,
+        reason=row.reason,
+        precipitation=row.precipitation,
+        wind_speed=row.wind_speed,
+    )
 
 
 async def get_thumbnails(db: AsyncSession, outfit_ids: Sequence[int]) -> list[HistoryThumbnailRow]:
