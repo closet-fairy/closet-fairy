@@ -73,6 +73,9 @@ class ClothingPage(BaseModel):
     next_cursor: int | None = Field(
         description="다음 페이지를 받을 때 cursor로 보낸다. 더 없으면 null이다."
     )
+    total_count: int = Field(
+        description="회원의 옷 전체 개수. 처리 중·실패한 옷도 센다. 페이지와 무관하게 같은 값이다."
+    )
 
 
 ROTATION_DESCRIPTION = "평면 회전 각도 -180~180. 원근 보정 뒤에 적용하고, 양수는 시계 방향이다."

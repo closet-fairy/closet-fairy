@@ -52,6 +52,7 @@ def _detail(clothing_id: int = 5, **overrides) -> ClothingDetailRow:
 def repo(monkeypatch):
     state = {
         "page": [],
+        "count": 0,
         "cards": [],
         "detail": None,
         "tags": ([], []),
@@ -62,6 +63,10 @@ def repo(monkeypatch):
     async def get_clothing_page(db, member_id, cursor, limit):
         state["calls"].append(("page", member_id, cursor, limit))
         return state["page"]
+
+    async def count_clothing(db, member_id):
+        state["calls"].append(("count", member_id))
+        return state["count"]
 
     async def get_clothing_cards(db, member_id, clothing_ids):
         state["calls"].append(("cards", member_id, list(clothing_ids)))
@@ -79,6 +84,7 @@ def repo(monkeypatch):
 
     for name, fn in [
         ("get_clothing_page", get_clothing_page),
+        ("count_clothing", count_clothing),
         ("get_clothing_cards", get_clothing_cards),
         ("get_clothing_detail", get_clothing_detail),
         ("get_clothing_tags", get_clothing_tags),
@@ -96,9 +102,20 @@ async def test_page_asks_one_more_row_to_know_next_cursor(repo):
 
     page = await query.get_clothing_page(None, _Storage(), MEMBER_ID, None, 2)
 
-    assert repo["calls"] == [("page", MEMBER_ID, None, 3)]
+    assert repo["calls"] == [("page", MEMBER_ID, None, 3), ("count", MEMBER_ID)]
     assert [c.clothing_id for c in page.items] == [9, 8]
     assert page.next_cursor == 8
+
+
+async def test_page_total_count_is_whole_closet_not_page_size(repo):
+    repo["page"] = [_card(9), _card(8), _card(7)]
+    repo["count"] = 27
+
+    first = await query.get_clothing_page(None, _Storage(), MEMBER_ID, None, 2)
+    later = await query.get_clothing_page(None, _Storage(), MEMBER_ID, 8, 2)
+
+    assert first.total_count == 27
+    assert later.total_count == 27
 
 
 async def test_last_page_has_no_next_cursor(repo):
@@ -115,6 +132,7 @@ async def test_empty_closet_returns_empty_page(repo):
 
     assert page.items == []
     assert page.next_cursor is None
+    assert page.total_count == 0
 
 
 async def test_card_fields(repo):
