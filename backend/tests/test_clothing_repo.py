@@ -185,7 +185,8 @@ class _QueryResult:
         return self._rows[0] if self._rows else None
 
     def scalar_one(self):
-        return self._rows
+        (row,) = self._rows
+        return row[0]
 
 
 class _QueryDb:
@@ -229,7 +230,7 @@ async def test_get_clothing_page_filters_member_and_cursor():
 
 
 async def test_count_clothing_counts_only_member():
-    db = _QueryDb(5)
+    db = _QueryDb([(5,)])
 
     assert await clothing_repo.count_clothing(db, 7) == 5
 
