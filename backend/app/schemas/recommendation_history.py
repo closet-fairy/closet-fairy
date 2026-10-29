@@ -124,6 +124,11 @@ class RecommendationHistoryPage(BaseModel):
                                     "item_name": "베이지 와이드 팬츠",
                                     "image_url": "/media/clothing/7/3004_cutout.webp",
                                 },
+                                {
+                                    "slot_cd": "shoes",
+                                    "item_name": "화이트 스니커즈",
+                                    "image_url": "/media/clothing/7/4004_cutout.webp",
+                                },
                             ],
                         },
                     ],
