@@ -31,7 +31,7 @@ class RecommendationHistoryCondition(SessionCondition):
     )
 
 
-class RecommendationHistoryItem(BaseModel):
+class RecommendationHistoryBase(BaseModel):
     recommendation_session_id: int
     recommended_at: AwareDatetime = Field(description="추천받은 시각 (KST, +09:00).")
     condition: RecommendationHistoryCondition
@@ -39,6 +39,9 @@ class RecommendationHistoryItem(BaseModel):
         description="추천 시점 날씨. 날씨를 조회하지 못한 채 끝난 세션이면 null이다."
     )
     rating: int = Field(ge=1, le=5, description="매긴 별점.")
+
+
+class RecommendationHistoryItem(RecommendationHistoryBase):
     thumbnails: list[RecommendationHistoryThumbnail] = Field(
         description="별점을 매긴 코디의 아이템."
     )

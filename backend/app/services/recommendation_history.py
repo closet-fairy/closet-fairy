@@ -1,6 +1,7 @@
 """추천 내역 목록 조회 (#173)."""
 
 from collections.abc import Sequence
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -42,19 +43,7 @@ def _to_item(
 ) -> RecommendationHistoryItem:
     ordered = sorted(thumbnails, key=lambda t: (CATEGORY_ORDER.index(t.slot_cd), t.outfit_item_id))
     return RecommendationHistoryItem(
-        recommendation_session_id=row.recommendation_session_id,
-        recommended_at=from_db_utc(row.created_at),
-        condition=RecommendationHistoryCondition(
-            tpo_cd=row.tpo_cd,
-            tpo_text=row.tpo_text,
-            season_cd=row.season_cd,
-            going_out_start_at=from_db_utc(row.going_out_start_at),
-            going_out_end_at=from_db_utc(row.going_out_end_at),
-            sido_nm=row.sido_nm,
-            sigungu_nm=row.sigungu_nm,
-        ),
-        weather=to_session_weather(row),
-        rating=row.rating,
+        **_history_fields(row),
         thumbnails=[
             RecommendationHistoryThumbnail(
                 slot_cd=t.slot_cd,
@@ -64,3 +53,21 @@ def _to_item(
             for t in ordered
         ],
     )
+
+
+def _history_fields(row: HistorySessionRow) -> dict[str, Any]:
+    return {
+        "recommendation_session_id": row.recommendation_session_id,
+        "recommended_at": from_db_utc(row.created_at),
+        "condition": RecommendationHistoryCondition(
+            tpo_cd=row.tpo_cd,
+            tpo_text=row.tpo_text,
+            season_cd=row.season_cd,
+            going_out_start_at=from_db_utc(row.going_out_start_at),
+            going_out_end_at=from_db_utc(row.going_out_end_at),
+            sido_nm=row.sido_nm,
+            sigungu_nm=row.sigungu_nm,
+        ),
+        "weather": to_session_weather(row),
+        "rating": row.rating,
+    }

@@ -4,6 +4,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
+from typing import Any
 
 from sqlalchemy import bindparam, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -80,29 +81,30 @@ async def get_history_page(
             HISTORY_PAGE_SQL, {"member_id": member_id, "cursor": cursor, "limit": limit}
         )
     ).all()
-    return [
-        HistorySessionRow(
-            recommendation_session_id=row.recommendation_session_id,
-            created_at=row.created_at,
-            tpo_cd=row.tpo_cd,
-            tpo_text=row.tpo_text,
-            season_cd=row.season_cd,
-            sido_nm=row.sido_nm,
-            sigungu_nm=row.sigungu_nm,
-            going_out_start_at=row.going_out_start_at,
-            going_out_end_at=row.going_out_end_at,
-            rated_outfit_id=row.rated_outfit_id,
-            rating=row.rating,
-            temperature=row.temperature,
-            feels_like_temperature=row.feels_like_temperature,
-            weather_condition_cd=row.weather_condition_cd,
-            is_weather_fallback=(
-                bool(row.is_weather_fallback) if row.is_weather_fallback is not None else None
-            ),
-            has_weather=row.weather_session_id is not None,
-        )
-        for row in rows
-    ]
+    return [HistorySessionRow(**_session_fields(row)) for row in rows]
+
+
+def _session_fields(row) -> dict[str, Any]:
+    return {
+        "recommendation_session_id": row.recommendation_session_id,
+        "created_at": row.created_at,
+        "tpo_cd": row.tpo_cd,
+        "tpo_text": row.tpo_text,
+        "season_cd": row.season_cd,
+        "sido_nm": row.sido_nm,
+        "sigungu_nm": row.sigungu_nm,
+        "going_out_start_at": row.going_out_start_at,
+        "going_out_end_at": row.going_out_end_at,
+        "rated_outfit_id": row.rated_outfit_id,
+        "rating": row.rating,
+        "temperature": row.temperature,
+        "feels_like_temperature": row.feels_like_temperature,
+        "weather_condition_cd": row.weather_condition_cd,
+        "is_weather_fallback": (
+            bool(row.is_weather_fallback) if row.is_weather_fallback is not None else None
+        ),
+        "has_weather": row.weather_session_id is not None,
+    }
 
 
 async def get_thumbnails(db: AsyncSession, outfit_ids: Sequence[int]) -> list[HistoryThumbnailRow]:
