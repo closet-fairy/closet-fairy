@@ -9,6 +9,7 @@ from app.api import (
     health,
     media,
     member,
+    recommendation_history,
     recommendation_precheck,
     recommendation_session,
     regions,
@@ -48,6 +49,7 @@ register_exception_handlers(app)
 app.include_router(health.router)
 app.include_router(recommendation_precheck.router, responses=AUTH_REQUIRED_RESPONSES)
 app.include_router(recommendation_session.router, responses=AUTH_REQUIRED_RESPONSES)
+app.include_router(recommendation_history.router, responses=AUTH_REQUIRED_RESPONSES)
 app.include_router(weather.router)
 app.include_router(regions.router)
 app.include_router(clothing.router, responses=AUTH_REQUIRED_RESPONSES)
