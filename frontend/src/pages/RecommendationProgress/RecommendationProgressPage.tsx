@@ -35,6 +35,7 @@ import {
   removeSessionItem,
   writeSessionJson,
 } from '@/utils/sessionStorageJson';
+import waitForPopState from '@/utils/waitForPopState';
 import * as S from './RecommendationProgressPage.styled';
 
 type LeaveState = 'none' | 'canceling' | 'retrying' | 'leaving';
@@ -42,7 +43,6 @@ type LeaveState = 'none' | 'canceling' | 'retrying' | 'leaving';
 const POLLING_INTERVAL_MS = 2000;
 const MIN_DISPLAY_MS = 1000;
 const CANCEL_BUTTON_DELAY_MS = 1000;
-const URL_RESTORE_TIMEOUT_MS = 1000;
 const POP_STATE_SETTLE_MS = 200;
 const POP_STATE_SETTLE_POLL_MS = 16;
 const DATE_CHANGED_MESSAGE = '날짜가 바뀌어 외출 시간을 다시 골라 주세요.';
@@ -61,22 +61,6 @@ const progressVisual = (
     />
   </svg>
 );
-
-/*
- * 뒤로 가기를 막으면 브라우저가 이미 바꾼 주소를 history.go로 되돌리는데, 이 이동은 비동기다.
- * 되돌리기가 끝나기 전에 다른 화면으로 replace하면 진행 화면 대신 입력 화면 기록이 바뀌어 버린다.
- */
-const waitForPopState = () =>
-  new Promise<void>((resolve) => {
-    const handleDone = () => {
-      clearTimeout(timer);
-      window.removeEventListener('popstate', handleDone);
-      resolve();
-    };
-    const timer = setTimeout(handleDone, URL_RESTORE_TIMEOUT_MS);
-
-    window.addEventListener('popstate', handleDone);
-  });
 
 const RecommendationProgressPage = () => {
   const { sessionId } = useParams({

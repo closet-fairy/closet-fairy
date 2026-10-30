@@ -71,6 +71,7 @@ const meta = {
     isOpen: { description: '서랍이 열려 있는지입니다.' },
     onOpenChange: { description: '서랍을 닫으려 할 때 호출됩니다.' },
     onAdoptClick: { description: '[채택하기]를 누르면 호출됩니다.' },
+    onRegisterClothingClick: { description: '[옷 등록]을 누르면 호출됩니다.' },
     finalFocus: { description: '닫힌 뒤 포커스를 돌려줄 요소입니다.' },
   },
   args: {
@@ -80,6 +81,7 @@ const meta = {
     isOpen: true,
     onOpenChange: fn(),
     onAdoptClick: fn(),
+    onRegisterClothingClick: fn(),
   },
 } satisfies Meta<typeof OutfitInfoSheet>;
 
