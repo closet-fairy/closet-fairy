@@ -18,17 +18,16 @@ const HEAD_TO_TOE_ORDER: readonly (SlotCd | AccessoryTypeCd)[] = [
   'bottom',
   'socks',
   'shoes',
+  'jewelry',
+  'etc',
 ];
 
-const getThumbnailRank = (item: ThumbnailItem) => {
-  const rank = HEAD_TO_TOE_ORDER.indexOf(
+const getThumbnailRank = (item: ThumbnailItem) =>
+  HEAD_TO_TOE_ORDER.indexOf(
     item.slot_cd === 'accessories'
       ? (item.accessory_type_cd ?? 'etc')
       : item.slot_cd,
   );
-
-  return rank === -1 ? HEAD_TO_TOE_ORDER.length : rank;
-};
 
 // 썸네일 칸은 넷뿐이라, 넘치면 마지막 칸을 남은 개수 표시에 내주고 머리에서 발 순서로 앞의 것을 보여 준다.
 export const getOutfitThumbnails = <Item extends ThumbnailItem>(

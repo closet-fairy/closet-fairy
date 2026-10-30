@@ -36,5 +36,8 @@ export const Footer = styled.div`
 export const Summary = styled.p`
   ${typography.caption1}
   min-width: 0;
+  overflow: hidden;
   color: ${fg.neutral.light};
+  white-space: nowrap;
+  text-overflow: ellipsis;
 `;

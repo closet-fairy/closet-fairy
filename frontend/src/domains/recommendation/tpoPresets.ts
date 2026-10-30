@@ -21,7 +21,7 @@ export const TPO_PRESETS = [
 export type TpoPresetCd = (typeof TPO_PRESETS)[number]['value'];
 
 export const getTpoLabel = (condition: {
-  tpo_cd: string;
+  tpo_cd: RecommendationSessionCreate['tpo_cd'];
   tpo_text: string | null;
 }) =>
   TPO_PRESETS.find((preset) => preset.value === condition.tpo_cd)?.label ??
