@@ -5,7 +5,14 @@ import {
   createRouter,
   RouterProvider,
 } from '@tanstack/react-router';
-import { act, render, screen, waitFor, within } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { delay, http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
@@ -104,6 +111,37 @@ describe('옷장 목록', () => {
     expect(screen.getByText('이름 없음')).toBeInTheDocument();
     expect(screen.getByText('분류 없음')).toBeInTheDocument();
     expect(screen.getAllByText('신규').length).toBeGreaterThan(0);
+  });
+
+  test('사진을 불러오지 못하면 처리 중 카드에는 안내 아이콘을 겹치지 않고, 완료 카드에는 안내 아이콘을 보여야 한다.', async () => {
+    await renderCloset();
+    await screen.findByText('처리 중');
+    const cards = screen.getAllByRole('listitem');
+    const processingCard = cards.find((card) =>
+      within(card).queryByText('처리 중'),
+    );
+    const completedCard = cards.find((card) =>
+      within(card).queryByRole('link'),
+    );
+
+    if (processingCard === undefined || completedCard === undefined) {
+      throw new Error('처리 중 카드와 완료 카드가 모두 있어야 한다.');
+    }
+
+    fireEvent.error(within(processingCard).getByRole('presentation'));
+    fireEvent.error(within(completedCard).getByRole('presentation'));
+
+    expect(
+      within(processingCard).queryByRole('img', {
+        name: '사진을 불러오지 못했어요',
+      }),
+    ).not.toBeInTheDocument();
+    expect(within(processingCard).getByText('처리 중')).toBeInTheDocument();
+    expect(
+      within(completedCard).getByRole('img', {
+        name: '사진을 불러오지 못했어요',
+      }),
+    ).toBeInTheDocument();
   });
 
   test('목록 끝에 닿으면 다음 묶음을 이어 불러와야 한다.', async () => {

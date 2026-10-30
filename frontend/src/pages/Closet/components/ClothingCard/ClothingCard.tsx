@@ -45,7 +45,7 @@ const ClothingCard = (props: ClothingCardProps) => {
           onClick={onShowStatus}
         />
         <S.ImageBox $tone="processing">
-          {image}
+          {!isImageBroken && image}
           <S.Overlay>
             <S.StatusBadge $isQueued={clothing.is_queued}>
               <Icon
