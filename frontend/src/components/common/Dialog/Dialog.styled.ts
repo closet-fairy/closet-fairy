@@ -79,6 +79,7 @@ export const Description = styled(Dialog.Description, transientOptions)`
   flex: none;
   margin-top: ${spacing[6]};
   color: ${fg.neutral.light};
+  white-space: pre-line;
 `;
 
 export const Body = styled.div`
