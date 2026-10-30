@@ -38,3 +38,17 @@ export const canViewRecommendationResult = (
   result.session_status_cd === 'active' &&
   result.generation_status_cd === 'completed' &&
   result.outfits.length > 0;
+
+type ResultOutfits = Pick<RecommendationResult, 'outfits'>;
+
+// 보던 중 세션이 끝나면 다음 응답부터 코디가 비어 오지만, 종료 안내 뒤에는 보던 코디가 남아야 한다.
+export const keepViewedOutfits = <
+  Previous extends ResultOutfits,
+  Next extends ResultOutfits,
+>(
+  previous: Previous,
+  next: Next,
+) =>
+  previous.outfits.length > 0 && next.outfits.length === 0
+    ? { ...next, outfits: previous.outfits }
+    : next;

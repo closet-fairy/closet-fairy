@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest';
 import {
   canViewRecommendationResult,
   getRecommendationProgress,
+  keepViewedOutfits,
 } from './recommendationProgress';
 
 describe('추천 진행 상태', () => {
@@ -66,4 +67,53 @@ describe('추천 결과를 볼 수 있는지 판단', () => {
       ).toBe(false);
     },
   );
+});
+
+describe('보던 코디 유지', () => {
+  const outfit = {
+    outfit_id: 1,
+    outfit_seq: 1,
+    outfit_type_cd: 'preferred' as const,
+    reason: null,
+    items: [],
+    previous_outfits: [],
+  };
+  const viewed = {
+    generation_status_cd: 'completed' as const,
+    session_status_cd: 'active' as const,
+    outfits: [outfit],
+  };
+
+  test('보던 중 세션이 끝나 코디가 비어 오면 세션 상태는 새 값으로, 코디는 보던 값으로 두어야 한다.', () => {
+    const next = {
+      generation_status_cd: 'completed' as const,
+      session_status_cd: 'abandoned' as const,
+      outfits: [],
+    };
+
+    expect(keepViewedOutfits(viewed, next)).toEqual({
+      ...next,
+      outfits: [outfit],
+    });
+  });
+
+  test('새 응답에 코디가 있으면 새 응답을 그대로 써야 한다.', () => {
+    const next = { ...viewed, outfits: [{ ...outfit, outfit_id: 2 }] };
+
+    expect(keepViewedOutfits(viewed, next)).toBe(next);
+  });
+
+  test('세션이 끝난 뒤 다시 조회해도 보던 코디가 남아 있어야 한다.', () => {
+    const ended = { ...viewed, session_status_cd: 'abandoned' as const };
+
+    expect(keepViewedOutfits(ended, { ...ended, outfits: [] }).outfits).toEqual(
+      [outfit],
+    );
+  });
+
+  test('받은 코디가 없었으면 빈 코디를 그대로 둬야 한다.', () => {
+    const next = { ...viewed, outfits: [] };
+
+    expect(keepViewedOutfits({ outfits: [] }, next).outfits).toEqual([]);
+  });
 });
