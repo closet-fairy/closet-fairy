@@ -20,6 +20,7 @@ export const palette = {
   red500: '#e5484d',
 
   dim: 'rgba(20, 20, 22, 0.4)',
+  veil: 'rgba(255, 255, 255, 0.78)',
 
   clothingBlack: '#1c1c1e',
   clothingWhite: '#ffffff',

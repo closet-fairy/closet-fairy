@@ -11,6 +11,7 @@ const colorValues = {
 
   'bg-white': palette.white,
   'bg-dim': palette.dim,
+  'bg-veil': palette.veil,
   'bg-neutral-strong': palette.gray900,
   'bg-neutral-default': palette.gray150,
   'bg-neutral-soft': palette.gray100,
@@ -66,6 +67,7 @@ export const fg = {
 export const bg = {
   white: colorVar('bg-white'),
   dim: colorVar('bg-dim'),
+  veil: colorVar('bg-veil'),
   neutral: {
     strong: colorVar('bg-neutral-strong'),
     default: colorVar('bg-neutral-default'),
