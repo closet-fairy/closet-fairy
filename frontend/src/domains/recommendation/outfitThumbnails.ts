@@ -1,39 +1,36 @@
 import type { OutfitItemResult } from '@/generated/models';
 
 type ThumbnailItem = Pick<OutfitItemResult, 'slot_cd' | 'accessory_type_cd'>;
+type SlotCd = Exclude<OutfitItemResult['slot_cd'], 'accessories'>;
+type AccessoryTypeCd = NonNullable<OutfitItemResult['accessory_type_cd']>;
 
 const THUMBNAIL_CELL_COUNT = 4;
 
-const SLOT_RANK: Partial<Record<OutfitItemResult['slot_cd'], number>> = {
-  bottom: 0,
-  top: 1,
-  outer: 2,
-  socks: 4,
-  shoes: 5,
-};
-
-type AccessoryTypeCd = NonNullable<OutfitItemResult['accessory_type_cd']>;
-
-const ACCESSORY_RANK: Partial<Record<AccessoryTypeCd, number>> = {
-  bag: 3,
-  scarf: 6,
-  belt: 6,
-  hat: 7,
-};
-
-const SMALLEST_ACCESSORY_RANK = 8;
+const HEAD_TO_TOE_ORDER: readonly (SlotCd | AccessoryTypeCd)[] = [
+  'hat',
+  'eyewear',
+  'outer',
+  'top',
+  'scarf',
+  'bag',
+  'belt',
+  'watch',
+  'bottom',
+  'socks',
+  'shoes',
+];
 
 const getThumbnailRank = (item: ThumbnailItem) => {
-  if (item.slot_cd !== 'accessories') {
-    return SLOT_RANK[item.slot_cd] ?? SMALLEST_ACCESSORY_RANK;
-  }
+  const rank = HEAD_TO_TOE_ORDER.indexOf(
+    item.slot_cd === 'accessories'
+      ? (item.accessory_type_cd ?? 'etc')
+      : item.slot_cd,
+  );
 
-  return item.accessory_type_cd === null
-    ? SMALLEST_ACCESSORY_RANK
-    : (ACCESSORY_RANK[item.accessory_type_cd] ?? SMALLEST_ACCESSORY_RANK);
+  return rank === -1 ? HEAD_TO_TOE_ORDER.length : rank;
 };
 
-// 썸네일 칸은 넷뿐이라, 넘치면 마지막 칸을 남은 개수 표시에 내주고 큰 옷부터 보여 준다.
+// 썸네일 칸은 넷뿐이라, 넘치면 마지막 칸을 남은 개수 표시에 내주고 머리에서 발 순서로 앞의 것을 보여 준다.
 export const getOutfitThumbnails = <Item extends ThumbnailItem>(
   items: readonly Item[],
 ) => {

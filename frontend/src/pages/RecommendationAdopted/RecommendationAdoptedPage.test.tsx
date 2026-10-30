@@ -118,8 +118,8 @@ describe('채택 완료 화면', () => {
     await renderAdopted();
 
     expect(await screen.findByText('+2')).toBeInTheDocument();
-    expect(screen.getByAltText('하의')).toBeInTheDocument();
-    expect(screen.queryByAltText('양말')).not.toBeInTheDocument();
+    expect(screen.getByAltText('아우터')).toBeInTheDocument();
+    expect(screen.queryByAltText('신발')).not.toBeInTheDocument();
   });
 
   test('이미지가 없는 아이템은 이름으로 보여 줘야 한다.', async () => {
