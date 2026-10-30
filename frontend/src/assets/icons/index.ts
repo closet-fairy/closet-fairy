@@ -59,6 +59,7 @@ import SyncProblem from '@material-symbols/svg-400/outlined/sync_problem.svg?rea
 import Undo from '@material-symbols/svg-400/outlined/undo.svg?react';
 import WeatherMix from '@material-symbols/svg-400/outlined/weather_mix.svg?react';
 import WeatherSnowy from '@material-symbols/svg-400/outlined/weather_snowy.svg?react';
+import ScrollText from './scroll_text.svg?react';
 
 export const icons = {
   add: Add,
@@ -111,6 +112,7 @@ export const icons = {
   rotate_left: RotateLeft,
   rotate_right: RotateRight,
   schedule: Schedule,
+  scroll_text: ScrollText,
   search: Search,
   search_off: SearchOff,
   star: Star,

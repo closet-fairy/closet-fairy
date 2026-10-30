@@ -347,7 +347,7 @@ const RecommendationProgressPage = () => {
     isLeaveAllowedRef.current = true;
     await navigate({
       to: '/recommendation/sessions/$sessionId/result',
-      params: { sessionId: String(sessionId) },
+      params: { sessionId },
       replace: true,
     });
   };

@@ -47,6 +47,17 @@ const meta = {
         '본문 아래 고정되는 하단 영역입니다. 주로 확인 버튼을 넣으며, 여러 개를 넣으면 세로로 쌓입니다.',
       control: false,
     },
+    isTitleHidden: {
+      description:
+        '제목을 화면에서 숨기고 화면 낭독기로만 읽히게 합니다. 시트의 내용만으로 무엇인지 알 수 있을 때 씁니다.',
+      control: 'boolean',
+      table: { defaultValue: { summary: 'false' } },
+    },
+    maxHeight: {
+      description:
+        '시트의 최대 높이입니다. 넘치는 내용은 시트 안에서 스크롤됩니다. 없으면 화면 위 여백만 남기고 끝까지 늘어납니다.',
+      control: 'text',
+    },
     isDismissable: {
       description:
         '딤 터치, Esc, 끌어내리기로 닫을 수 있는지 정합니다. `false`면 셋 다 막고 손잡이를 숨기므로, 닫는 버튼을 `footer`에 직접 넣어야 합니다.',
@@ -200,6 +211,18 @@ export const Closed: Story = {
 export const WithoutDescription: Story = {
   args: {
     description: undefined,
+  },
+};
+
+export const HiddenTitle: Story = {
+  args: {
+    isTitleHidden: true,
+  },
+};
+
+export const LimitedHeight: Story = {
+  args: {
+    maxHeight: '50dvh',
   },
 };
 

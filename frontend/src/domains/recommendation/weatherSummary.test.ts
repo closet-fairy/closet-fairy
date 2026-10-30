@@ -1,6 +1,10 @@
 import { describe, expect, test } from 'vitest';
 import type { WeatherPreview } from '@/generated/models';
-import { formatTemperature, getWeatherSummary } from './weatherSummary';
+import {
+  formatTemperature,
+  getWeatherLabel,
+  getWeatherSummary,
+} from './weatherSummary';
 
 const createPreview = (overrides: Partial<WeatherPreview> = {}) => ({
   temperature: 24.3,
@@ -20,6 +24,14 @@ describe('기온 표시', () => {
 
   test('0도 근처의 음수를 반올림해도 -0°가 아니라 0°로 보여야 한다.', () => {
     expect(formatTemperature(-0.4)).toBe('0°');
+  });
+});
+
+describe('날씨 문구', () => {
+  test('반올림한 기온과 날씨 상태를 이어서 보여야 한다.', () => {
+    expect(
+      getWeatherLabel({ temperature: 23.6, weather_condition_cd: 'overcast' }),
+    ).toBe('24° 흐림');
   });
 });
 

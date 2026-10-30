@@ -43,6 +43,25 @@ describe('바텀시트 닫기', () => {
   });
 });
 
+describe('제목 숨김', () => {
+  test('제목을 숨겨도 화면 낭독기는 시트 이름을 읽을 수 있어야 한다.', async () => {
+    render(
+      <BottomSheet
+        isOpen
+        onOpenChange={() => {}}
+        title="코디 정보"
+        isTitleHidden
+      >
+        본문
+      </BottomSheet>,
+    );
+
+    expect(
+      await screen.findByRole('dialog', { name: '코디 정보' }),
+    ).toBeInTheDocument();
+  });
+});
+
 describe('열 때 포커스 위치', () => {
   const sheetChildren = <input aria-label="상황" />;
 

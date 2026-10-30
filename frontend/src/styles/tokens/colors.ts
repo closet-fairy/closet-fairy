@@ -17,6 +17,7 @@ const colorValues = {
   'bg-neutral-light': palette.gray50,
   'bg-neutral-pale': palette.gray25,
   'bg-error-light': palette.red100,
+  'bg-floor': palette.warmGray200,
 
   'border-neutral-strong': palette.gray900,
   'border-neutral-default': palette.gray150,
@@ -75,6 +76,7 @@ export const bg = {
   error: {
     light: colorVar('bg-error-light'),
   },
+  floor: colorVar('bg-floor'),
 } as const;
 
 export const border = {
