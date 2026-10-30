@@ -734,6 +734,40 @@ describe('나가기', () => {
     });
   });
 
+  test('불러오기 실패에서 돌아가는 중에 뒤로 가기를 눌러도 그만두기 확인을 띄우지 않아야 한다.', async () => {
+    const user = userEvent.setup();
+    let finishCancel = () => {};
+    server.use(
+      http.post(`${SESSION_URL}/cancel`, async () => {
+        await new Promise<void>((resolve) => {
+          finishCancel = resolve;
+        });
+
+        return HttpResponse.json({
+          recommendation_session_id: SESSION_ID,
+          session_status_cd: 'canceled',
+        });
+      }),
+    );
+    useErrorResult(500);
+    const { router } = await renderResultAfterInput();
+
+    await user.click(await screen.findByRole('button', { name: '돌아가기' }));
+    window.history.back();
+    await waitFor(() => {
+      expect(window.location.pathname).toBe(RESULT_PATH);
+    });
+
+    expect(
+      screen.queryByRole('dialog', { name: '추천을 그만둘까요?' }),
+    ).not.toBeInTheDocument();
+
+    await waitFor(() => {
+      finishCancel();
+      expect(router.state.location.pathname).toBe(INPUT_PATH);
+    });
+  });
+
   test('옷 등록으로 연 확인에서 뒤로 가기를 눌러도 옷장으로 가야 한다.', async () => {
     const user = userEvent.setup();
     useCancelSpy();

@@ -23,7 +23,7 @@ import {
   useRateRecommendationRecommendationSessionsRecommendationSessionIdRatingPost,
 } from '@/generated/endpoints/recommendation/recommendation';
 import OutfitLoading from '@/components/OutfitLoading';
-import { RecommendationResult } from '@/generated/models';
+import type { RecommendationResult } from '@/generated/models';
 import waitForPopState from '@/utils/waitForPopState';
 import OutfitActions from './components/OutfitActions';
 import OutfitCard from './components/OutfitCard';
@@ -41,17 +41,18 @@ const SESSION_ALREADY_SETTLED_CODE = 'SESSION_ALREADY_SETTLED';
 // 취소나 이탈로 이미 끝난 세션에 별점을 보냈을 때 내려오는 코드다.
 const SESSION_NOT_RATABLE_CODE = 'SESSION_NOT_RATABLE';
 
-const shareResult = (previous: unknown, next: unknown) => {
-  const previousResult = RecommendationResult.safeParse(previous);
-  const nextResult = RecommendationResult.safeParse(next);
+const hasOutfitList = (
+  value: unknown,
+): value is Pick<RecommendationResult, 'outfits'> =>
+  typeof value === 'object' &&
+  value !== null &&
+  'outfits' in value &&
+  Array.isArray(value.outfits);
 
-  return previousResult.success && nextResult.success
-    ? replaceEqualDeep(
-        previous,
-        keepViewedOutfits(previousResult.data, nextResult.data),
-      )
+const shareResult = (previous: unknown, next: unknown) =>
+  hasOutfitList(previous) && hasOutfitList(next)
+    ? replaceEqualDeep(previous, keepViewedOutfits(previous, next))
     : next;
-};
 
 const RecommendationResultPage = () => {
   const { sessionId } = useParams({
@@ -133,7 +134,7 @@ const RecommendationResultPage = () => {
         if (!isSubmittingRating) {
           setOpenLayer(null);
         }
-      } else if (!isLeaveDialogOpen) {
+      } else if (!isLeaveDialogOpen && !isCanceling) {
         openLeaveDialog('input');
       }
 
@@ -197,7 +198,7 @@ const RecommendationResultPage = () => {
       title="추천을 그만둘까요?"
       description={'받은 코디가 모두 사라지고\n되돌릴 수 없어요.'}
       isDismissable={!isCanceling}
-      finalFocus={closeButtonRef}
+      finalFocus={isExpired ? undefined : closeButtonRef}
       footer={
         <>
           <Button
@@ -413,7 +414,7 @@ const RecommendationResultPage = () => {
         onRatingChange={setRating}
         onSubmit={submitRating}
         onClose={() => setOpenLayer(null)}
-        finalFocus={isExpired ? undefined : adoptButtonRef}
+        finalFocus={isExpired || isLeaveDialogOpen ? undefined : adoptButtonRef}
       />
       {leaveDialog}
       <Dialog
