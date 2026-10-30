@@ -9,7 +9,7 @@ const meta = {
   argTypes: {
     item: {
       description:
-        '코디 아이템입니다. 이미지가 없거나 불러오지 못하면 점선 칸에 이름을 보여 줍니다.',
+        '코디 아이템입니다. 이미지가 없으면 점선 칸에 이름을 보여 줍니다.',
       control: 'object',
     },
     size: {
@@ -57,14 +57,4 @@ export const Essential: Story = {
 
 export const EssentialThumbnail: Story = {
   args: { ...Essential.args, size: 'sm' },
-};
-
-export const BrokenImage: Story = {
-  args: {
-    item: {
-      item_name: '네이비 볼캡',
-      item_source_cd: 'owned',
-      image_url: '/media/clothing/없는-사진.webp',
-    },
-  },
 };

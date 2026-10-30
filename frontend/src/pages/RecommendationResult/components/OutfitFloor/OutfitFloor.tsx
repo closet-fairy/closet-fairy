@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import Icon from '@/components/common/Icon';
 import type { OutfitItemResult } from '@/generated/models';
 import * as S from './OutfitFloor.styled';
@@ -26,9 +25,6 @@ const getFloorSlot = (item: OutfitItemResult): FloorSlot | null => {
 // 배치 방식이 정해지기 전의 임시 구현이다. 네 자리에 놓을 수 있는 옷만 놓고, 나머지는 서랍에서 보여 준다.
 const OutfitFloor = (props: OutfitFloorProps) => {
   const { items } = props;
-  const [brokenImageUrls, setBrokenImageUrls] = useState<ReadonlySet<string>>(
-    new Set(),
-  );
 
   const placedItems = FLOOR_SLOTS.flatMap((slot) => {
     const item = items.find(
@@ -37,11 +33,7 @@ const OutfitFloor = (props: OutfitFloorProps) => {
         candidate.item_source_cd === 'owned',
     );
 
-    if (
-      !item ||
-      item.image_url === null ||
-      brokenImageUrls.has(item.image_url)
-    ) {
+    if (!item || item.image_url === null) {
       return [];
     }
 
@@ -71,9 +63,6 @@ const OutfitFloor = (props: OutfitFloorProps) => {
           alt={name}
           draggable={false}
           $slot={slot}
-          onError={() =>
-            setBrokenImageUrls((urls) => new Set(urls).add(imageUrl))
-          }
         />
       ))}
     </S.Stage>
