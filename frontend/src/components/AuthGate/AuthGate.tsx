@@ -1,4 +1,4 @@
-import { Navigate, useLocation } from '@tanstack/react-router';
+import { Navigate, useLocation, useRouterState } from '@tanstack/react-router';
 import { useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { isUnauthorizedError, markSessionActive } from '@/apis/authSession';
@@ -18,6 +18,9 @@ interface AuthGateProps {
 const AuthGate = (props: AuthGateProps) => {
   const { children } = props;
   const pathname = useLocation({ select: (location) => location.pathname });
+  const renderedPathname = useRouterState({
+    select: (state) => (state.resolvedLocation ?? state.location).pathname,
+  });
   const { data: me, error, refetch, isFetching } = useGetMeMembersMeGet();
 
   useEffect(() => {
@@ -60,6 +63,11 @@ const AuthGate = (props: AuthGateProps) => {
 
   if (redirectPath !== null) {
     return <Navigate to={redirectPath} replace />;
+  }
+
+  // 이동이 끝날 때까지 화면에는 이전 주소의 라우트가 남아 있어, 그대로 열면 볼 수 없는 화면이 잠깐 보인다.
+  if (resolveAuthRedirect(renderedPathname, status) !== null) {
+    return <SplashScreen />;
   }
 
   return children;
