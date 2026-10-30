@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from '@tanstack/react-router';
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { ApiError } from '@/apis/apiError';
@@ -7,6 +8,7 @@ import Carousel from '@/components/common/Carousel';
 import Icon from '@/components/common/Icon';
 import IconButton from '@/components/common/IconButton';
 import StatusView from '@/components/common/StatusView';
+import { showToast } from '@/components/common/ToastProvider/ToastProvider.toast';
 import TopBar from '@/components/common/TopBar';
 import OutfitLoading from '@/components/OutfitLoading';
 import {
@@ -14,21 +16,36 @@ import {
   getRecommendationProgress,
 } from '@/domains/recommendation/recommendationProgress';
 import {
+  getGetRecommendationHistoryDetailRecommendationHistoryRecommendationSessionIdGetQueryOptions,
   useCancelRecommendationSessionRecommendationSessionsRecommendationSessionIdCancelPost,
   useGetRecommendationResultRecommendationSessionsRecommendationSessionIdGet,
+  useRateRecommendationRecommendationSessionsRecommendationSessionIdRatingPost,
 } from '@/generated/endpoints/recommendation/recommendation';
 import OutfitActions from './components/OutfitActions';
 import OutfitCard from './components/OutfitCard';
 import OutfitInfoSheet from './components/OutfitInfoSheet';
+import RatingDialog from './components/RatingDialog';
 import * as S from './RecommendationResultPage.styled';
 
+type OpenLayer = 'info' | 'rating' | null;
+
 const NOT_FOUND_STATUS = 404;
+const SESSION_NOT_FOUND_CODE = 'SESSION_NOT_FOUND';
+const SESSION_ALREADY_SETTLED_CODE = 'SESSION_ALREADY_SETTLED';
+// 취소나 이탈로 이미 끝난 세션에 별점을 보냈을 때 내려오는 코드다.
+const SESSION_NOT_RATABLE_CODE = 'SESSION_NOT_RATABLE';
+const REJECTED_RATING_CODES: readonly string[] = [
+  SESSION_NOT_FOUND_CODE,
+  SESSION_ALREADY_SETTLED_CODE,
+  SESSION_NOT_RATABLE_CODE,
+];
 
 const RecommendationResultPage = () => {
   const { sessionId } = useParams({
     from: '/recommendation_/sessions/$sessionId_/result',
   });
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const {
     data: result,
     error,
@@ -39,20 +56,32 @@ const RecommendationResultPage = () => {
   );
   const { mutateAsync: cancelSession } =
     useCancelRecommendationSessionRecommendationSessionsRecommendationSessionIdCancelPost();
+  const { mutate: rateOutfit, isPending: isRatingPending } =
+    useRateRecommendationRecommendationSessionsRecommendationSessionIdRatingPost();
   const [outfitIndex, setOutfitIndex] = useState(0);
-  const [isInfoOpen, setIsInfoOpen] = useState(false);
+  const [openLayer, setOpenLayer] = useState<OpenLayer>(null);
+  const [rating, setRating] = useState(0);
+  const [isRatingRejected, setIsRatingRejected] = useState(false);
   const [isCanceling, setIsCanceling] = useState(false);
+  const [isMovingToAdopted, setIsMovingToAdopted] = useState(false);
   const infoButtonRef = useRef<HTMLButtonElement>(null);
+  const adoptButtonRef = useRef<HTMLButtonElement>(null);
 
   const isProcessing =
     result !== undefined && getRecommendationProgress(result) === 'processing';
   const isNotFound =
     error instanceof ApiError && error.status === NOT_FOUND_STATUS;
+  const isSubmittingRating = isRatingPending || isMovingToAdopted;
+  // 채택이 끝나는 사이에 재조회가 도착해도 볼 수 없는 추천으로 안내하지 않는다.
+  const isSessionFinished =
+    result !== undefined &&
+    !isProcessing &&
+    !isSubmittingRating &&
+    !canViewRecommendationResult(result);
+  const hasNoOutfits =
+    result !== undefined && !isProcessing && result.outfits.length === 0;
   const isUnavailable =
-    isNotFound ||
-    (result !== undefined &&
-      !isProcessing &&
-      !canViewRecommendationResult(result));
+    isRatingRejected || isNotFound || isSessionFinished || hasNoOutfits;
 
   const moveToProgress = useEffectEvent(() => {
     void navigate({
@@ -150,6 +179,56 @@ const RecommendationResultPage = () => {
 
   const { outfits, weather, is_clothing_shortage: isClothingShortage } = result;
   const currentIndex = Math.min(outfitIndex, outfits.length - 1);
+  const currentOutfit = outfits[currentIndex];
+
+  const openRatingDialog = () => {
+    setRating(0);
+    setOpenLayer('rating');
+  };
+
+  const moveToAdopted = async () => {
+    setIsMovingToAdopted(true);
+    // 채택 완료 화면이 로딩 없이 바로 그려지도록 내역을 먼저 받아 둔다. 실패하면 그 화면이 다시 불러온다.
+    await queryClient.prefetchQuery({
+      ...getGetRecommendationHistoryDetailRecommendationHistoryRecommendationSessionIdGetQueryOptions(
+        sessionId,
+      ),
+      retry: false,
+    });
+    await navigate({
+      to: '/recommendation/sessions/$sessionId/adopted',
+      params: { sessionId },
+      replace: true,
+    });
+  };
+
+  const submitRating = () => {
+    rateOutfit(
+      {
+        recommendationSessionId: sessionId,
+        data: { outfit_id: currentOutfit.outfit_id, rating },
+      },
+      {
+        onSuccess: () => void moveToAdopted(),
+        onError: (ratingError) => {
+          if (isUnauthorizedError(ratingError)) {
+            return;
+          }
+
+          if (REJECTED_RATING_CODES.includes(ratingError.code)) {
+            setIsRatingRejected(true);
+            return;
+          }
+
+          showToast({
+            tone: 'error',
+            title: '코디를 채택하지 못했어요',
+            description: ratingError.message,
+          });
+        },
+      },
+    );
+  };
 
   return (
     <S.Container>
@@ -180,15 +259,27 @@ const RecommendationResultPage = () => {
       </S.CarouselArea>
       <OutfitActions
         infoButtonRef={infoButtonRef}
-        onInfoClick={() => setIsInfoOpen(true)}
+        adoptButtonRef={adoptButtonRef}
+        onInfoClick={() => setOpenLayer('info')}
+        onAdoptClick={openRatingDialog}
       />
       <OutfitInfoSheet
-        outfit={outfits[currentIndex]}
+        outfit={currentOutfit}
         weather={weather}
         isClothingShortage={isClothingShortage}
-        isOpen={isInfoOpen}
-        onOpenChange={setIsInfoOpen}
-        finalFocus={infoButtonRef}
+        isOpen={openLayer === 'info'}
+        onOpenChange={(isOpen) => setOpenLayer(isOpen ? 'info' : null)}
+        onAdoptClick={openRatingDialog}
+        finalFocus={openLayer === 'rating' ? undefined : infoButtonRef}
+      />
+      <RatingDialog
+        isOpen={openLayer === 'rating'}
+        rating={rating}
+        isSubmitting={isSubmittingRating}
+        onRatingChange={setRating}
+        onSubmit={submitRating}
+        onClose={() => setOpenLayer(null)}
+        finalFocus={adoptButtonRef}
       />
     </S.Container>
   );

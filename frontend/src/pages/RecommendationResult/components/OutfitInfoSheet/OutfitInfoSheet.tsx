@@ -17,6 +17,7 @@ interface OutfitInfoSheetProps {
   isClothingShortage: boolean;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
+  onAdoptClick: () => void;
   finalFocus?: RefObject<HTMLElement | null>;
 }
 
@@ -27,6 +28,7 @@ const OutfitInfoSheet = (props: OutfitInfoSheetProps) => {
     isClothingShortage,
     isOpen,
     onOpenChange,
+    onAdoptClick,
     finalFocus,
   } = props;
   const styleCds = getOutfitStyleTags(outfit.items);
@@ -41,7 +43,7 @@ const OutfitInfoSheet = (props: OutfitInfoSheetProps) => {
       finalFocus={finalFocus}
       footer={
         <>
-          <Button icon="check" isFullWidth>
+          <Button icon="check" isFullWidth onClick={onAdoptClick}>
             채택하기
           </Button>
           <Button variant="outline" size="md" icon="edit" isFullWidth>

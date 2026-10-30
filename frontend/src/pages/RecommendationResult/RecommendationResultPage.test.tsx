@@ -12,6 +12,7 @@ import { describe, expect, test, vi } from 'vitest';
 import type {
   OutfitItemResult,
   OutfitResult,
+  RecommendationHistoryDetail,
   RecommendationResult,
 } from '@/generated/models';
 import { server } from '@/mocks/node';
@@ -27,8 +28,10 @@ vi.stubGlobal('matchMedia', () => ({
 const SESSION_ID = 5;
 const INPUT_PATH = '/recommendation';
 const RESULT_PATH = `/recommendation/sessions/${SESSION_ID}/result`;
+const ADOPTED_PATH = `/recommendation/sessions/${SESSION_ID}/adopted`;
 const PROGRESS_PATH = `/recommendation/sessions/${SESSION_ID}`;
 const SESSION_URL = `/api/recommendation-sessions/${SESSION_ID}`;
+const HISTORY_URL = `/api/recommendation-history/${SESSION_ID}`;
 const IMAGE_URL = '/media/clothing/1/sample_cutout.webp';
 
 const createItem = (
@@ -87,6 +90,34 @@ const createResult = (
   ...overrides,
 });
 
+const historyDetail: RecommendationHistoryDetail = {
+  recommendation_session_id: SESSION_ID,
+  recommended_at: '2026-10-26T08:30:00+09:00',
+  condition: {
+    tpo_cd: 'daily',
+    tpo_text: null,
+    season_cd: 'fall',
+    going_out_start_at: '2026-10-26T09:00:00+09:00',
+    going_out_end_at: '2026-10-26T14:00:00+09:00',
+    sido_nm: '서울특별시',
+    sigungu_nm: '성동구',
+  },
+  weather: {
+    temperature: 24,
+    feels_like_temperature: 23,
+    weather_condition_cd: 'overcast',
+    is_fallback: false,
+    precipitation: 0,
+    wind_speed: 1,
+  },
+  rating: 4,
+  outfit: {
+    outfit_type_cd: 'preferred',
+    reason: null,
+    items: [],
+  },
+};
+
 const useResult = (result: RecommendationResult) => {
   server.use(http.get(SESSION_URL, () => HttpResponse.json(result)));
 };
@@ -97,6 +128,34 @@ const useErrorResult = (status: number, message = '문제가 생겼어요.') => 
       HttpResponse.json({ code: 'SOME_ERROR', message }, { status }),
     ),
   );
+};
+
+const useRatingError = (status: number, code: string, message: string) => {
+  server.use(
+    http.post(`${SESSION_URL}/rating`, () =>
+      HttpResponse.json({ code, message }, { status }),
+    ),
+  );
+};
+
+const useRatingSuccess = () => {
+  const requests: unknown[] = [];
+
+  server.use(
+    http.post(`${SESSION_URL}/rating`, async ({ request }) => {
+      requests.push(await request.json());
+
+      return HttpResponse.json({
+        recommendation_session_id: SESSION_ID,
+        outfit_id: 51,
+        rating: 4,
+        session_status_cd: 'completed',
+      });
+    }),
+    http.get(HISTORY_URL, () => HttpResponse.json(historyDetail)),
+  );
+
+  return requests;
 };
 
 const useCancelSpy = () => {
@@ -145,6 +204,23 @@ const openInfoSheet = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.click(await screen.findByRole('button', { name: '정보 확인' }));
 
   return screen.findByRole('dialog', { name: '코디 정보' });
+};
+
+const openRatingDialog = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(await screen.findByRole('button', { name: '채택하기' }));
+
+  return screen.findByRole('dialog', {
+    name: '이 코디, 얼마나 마음에 드세요',
+  });
+};
+
+const submitRating = async (user: ReturnType<typeof userEvent.setup>) => {
+  const dialog = await openRatingDialog(user);
+
+  await user.click(within(dialog).getByRole('radio', { name: '별 4개' }));
+  await user.click(within(dialog).getByRole('button', { name: '채택하기' }));
+
+  return dialog;
 };
 
 describe('결과 기본 화면', () => {
@@ -297,6 +373,159 @@ describe('정보 서랍', () => {
     expect(within(sheet).getByText('추정')).toBeInTheDocument();
     expect(
       within(sheet).getByText('날씨를 불러오지 못해 예상 날씨로 골랐어요.'),
+    ).toBeInTheDocument();
+  });
+
+  test('서랍의 채택하기를 누르면 서랍을 닫고 별점 모달을 띄워야 한다.', async () => {
+    const user = userEvent.setup();
+    useResult(createResult());
+    await renderResult();
+
+    const sheet = await openInfoSheet(user);
+    await user.click(within(sheet).getByRole('button', { name: '채택하기' }));
+
+    expect(
+      await screen.findByRole('dialog', {
+        name: '이 코디, 얼마나 마음에 드세요',
+      }),
+    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('dialog', { name: '코디 정보' }),
+      ).not.toBeInTheDocument();
+    });
+  });
+});
+
+describe('채택', () => {
+  test('별점을 고르기 전에는 채택하기가 비활성이어야 한다.', async () => {
+    const user = userEvent.setup();
+    useResult(createResult());
+    await renderResult();
+
+    const dialog = await openRatingDialog(user);
+
+    expect(
+      within(dialog).getByRole('button', { name: '채택하기' }),
+    ).toBeDisabled();
+  });
+
+  test('다시 볼게요를 누르면 모달을 닫고 결과 화면에 남아야 한다.', async () => {
+    const user = userEvent.setup();
+    useResult(createResult());
+    const { router } = await renderResult();
+
+    const dialog = await openRatingDialog(user);
+    await user.click(
+      within(dialog).getByRole('button', { name: '다시 볼게요' }),
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+    expect(router.state.location.pathname).toBe(RESULT_PATH);
+  });
+
+  test('채택하면 보던 코디와 별점을 보내고 채택 완료 화면으로 이동해야 한다.', async () => {
+    const user = userEvent.setup();
+    const requests = useRatingSuccess();
+    useResult(createResult());
+    const { router } = await renderResult();
+
+    await submitRating(user);
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe(ADOPTED_PATH);
+    });
+    expect(requests).toEqual([{ outfit_id: 51, rating: 4 }]);
+    expect(
+      await screen.findByText('오늘의 코디로 채택했어요'),
+    ).toBeInTheDocument();
+  });
+
+  test('채택 뒤 내역을 받는 동안에는 다시 제출할 수 없어야 한다.', async () => {
+    const user = userEvent.setup();
+    const requests = useRatingSuccess();
+    let finishHistory = () => {};
+    server.use(
+      http.get(HISTORY_URL, async () => {
+        await new Promise<void>((resolve) => {
+          finishHistory = resolve;
+        });
+
+        return HttpResponse.json(historyDetail);
+      }),
+    );
+    useResult(createResult());
+    const { router } = await renderResult();
+
+    const dialog = await submitRating(user);
+
+    await waitFor(() => {
+      expect(requests).toHaveLength(1);
+    });
+    await user.click(within(dialog).getByRole('button', { name: '채택하기' }));
+
+    expect(
+      within(dialog).getByRole('button', { name: '다시 볼게요' }),
+    ).toBeDisabled();
+    expect(requests).toHaveLength(1);
+
+    await waitFor(() => {
+      finishHistory();
+      expect(router.state.location.pathname).toBe(ADOPTED_PATH);
+    });
+  });
+
+  test('채택이 실패하면 모달과 별점을 유지하고 오류 토스트를 띄워야 한다.', async () => {
+    const user = userEvent.setup();
+    useRatingError(500, 'SERVER_ERROR', '서버에 연결할 수 없습니다.');
+    useResult(createResult());
+    await renderResult();
+
+    const dialog = await submitRating(user);
+
+    const toast = await screen.findByRole('alert');
+    expect(
+      within(toast).getByText('코디를 채택하지 못했어요'),
+    ).toBeInTheDocument();
+    expect(
+      within(toast).getByText('서버에 연결할 수 없습니다.'),
+    ).toBeInTheDocument();
+    expect(within(dialog).getByRole('radio', { name: '별 4개' })).toBeChecked();
+  });
+
+  test('세션이 끝나 거절되면 볼 수 없는 추천 화면을 보여 줘야 한다.', async () => {
+    const user = userEvent.setup();
+    useRatingError(
+      409,
+      'SESSION_NOT_RATABLE',
+      '별점을 매길 수 없는 세션입니다.',
+    );
+    useResult(createResult());
+    await renderResult();
+
+    await submitRating(user);
+
+    expect(
+      await screen.findByText('볼 수 없는 추천이에요'),
+    ).toBeInTheDocument();
+  });
+
+  test('이미 채택되어 거절되면 볼 수 없는 추천 화면을 보여 줘야 한다.', async () => {
+    const user = userEvent.setup();
+    useRatingError(
+      409,
+      'SESSION_ALREADY_SETTLED',
+      '이미 별점을 매겨 끝난 추천입니다.',
+    );
+    useResult(createResult());
+    await renderResult();
+
+    await submitRating(user);
+
+    expect(
+      await screen.findByText('볼 수 없는 추천이에요'),
     ).toBeInTheDocument();
   });
 });
