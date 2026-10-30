@@ -6,7 +6,7 @@ import {
   createRouter,
   RouterProvider,
 } from '@tanstack/react-router';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, describe, expect, test, vi } from 'vitest';
@@ -220,6 +220,16 @@ afterEach(() => {
   });
   window.history.replaceState(null, '', '/');
 });
+
+// 재조회가 끝나도 화면 반영은 스케줄되어 있어서, 그려질 틈을 준 뒤 확인한다.
+const refetchAndRender = async (queryClient: QueryClient) => {
+  await act(async () => {
+    await queryClient.refetchQueries();
+    await new Promise((resolve) => {
+      setTimeout(resolve, 50);
+    });
+  });
+};
 
 const openInfoSheet = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.click(await screen.findByRole('button', { name: '정보 확인' }));
@@ -681,7 +691,7 @@ describe('조회 상태', () => {
     });
     expect(screen.getByAltText('1번 상의')).toBeInTheDocument();
 
-    await queryClient.refetchQueries();
+    await refetchAndRender(queryClient);
 
     expect(screen.getByAltText('1번 상의')).toBeInTheDocument();
     expect(screen.queryByText('볼 수 없는 추천이에요')).not.toBeInTheDocument();
@@ -722,7 +732,7 @@ describe('나가기', () => {
     });
     await user.click(within(dialog).getByRole('button', { name: '그만두기' }));
     useResult(createResult({ session_status_cd: 'canceled', outfits: [] }));
-    await queryClient.refetchQueries();
+    await refetchAndRender(queryClient);
 
     expect(
       screen.queryByRole('dialog', { name: '추천 시간이 끝났어요' }),

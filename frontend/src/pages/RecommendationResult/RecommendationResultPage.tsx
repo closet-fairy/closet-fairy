@@ -11,6 +11,7 @@ import IconButton from '@/components/common/IconButton';
 import StatusView from '@/components/common/StatusView';
 import { showToast } from '@/components/common/ToastProvider/ToastProvider.toast';
 import TopBar from '@/components/common/TopBar';
+import OutfitLoading from '@/components/OutfitLoading';
 import {
   canViewRecommendationResult,
   getRecommendationProgress,
@@ -22,7 +23,6 @@ import {
   useGetRecommendationResultRecommendationSessionsRecommendationSessionIdGet,
   useRateRecommendationRecommendationSessionsRecommendationSessionIdRatingPost,
 } from '@/generated/endpoints/recommendation/recommendation';
-import OutfitLoading from '@/components/OutfitLoading';
 import type { RecommendationResult } from '@/generated/models';
 import waitForPopState from '@/utils/waitForPopState';
 import OutfitActions from './components/OutfitActions';
@@ -83,7 +83,7 @@ const RecommendationResultPage = () => {
   const [isMovingToAdopted, setIsMovingToAdopted] = useState(false);
   const isLeaveAllowedRef = useRef(false);
   const urlRestoreRef = useRef<Promise<void> | null>(null);
-  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const leaveFocusRef = useRef<HTMLButtonElement>(null);
   const infoButtonRef = useRef<HTMLButtonElement>(null);
   const adoptButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -198,7 +198,7 @@ const RecommendationResultPage = () => {
       title="추천을 그만둘까요?"
       description={'받은 코디가 모두 사라지고\n되돌릴 수 없어요.'}
       isDismissable={!isCanceling}
-      finalFocus={isExpired ? undefined : closeButtonRef}
+      finalFocus={isExpired ? undefined : leaveFocusRef}
       footer={
         <>
           <Button
@@ -256,6 +256,7 @@ const RecommendationResultPage = () => {
             actions={
               <>
                 <Button
+                  ref={leaveFocusRef}
                   icon="refresh"
                   isFullWidth
                   isLoading={isFetching}
@@ -285,7 +286,7 @@ const RecommendationResultPage = () => {
       <S.Container>
         <S.CloseButton>
           <IconButton
-            ref={closeButtonRef}
+            ref={leaveFocusRef}
             icon="close"
             aria-label="추천 그만두기"
             onClick={() => openLeaveDialog('input')}
@@ -365,7 +366,7 @@ const RecommendationResultPage = () => {
       )}
       <S.CloseButton>
         <IconButton
-          ref={closeButtonRef}
+          ref={leaveFocusRef}
           icon="close"
           aria-label="추천 그만두기"
           onClick={() => openLeaveDialog('input')}
