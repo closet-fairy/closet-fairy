@@ -491,6 +491,7 @@ export const clothingHandlers = [
         rest.length > limit && lastItem !== undefined
           ? lastItem.clothing_id
           : null,
+      total_count: clothings.size,
     });
   }),
 

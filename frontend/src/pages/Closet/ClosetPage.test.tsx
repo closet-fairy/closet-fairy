@@ -98,7 +98,11 @@ const renderCloset = async (initialPath = '/closet') => {
   return { queryClient };
 };
 
-const emptyPage: ClothingPage = { items: [], next_cursor: null };
+const emptyPage: ClothingPage = {
+  items: [],
+  next_cursor: null,
+  total_count: 0,
+};
 
 describe('옷장 목록', () => {
   test('카드마다 처리 상태에 맞는 모습을 보여야 한다.', async () => {
@@ -318,6 +322,7 @@ describe('처리 상태 갱신', () => {
         return HttpResponse.json<ClothingPage>({
           items: finishedIds.map(toCompletedCard),
           next_cursor: null,
+          total_count: finishedIds.length,
         });
       }),
     );

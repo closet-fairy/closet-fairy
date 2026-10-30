@@ -114,9 +114,11 @@ const toResult = (
                 style_cds: ['minimal'],
               },
             ],
+            previous_outfits: [],
           },
         ]
       : [],
+    latest_regeneration: null,
   };
 };
 

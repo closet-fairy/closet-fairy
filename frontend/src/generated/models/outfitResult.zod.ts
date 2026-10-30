@@ -8,6 +8,8 @@ import * as zod from 'zod';
 
 export const outfitResultOutfitSeqMax = 4;
 
+export const outfitResultPreviousOutfitsItemOutfitSeqMax = 4;
+
 export const OutfitResult = zod.object({
   outfit_id: zod.int().describe('별점을 매길 때 이 값을 보낸다.'),
   outfit_seq: zod
@@ -79,6 +81,84 @@ export const OutfitResult = zod.object({
         .describe('스타일 태그. 없으면 빈 배열이다.'),
     }),
   ),
+  previous_outfits: zod
+    .array(
+      zod.object({
+        outfit_id: zod.int().describe('별점을 매길 때 이 값을 보낸다.'),
+        outfit_seq: zod
+          .int()
+          .min(1)
+          .max(outfitResultPreviousOutfitsItemOutfitSeqMax)
+          .describe('화면에 보여줄 순서.'),
+        outfit_type_cd: zod
+          .enum(['preferred', 'exploratory'])
+          .describe(
+            'preferred는 선호 스타일 코디, exploratory는 새 스타일을 시도해보는 탐색 코디(최대 1벌).',
+          ),
+        reason: zod.union([zod.string(), zod.null()]).describe('추천 사유.'),
+        items: zod.array(
+          zod.object({
+            slot_cd: zod
+              .enum(['outer', 'top', 'bottom', 'shoes', 'socks', 'accessories'])
+              .describe(
+                '착용 슬롯. 아이템은 outer → top → bottom → shoes → socks → accessories 순으로 온다.',
+              ),
+            accessory_type_cd: zod
+              .union([
+                zod.enum([
+                  'hat',
+                  'bag',
+                  'belt',
+                  'watch',
+                  'scarf',
+                  'eyewear',
+                  'jewelry',
+                  'etc',
+                ]),
+                zod.null(),
+              ])
+              .describe(
+                '악세서리 세부 종류. slot_cd가 accessories일 때만 값이 있다. 회원이 그 옷을 지우면 accessories여도 null일 수 있다.',
+              ),
+            item_source_cd: zod
+              .enum(['owned', 'essential'])
+              .describe(
+                'owned면 회원이 등록한 옷, essential이면 옷장을 보충하려고 넣은 기본 아이템이다.',
+              ),
+            item_name: zod
+              .string()
+              .describe('추천 당시 이름. 옷을 나중에 지워도 그대로 남는다.'),
+            image_url: zod
+              .union([zod.string(), zod.null()])
+              .describe(
+                '추천 당시 이미지. 보유 옷은 배경 제거본이 있으면 그것, 없으면 원본이다.',
+              ),
+            style_cds: zod
+              .array(
+                zod.enum([
+                  'minimal',
+                  'casual',
+                  'street',
+                  'classic',
+                  'formal',
+                  'sporty',
+                  'romantic',
+                  'vintage',
+                  'bohemian',
+                  'preppy',
+                  'chic',
+                  'unique',
+                  'feminine',
+                ]),
+              )
+              .describe('스타일 태그. 없으면 빈 배열이다.'),
+          }),
+        ),
+      }),
+    )
+    .describe(
+      '같은 outfit_seq에 전에 나왔던 코디. 최신순이다. 재추천한 적이 없으면 빈 배열이다. 이전 코디에도 별점을 매길 수 있지만, 재추천 대상으로 지정하면 422 REGENERATION_TARGET_NOT_LATEST가 된다.',
+    ),
 });
 
 export type OutfitResult = zod.input<typeof OutfitResult>;

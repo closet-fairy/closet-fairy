@@ -24,12 +24,15 @@ import {
   CancelResult,
   ClothingShortagePrecheckResponse,
   RatingResult,
+  RecommendationHistoryDetail,
+  RecommendationHistoryPage,
   RecommendationResult,
   RecommendationSessionCreated,
   RegenerationCreated,
 } from '../../models';
 import type {
   ErrorResponse,
+  ListRecommendationHistoryRecommendationHistoryGetParams,
   RatingCreate,
   RecommendationSessionCreate,
   RegenerationCreate,
@@ -411,6 +414,9 @@ export const getGetRecommendationResultRecommendationSessionsRecommendationSessi
 
 /**
  * 추천 결과 조회(폴링). generation_status_cd가 processing이면 잠시 뒤 다시 조회한다.
+ *
+ * 재추천 중에는 generation_status_cd가 completed 그대로이므로
+ * latest_regeneration.regeneration_status_cd가 processing이면 잠시 뒤 다시 조회한다.
  * @summary Get Recommendation Result
  */
 export const getRecommendationResultRecommendationSessionsRecommendationSessionIdGet =
@@ -975,6 +981,8 @@ export const getRequestRegenerationRecommendationSessionsRecommendationSessionId
 
 /**
  * 재추천 요청. 요청을 검증하고 의도를 파악해 기록한 뒤 202를 돌려준다.
+ *
+ * 코디 생성은 백그라운드에서 한다.
  * @summary Request Regeneration
  */
 export const requestRegenerationRecommendationSessionsRecommendationSessionIdRegenerationsPost =
@@ -1131,3 +1139,498 @@ export const useRequestRegenerationRecommendationSessionsRecommendationSessionId
       queryClient,
     );
   };
+export const getListRecommendationHistoryRecommendationHistoryGetUrl = (
+  params?: ListRecommendationHistoryRecommendationHistoryGetParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/recommendation-history?${stringifiedParams}`
+    : `/recommendation-history`;
+};
+
+/**
+ * 추천 내역 목록. 별점을 매겨 끝난 추천만 최근 추천부터 limit개씩 나눠 준다 (무한 스크롤).
+ * @summary List Recommendation History
+ */
+export const listRecommendationHistoryRecommendationHistoryGet = async (
+  params?: ListRecommendationHistoryRecommendationHistoryGetParams,
+  options?: Parameters<typeof fetcher>[1],
+): Promise<RecommendationHistoryPage> => {
+  return fetcher<RecommendationHistoryPage>(
+    getListRecommendationHistoryRecommendationHistoryGetUrl(params),
+    {
+      ...options,
+      method: 'GET',
+
+      schema: RecommendationHistoryPage,
+    },
+  );
+};
+
+export const getListRecommendationHistoryRecommendationHistoryGetQueryKey = (
+  params?: ListRecommendationHistoryRecommendationHistoryGetParams,
+) => {
+  return [`/recommendation-history`, ...(params ? [params] : [])] as const;
+};
+
+export const getListRecommendationHistoryRecommendationHistoryGetQueryOptions =
+  <
+    TData = Awaited<
+      ReturnType<typeof listRecommendationHistoryRecommendationHistoryGet>
+    >,
+    TError = ErrorType<ErrorResponse>,
+  >(
+    params?: ListRecommendationHistoryRecommendationHistoryGetParams,
+    options?: {
+      query?: Partial<
+        UseQueryOptions<
+          Awaited<
+            ReturnType<typeof listRecommendationHistoryRecommendationHistoryGet>
+          >,
+          TError,
+          TData
+        >
+      >;
+      request?: SecondParameter<typeof fetcher>;
+    },
+  ) => {
+    const { query: queryOptions, request: requestOptions } = options ?? {};
+
+    const queryKey =
+      queryOptions?.queryKey ??
+      getListRecommendationHistoryRecommendationHistoryGetQueryKey(params);
+
+    const queryFn: QueryFunction<
+      Awaited<
+        ReturnType<typeof listRecommendationHistoryRecommendationHistoryGet>
+      >
+    > = ({ signal }) =>
+      listRecommendationHistoryRecommendationHistoryGet(params, {
+        signal,
+        ...requestOptions,
+      });
+
+    return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+      Awaited<
+        ReturnType<typeof listRecommendationHistoryRecommendationHistoryGet>
+      >,
+      TError,
+      TData
+    > & { queryKey: DataTag<QueryKey, TData, TError> };
+  };
+
+export type ListRecommendationHistoryRecommendationHistoryGetQueryResult =
+  NonNullable<
+    Awaited<
+      ReturnType<typeof listRecommendationHistoryRecommendationHistoryGet>
+    >
+  >;
+export type ListRecommendationHistoryRecommendationHistoryGetQueryError =
+  ErrorType<ErrorResponse>;
+
+export function useListRecommendationHistoryRecommendationHistoryGet<
+  TData = Awaited<
+    ReturnType<typeof listRecommendationHistoryRecommendationHistoryGet>
+  >,
+  TError = ErrorType<ErrorResponse>,
+>(
+  params: undefined | ListRecommendationHistoryRecommendationHistoryGetParams,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<
+          ReturnType<typeof listRecommendationHistoryRecommendationHistoryGet>
+        >,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<
+            ReturnType<typeof listRecommendationHistoryRecommendationHistoryGet>
+          >,
+          TError,
+          Awaited<
+            ReturnType<typeof listRecommendationHistoryRecommendationHistoryGet>
+          >
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof fetcher>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useListRecommendationHistoryRecommendationHistoryGet<
+  TData = Awaited<
+    ReturnType<typeof listRecommendationHistoryRecommendationHistoryGet>
+  >,
+  TError = ErrorType<ErrorResponse>,
+>(
+  params?: ListRecommendationHistoryRecommendationHistoryGetParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<
+          ReturnType<typeof listRecommendationHistoryRecommendationHistoryGet>
+        >,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<
+            ReturnType<typeof listRecommendationHistoryRecommendationHistoryGet>
+          >,
+          TError,
+          Awaited<
+            ReturnType<typeof listRecommendationHistoryRecommendationHistoryGet>
+          >
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof fetcher>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useListRecommendationHistoryRecommendationHistoryGet<
+  TData = Awaited<
+    ReturnType<typeof listRecommendationHistoryRecommendationHistoryGet>
+  >,
+  TError = ErrorType<ErrorResponse>,
+>(
+  params?: ListRecommendationHistoryRecommendationHistoryGetParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<
+          ReturnType<typeof listRecommendationHistoryRecommendationHistoryGet>
+        >,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof fetcher>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+/**
+ * @summary List Recommendation History
+ */
+
+export function useListRecommendationHistoryRecommendationHistoryGet<
+  TData = Awaited<
+    ReturnType<typeof listRecommendationHistoryRecommendationHistoryGet>
+  >,
+  TError = ErrorType<ErrorResponse>,
+>(
+  params?: ListRecommendationHistoryRecommendationHistoryGetParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<
+          ReturnType<typeof listRecommendationHistoryRecommendationHistoryGet>
+        >,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof fetcher>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+} {
+  const queryOptions =
+    getListRecommendationHistoryRecommendationHistoryGetQueryOptions(
+      params,
+      options,
+    );
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export const getGetRecommendationHistoryDetailRecommendationHistoryRecommendationSessionIdGetUrl =
+  (recommendationSessionId: number) => {
+    return `/recommendation-history/${recommendationSessionId}`;
+  };
+
+/**
+ * 추천 내역 상세. 별점을 매겨 끝난 추천의 조건·날씨와 별점을 매긴 코디를 준다.
+ * @summary Get Recommendation History Detail
+ */
+export const getRecommendationHistoryDetailRecommendationHistoryRecommendationSessionIdGet =
+  async (
+    recommendationSessionId: number,
+    options?: Parameters<typeof fetcher>[1],
+  ): Promise<RecommendationHistoryDetail> => {
+    return fetcher<RecommendationHistoryDetail>(
+      getGetRecommendationHistoryDetailRecommendationHistoryRecommendationSessionIdGetUrl(
+        recommendationSessionId,
+      ),
+      {
+        ...options,
+        method: 'GET',
+
+        schema: RecommendationHistoryDetail,
+      },
+    );
+  };
+
+export const getGetRecommendationHistoryDetailRecommendationHistoryRecommendationSessionIdGetQueryKey =
+  (recommendationSessionId: number) => {
+    return [`/recommendation-history/${recommendationSessionId}`] as const;
+  };
+
+export const getGetRecommendationHistoryDetailRecommendationHistoryRecommendationSessionIdGetQueryOptions =
+  <
+    TData = Awaited<
+      ReturnType<
+        typeof getRecommendationHistoryDetailRecommendationHistoryRecommendationSessionIdGet
+      >
+    >,
+    TError = ErrorType<ErrorResponse | void>,
+  >(
+    recommendationSessionId: number,
+    options?: {
+      query?: Partial<
+        UseQueryOptions<
+          Awaited<
+            ReturnType<
+              typeof getRecommendationHistoryDetailRecommendationHistoryRecommendationSessionIdGet
+            >
+          >,
+          TError,
+          TData
+        >
+      >;
+      request?: SecondParameter<typeof fetcher>;
+    },
+  ) => {
+    const { query: queryOptions, request: requestOptions } = options ?? {};
+
+    const queryKey =
+      queryOptions?.queryKey ??
+      getGetRecommendationHistoryDetailRecommendationHistoryRecommendationSessionIdGetQueryKey(
+        recommendationSessionId,
+      );
+
+    const queryFn: QueryFunction<
+      Awaited<
+        ReturnType<
+          typeof getRecommendationHistoryDetailRecommendationHistoryRecommendationSessionIdGet
+        >
+      >
+    > = ({ signal }) =>
+      getRecommendationHistoryDetailRecommendationHistoryRecommendationSessionIdGet(
+        recommendationSessionId,
+        { signal, ...requestOptions },
+      );
+
+    return {
+      queryKey,
+      queryFn,
+      enabled:
+        recommendationSessionId !== null &&
+        recommendationSessionId !== undefined,
+      ...queryOptions,
+    } as UseQueryOptions<
+      Awaited<
+        ReturnType<
+          typeof getRecommendationHistoryDetailRecommendationHistoryRecommendationSessionIdGet
+        >
+      >,
+      TError,
+      TData
+    > & { queryKey: DataTag<QueryKey, TData, TError> };
+  };
+
+export type GetRecommendationHistoryDetailRecommendationHistoryRecommendationSessionIdGetQueryResult =
+  NonNullable<
+    Awaited<
+      ReturnType<
+        typeof getRecommendationHistoryDetailRecommendationHistoryRecommendationSessionIdGet
+      >
+    >
+  >;
+export type GetRecommendationHistoryDetailRecommendationHistoryRecommendationSessionIdGetQueryError =
+  ErrorType<ErrorResponse | void>;
+
+export function useGetRecommendationHistoryDetailRecommendationHistoryRecommendationSessionIdGet<
+  TData = Awaited<
+    ReturnType<
+      typeof getRecommendationHistoryDetailRecommendationHistoryRecommendationSessionIdGet
+    >
+  >,
+  TError = ErrorType<ErrorResponse | void>,
+>(
+  recommendationSessionId: number,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<
+          ReturnType<
+            typeof getRecommendationHistoryDetailRecommendationHistoryRecommendationSessionIdGet
+          >
+        >,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<
+            ReturnType<
+              typeof getRecommendationHistoryDetailRecommendationHistoryRecommendationSessionIdGet
+            >
+          >,
+          TError,
+          Awaited<
+            ReturnType<
+              typeof getRecommendationHistoryDetailRecommendationHistoryRecommendationSessionIdGet
+            >
+          >
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof fetcher>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useGetRecommendationHistoryDetailRecommendationHistoryRecommendationSessionIdGet<
+  TData = Awaited<
+    ReturnType<
+      typeof getRecommendationHistoryDetailRecommendationHistoryRecommendationSessionIdGet
+    >
+  >,
+  TError = ErrorType<ErrorResponse | void>,
+>(
+  recommendationSessionId: number,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<
+          ReturnType<
+            typeof getRecommendationHistoryDetailRecommendationHistoryRecommendationSessionIdGet
+          >
+        >,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<
+            ReturnType<
+              typeof getRecommendationHistoryDetailRecommendationHistoryRecommendationSessionIdGet
+            >
+          >,
+          TError,
+          Awaited<
+            ReturnType<
+              typeof getRecommendationHistoryDetailRecommendationHistoryRecommendationSessionIdGet
+            >
+          >
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof fetcher>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useGetRecommendationHistoryDetailRecommendationHistoryRecommendationSessionIdGet<
+  TData = Awaited<
+    ReturnType<
+      typeof getRecommendationHistoryDetailRecommendationHistoryRecommendationSessionIdGet
+    >
+  >,
+  TError = ErrorType<ErrorResponse | void>,
+>(
+  recommendationSessionId: number,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<
+          ReturnType<
+            typeof getRecommendationHistoryDetailRecommendationHistoryRecommendationSessionIdGet
+          >
+        >,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof fetcher>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+/**
+ * @summary Get Recommendation History Detail
+ */
+
+export function useGetRecommendationHistoryDetailRecommendationHistoryRecommendationSessionIdGet<
+  TData = Awaited<
+    ReturnType<
+      typeof getRecommendationHistoryDetailRecommendationHistoryRecommendationSessionIdGet
+    >
+  >,
+  TError = ErrorType<ErrorResponse | void>,
+>(
+  recommendationSessionId: number,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<
+          ReturnType<
+            typeof getRecommendationHistoryDetailRecommendationHistoryRecommendationSessionIdGet
+          >
+        >,
+        TError,
+        TData
+      >
+    >;
+    request?: SecondParameter<typeof fetcher>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+} {
+  const queryOptions =
+    getGetRecommendationHistoryDetailRecommendationHistoryRecommendationSessionIdGetQueryOptions(
+      recommendationSessionId,
+      options,
+    );
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}

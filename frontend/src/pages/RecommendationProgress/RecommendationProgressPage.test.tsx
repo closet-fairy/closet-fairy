@@ -72,6 +72,7 @@ const createResult = (
   },
   weather: null,
   outfits: [],
+  latest_regeneration: null,
 });
 
 const respondResult = (result: RecommendationResult) => {
