@@ -14,12 +14,13 @@ import * as S from './RootLayout.styled';
 const RootLayout = () => {
   const isFullScreen = useMatches({
     select: (matches) =>
-      matches.some(
-        (match) =>
-          match.staticData.isFullScreen === true &&
-          // 주소가 잘못돼 찾을 수 없는 페이지를 보여 줄 때는 하단 탭으로 빠져나갈 수 있어야 한다.
-          match.paramsError === undefined,
-      ),
+      /*
+       * 찾을 수 없는 페이지에서는 하단 탭으로 빠져나갈 수 있어야 한다.
+       * `/closet/1/없는화면`처럼 주소 앞부분이 맞으면 전체 화면 라우트의 매치가 남으므로 먼저 걸러야 한다.
+       */
+      !matches.some(
+        (match) => match._notFound === true || match.paramsError !== undefined,
+      ) && matches.some((match) => match.staticData.isFullScreen === true),
   });
 
   return (

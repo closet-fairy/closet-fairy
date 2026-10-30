@@ -56,7 +56,7 @@ describe('편집기 경로', () => {
     await renderAt('/closet/abc/edit');
 
     expect(
-      await screen.findByText('페이지를 찾을 수 없습니다.'),
+      await screen.findByText('페이지를 찾을 수 없어요'),
     ).toBeInTheDocument();
   });
 
@@ -64,7 +64,7 @@ describe('편집기 경로', () => {
     await renderAt('/closet/abc/edit');
 
     expect(
-      await screen.findByText('페이지를 찾을 수 없습니다.'),
+      await screen.findByText('페이지를 찾을 수 없어요'),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('navigation', { name: '주요 메뉴' }),
