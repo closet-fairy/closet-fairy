@@ -1,8 +1,13 @@
 import { Toast } from '@base-ui/react/toast';
+import { useSyncExternalStore } from 'react';
 import type { IconName } from '@/assets/icons';
 import Icon from '@/components/common/Icon';
 import type { ToastTone } from '@/components/common/ToastProvider/ToastProvider.toast';
-import { isToastTone } from '@/components/common/ToastProvider/ToastProvider.toast';
+import {
+  getToastBottomOffset,
+  isToastTone,
+  subscribeToastBottomOffset,
+} from '@/components/common/ToastProvider/ToastProvider.toast';
 import * as S from './Toaster.styled';
 
 interface ToasterProps {
@@ -18,10 +23,17 @@ const TONE_ICON: Record<ToastTone, IconName> = {
 const Toaster = (props: ToasterProps) => {
   const { bottomOffset = 0 } = props;
   const { toasts } = Toast.useToastManager();
+  const bottomOffsetOverride = useSyncExternalStore(
+    subscribeToastBottomOffset,
+    getToastBottomOffset,
+  );
 
   return (
     <Toast.Portal>
-      <S.Viewport aria-label="알림" $bottomOffset={bottomOffset}>
+      <S.Viewport
+        aria-label="알림"
+        $bottomOffset={bottomOffsetOverride ?? bottomOffset}
+      >
         {toasts.map((toast) => {
           const tone = isToastTone(toast.type) ? toast.type : 'info';
 
