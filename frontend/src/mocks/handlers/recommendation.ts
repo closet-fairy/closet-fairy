@@ -4,11 +4,13 @@ import type {
   ClothingShortagePrecheckResponse,
   OutfitItemResult,
   OutfitResult,
+  RatingResult,
+  RecommendationHistoryDetail,
   RecommendationResult,
   RecommendationSessionCreated,
   RecommendationSessionCreateOutput,
 } from '@/generated/models';
-import { RecommendationSessionCreate } from '@/generated/models';
+import { RatingCreate, RecommendationSessionCreate } from '@/generated/models';
 
 interface SessionParams {
   sessionId: string;
@@ -18,6 +20,7 @@ interface MockSession {
   request: RecommendationSessionCreateOutput | null;
   createdAt: number;
   sessionStatusCd: RecommendationResult['session_status_cd'];
+  rated?: { outfitId: number; rating: number };
 }
 
 // 직접 입력에 이 말을 넣으면 생성이 실패하는 세션을 만든다. 새로고침해도 알 수 있게 번호로 구분한다.
@@ -26,6 +29,7 @@ const FIRST_FAILED_SESSION_ID = 9001;
 // 진행 화면과 취소를 dev:mock에서 직접 해 볼 수 있도록 생성에 몇 초가 걸리는 것처럼 둔다.
 const GENERATION_MS = 6000;
 const OUTFIT_COUNT = 4;
+const DEFAULT_MOCK_RATING = 4;
 const SAMPLE_CUTOUT_URL = '/media/clothing/1/sample_cutout.webp';
 // 직접 입력에 이 말을 넣으면 결과 화면의 해당 상태를 dev:mock에서 볼 수 있다.
 const RESULT_KEYWORD = {
@@ -34,6 +38,9 @@ const RESULT_KEYWORD = {
   CLOTHING_SHORTAGE: '옷부족',
   ESTIMATED_WEATHER: '추정',
   NO_REASON: '이유없음',
+  RATING_FAILURE: '채택오류',
+  RATING_EXPIRED: '시간끝',
+  RATING_SETTLED: '이미채택',
 } as const;
 
 const sessions = new Map<number, MockSession>();
@@ -143,13 +150,24 @@ const getWeather = (session: MockSession | undefined) => ({
   is_fallback: hasKeyword(session, RESULT_KEYWORD.ESTIMATED_WEATHER),
 });
 
+const getVisibleOutfits = (sessionId: number, session: MockSession) => {
+  const outfits = createOutfits(sessionId, session);
+
+  if (session.sessionStatusCd === 'completed') {
+    return outfits.filter(
+      (outfit) => outfit.outfit_id === session.rated?.outfitId,
+    );
+  }
+
+  return session.sessionStatusCd === 'active' ? outfits : [];
+};
+
 const toResult = (
   sessionId: number,
   session: MockSession,
 ): RecommendationResult => {
   const generationStatusCd = getGenerationStatusCd(sessionId, session);
-  const isCompleted =
-    generationStatusCd === 'completed' && session.sessionStatusCd === 'active';
+  const isCompleted = generationStatusCd === 'completed';
 
   return {
     recommendation_session_id: sessionId,
@@ -164,8 +182,43 @@ const toResult = (
       going_out_end_at: '2026-10-26T14:00:00+09:00',
     },
     weather: isCompleted ? getWeather(session) : null,
-    outfits: isCompleted ? createOutfits(sessionId, session) : [],
+    outfits: isCompleted ? getVisibleOutfits(sessionId, session) : [],
     latest_regeneration: null,
+  };
+};
+
+// 새로고침하면 MSW 상태가 사라지므로, 모르는 세션은 첫 코디에 별점을 매긴 것처럼 다룬다.
+const toHistoryDetail = (
+  sessionId: number,
+  session: MockSession | undefined,
+): RecommendationHistoryDetail => {
+  const outfits = createOutfits(sessionId, session);
+  const outfit =
+    outfits.find(({ outfit_id: id }) => id === session?.rated?.outfitId) ??
+    outfits[0];
+
+  return {
+    recommendation_session_id: sessionId,
+    recommended_at: '2026-10-26T08:30:00+09:00',
+    condition: {
+      tpo_cd: session?.request?.tpo_cd ?? 'daily',
+      tpo_text: session?.request?.tpo_text ?? null,
+      season_cd: 'fall',
+      going_out_start_at: '2026-10-26T09:00:00+09:00',
+      going_out_end_at: '2026-10-26T14:00:00+09:00',
+      sido_nm: '서울특별시',
+      sigungu_nm: '성동구',
+    },
+    weather: { ...getWeather(session), precipitation: 0, wind_speed: 1.2 },
+    rating: session?.rated?.rating ?? DEFAULT_MOCK_RATING,
+    outfit: {
+      outfit_type_cd: outfit.outfit_type_cd,
+      reason: outfit.reason,
+      items: outfit.items.map((item) => ({
+        ...item,
+        is_clothing_deleted: false,
+      })),
+    },
   };
 };
 
@@ -202,6 +255,78 @@ export const recommendationHandlers = [
 
       return HttpResponse.json<RecommendationResult>(
         toResult(sessionId, session),
+      );
+    },
+  ),
+  http.post<SessionParams>(
+    '/api/recommendation-sessions/:sessionId/rating',
+    async ({ params, request }) => {
+      const sessionId = Number(params.sessionId);
+      const session = getSession(sessionId);
+      const body = RatingCreate.parse(await request.json());
+
+      if (hasKeyword(session, RESULT_KEYWORD.RATING_FAILURE)) {
+        return HttpResponse.json(
+          { code: 'INTERNAL_ERROR', message: '서버에 문제가 생겼어요.' },
+          { status: 500 },
+        );
+      }
+
+      if (
+        session.sessionStatusCd === 'completed' ||
+        hasKeyword(session, RESULT_KEYWORD.RATING_SETTLED)
+      ) {
+        return HttpResponse.json(
+          {
+            code: 'SESSION_ALREADY_SETTLED',
+            message: '이미 별점을 매겨 끝난 추천입니다.',
+          },
+          { status: 409 },
+        );
+      }
+
+      if (
+        session.sessionStatusCd !== 'active' ||
+        hasKeyword(session, RESULT_KEYWORD.RATING_EXPIRED)
+      ) {
+        return HttpResponse.json(
+          {
+            code: 'SESSION_NOT_RATABLE',
+            message: '별점을 매길 수 없는 세션입니다.',
+          },
+          { status: 409 },
+        );
+      }
+
+      session.sessionStatusCd = 'completed';
+      session.rated = { outfitId: body.outfit_id, rating: body.rating };
+
+      return HttpResponse.json<RatingResult>({
+        recommendation_session_id: sessionId,
+        outfit_id: body.outfit_id,
+        rating: body.rating,
+        session_status_cd: 'completed',
+      });
+    },
+  ),
+  http.get<SessionParams>(
+    '/api/recommendation-history/:sessionId',
+    ({ params }) => {
+      const sessionId = Number(params.sessionId);
+      const session = sessions.get(sessionId);
+
+      if (session && session.sessionStatusCd !== 'completed') {
+        return HttpResponse.json(
+          {
+            code: 'SESSION_NOT_FOUND',
+            message: '추천 내역을 찾을 수 없습니다.',
+          },
+          { status: 404 },
+        );
+      }
+
+      return HttpResponse.json<RecommendationHistoryDetail>(
+        toHistoryDetail(sessionId, session),
       );
     },
   ),

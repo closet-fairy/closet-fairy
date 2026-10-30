@@ -4,11 +4,13 @@ import * as S from './OutfitActions.styled';
 
 interface OutfitActionsProps {
   infoButtonRef?: Ref<HTMLButtonElement>;
+  adoptButtonRef?: Ref<HTMLButtonElement>;
   onInfoClick: () => void;
+  onAdoptClick: () => void;
 }
 
 const OutfitActions = (props: OutfitActionsProps) => {
-  const { infoButtonRef, onInfoClick } = props;
+  const { infoButtonRef, adoptButtonRef, onInfoClick, onAdoptClick } = props;
 
   return (
     <S.Container>
@@ -18,7 +20,7 @@ const OutfitActions = (props: OutfitActionsProps) => {
         </S.Circle>
         <S.Label $variant="sub">정보 확인</S.Label>
       </S.Action>
-      <S.Action type="button">
+      <S.Action ref={adoptButtonRef} type="button" onClick={onAdoptClick}>
         <S.Circle $variant="main">
           <Icon name="check" size="xl" />
         </S.Circle>

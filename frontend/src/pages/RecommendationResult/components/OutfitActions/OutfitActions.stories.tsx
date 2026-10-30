@@ -6,9 +6,11 @@ const meta = {
   component: OutfitActions,
   argTypes: {
     onInfoClick: { description: '[정보 확인]을 누르면 호출됩니다.' },
+    onAdoptClick: { description: '[채택하기]를 누르면 호출됩니다.' },
   },
   args: {
     onInfoClick: fn(),
+    onAdoptClick: fn(),
   },
 } satisfies Meta<typeof OutfitActions>;
 

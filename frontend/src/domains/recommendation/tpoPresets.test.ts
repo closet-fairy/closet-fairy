@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { RecommendationSessionCreate } from '@/generated/models';
-import { TPO_PRESETS } from './tpoPresets';
+import { getTpoLabel, TPO_PRESETS } from './tpoPresets';
 
 const tpoCdSchema = RecommendationSessionCreate.shape.tpo_cd;
 
@@ -20,5 +20,21 @@ describe('상황 프리셋 목록', () => {
     );
 
     expect([...presetValues].sort()).toEqual([...expectedValues].sort());
+  });
+});
+
+describe('상황 문구', () => {
+  test('프리셋 코드는 칩과 같은 문구로 보여야 한다.', () => {
+    expect(getTpoLabel({ tpo_cd: 'daily', tpo_text: null })).toBe('데일리');
+  });
+
+  test('직접 입력한 상황은 입력한 문구로 보여야 한다.', () => {
+    expect(getTpoLabel({ tpo_cd: 'custom', tpo_text: '친구 결혼식' })).toBe(
+      '친구 결혼식',
+    );
+  });
+
+  test('문구가 없는 코드는 null을 돌려줘야 한다.', () => {
+    expect(getTpoLabel({ tpo_cd: 'rainy', tpo_text: null })).toBeNull();
   });
 });
