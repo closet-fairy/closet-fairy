@@ -116,7 +116,8 @@ describe('옷장 목록', () => {
   test('사진을 불러오지 못하면 처리 중 카드에는 안내 아이콘을 겹치지 않고, 완료 카드에는 안내 아이콘을 보여야 한다.', async () => {
     await renderCloset();
     await screen.findByText('처리 중');
-    const cards = screen.getAllByRole('listitem');
+    const [grid] = screen.getAllByRole('list');
+    const cards = within(grid).getAllByRole('listitem');
     const processingCard = cards.find((card) =>
       within(card).queryByText('처리 중'),
     );
