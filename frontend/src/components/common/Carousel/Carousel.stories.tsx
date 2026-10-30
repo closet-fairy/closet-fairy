@@ -83,6 +83,12 @@ const meta = {
       options: ['circle', 'plain'],
       table: { defaultValue: { summary: 'circle' } },
     },
+    arrowInset: {
+      description:
+        '화살표를 캐러셀 양쪽 끝에서 안쪽으로 들이는 거리입니다. 슬라이드가 화면 끝까지 닿을 때 화살표만 안쪽에 둘 수 있습니다.',
+      control: 'text',
+      table: { defaultValue: { summary: '0' } },
+    },
   },
   args: {
     children: SLIDES,

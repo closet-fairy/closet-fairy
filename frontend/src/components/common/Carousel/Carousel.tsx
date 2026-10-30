@@ -32,6 +32,7 @@ interface CarouselProps {
   isLooped?: boolean;
   hasArrows?: boolean;
   arrowVariant?: IconButtonVariant;
+  arrowInset?: string;
 }
 
 /*
@@ -53,6 +54,7 @@ const Carousel = (props: CarouselProps) => {
     isLooped = true,
     hasArrows = true,
     arrowVariant = 'circle',
+    arrowInset = '0',
   } = props;
   const slides = Children.toArray(children);
   const slideCount = slides.length;
@@ -190,7 +192,7 @@ const Carousel = (props: CarouselProps) => {
       </S.Viewport>
       {isArrowsVisible && (
         <>
-          <S.ArrowSlot $side="prev">
+          <S.ArrowSlot $side="prev" $inset={arrowInset}>
             <IconButton
               icon="chevron_left"
               ref={prevArrowRef}
@@ -200,7 +202,7 @@ const Carousel = (props: CarouselProps) => {
               onClick={scrollPrev}
             />
           </S.ArrowSlot>
-          <S.ArrowSlot $side="next">
+          <S.ArrowSlot $side="next" $inset={arrowInset}>
             <IconButton
               icon="chevron_right"
               ref={nextArrowRef}

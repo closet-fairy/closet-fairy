@@ -24,19 +24,22 @@ export const Slide = styled.div`
   padding-left: ${SLIDE_GAP};
 `;
 
-export const ArrowSlot = styled.span<{ $side: 'prev' | 'next' }>`
+export const ArrowSlot = styled.span<{
+  $side: 'prev' | 'next';
+  $inset: string;
+}>`
   position: absolute;
   top: 50%;
   display: flex;
   color: ${fg.neutral.default};
   transform: translateY(-50%);
 
-  ${({ $side }) =>
+  ${({ $side, $inset }) =>
     $side === 'prev'
       ? css`
-          left: 0;
+          left: ${$inset};
         `
       : css`
-          right: 0;
+          right: ${$inset};
         `}
 `;
