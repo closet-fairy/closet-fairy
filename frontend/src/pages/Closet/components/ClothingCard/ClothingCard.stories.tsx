@@ -123,6 +123,18 @@ export const BrokenImage: Story = {
   },
 };
 
+export const ProcessingBrokenImage: Story = {
+  args: {
+    clothing: {
+      ...COMPLETED,
+      processing_status_cd: 'processing',
+      image_url: '/media/clothing/1/missing.webp',
+      category_cd: null,
+      item_name: null,
+    },
+  },
+};
+
 export const LongName: Story = {
   args: {
     clothing: {

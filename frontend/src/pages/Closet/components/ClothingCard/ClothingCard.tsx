@@ -20,9 +20,11 @@ const ClothingCard = (props: ClothingCardProps) => {
   const isFailed = clothing.processing_status_cd === 'failed';
 
   const image = isImageBroken ? (
-    <S.Placeholder>
-      <Icon name="image" size="lg" label="사진을 불러오지 못했어요" />
-    </S.Placeholder>
+    !isProcessing && (
+      <S.Placeholder>
+        <Icon name="image" size="lg" label="사진을 불러오지 못했어요" />
+      </S.Placeholder>
+    )
   ) : (
     <S.Image
       src={clothing.image_url}
