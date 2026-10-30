@@ -8,12 +8,14 @@ import * as zod from 'zod';
 
 export const recommendationResultOutfitsItemOutfitSeqMax = 4;
 
+export const recommendationResultOutfitsItemPreviousOutfitsItemOutfitSeqMax = 4;
+
 export const RecommendationResult = zod.object({
   recommendation_session_id: zod.int(),
   generation_status_cd: zod
     .enum(['processing', 'completed', 'failed'])
     .describe(
-      'processing이면 아직 만드는 중이라 outfits가 빈 배열이다. 잠시 뒤 다시 조회한다. completed면 outfits가 채워져 있다. 단, 끝난 세션은 정리되므로 completed여도 1벌이거나 빈 배열일 수 있다(outfits 설명 참고). failed면 추천을 만들지 못한 것이므로 폴링을 멈추고 다시 시도를 안내한다. 생성 중에 취소·이탈된 세션도 failed가 된다.',
+      'processing이면 아직 만드는 중이라 outfits가 빈 배열이다. 잠시 뒤 다시 조회한다. completed면 outfits가 채워져 있다. 단, 끝난 세션은 정리되므로 completed여도 1벌이거나 빈 배열일 수 있다(outfits 설명 참고). failed면 추천을 만들지 못한 것이므로 폴링을 멈추고 다시 시도를 안내한다. 생성 중에 취소·이탈된 세션도 failed가 된다. 첫 추천의 상태라 재추천을 만드는 중에도 completed 그대로다(latest_regeneration 설명 참고).',
     ),
   session_status_cd: zod
     .enum(['active', 'completed', 'canceled', 'abandoned'])
@@ -146,10 +148,141 @@ export const RecommendationResult = zod.object({
               .describe('스타일 태그. 없으면 빈 배열이다.'),
           }),
         ),
+        previous_outfits: zod
+          .array(
+            zod.object({
+              outfit_id: zod.int().describe('별점을 매길 때 이 값을 보낸다.'),
+              outfit_seq: zod
+                .int()
+                .min(1)
+                .max(
+                  recommendationResultOutfitsItemPreviousOutfitsItemOutfitSeqMax,
+                )
+                .describe('화면에 보여줄 순서.'),
+              outfit_type_cd: zod
+                .enum(['preferred', 'exploratory'])
+                .describe(
+                  'preferred는 선호 스타일 코디, exploratory는 새 스타일을 시도해보는 탐색 코디(최대 1벌).',
+                ),
+              reason: zod
+                .union([zod.string(), zod.null()])
+                .describe('추천 사유.'),
+              items: zod.array(
+                zod.object({
+                  slot_cd: zod
+                    .enum([
+                      'outer',
+                      'top',
+                      'bottom',
+                      'shoes',
+                      'socks',
+                      'accessories',
+                    ])
+                    .describe(
+                      '착용 슬롯. 아이템은 outer → top → bottom → shoes → socks → accessories 순으로 온다.',
+                    ),
+                  accessory_type_cd: zod
+                    .union([
+                      zod.enum([
+                        'hat',
+                        'bag',
+                        'belt',
+                        'watch',
+                        'scarf',
+                        'eyewear',
+                        'jewelry',
+                        'etc',
+                      ]),
+                      zod.null(),
+                    ])
+                    .describe(
+                      '악세서리 세부 종류. slot_cd가 accessories일 때만 값이 있다. 회원이 그 옷을 지우면 accessories여도 null일 수 있다.',
+                    ),
+                  item_source_cd: zod
+                    .enum(['owned', 'essential'])
+                    .describe(
+                      'owned면 회원이 등록한 옷, essential이면 옷장을 보충하려고 넣은 기본 아이템이다.',
+                    ),
+                  item_name: zod
+                    .string()
+                    .describe(
+                      '추천 당시 이름. 옷을 나중에 지워도 그대로 남는다.',
+                    ),
+                  image_url: zod
+                    .union([zod.string(), zod.null()])
+                    .describe(
+                      '추천 당시 이미지. 보유 옷은 배경 제거본이 있으면 그것, 없으면 원본이다.',
+                    ),
+                  style_cds: zod
+                    .array(
+                      zod.enum([
+                        'minimal',
+                        'casual',
+                        'street',
+                        'classic',
+                        'formal',
+                        'sporty',
+                        'romantic',
+                        'vintage',
+                        'bohemian',
+                        'preppy',
+                        'chic',
+                        'unique',
+                        'feminine',
+                      ]),
+                    )
+                    .describe('스타일 태그. 없으면 빈 배열이다.'),
+                }),
+              ),
+            }),
+          )
+          .describe(
+            '같은 outfit_seq에 전에 나왔던 코디. 최신순이다. 재추천한 적이 없으면 빈 배열이다. 이전 코디에도 별점을 매길 수 있지만, 재추천 대상으로 지정하면 422 REGENERATION_TARGET_NOT_LATEST가 된다.',
+          ),
       }),
     )
     .describe(
-      'outfit_seq 순. 세션이 active이고 generation_status_cd가 completed면 1~4벌이다. 보통 4벌이지만 옷장 사정에 따라 더 적을 수 있다. 세션이 끝나면 정리되므로 session_status_cd가 completed면 별점을 매긴 1벌만, canceled·abandoned면 빈 배열이다.',
+      'outfit_seq 순. 세션이 active이고 generation_status_cd가 completed면 1~4벌이다. 보통 4벌이지만 옷장 사정에 따라 더 적을 수 있다. 세션이 끝나면 정리되므로 session_status_cd가 completed면 별점을 매긴 1벌만, canceled·abandoned면 빈 배열이다. 재추천을 만드는 중에도 비지 않고 요청 전 코디가 그대로 온다. 정리가 끝난 세션에는 이전 코디(previous_outfits)도 없다.',
+    ),
+  latest_regeneration: zod
+    .union([
+      zod.object({
+        request_seq: zod
+          .int()
+          .describe('재추천 요청 응답의 request_seq와 같은 값.'),
+        regeneration_status_cd: zod
+          .enum(['processing', 'completed', 'failed'])
+          .describe(
+            'processing이면 새 코디를 만드는 중이다. 잠시 뒤 다시 조회한다. 이때 generation_status_cd는 completed 그대로이고 outfits도 요청 전 그대로다. completed면 새 코디가 outfits에 반영되어 있다. failed면 새 코디를 만들지 못해 outfits가 요청 전 그대로다. 화면에는 "기존 코디를 유지했어요"를 띄운다. 너무 오래 끝나지 않은 요청도 failed로 온다. 이 경우 드물게 다음 조회에서 completed로 바뀔 수 있다.',
+          ),
+        target_scope_cd: zod
+          .enum(['single', 'all'])
+          .describe(
+            'single이면 코디 하나 또는 아이템 하나, all이면 화면의 코디 전체를 재추천.',
+          ),
+        target_outfit_id: zod
+          .union([zod.int(), zod.null()])
+          .describe(
+            'single일 때 재추천 대상 코디. all이면 null이다. processing일 때 로딩을 띄울 카드를 정하는 데 쓴다. completed 뒤에는 이전 코디(previous_outfits 안)를 가리킨다.',
+          ),
+        target_slot_cd: zod
+          .union([
+            zod.enum([
+              'outer',
+              'top',
+              'bottom',
+              'shoes',
+              'socks',
+              'accessories',
+            ]),
+            zod.null(),
+          ])
+          .describe('아이템 하나만 재추천할 때 그 슬롯. 그 외에는 null이다.'),
+      }),
+      zod.null(),
+    ])
+    .describe(
+      '이 세션의 가장 최근 재추천 요청. 재추천을 요청한 적이 없거나 세션이 active가 아니면 null이다.',
     ),
 });
 

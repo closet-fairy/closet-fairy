@@ -53,6 +53,11 @@ export const ClothingPage = zod.object({
   next_cursor: zod
     .union([zod.int(), zod.null()])
     .describe('다음 페이지를 받을 때 cursor로 보낸다. 더 없으면 null이다.'),
+  total_count: zod
+    .int()
+    .describe(
+      '회원의 옷 전체 개수. 처리 중·실패한 옷도 센다. 페이지와 무관하게 같은 값이다.',
+    ),
 });
 
 export type ClothingPage = zod.input<typeof ClothingPage>;

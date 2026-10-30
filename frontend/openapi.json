@@ -141,7 +141,7 @@
           "recommendation"
         ],
         "summary": "Get Recommendation Result",
-        "description": "추천 결과 조회(폴링). generation_status_cd가 processing이면 잠시 뒤 다시 조회한다.",
+        "description": "추천 결과 조회(폴링). generation_status_cd가 processing이면 잠시 뒤 다시 조회한다.\n\n재추천 중에는 generation_status_cd가 completed 그대로이므로\nlatest_regeneration.regeneration_status_cd가 processing이면 잠시 뒤 다시 조회한다.",
         "operationId": "get_recommendation_result_recommendation_sessions__recommendation_session_id__get",
         "parameters": [
           {
@@ -325,7 +325,7 @@
           "recommendation"
         ],
         "summary": "Request Regeneration",
-        "description": "재추천 요청. 요청을 검증하고 의도를 파악해 기록한 뒤 202를 돌려준다.",
+        "description": "재추천 요청. 요청을 검증하고 의도를 파악해 기록한 뒤 202를 돌려준다.\n\n코디 생성은 백그라운드에서 한다.",
         "operationId": "request_regeneration_recommendation_sessions__recommendation_session_id__regenerations_post",
         "parameters": [
           {
@@ -380,6 +380,137 @@
           },
           "503": {
             "description": "요청 의도를 일시적으로 파악하지 못함. 다시 시도할 수 있음"
+          }
+        }
+      }
+    },
+    "/recommendation-history": {
+      "get": {
+        "tags": [
+          "recommendation"
+        ],
+        "summary": "List Recommendation History",
+        "description": "추천 내역 목록. 별점을 매겨 끝난 추천만 최근 추천부터 limit개씩 나눠 준다 (무한 스크롤).",
+        "operationId": "list_recommendation_history_recommendation_history_get",
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "이전 응답의 next_cursor",
+              "title": "Cursor"
+            },
+            "description": "이전 응답의 next_cursor"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecommendationHistoryPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "입력값 검증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "로그인 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/recommendation-history/{recommendation_session_id}": {
+      "get": {
+        "tags": [
+          "recommendation"
+        ],
+        "summary": "Get Recommendation History Detail",
+        "description": "추천 내역 상세. 별점을 매겨 끝난 추천의 조건·날씨와 별점을 매긴 코디를 준다.",
+        "operationId": "get_recommendation_history_detail_recommendation_history__recommendation_session_id__get",
+        "parameters": [
+          {
+            "name": "recommendation_session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Recommendation Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecommendationHistoryDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "입력값 검증 실패",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "로그인 필요",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "없는 세션이거나 본인 세션이 아님, 또는 별점을 매겨 끝난 세션이 아님"
           }
         }
       }
@@ -2222,12 +2353,18 @@
             ],
             "title": "Next Cursor",
             "description": "다음 페이지를 받을 때 cursor로 보낸다. 더 없으면 null이다."
+          },
+          "total_count": {
+            "type": "integer",
+            "title": "Total Count",
+            "description": "회원의 옷 전체 개수. 처리 중·실패한 옷도 센다. 페이지와 무관하게 같은 값이다."
           }
         },
         "type": "object",
         "required": [
           "items",
-          "next_cursor"
+          "next_cursor",
+          "total_count"
         ],
         "title": "ClothingPage"
       },
@@ -2617,6 +2754,75 @@
         ],
         "title": "ErrorResponse"
       },
+      "LatestRegeneration": {
+        "properties": {
+          "request_seq": {
+            "type": "integer",
+            "title": "Request Seq",
+            "description": "재추천 요청 응답의 request_seq와 같은 값."
+          },
+          "regeneration_status_cd": {
+            "type": "string",
+            "enum": [
+              "processing",
+              "completed",
+              "failed"
+            ],
+            "title": "Regeneration Status Cd",
+            "description": "processing이면 새 코디를 만드는 중이다. 잠시 뒤 다시 조회한다. 이때 generation_status_cd는 completed 그대로이고 outfits도 요청 전 그대로다. completed면 새 코디가 outfits에 반영되어 있다. failed면 새 코디를 만들지 못해 outfits가 요청 전 그대로다. 화면에는 \"기존 코디를 유지했어요\"를 띄운다. 너무 오래 끝나지 않은 요청도 failed로 온다. 이 경우 드물게 다음 조회에서 completed로 바뀔 수 있다."
+          },
+          "target_scope_cd": {
+            "type": "string",
+            "enum": [
+              "single",
+              "all"
+            ],
+            "title": "Target Scope Cd",
+            "description": "single이면 코디 하나 또는 아이템 하나, all이면 화면의 코디 전체를 재추천."
+          },
+          "target_outfit_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Outfit Id",
+            "description": "single일 때 재추천 대상 코디. all이면 null이다. processing일 때 로딩을 띄울 카드를 정하는 데 쓴다. completed 뒤에는 이전 코디(previous_outfits 안)를 가리킨다."
+          },
+          "target_slot_cd": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "outer",
+                  "top",
+                  "bottom",
+                  "shoes",
+                  "socks",
+                  "accessories"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Slot Cd",
+            "description": "아이템 하나만 재추천할 때 그 슬롯. 그 외에는 null이다."
+          }
+        },
+        "type": "object",
+        "required": [
+          "request_seq",
+          "regeneration_status_cd",
+          "target_scope_cd",
+          "target_outfit_id",
+          "target_slot_cd"
+        ],
+        "title": "LatestRegeneration"
+      },
       "MemberMe": {
         "properties": {
           "nickname": {
@@ -2961,6 +3167,14 @@
             },
             "type": "array",
             "title": "Items"
+          },
+          "previous_outfits": {
+            "items": {
+              "$ref": "#/components/schemas/PreviousOutfitResult"
+            },
+            "type": "array",
+            "title": "Previous Outfits",
+            "description": "같은 outfit_seq에 전에 나왔던 코디. 최신순이다. 재추천한 적이 없으면 빈 배열이다. 이전 코디에도 별점을 매길 수 있지만, 재추천 대상으로 지정하면 422 REGENERATION_TARGET_NOT_LATEST가 된다."
           }
         },
         "type": "object",
@@ -2969,7 +3183,8 @@
           "outfit_seq",
           "outfit_type_cd",
           "reason",
-          "items"
+          "items",
+          "previous_outfits"
         ],
         "title": "OutfitResult"
       },
@@ -3080,6 +3295,59 @@
         ],
         "title": "PerspectiveParam"
       },
+      "PreviousOutfitResult": {
+        "properties": {
+          "outfit_id": {
+            "type": "integer",
+            "title": "Outfit Id",
+            "description": "별점을 매길 때 이 값을 보낸다."
+          },
+          "outfit_seq": {
+            "type": "integer",
+            "maximum": 4.0,
+            "minimum": 1.0,
+            "title": "Outfit Seq",
+            "description": "화면에 보여줄 순서."
+          },
+          "outfit_type_cd": {
+            "type": "string",
+            "enum": [
+              "preferred",
+              "exploratory"
+            ],
+            "title": "Outfit Type Cd",
+            "description": "preferred는 선호 스타일 코디, exploratory는 새 스타일을 시도해보는 탐색 코디(최대 1벌)."
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason",
+            "description": "추천 사유."
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/OutfitItemResult"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "outfit_id",
+          "outfit_seq",
+          "outfit_type_cd",
+          "reason",
+          "items"
+        ],
+        "title": "PreviousOutfitResult"
+      },
       "RatingCreate": {
         "properties": {
           "outfit_id": {
@@ -3129,6 +3397,592 @@
         ],
         "title": "RatingResult"
       },
+      "RecommendationHistoryCondition": {
+        "properties": {
+          "tpo_cd": {
+            "type": "string",
+            "enum": [
+              "daily",
+              "work",
+              "formal",
+              "exercise",
+              "rainy",
+              "midwinter",
+              "date",
+              "custom"
+            ],
+            "title": "Tpo Cd"
+          },
+          "tpo_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tpo Text",
+            "description": "tpo_cd가 custom일 때 회원이 직접 입력한 상황."
+          },
+          "season_cd": {
+            "type": "string",
+            "enum": [
+              "spring",
+              "summer",
+              "fall",
+              "winter"
+            ],
+            "title": "Season Cd",
+            "description": "요청 시점의 기온 추세로 판정한 계절."
+          },
+          "going_out_start_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Going Out Start At",
+            "description": "외출 시작 시각 (KST, +09:00)."
+          },
+          "going_out_end_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Going Out End At",
+            "description": "외출 종료 시각 (KST, +09:00). 자정을 넘기면 다음 날짜로 온다."
+          },
+          "sido_nm": {
+            "type": "string",
+            "title": "Sido Nm",
+            "description": "추천받을 때 고른 시/도. 저장된 이름 그대로 온다."
+          },
+          "sigungu_nm": {
+            "type": "string",
+            "title": "Sigungu Nm",
+            "description": "추천받을 때 고른 시/군/구. 저장된 이름 그대로 온다. 세종은 sido_nm과 같은 세종특별자치시다."
+          }
+        },
+        "type": "object",
+        "required": [
+          "tpo_cd",
+          "tpo_text",
+          "season_cd",
+          "going_out_start_at",
+          "going_out_end_at",
+          "sido_nm",
+          "sigungu_nm"
+        ],
+        "title": "RecommendationHistoryCondition"
+      },
+      "RecommendationHistoryDetail": {
+        "properties": {
+          "recommendation_session_id": {
+            "type": "integer",
+            "title": "Recommendation Session Id"
+          },
+          "recommended_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Recommended At",
+            "description": "추천받은 시각 (KST, +09:00)."
+          },
+          "condition": {
+            "$ref": "#/components/schemas/RecommendationHistoryCondition"
+          },
+          "weather": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecommendationHistoryWeather"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "추천 시점 날씨. 날씨를 조회하지 못한 채 끝난 세션이면 null이다."
+          },
+          "rating": {
+            "type": "integer",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Rating",
+            "description": "매긴 별점."
+          },
+          "outfit": {
+            "$ref": "#/components/schemas/RecommendationHistoryOutfit",
+            "description": "별점을 매긴 코디."
+          }
+        },
+        "type": "object",
+        "required": [
+          "recommendation_session_id",
+          "recommended_at",
+          "condition",
+          "weather",
+          "rating",
+          "outfit"
+        ],
+        "title": "RecommendationHistoryDetail",
+        "examples": [
+          {
+            "condition": {
+              "going_out_end_at": "2026-10-28T18:30:00+09:00",
+              "going_out_start_at": "2026-10-28T08:30:00+09:00",
+              "season_cd": "fall",
+              "sido_nm": "서울특별시",
+              "sigungu_nm": "마포구",
+              "tpo_cd": "daily"
+            },
+            "outfit": {
+              "items": [
+                {
+                  "image_url": "/media/clothing/7/2001_cutout.webp",
+                  "is_clothing_deleted": true,
+                  "item_name": "화이트 옥스퍼드 셔츠",
+                  "item_source_cd": "owned",
+                  "slot_cd": "top",
+                  "style_cds": []
+                },
+                {
+                  "image_url": "/media/clothing/7/3001_cutout.webp",
+                  "is_clothing_deleted": false,
+                  "item_name": "블랙 슬랙스",
+                  "item_source_cd": "owned",
+                  "slot_cd": "bottom",
+                  "style_cds": [
+                    "minimal"
+                  ]
+                },
+                {
+                  "is_clothing_deleted": false,
+                  "item_name": "방수 앵클부츠",
+                  "item_source_cd": "essential",
+                  "slot_cd": "shoes",
+                  "style_cds": [
+                    "casual"
+                  ]
+                },
+                {
+                  "accessory_type_cd": "bag",
+                  "image_url": "/media/clothing/7/6003_cutout.webp",
+                  "is_clothing_deleted": false,
+                  "item_name": "블랙 토트백",
+                  "item_source_cd": "owned",
+                  "slot_cd": "accessories",
+                  "style_cds": [
+                    "minimal",
+                    "classic"
+                  ]
+                }
+              ],
+              "outfit_type_cd": "preferred",
+              "reason": "비가 와서 방수 부츠를 고르고 셔츠와 슬랙스로 단정하게 맞췄어요."
+            },
+            "rating": 4,
+            "recommendation_session_id": 44,
+            "recommended_at": "2026-10-28T07:51:24+09:00",
+            "weather": {
+              "feels_like_temperature": 7.9,
+              "is_fallback": false,
+              "precipitation": 1.5,
+              "temperature": 9.6,
+              "weather_condition_cd": "rain",
+              "wind_speed": 3.2
+            }
+          }
+        ]
+      },
+      "RecommendationHistoryItem": {
+        "properties": {
+          "recommendation_session_id": {
+            "type": "integer",
+            "title": "Recommendation Session Id"
+          },
+          "recommended_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Recommended At",
+            "description": "추천받은 시각 (KST, +09:00)."
+          },
+          "condition": {
+            "$ref": "#/components/schemas/RecommendationHistoryCondition"
+          },
+          "weather": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SessionWeather"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "추천 시점 날씨. 날씨를 조회하지 못한 채 끝난 세션이면 null이다."
+          },
+          "rating": {
+            "type": "integer",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Rating",
+            "description": "매긴 별점."
+          },
+          "thumbnails": {
+            "items": {
+              "$ref": "#/components/schemas/RecommendationHistoryThumbnail"
+            },
+            "type": "array",
+            "title": "Thumbnails",
+            "description": "별점을 매긴 코디의 아이템."
+          }
+        },
+        "type": "object",
+        "required": [
+          "recommendation_session_id",
+          "recommended_at",
+          "condition",
+          "weather",
+          "rating",
+          "thumbnails"
+        ],
+        "title": "RecommendationHistoryItem"
+      },
+      "RecommendationHistoryOutfit": {
+        "properties": {
+          "outfit_type_cd": {
+            "type": "string",
+            "enum": [
+              "preferred",
+              "exploratory"
+            ],
+            "title": "Outfit Type Cd",
+            "description": "preferred는 선호 스타일 코디, exploratory는 새 스타일을 시도해보는 탐색 코디."
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason",
+            "description": "추천 사유."
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RecommendationHistoryOutfitItem"
+            },
+            "type": "array",
+            "title": "Items",
+            "description": "image_url이 null이면 item_name으로 대신 보여준다. style_cds·accessory_type_cd는 추천 당시가 아니라 지금 옷 기준이라 지운 옷이면 빈 배열·null이다."
+          }
+        },
+        "type": "object",
+        "required": [
+          "outfit_type_cd",
+          "reason",
+          "items"
+        ],
+        "title": "RecommendationHistoryOutfit"
+      },
+      "RecommendationHistoryOutfitItem": {
+        "properties": {
+          "slot_cd": {
+            "type": "string",
+            "enum": [
+              "outer",
+              "top",
+              "bottom",
+              "shoes",
+              "socks",
+              "accessories"
+            ],
+            "title": "Slot Cd",
+            "description": "착용 슬롯. 아이템은 outer → top → bottom → shoes → socks → accessories 순으로 온다."
+          },
+          "accessory_type_cd": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "hat",
+                  "bag",
+                  "belt",
+                  "watch",
+                  "scarf",
+                  "eyewear",
+                  "jewelry",
+                  "etc"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accessory Type Cd",
+            "description": "악세서리 세부 종류. slot_cd가 accessories일 때만 값이 있다. 회원이 그 옷을 지우면 accessories여도 null일 수 있다."
+          },
+          "item_source_cd": {
+            "type": "string",
+            "enum": [
+              "owned",
+              "essential"
+            ],
+            "title": "Item Source Cd",
+            "description": "owned면 회원이 등록한 옷, essential이면 옷장을 보충하려고 넣은 기본 아이템이다."
+          },
+          "item_name": {
+            "type": "string",
+            "title": "Item Name",
+            "description": "추천 당시 이름. 옷을 나중에 지워도 그대로 남는다."
+          },
+          "image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Url",
+            "description": "추천 당시 이미지. 보유 옷은 배경 제거본이 있으면 그것, 없으면 원본이다."
+          },
+          "style_cds": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "minimal",
+                "casual",
+                "street",
+                "classic",
+                "formal",
+                "sporty",
+                "romantic",
+                "vintage",
+                "bohemian",
+                "preppy",
+                "chic",
+                "unique",
+                "feminine"
+              ]
+            },
+            "type": "array",
+            "title": "Style Cds",
+            "description": "스타일 태그. 없으면 빈 배열이다."
+          },
+          "is_clothing_deleted": {
+            "type": "boolean",
+            "title": "Is Clothing Deleted",
+            "description": "true면 회원이 추천 뒤에 지운 옷이다. 지운 옷임을 표시한다. 기본 아이템은 항상 false다."
+          }
+        },
+        "type": "object",
+        "required": [
+          "slot_cd",
+          "accessory_type_cd",
+          "item_source_cd",
+          "item_name",
+          "image_url",
+          "style_cds",
+          "is_clothing_deleted"
+        ],
+        "title": "RecommendationHistoryOutfitItem"
+      },
+      "RecommendationHistoryPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RecommendationHistoryItem"
+            },
+            "type": "array",
+            "title": "Items",
+            "description": "별점을 매겨 끝난 추천만, 최근 추천부터 온다. 없으면 빈 배열이다."
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor",
+            "description": "다음 페이지를 받을 때 cursor로 보낸다. 더 없으면 null이다."
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "title": "RecommendationHistoryPage",
+        "examples": [
+          {
+            "items": [
+              {
+                "condition": {
+                  "going_out_end_at": "2026-10-27T19:00:00+09:00",
+                  "going_out_start_at": "2026-10-27T08:30:00+09:00",
+                  "season_cd": "fall",
+                  "sido_nm": "서울특별시",
+                  "sigungu_nm": "성동구",
+                  "tpo_cd": "work"
+                },
+                "rating": 4,
+                "recommendation_session_id": 41,
+                "recommended_at": "2026-10-27T07:42:10+09:00",
+                "thumbnails": [
+                  {
+                    "image_url": "/media/clothing/7/1042_cutout.webp",
+                    "item_name": "네이비 블레이저",
+                    "slot_cd": "outer"
+                  },
+                  {
+                    "image_url": "/media/clothing/7/2001_cutout.webp",
+                    "item_name": "화이트 옥스퍼드 셔츠",
+                    "slot_cd": "top"
+                  },
+                  {
+                    "image_url": "/media/clothing/7/3001_cutout.webp",
+                    "item_name": "블랙 슬랙스",
+                    "slot_cd": "bottom"
+                  },
+                  {
+                    "item_name": "블랙 로퍼",
+                    "slot_cd": "shoes"
+                  }
+                ],
+                "weather": {
+                  "feels_like_temperature": 9.8,
+                  "is_fallback": false,
+                  "temperature": 11.4,
+                  "weather_condition_cd": "clear"
+                }
+              },
+              {
+                "condition": {
+                  "going_out_end_at": "2026-10-26T01:00:00+09:00",
+                  "going_out_start_at": "2026-10-25T18:00:00+09:00",
+                  "season_cd": "fall",
+                  "sido_nm": "세종특별자치시",
+                  "sigungu_nm": "세종특별자치시",
+                  "tpo_cd": "custom",
+                  "tpo_text": "친구 결혼식 2부 파티"
+                },
+                "rating": 5,
+                "recommendation_session_id": 38,
+                "recommended_at": "2026-10-25T17:05:33+09:00",
+                "thumbnails": [
+                  {
+                    "image_url": "/media/clothing/7/2003_cutout.webp",
+                    "item_name": "아이보리 니트",
+                    "slot_cd": "top"
+                  },
+                  {
+                    "image_url": "/media/clothing/7/3004_cutout.webp",
+                    "item_name": "베이지 와이드 팬츠",
+                    "slot_cd": "bottom"
+                  },
+                  {
+                    "image_url": "/media/clothing/7/4004_cutout.webp",
+                    "item_name": "화이트 스니커즈",
+                    "slot_cd": "shoes"
+                  }
+                ]
+              }
+            ],
+            "next_cursor": 38
+          }
+        ]
+      },
+      "RecommendationHistoryThumbnail": {
+        "properties": {
+          "slot_cd": {
+            "type": "string",
+            "enum": [
+              "outer",
+              "top",
+              "bottom",
+              "shoes",
+              "socks",
+              "accessories"
+            ],
+            "title": "Slot Cd",
+            "description": "착용 슬롯. 아이템은 outer → top → bottom → shoes → socks → accessories 순으로 온다."
+          },
+          "item_name": {
+            "type": "string",
+            "title": "Item Name",
+            "description": "추천 당시 이름. 옷을 나중에 지워도 그대로 남는다."
+          },
+          "image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Url",
+            "description": "추천 당시 이미지. 옷을 나중에 지워도 그대로 보인다. 이미지가 없는 기본 아이템이면 null이므로 item_name으로 대신 보여준다."
+          }
+        },
+        "type": "object",
+        "required": [
+          "slot_cd",
+          "item_name",
+          "image_url"
+        ],
+        "title": "RecommendationHistoryThumbnail"
+      },
+      "RecommendationHistoryWeather": {
+        "properties": {
+          "temperature": {
+            "type": "number",
+            "title": "Temperature"
+          },
+          "feels_like_temperature": {
+            "type": "number",
+            "title": "Feels Like Temperature"
+          },
+          "weather_condition_cd": {
+            "type": "string",
+            "enum": [
+              "clear",
+              "cloudy",
+              "overcast",
+              "rain",
+              "sleet",
+              "snow"
+            ],
+            "title": "Weather Condition Cd"
+          },
+          "is_fallback": {
+            "type": "boolean",
+            "title": "Is Fallback",
+            "description": "true면 기상청 조회에 실패해 대체값으로 추천한 것이다. 날씨가 추정값임을 표시한다."
+          },
+          "precipitation": {
+            "type": "number",
+            "title": "Precipitation",
+            "description": "강수량 (mm)."
+          },
+          "wind_speed": {
+            "type": "number",
+            "title": "Wind Speed",
+            "description": "풍속 (m/s)."
+          }
+        },
+        "type": "object",
+        "required": [
+          "temperature",
+          "feels_like_temperature",
+          "weather_condition_cd",
+          "is_fallback",
+          "precipitation",
+          "wind_speed"
+        ],
+        "title": "RecommendationHistoryWeather"
+      },
       "RecommendationResult": {
         "properties": {
           "recommendation_session_id": {
@@ -3143,7 +3997,7 @@
               "failed"
             ],
             "title": "Generation Status Cd",
-            "description": "processing이면 아직 만드는 중이라 outfits가 빈 배열이다. 잠시 뒤 다시 조회한다. completed면 outfits가 채워져 있다. 단, 끝난 세션은 정리되므로 completed여도 1벌이거나 빈 배열일 수 있다(outfits 설명 참고). failed면 추천을 만들지 못한 것이므로 폴링을 멈추고 다시 시도를 안내한다. 생성 중에 취소·이탈된 세션도 failed가 된다."
+            "description": "processing이면 아직 만드는 중이라 outfits가 빈 배열이다. 잠시 뒤 다시 조회한다. completed면 outfits가 채워져 있다. 단, 끝난 세션은 정리되므로 completed여도 1벌이거나 빈 배열일 수 있다(outfits 설명 참고). failed면 추천을 만들지 못한 것이므로 폴링을 멈추고 다시 시도를 안내한다. 생성 중에 취소·이탈된 세션도 failed가 된다. 첫 추천의 상태라 재추천을 만드는 중에도 completed 그대로다(latest_regeneration 설명 참고)."
           },
           "session_status_cd": {
             "type": "string",
@@ -3181,7 +4035,18 @@
             },
             "type": "array",
             "title": "Outfits",
-            "description": "outfit_seq 순. 세션이 active이고 generation_status_cd가 completed면 1~4벌이다. 보통 4벌이지만 옷장 사정에 따라 더 적을 수 있다. 세션이 끝나면 정리되므로 session_status_cd가 completed면 별점을 매긴 1벌만, canceled·abandoned면 빈 배열이다."
+            "description": "outfit_seq 순. 세션이 active이고 generation_status_cd가 completed면 1~4벌이다. 보통 4벌이지만 옷장 사정에 따라 더 적을 수 있다. 세션이 끝나면 정리되므로 session_status_cd가 completed면 별점을 매긴 1벌만, canceled·abandoned면 빈 배열이다. 재추천을 만드는 중에도 비지 않고 요청 전 코디가 그대로 온다. 정리가 끝난 세션에는 이전 코디(previous_outfits)도 없다."
+          },
+          "latest_regeneration": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LatestRegeneration"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "이 세션의 가장 최근 재추천 요청. 재추천을 요청한 적이 없거나 세션이 active가 아니면 null이다."
           }
         },
         "type": "object",
@@ -3192,7 +4057,8 @@
           "is_clothing_shortage",
           "condition",
           "weather",
-          "outfits"
+          "outfits",
+          "latest_regeneration"
         ],
         "title": "RecommendationResult",
         "examples": [
@@ -3205,6 +4071,12 @@
             },
             "generation_status_cd": "completed",
             "is_clothing_shortage": true,
+            "latest_regeneration": {
+              "regeneration_status_cd": "completed",
+              "request_seq": 1,
+              "target_outfit_id": 101,
+              "target_scope_cd": "single"
+            },
             "outfits": [
               {
                 "items": [
@@ -3247,9 +4119,46 @@
                     ]
                   }
                 ],
-                "outfit_id": 101,
+                "outfit_id": 105,
                 "outfit_seq": 1,
                 "outfit_type_cd": "preferred",
+                "previous_outfits": [
+                  {
+                    "items": [
+                      {
+                        "image_url": "/media/clothing/7/2002_cutout.webp",
+                        "item_name": "그레이 니트",
+                        "item_source_cd": "owned",
+                        "slot_cd": "top",
+                        "style_cds": [
+                          "casual"
+                        ]
+                      },
+                      {
+                        "image_url": "/media/clothing/7/3002_cutout.webp",
+                        "item_name": "연청 데님",
+                        "item_source_cd": "owned",
+                        "slot_cd": "bottom",
+                        "style_cds": [
+                          "casual"
+                        ]
+                      },
+                      {
+                        "image_url": "/media/clothing/7/4002_cutout.webp",
+                        "item_name": "화이트 스니커즈",
+                        "item_source_cd": "owned",
+                        "slot_cd": "shoes",
+                        "style_cds": [
+                          "casual"
+                        ]
+                      }
+                    ],
+                    "outfit_id": 101,
+                    "outfit_seq": 1,
+                    "outfit_type_cd": "preferred",
+                    "reason": "니트와 데님으로 편하게 맞췄어요."
+                  }
+                ],
                 "reason": "아침이 쌀쌀해 블레이저를 걸치고 슬랙스로 맞췄어요."
               }
             ],
