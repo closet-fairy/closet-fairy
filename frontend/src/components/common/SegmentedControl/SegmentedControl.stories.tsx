@@ -24,6 +24,13 @@ const meta = {
       description: '스크린리더가 읽을 묶음 이름입니다.',
       control: 'text',
     },
+    variant: {
+      description:
+        'grouped는 회색 틀 안에 칸을 모으고, separated는 칸을 떼어 고른 칸을 검게 칠합니다.',
+      control: 'inline-radio',
+      options: ['grouped', 'separated'],
+      table: { defaultValue: { summary: 'grouped' } },
+    },
     isDisabled: {
       description: '모든 항목을 누를 수 없게 하고 흐리게 보여 줍니다.',
       control: 'boolean',
@@ -83,4 +90,8 @@ export const Disabled: Story = {
   args: {
     isDisabled: true,
   },
+};
+
+export const Separated: Story = {
+  args: { variant: 'separated' },
 };

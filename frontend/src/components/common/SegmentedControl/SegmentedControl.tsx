@@ -8,11 +8,14 @@ export interface SegmentedControlOption {
   icon?: IconName;
 }
 
+export type SegmentedControlVariant = 'grouped' | 'separated';
+
 interface SegmentedControlProps {
   options: SegmentedControlOption[];
   value: string;
   onChange: (value: string) => void;
   'aria-label': string;
+  variant?: SegmentedControlVariant;
   isDisabled?: boolean;
 }
 
@@ -22,6 +25,7 @@ const SegmentedControl = (props: SegmentedControlProps) => {
     value,
     onChange,
     'aria-label': ariaLabel,
+    variant = 'grouped',
     isDisabled = false,
   } = props;
 
@@ -41,9 +45,10 @@ const SegmentedControl = (props: SegmentedControlProps) => {
       onValueChange={handleValueChange}
       disabled={isDisabled}
       aria-label={ariaLabel}
+      $variant={variant}
     >
       {options.map((option) => (
-        <S.Segment key={option.value} value={option.value}>
+        <S.Segment key={option.value} value={option.value} $variant={variant}>
           {option.icon && <Icon name={option.icon} size="sm" />}
           <S.Label>{option.label}</S.Label>
         </S.Segment>
