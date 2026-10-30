@@ -165,7 +165,7 @@ const RecommendationResultPage = () => {
         urlRestoreRef.current = waitForPopState();
       }
 
-      // 서랍이나 별점 모달이 열려 있을 때 뒤로 가기는 나가려는 것이 아니라 그 층을 닫으려는 것으로 본다.
+      // 서랍, 별점 모달, 요청 시트가 열려 있을 때 뒤로 가기는 나가려는 것이 아니라 그 층을 닫으려는 것으로 본다.
       if (openLayer !== null) {
         if (!isSubmittingRating && !isRequestingRegeneration) {
           setOpenLayer(null);

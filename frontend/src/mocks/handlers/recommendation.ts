@@ -1,4 +1,5 @@
 import { http, HttpResponse } from 'msw';
+import { REGENERATION_REQUEST_MAX_LENGTH } from '@/domains/recommendation/regeneration';
 import type {
   CancelResult,
   ClothingShortagePrecheckResponse,
@@ -48,7 +49,6 @@ const GENERATION_MS = 6000;
 const OUTFIT_COUNT = 4;
 const DEFAULT_MOCK_RATING = 4;
 const REGENERATION_MS = 5000;
-const REGENERATION_MAX_LENGTH = 300;
 const FIRST_REGENERATED_OUTFIT_ID = 90001;
 // 재추천 요청 문구에 이 말을 넣으면 그 응답을 dev:mock에서 볼 수 있다.
 const REGENERATION_KEYWORD = {
@@ -452,11 +452,11 @@ export const recommendationHandlers = [
         );
       }
 
-      if ([...requestText].length > REGENERATION_MAX_LENGTH) {
+      if ([...requestText].length > REGENERATION_REQUEST_MAX_LENGTH) {
         return HttpResponse.json(
           {
             code: 'REGENERATION_REQUEST_TOO_LONG',
-            message: `요청은 ${REGENERATION_MAX_LENGTH}자까지 입력할 수 있습니다. 조금 줄여서 다시 입력해 주세요.`,
+            message: `요청은 ${REGENERATION_REQUEST_MAX_LENGTH}자까지 입력할 수 있습니다. 조금 줄여서 다시 입력해 주세요.`,
           },
           { status: 422 },
         );
