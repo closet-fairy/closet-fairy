@@ -40,6 +40,7 @@ export const Title = styled.h1`
 export const Description = styled.p`
   ${typography.body3}
   color: ${fg.neutral.light};
+  white-space: pre-line;
 `;
 
 export const Content = styled.div`
