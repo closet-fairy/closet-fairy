@@ -7,6 +7,7 @@ const ICON_SIZE: Record<IconSize, number> = {
   md: 20,
   lg: 24,
   xl: 36,
+  '2xl': 48,
 };
 
 export const Container = styled.span<{ $size: IconSize }>`

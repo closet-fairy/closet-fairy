@@ -15,9 +15,9 @@ const meta = {
     },
     size: {
       description:
-        '아이콘의 크기입니다. xs 16px, sm 18px, md 20px, lg 24px, xl 36px입니다. 색은 따로 받지 않고 부모의 글자색(`currentColor`)을 따릅니다.',
+        '아이콘의 크기입니다. xs 16px, sm 18px, md 20px, lg 24px, xl 36px, 2xl 48px입니다. 색은 따로 받지 않고 부모의 글자색(`currentColor`)을 따릅니다.',
       control: 'inline-radio',
-      options: ['xs', 'sm', 'md', 'lg', 'xl'],
+      options: ['xs', 'sm', 'md', 'lg', 'xl', '2xl'],
       table: { defaultValue: { summary: 'md' } },
     },
     label: {
@@ -54,6 +54,9 @@ export const Sizes: Story = {
       </StoryLabeled>
       <StoryLabeled label="xl">
         <Icon {...args} size="xl" />
+      </StoryLabeled>
+      <StoryLabeled label="2xl">
+        <Icon {...args} size="2xl" />
       </StoryLabeled>
     </StoryStack>
   ),

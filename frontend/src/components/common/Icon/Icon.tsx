@@ -2,7 +2,7 @@ import type { IconName } from '@/assets/icons';
 import { icons } from '@/assets/icons';
 import * as S from './Icon.styled';
 
-export type IconSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+export type IconSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
 
 interface IconProps {
   name: IconName;

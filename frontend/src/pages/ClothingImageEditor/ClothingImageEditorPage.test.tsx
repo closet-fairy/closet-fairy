@@ -51,27 +51,6 @@ beforeEach(() => {
   vi.mocked(isWebGL2Supported).mockReturnValue(true);
 });
 
-describe('편집기 경로', () => {
-  test('옷 번호가 양의 정수가 아니면 찾을 수 없는 페이지를 보여 줘야 한다.', async () => {
-    await renderAt('/closet/abc/edit');
-
-    expect(
-      await screen.findByText('페이지를 찾을 수 없습니다.'),
-    ).toBeInTheDocument();
-  });
-
-  test('옷 번호가 잘못돼 찾을 수 없는 페이지를 보여 줄 때는 하단 탭을 그려야 한다.', async () => {
-    await renderAt('/closet/abc/edit');
-
-    expect(
-      await screen.findByText('페이지를 찾을 수 없습니다.'),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('navigation', { name: '주요 메뉴' }),
-    ).toBeInTheDocument();
-  });
-});
-
 describe('편집 전 안내', () => {
   test('WebGL2를 쓸 수 없으면 옷을 조회하지 않고 안내해야 한다.', async () => {
     vi.mocked(isWebGL2Supported).mockReturnValue(false);

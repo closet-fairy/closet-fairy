@@ -49,6 +49,7 @@ import RotateLeft from '@material-symbols/svg-400/outlined/rotate_left.svg?react
 import RotateRight from '@material-symbols/svg-400/outlined/rotate_right.svg?react';
 import Schedule from '@material-symbols/svg-400/outlined/schedule.svg?react';
 import Search from '@material-symbols/svg-400/outlined/search.svg?react';
+import SearchOff from '@material-symbols/svg-400/outlined/search_off.svg?react';
 import Star from '@material-symbols/svg-400/outlined/star.svg?react';
 import StarFill from '@material-symbols/svg-400/outlined/star-fill.svg?react';
 import StarShine from '@material-symbols/svg-400/outlined/star_shine.svg?react';
@@ -111,6 +112,7 @@ export const icons = {
   rotate_right: RotateRight,
   schedule: Schedule,
   search: Search,
+  search_off: SearchOff,
   star: Star,
   'star-fill': StarFill,
   star_shine: StarShine,
