@@ -1101,6 +1101,23 @@ describe('재추천 요청 시트', () => {
     ).toBeInTheDocument();
   });
 
+  test('이미 채택되어 거절되면 볼 수 없는 추천 화면을 보여 줘야 한다.', async () => {
+    const user = userEvent.setup();
+    useRegenerationError(
+      409,
+      'SESSION_ALREADY_SETTLED',
+      '이미 별점을 매겨 끝난 추천입니다.',
+    );
+    useResult(createResult());
+    await renderResult();
+
+    await submitRequest(user, await openRequestSheet(user));
+
+    expect(
+      await screen.findByText('볼 수 없는 추천이에요'),
+    ).toBeInTheDocument();
+  });
+
   test('시트가 열린 상태의 뒤로 가기는 시트만 닫아야 한다.', async () => {
     const user = userEvent.setup();
     useResult(createResult());

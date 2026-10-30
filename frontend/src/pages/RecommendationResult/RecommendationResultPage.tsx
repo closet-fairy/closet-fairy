@@ -475,7 +475,10 @@ const RecommendationResultPage = () => {
         onError: (requestError) => {
           if (requestError.code === SESSION_ENDED_CODE) {
             setSessionRejection('expired');
-          } else if (requestError.code === SESSION_NOT_FOUND_CODE) {
+          } else if (
+            requestError.code === SESSION_NOT_FOUND_CODE ||
+            requestError.code === SESSION_ALREADY_SETTLED_CODE
+          ) {
             setSessionRejection('unavailable');
           }
         },
