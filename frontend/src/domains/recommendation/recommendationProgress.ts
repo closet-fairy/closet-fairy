@@ -27,3 +27,14 @@ export const getRecommendationProgress = (
 
   return 'processing';
 };
+
+// 세션이 끝나면 BE가 코디를 정리하므로, 진행 중인 세션에 코디가 있을 때만 결과를 볼 수 있다.
+export const canViewRecommendationResult = (
+  result: Pick<
+    RecommendationResult,
+    'generation_status_cd' | 'session_status_cd' | 'outfits'
+  >,
+) =>
+  result.session_status_cd === 'active' &&
+  result.generation_status_cd === 'completed' &&
+  result.outfits.length > 0;

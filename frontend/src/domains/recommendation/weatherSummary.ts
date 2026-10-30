@@ -30,6 +30,14 @@ export const formatTemperature = (temperature: number) => {
   return `${rounded}°`;
 };
 
+export const getWeatherLabel = (
+  weather: Pick<WeatherPreview, 'temperature' | 'weather_condition_cd'>,
+) => {
+  const { temperature, weather_condition_cd: conditionCd } = weather;
+
+  return `${formatTemperature(temperature)} ${WEATHER_CONDITION_LABELS[conditionCd]}`;
+};
+
 export const getWeatherSummary = (preview: WeatherPreview): WeatherSummary => {
   const {
     temperature,

@@ -1,23 +1,10 @@
-import type { IconName } from '@/assets/icons';
 import Icon from '@/components/common/Icon';
+import { WEATHER_CONDITION_ICONS } from '@/constants/weatherConditionIcon';
 import { getWeatherSummary } from '@/domains/recommendation/weatherSummary';
 import { usePreviewWeatherWeatherPreviewGet } from '@/generated/endpoints/weather/weather';
-import type { WeatherPreview } from '@/generated/models';
 import * as S from './WeatherSummary.styled';
 
 const WEATHER_STALE_TIME = 10 * 60 * 1000;
-
-const WEATHER_CONDITION_ICONS: Record<
-  WeatherPreview['weather_condition_cd'],
-  IconName
-> = {
-  clear: 'sunny',
-  cloudy: 'partly_cloudy_day',
-  overcast: 'cloud',
-  rain: 'rainy',
-  sleet: 'weather_mix',
-  snow: 'weather_snowy',
-};
 
 interface WeatherSummaryProps {
   sidoNm: string;
