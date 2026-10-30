@@ -1,4 +1,5 @@
 import { Drawer } from '@base-ui/react/drawer';
+import { css } from '@emotion/react';
 import styled from '@emotion/styled';
 import {
   bg,
@@ -12,6 +13,7 @@ import {
   zIndex,
 } from '@/styles/tokens';
 import { transientOptions } from '@/styles/transientOptions';
+import { visuallyHidden } from '@/styles/visuallyHidden';
 
 const HANDLE_WIDTH = 38;
 const HANDLE_HEIGHT = 4;
@@ -58,12 +60,14 @@ export const Viewport = styled(Drawer.Viewport, transientOptions)`
   touch-action: none;
 `;
 
-export const Popup = styled(Drawer.Popup, transientOptions)`
+export const Popup = styled(Drawer.Popup, transientOptions)<{
+  $maxHeight?: string;
+}>`
   position: relative;
   display: flex;
   flex-direction: column;
   width: 100%;
-  max-height: 100%;
+  max-height: ${({ $maxHeight }) => $maxHeight ?? '100%'};
   padding-bottom: calc(${spacing[20]} + env(safe-area-inset-bottom, 0px));
   border-radius: ${radius.xl} ${radius.xl} 0 0;
   background-color: ${bg.white};
@@ -110,18 +114,29 @@ export const Header = styled.div`
   padding: ${spacing[12]} ${spacing[20]} 0;
 `;
 
-export const Handle = styled.div<{ $isHidden: boolean }>`
+export const Handle = styled.div<{
+  $isHidden: boolean;
+  $isTitleHidden: boolean;
+}>`
   width: ${HANDLE_WIDTH}px;
   height: ${HANDLE_HEIGHT}px;
-  margin: 0 auto ${spacing[16]};
+  margin: 0 auto ${({ $isTitleHidden }) => ($isTitleHidden ? 0 : spacing[16])};
   border-radius: ${radius.full};
   background-color: ${bg.neutral.default};
   visibility: ${({ $isHidden }) => ($isHidden ? 'hidden' : 'visible')};
 `;
 
-export const Title = styled(Drawer.Title, transientOptions)`
+export const Title = styled(Drawer.Title, transientOptions)<{
+  $isHidden: boolean;
+}>`
   ${typography.title3}
   color: ${fg.neutral.strong};
+
+  ${({ $isHidden }) =>
+    $isHidden &&
+    css`
+      ${visuallyHidden}
+    `}
 `;
 
 export const Description = styled(Drawer.Description, transientOptions)`

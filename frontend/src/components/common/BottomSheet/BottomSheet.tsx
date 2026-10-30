@@ -9,10 +9,12 @@ interface BottomSheetProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   title: string;
+  isTitleHidden?: boolean;
   description?: string;
   children: ReactNode;
   footer?: ReactNode;
   isDismissable?: boolean;
+  maxHeight?: string;
   initialFocus?: RefObject<HTMLElement | null>;
   finalFocus?: RefObject<HTMLElement | null>;
 }
@@ -22,10 +24,12 @@ const BottomSheet = (props: BottomSheetProps) => {
     isOpen,
     onOpenChange,
     title,
+    isTitleHidden = false,
     description,
     children,
     footer,
     isDismissable = true,
+    maxHeight,
     initialFocus,
     finalFocus,
   } = props;
@@ -58,13 +62,18 @@ const BottomSheet = (props: BottomSheetProps) => {
           <S.Viewport>
             <S.Popup
               ref={popupRef}
+              $maxHeight={maxHeight}
               initialFocus={initialFocus ?? getInitialFocus}
               finalFocus={finalFocus}
               data-base-ui-swipe-ignore={isDismissable ? undefined : ''}
             >
               <S.Header>
-                <S.Handle aria-hidden $isHidden={!isDismissable} />
-                <S.Title>{title}</S.Title>
+                <S.Handle
+                  aria-hidden
+                  $isHidden={!isDismissable}
+                  $isTitleHidden={isTitleHidden}
+                />
+                <S.Title $isHidden={isTitleHidden}>{title}</S.Title>
                 {description && <S.Description>{description}</S.Description>}
               </S.Header>
               <S.Content ref={contentRef}>{children}</S.Content>
