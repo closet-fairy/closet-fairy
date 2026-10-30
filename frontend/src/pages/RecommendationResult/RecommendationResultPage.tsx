@@ -9,37 +9,54 @@ import Dialog from '@/components/common/Dialog';
 import Icon from '@/components/common/Icon';
 import IconButton from '@/components/common/IconButton';
 import StatusView from '@/components/common/StatusView';
-import { showToast } from '@/components/common/ToastProvider/ToastProvider.toast';
+import {
+  setToastBottomOffset,
+  showToast,
+} from '@/components/common/ToastProvider/ToastProvider.toast';
 import TopBar from '@/components/common/TopBar';
 import OutfitLoading from '@/components/OutfitLoading';
+import { REGENERATION_FAILURE_NOTICE_STORAGE_KEY } from '@/constants/recommendationStorageKey';
 import {
   canViewRecommendationResult,
   getRecommendationProgress,
   keepViewedOutfits,
 } from '@/domains/recommendation/recommendationProgress';
 import {
+  isOutfitRegenerating,
+  isRegenerationFailureNoticed,
+  isRegenerationProcessing,
+} from '@/domains/recommendation/regeneration';
+import {
   getGetRecommendationHistoryDetailRecommendationHistoryRecommendationSessionIdGetQueryOptions,
+  getGetRecommendationResultRecommendationSessionsRecommendationSessionIdGetQueryKey,
   useCancelRecommendationSessionRecommendationSessionsRecommendationSessionIdCancelPost,
   useGetRecommendationResultRecommendationSessionsRecommendationSessionIdGet,
   useRateRecommendationRecommendationSessionsRecommendationSessionIdRatingPost,
+  useRequestRegenerationRecommendationSessionsRecommendationSessionIdRegenerationsPost,
 } from '@/generated/endpoints/recommendation/recommendation';
 import type { RecommendationResult } from '@/generated/models';
+import { readSessionJson, writeSessionJson } from '@/utils/sessionStorageJson';
 import waitForPopState from '@/utils/waitForPopState';
 import OutfitActions from './components/OutfitActions';
+import { OUTFIT_ACTIONS_HEIGHT } from './components/OutfitActions/OutfitActions.styled';
 import OutfitCard from './components/OutfitCard';
 import OutfitInfoSheet from './components/OutfitInfoSheet';
 import RatingDialog from './components/RatingDialog';
+import RegenerationRequestSheet from './components/RegenerationRequestSheet';
+import type { RegenerationScope } from './components/RegenerationRequestSheet/RegenerationRequestSheet';
 import * as S from './RecommendationResultPage.styled';
 
-type OpenLayer = 'info' | 'rating' | null;
-type RatingRejection = 'expired' | 'unavailable' | null;
+type OpenLayer = 'info' | 'rating' | 'request' | null;
+type SessionRejection = 'expired' | 'unavailable' | null;
 type LeaveTarget = 'input' | 'clothingRegister';
 
 const NOT_FOUND_STATUS = 404;
+const REGENERATION_POLLING_INTERVAL_MS = 2000;
 const SESSION_NOT_FOUND_CODE = 'SESSION_NOT_FOUND';
 const SESSION_ALREADY_SETTLED_CODE = 'SESSION_ALREADY_SETTLED';
 // 취소나 이탈로 이미 끝난 세션에 별점을 보냈을 때 내려오는 코드다.
 const SESSION_NOT_RATABLE_CODE = 'SESSION_NOT_RATABLE';
+const SESSION_ENDED_CODE = 'SESSION_ENDED';
 
 const hasOutfitList = (
   value: unknown,
@@ -67,16 +84,33 @@ const RecommendationResultPage = () => {
     refetch,
   } = useGetRecommendationResultRecommendationSessionsRecommendationSessionIdGet(
     sessionId,
-    { query: { structuralSharing: shareResult } },
+    {
+      query: {
+        structuralSharing: shareResult,
+        refetchInterval: (query) =>
+          isRegenerationProcessing(
+            query.state.data?.latest_regeneration ?? null,
+          )
+            ? REGENERATION_POLLING_INTERVAL_MS
+            : false,
+      },
+    },
   );
   const { mutateAsync: cancelSession } =
     useCancelRecommendationSessionRecommendationSessionsRecommendationSessionIdCancelPost();
   const { mutate: rateOutfit, isPending: isRatingPending } =
     useRateRecommendationRecommendationSessionsRecommendationSessionIdRatingPost();
+  const {
+    mutate: requestRegeneration,
+    reset: resetRegenerationRequest,
+    error: regenerationRequestError,
+    isPending: isRequestingRegeneration,
+  } = useRequestRegenerationRecommendationSessionsRecommendationSessionIdRegenerationsPost();
   const [outfitIndex, setOutfitIndex] = useState(0);
   const [openLayer, setOpenLayer] = useState<OpenLayer>(null);
   const [rating, setRating] = useState(0);
-  const [ratingRejection, setRatingRejection] = useState<RatingRejection>(null);
+  const [sessionRejection, setSessionRejection] =
+    useState<SessionRejection>(null);
   const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
   const [leaveTarget, setLeaveTarget] = useState<LeaveTarget>('input');
   const [isCanceling, setIsCanceling] = useState(false);
@@ -86,6 +120,7 @@ const RecommendationResultPage = () => {
   const leaveFocusRef = useRef<HTMLButtonElement>(null);
   const infoButtonRef = useRef<HTMLButtonElement>(null);
   const adoptButtonRef = useRef<HTMLButtonElement>(null);
+  const requestButtonRef = useRef<HTMLButtonElement>(null);
 
   const isProcessing =
     result !== undefined && getRecommendationProgress(result) === 'processing';
@@ -102,12 +137,13 @@ const RecommendationResultPage = () => {
   const isNotFound =
     error instanceof ApiError && error.status === NOT_FOUND_STATUS;
   const isUnavailable =
-    ratingRejection === 'unavailable' ||
+    sessionRejection === 'unavailable' ||
     isNotFound ||
     (isResultGone && (!hasOutfits || isAdopted));
   const isExpired =
-    !isUnavailable && (ratingRejection === 'expired' || isResultGone);
+    !isUnavailable && (sessionRejection === 'expired' || isResultGone);
   const isLeaveConfirmNeeded = !isUnavailable && !isExpired && !isProcessing;
+  const latestRegeneration = result?.latest_regeneration ?? null;
 
   const openLeaveDialog = (target: LeaveTarget) => {
     setOpenLayer(null);
@@ -131,7 +167,7 @@ const RecommendationResultPage = () => {
 
       // 서랍이나 별점 모달이 열려 있을 때 뒤로 가기는 나가려는 것이 아니라 그 층을 닫으려는 것으로 본다.
       if (openLayer !== null) {
-        if (!isSubmittingRating) {
+        if (!isSubmittingRating && !isRequestingRegeneration) {
           setOpenLayer(null);
         }
       } else if (!isLeaveDialogOpen && !isCanceling) {
@@ -156,6 +192,43 @@ const RecommendationResultPage = () => {
       moveToProgress();
     }
   }, [isProcessing]);
+
+  useEffect(() => {
+    if (latestRegeneration?.regeneration_status_cd !== 'failed') {
+      return;
+    }
+
+    const { request_seq: requestSeq } = latestRegeneration;
+
+    // 실패는 응답에 계속 남아 있어서, 새로고침해도 같은 요청을 다시 알리지 않도록 기록해 둔다.
+    if (
+      isRegenerationFailureNoticed(
+        readSessionJson(REGENERATION_FAILURE_NOTICE_STORAGE_KEY),
+        sessionId,
+        requestSeq,
+      )
+    ) {
+      return;
+    }
+
+    writeSessionJson(REGENERATION_FAILURE_NOTICE_STORAGE_KEY, {
+      sessionId,
+      requestSeq,
+    });
+    showToast({
+      tone: 'error',
+      title: '요청을 반영하지 못했어요',
+      description: '기존 코디를 유지했어요.',
+    });
+  }, [latestRegeneration, sessionId]);
+
+  useEffect(() => {
+    setToastBottomOffset(openLayer === null ? OUTFIT_ACTIONS_HEIGHT : null);
+
+    return () => {
+      setToastBottomOffset(null);
+    };
+  }, [openLayer]);
 
   const leaveToInput = () => {
     void navigate({ to: '/recommendation', replace: true });
@@ -189,6 +262,11 @@ const RecommendationResultPage = () => {
   const openRatingDialog = () => {
     setRating(0);
     setOpenLayer('rating');
+  };
+
+  const openRequestSheet = () => {
+    resetRegenerationRequest();
+    setOpenLayer('request');
   };
 
   const leaveDialog = (
@@ -337,12 +415,12 @@ const RecommendationResultPage = () => {
             ratingError.code === SESSION_ALREADY_SETTLED_CODE ||
             ratingError.code === SESSION_NOT_FOUND_CODE
           ) {
-            setRatingRejection('unavailable');
+            setSessionRejection('unavailable');
             return;
           }
 
           if (ratingError.code === SESSION_NOT_RATABLE_CODE) {
-            setRatingRejection('expired');
+            setSessionRejection('expired');
             return;
           }
 
@@ -351,6 +429,55 @@ const RecommendationResultPage = () => {
             title: '코디를 채택하지 못했어요',
             description: ratingError.message,
           });
+        },
+      },
+    );
+  };
+
+  const submitRegenerationRequest = (
+    requestText: string,
+    targetScope: RegenerationScope,
+  ) => {
+    const targetOutfitId =
+      targetScope === 'single' ? currentOutfit.outfit_id : null;
+
+    requestRegeneration(
+      {
+        recommendationSessionId: sessionId,
+        data: {
+          request_text: requestText,
+          target_scope_cd: targetScope,
+          target_outfit_id: targetOutfitId,
+        },
+      },
+      {
+        onSuccess: ({ request_seq: requestSeq }) => {
+          // 다음 폴링을 기다리지 않고 덮개를 바로 씌운 뒤, 서버의 상태로 이어 간다.
+          queryClient.setQueryData<RecommendationResult>(
+            getGetRecommendationResultRecommendationSessionsRecommendationSessionIdGetQueryKey(
+              sessionId,
+            ),
+            (current) =>
+              current && {
+                ...current,
+                latest_regeneration: {
+                  request_seq: requestSeq,
+                  regeneration_status_cd: 'processing',
+                  target_scope_cd: targetScope,
+                  target_outfit_id: targetOutfitId,
+                  target_slot_cd: null,
+                },
+              },
+          );
+          setOpenLayer(null);
+          void refetch();
+        },
+        onError: (requestError) => {
+          if (requestError.code === SESSION_ENDED_CODE) {
+            setSessionRejection('expired');
+          } else if (requestError.code === SESSION_NOT_FOUND_CODE) {
+            setSessionRejection('unavailable');
+          }
         },
       },
     );
@@ -383,7 +510,13 @@ const RecommendationResultPage = () => {
         >
           {outfits.map((outfit) => (
             <S.Slide key={outfit.outfit_id}>
-              <OutfitCard items={outfit.items} />
+              <OutfitCard
+                items={outfit.items}
+                isRegenerating={isOutfitRegenerating(
+                  latestRegeneration,
+                  outfit.outfit_id,
+                )}
+              />
             </S.Slide>
           ))}
         </Carousel>
@@ -391,8 +524,14 @@ const RecommendationResultPage = () => {
       <OutfitActions
         infoButtonRef={infoButtonRef}
         adoptButtonRef={adoptButtonRef}
+        requestButtonRef={requestButtonRef}
+        isDisabled={isOutfitRegenerating(
+          latestRegeneration,
+          currentOutfit.outfit_id,
+        )}
         onInfoClick={() => setOpenLayer('info')}
         onAdoptClick={openRatingDialog}
+        onRequestClick={openRequestSheet}
       />
       <OutfitInfoSheet
         outfit={currentOutfit}
@@ -401,11 +540,33 @@ const RecommendationResultPage = () => {
         isOpen={openLayer === 'info' && !isExpired}
         onOpenChange={(isOpen) => setOpenLayer(isOpen ? 'info' : null)}
         onAdoptClick={openRatingDialog}
+        onRequestClick={openRequestSheet}
         onRegisterClothingClick={() => openLeaveDialog('clothingRegister')}
         finalFocus={
-          openLayer === 'rating' || isLeaveDialogOpen || isExpired
+          openLayer !== null || isLeaveDialogOpen || isExpired
             ? undefined
             : infoButtonRef
+        }
+      />
+      <RegenerationRequestSheet
+        isOpen={openLayer === 'request' && !isExpired}
+        onOpenChange={(isOpen) => setOpenLayer(isOpen ? 'request' : null)}
+        outfitCount={outfits.length}
+        isSubmitting={isRequestingRegeneration}
+        errorMessage={
+          regenerationRequestError === null ||
+          isUnauthorizedError(regenerationRequestError)
+            ? undefined
+            : regenerationRequestError.message
+        }
+        onTextChange={resetRegenerationRequest}
+        onSubmit={submitRegenerationRequest}
+        finalFocus={
+          isExpired ||
+          isLeaveDialogOpen ||
+          isOutfitRegenerating(latestRegeneration, currentOutfit.outfit_id)
+            ? undefined
+            : requestButtonRef
         }
       />
       <RatingDialog

@@ -27,6 +27,10 @@ const meta = {
         '코디의 아이템입니다. 바닥에 옷을 놓고, 아이템의 스타일 태그를 합쳐 많이 나온 순으로 2개를 아래에 보여 줍니다.',
       control: 'object',
     },
+    isRegenerating: {
+      description: '재추천을 만드는 동안 카드에 덮개를 씌웁니다.',
+      control: 'boolean',
+    },
   },
   decorators: [
     (Story) => (
@@ -44,6 +48,13 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {
   args: {
     items: [createItem('top'), createItem('bottom'), createItem('shoes')],
+  },
+};
+
+export const Regenerating: Story = {
+  args: {
+    items: [createItem('top'), createItem('bottom'), createItem('shoes')],
+    isRegenerating: true,
   },
 };
 

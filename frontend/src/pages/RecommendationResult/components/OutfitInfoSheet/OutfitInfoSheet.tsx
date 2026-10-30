@@ -18,6 +18,7 @@ interface OutfitInfoSheetProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   onAdoptClick: () => void;
+  onRequestClick: () => void;
   onRegisterClothingClick: () => void;
   finalFocus?: RefObject<HTMLElement | null>;
 }
@@ -30,6 +31,7 @@ const OutfitInfoSheet = (props: OutfitInfoSheetProps) => {
     isOpen,
     onOpenChange,
     onAdoptClick,
+    onRequestClick,
     onRegisterClothingClick,
     finalFocus,
   } = props;
@@ -48,7 +50,13 @@ const OutfitInfoSheet = (props: OutfitInfoSheetProps) => {
           <Button icon="check" isFullWidth onClick={onAdoptClick}>
             채택하기
           </Button>
-          <Button variant="outline" size="md" icon="edit" isFullWidth>
+          <Button
+            variant="outline"
+            size="md"
+            icon="edit"
+            isFullWidth
+            onClick={onRequestClick}
+          >
             수정 요청하기
           </Button>
         </>

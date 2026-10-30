@@ -6,6 +6,7 @@ import {
   duration,
   easing,
   fg,
+  opacity,
   radius,
   shadow,
   spacing,
@@ -15,6 +16,9 @@ import {
 type ActionVariant = 'main' | 'sub';
 
 const SAFE_BOTTOM_GAP = 52;
+
+// 화면 아래에서 버튼 띠가 차지하는 높이다. 아래쪽 안전 영역은 뺀 값이다.
+export const OUTFIT_ACTIONS_HEIGHT = 150;
 const PRESSED_SCALE = 0.94;
 
 const CIRCLE_SIZE: Record<ActionVariant, number> = {
@@ -68,6 +72,10 @@ export const Action = styled.button`
 
   &:active:not(:disabled) {
     transform: scale(${PRESSED_SCALE});
+  }
+
+  &:disabled {
+    opacity: ${opacity.disabled};
   }
 `;
 
