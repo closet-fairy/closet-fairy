@@ -53,5 +53,29 @@ export const markToastReady = () => {
   };
 };
 
+/*
+ * 하단 탭 대신 고정 버튼 띠가 있는 화면은 토스트가 그 위에 떠야 한다.
+ * 띠 높이는 화면만 알고 Toaster는 앱 공통이라, 화면이 잠시 위치를 덮어쓸 수 있게 한다.
+ */
+let bottomOffsetOverride: number | null = null;
+const bottomOffsetListeners = new Set<() => void>();
+
+export const setToastBottomOffset = (offset: number | null) => {
+  bottomOffsetOverride = offset;
+  bottomOffsetListeners.forEach((listener) => {
+    listener();
+  });
+};
+
+export const subscribeToastBottomOffset = (listener: () => void) => {
+  bottomOffsetListeners.add(listener);
+
+  return () => {
+    bottomOffsetListeners.delete(listener);
+  };
+};
+
+export const getToastBottomOffset = () => bottomOffsetOverride;
+
 export const isToastTone = (type: string | undefined): type is ToastTone =>
   type === 'success' || type === 'info' || type === 'error';

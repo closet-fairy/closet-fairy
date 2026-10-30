@@ -10,6 +10,7 @@ import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, describe, expect, test, vi } from 'vitest';
+import { REGENERATION_FAILURE_NOTICE_STORAGE_KEY } from '@/constants/recommendationStorageKey';
 import type {
   OutfitItemResult,
   OutfitResult,
@@ -215,6 +216,7 @@ const renderResultAfterInput = async () => {
 };
 
 afterEach(() => {
+  sessionStorage.clear();
   browserHistories.splice(0).forEach((history) => {
     history.destroy();
   });
@@ -229,6 +231,77 @@ const refetchAndRender = async (queryClient: QueryClient) => {
       setTimeout(resolve, 50);
     });
   });
+};
+
+type LatestRegeneration = NonNullable<
+  RecommendationResult['latest_regeneration']
+>;
+
+const createRegeneration = (
+  overrides: Partial<LatestRegeneration> = {},
+): LatestRegeneration => ({
+  request_seq: 1,
+  regeneration_status_cd: 'processing',
+  target_scope_cd: 'single',
+  target_outfit_id: 51,
+  target_slot_cd: null,
+  ...overrides,
+});
+
+const useRegenerationSpy = () => {
+  const requests: unknown[] = [];
+
+  server.use(
+    http.post(`${SESSION_URL}/regenerations`, async ({ request }) => {
+      requests.push(await request.json());
+
+      return HttpResponse.json(
+        {
+          recommendation_session_id: SESSION_ID,
+          regeneration_request_id: 1,
+          request_seq: 1,
+          regeneration_status_cd: 'processing',
+        },
+        { status: 202 },
+      );
+    }),
+  );
+
+  return requests;
+};
+
+const useRegenerationError = (
+  status: number,
+  code: string,
+  message: string,
+) => {
+  server.use(
+    http.post(`${SESSION_URL}/regenerations`, () =>
+      HttpResponse.json({ code, message }, { status }),
+    ),
+  );
+};
+
+const openRequestSheet = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(
+    await screen.findByRole('button', { name: '수정 요청하기' }),
+  );
+
+  return screen.findByRole('dialog', { name: '어떻게 바꿔 드릴까요' });
+};
+
+const submitRequest = async (
+  user: ReturnType<typeof userEvent.setup>,
+  sheet: HTMLElement,
+  text = '좀 더 캐주얼하게',
+) => {
+  await user.type(
+    within(sheet).getByRole('textbox', { name: '수정 요청 내용' }),
+    text,
+  );
+  await user.click(
+    within(sheet).getByRole('button', { name: '수정 요청하기' }),
+  );
 };
 
 const openInfoSheet = async (user: ReturnType<typeof userEvent.setup>) => {
@@ -887,5 +960,301 @@ describe('나가기', () => {
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
+  });
+});
+
+describe('재추천 요청 시트', () => {
+  test('대상 선택에 실제 벌 수를 보여 줘야 한다.', async () => {
+    const user = userEvent.setup();
+    useResult(
+      createResult({
+        outfits: [createOutfit(1), createOutfit(2), createOutfit(3)],
+      }),
+    );
+    await renderResult();
+
+    const sheet = await openRequestSheet(user);
+
+    expect(
+      within(sheet).getByRole('button', { name: '이 세트만' }),
+    ).toHaveAttribute('aria-pressed', 'true');
+    expect(
+      within(sheet).getByRole('button', { name: '3세트 전부' }),
+    ).toBeInTheDocument();
+  });
+
+  test('코디가 1벌이면 대상 선택을 숨겨야 한다.', async () => {
+    const user = userEvent.setup();
+    useResult(createResult({ outfits: [createOutfit(1)] }));
+    await renderResult();
+
+    const sheet = await openRequestSheet(user);
+
+    expect(
+      within(sheet).queryByRole('button', { name: '이 세트만' }),
+    ).not.toBeInTheDocument();
+  });
+
+  test('이 세트만 고르면 보던 코디를 대상으로 보내야 한다.', async () => {
+    const user = userEvent.setup();
+    const requests = useRegenerationSpy();
+    useResult(createResult());
+    await renderResult();
+
+    await submitRequest(user, await openRequestSheet(user));
+
+    await waitFor(() => {
+      expect(requests).toEqual([
+        {
+          request_text: '좀 더 캐주얼하게',
+          target_scope_cd: 'single',
+          target_outfit_id: 51,
+        },
+      ]);
+    });
+  });
+
+  test('전부를 고르면 대상 코디 없이 보내야 한다.', async () => {
+    const user = userEvent.setup();
+    const requests = useRegenerationSpy();
+    useResult(createResult());
+    await renderResult();
+
+    const sheet = await openRequestSheet(user);
+    await user.click(within(sheet).getByRole('button', { name: '2세트 전부' }));
+    await submitRequest(user, sheet);
+
+    await waitFor(() => {
+      expect(requests).toEqual([
+        {
+          request_text: '좀 더 캐주얼하게',
+          target_scope_cd: 'all',
+          target_outfit_id: null,
+        },
+      ]);
+    });
+  });
+
+  test('서랍의 수정 요청하기로도 시트를 열어야 한다.', async () => {
+    const user = userEvent.setup();
+    useResult(createResult());
+    await renderResult();
+
+    const infoSheet = await openInfoSheet(user);
+    await user.click(
+      within(infoSheet).getByRole('button', { name: '수정 요청하기' }),
+    );
+
+    expect(
+      await screen.findByRole('dialog', { name: '어떻게 바꿔 드릴까요' }),
+    ).toBeInTheDocument();
+  });
+
+  test('요청이 거절되면 시트를 유지하고 서버 문구를 입력란에 보여 줘야 한다.', async () => {
+    const user = userEvent.setup();
+    useRegenerationError(
+      422,
+      'REGENERATION_REQUEST_UNCLEAR',
+      '요청을 이해하지 못했습니다. 다시 말씀해 주세요.',
+    );
+    useResult(createResult());
+    await renderResult();
+
+    const sheet = await openRequestSheet(user);
+    await submitRequest(user, sheet);
+
+    expect(
+      await within(sheet).findByText(
+        '요청을 이해하지 못했습니다. 다시 말씀해 주세요.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(sheet).getByRole('textbox', { name: '수정 요청 내용' }),
+    ).toHaveValue('좀 더 캐주얼하게');
+
+    await user.type(
+      within(sheet).getByRole('textbox', { name: '수정 요청 내용' }),
+      '요',
+    );
+
+    expect(
+      within(sheet).queryByText(
+        '요청을 이해하지 못했습니다. 다시 말씀해 주세요.',
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  test('세션이 끝나 거절되면 세션 종료 안내를 띄워야 한다.', async () => {
+    const user = userEvent.setup();
+    useRegenerationError(
+      409,
+      'SESSION_ENDED',
+      '이미 끝난 추천입니다. 새로 추천을 받아 주세요.',
+    );
+    useResult(createResult());
+    await renderResult();
+
+    await submitRequest(user, await openRequestSheet(user));
+
+    expect(
+      await screen.findByRole('dialog', { name: '추천 시간이 끝났어요' }),
+    ).toBeInTheDocument();
+  });
+
+  test('이미 채택되어 거절되면 볼 수 없는 추천 화면을 보여 줘야 한다.', async () => {
+    const user = userEvent.setup();
+    useRegenerationError(
+      409,
+      'SESSION_ALREADY_SETTLED',
+      '이미 별점을 매겨 끝난 추천입니다.',
+    );
+    useResult(createResult());
+    await renderResult();
+
+    await submitRequest(user, await openRequestSheet(user));
+
+    expect(
+      await screen.findByText('볼 수 없는 추천이에요'),
+    ).toBeInTheDocument();
+  });
+
+  test('시트가 열린 상태의 뒤로 가기는 시트만 닫아야 한다.', async () => {
+    const user = userEvent.setup();
+    useResult(createResult());
+    await renderResultAfterInput();
+
+    await openRequestSheet(user);
+    window.history.back();
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(window.location.pathname).toBe(RESULT_PATH);
+    });
+  });
+});
+
+describe('재추천 진행 표시', () => {
+  test('요청을 보내면 시트를 닫고 대상 카드에 덮개를 씌워야 한다.', async () => {
+    const user = userEvent.setup();
+    useRegenerationSpy();
+    useResult(createResult());
+    await renderResult();
+
+    const sheet = await openRequestSheet(user);
+    useResult(createResult({ latest_regeneration: createRegeneration() }));
+    await submitRequest(user, sheet);
+
+    expect(
+      await screen.findByText('요청을 반영하는 중이에요'),
+    ).toBeInTheDocument();
+    expect(screen.getByText('길게는 3분까지 걸려요')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('dialog', { name: '어떻게 바꿔 드릴까요' }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  test('대상 카드에서는 세 버튼을 모두 막아야 한다.', async () => {
+    useResult(createResult({ latest_regeneration: createRegeneration() }));
+    await renderResult();
+
+    expect(
+      await screen.findByRole('button', { name: '정보 확인' }),
+    ).toBeDisabled();
+    expect(screen.getByRole('button', { name: '채택하기' })).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: '수정 요청하기' }),
+    ).toBeDisabled();
+  });
+
+  test('다른 세트를 재추천하는 중이면 보던 세트의 버튼은 쓸 수 있어야 한다.', async () => {
+    useResult(
+      createResult({
+        latest_regeneration: createRegeneration({ target_outfit_id: 52 }),
+      }),
+    );
+    await renderResult();
+
+    expect(
+      await screen.findByRole('button', { name: '채택하기' }),
+    ).toBeEnabled();
+    expect(screen.getByRole('button', { name: '정보 확인' })).toBeEnabled();
+  });
+
+  test('전체 재추천이면 모든 카드에 덮개를 씌워야 한다.', async () => {
+    useResult(
+      createResult({
+        latest_regeneration: createRegeneration({
+          target_scope_cd: 'all',
+          target_outfit_id: null,
+        }),
+      }),
+    );
+    await renderResult();
+
+    expect(await screen.findAllByText('요청을 반영하는 중이에요')).toHaveLength(
+      2,
+    );
+  });
+
+  test('재추천이 끝나면 덮개를 걷어야 한다.', async () => {
+    useResult(createResult({ latest_regeneration: createRegeneration() }));
+    const { queryClient } = await renderResult();
+
+    await screen.findByText('요청을 반영하는 중이에요');
+    useResult(
+      createResult({
+        latest_regeneration: createRegeneration({
+          regeneration_status_cd: 'completed',
+        }),
+      }),
+    );
+    await refetchAndRender(queryClient);
+
+    expect(
+      screen.queryByText('요청을 반영하는 중이에요'),
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe('재추천 실패 안내', () => {
+  const failedResult = () =>
+    createResult({
+      latest_regeneration: createRegeneration({
+        regeneration_status_cd: 'failed',
+      }),
+    });
+
+  test('실패하면 기존 코디를 유지했다고 알려야 한다.', async () => {
+    useResult(failedResult());
+    await renderResult();
+
+    const toast = await screen.findByRole('alert');
+
+    expect(
+      within(toast).getByText('요청을 반영하지 못했어요'),
+    ).toBeInTheDocument();
+    expect(
+      within(toast).getByText('기존 코디를 유지했어요.'),
+    ).toBeInTheDocument();
+    expect(
+      sessionStorage.getItem(REGENERATION_FAILURE_NOTICE_STORAGE_KEY),
+    ).toBe(JSON.stringify({ sessionId: SESSION_ID, requestSeq: 1 }));
+  });
+
+  test('이미 알린 요청은 새로고침해도 다시 알리지 않아야 한다.', async () => {
+    sessionStorage.setItem(
+      REGENERATION_FAILURE_NOTICE_STORAGE_KEY,
+      JSON.stringify({ sessionId: SESSION_ID, requestSeq: 1 }),
+    );
+    useResult(failedResult());
+    await renderResult();
+
+    await screen.findByAltText('1번 상의');
+
+    expect(
+      screen.queryByText('요청을 반영하지 못했어요'),
+    ).not.toBeInTheDocument();
   });
 });

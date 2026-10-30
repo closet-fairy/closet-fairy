@@ -1,19 +1,35 @@
 import { http, HttpResponse } from 'msw';
+import { REGENERATION_REQUEST_MAX_LENGTH } from '@/domains/recommendation/regeneration';
 import type {
   CancelResult,
   ClothingShortagePrecheckResponse,
   OutfitItemResult,
   OutfitResult,
+  RegenerationCreateOutput,
   RatingResult,
   RecommendationHistoryDetail,
   RecommendationResult,
+  RegenerationCreated,
   RecommendationSessionCreated,
   RecommendationSessionCreateOutput,
 } from '@/generated/models';
-import { RatingCreate, RecommendationSessionCreate } from '@/generated/models';
+import {
+  RatingCreate,
+  RecommendationSessionCreate,
+  RegenerationCreate,
+} from '@/generated/models';
 
 interface SessionParams {
   sessionId: string;
+}
+
+interface MockRegeneration {
+  requestSeq: number;
+  targetScopeCd: RegenerationCreateOutput['target_scope_cd'];
+  targetOutfitId: number | null;
+  startedAt: number;
+  willFail: boolean;
+  isSettled: boolean;
 }
 
 interface MockSession {
@@ -21,6 +37,8 @@ interface MockSession {
   createdAt: number;
   sessionStatusCd: RecommendationResult['session_status_cd'];
   rated?: { outfitId: number; rating: number };
+  outfits?: OutfitResult[];
+  regeneration?: MockRegeneration;
 }
 
 // 직접 입력에 이 말을 넣으면 생성이 실패하는 세션을 만든다. 새로고침해도 알 수 있게 번호로 구분한다.
@@ -30,6 +48,15 @@ const FIRST_FAILED_SESSION_ID = 9001;
 const GENERATION_MS = 6000;
 const OUTFIT_COUNT = 4;
 const DEFAULT_MOCK_RATING = 4;
+const REGENERATION_MS = 5000;
+const FIRST_REGENERATED_OUTFIT_ID = 90001;
+// 재추천 요청 문구에 이 말을 넣으면 그 응답을 dev:mock에서 볼 수 있다.
+const REGENERATION_KEYWORD = {
+  FAILURE: '실패',
+  UNCLEAR: '모르겠어',
+  UNAVAILABLE: '점검',
+  SESSION_ENDED: '끝난세션',
+} as const;
 const SAMPLE_CUTOUT_URL = '/media/clothing/1/sample_cutout.webp';
 // 직접 입력에 이 말을 넣으면 결과 화면의 해당 상태를 dev:mock에서 볼 수 있다.
 const RESULT_KEYWORD = {
@@ -46,11 +73,13 @@ const RESULT_KEYWORD = {
 const sessions = new Map<number, MockSession>();
 let nextSessionId = 1;
 let nextFailedSessionId = FIRST_FAILED_SESSION_ID;
+let nextRegeneratedOutfitId = FIRST_REGENERATED_OUTFIT_ID;
 
 export const resetRecommendationMocks = () => {
   sessions.clear();
   nextSessionId = 1;
   nextFailedSessionId = FIRST_FAILED_SESSION_ID;
+  nextRegeneratedOutfitId = FIRST_REGENERATED_OUTFIT_ID;
 };
 
 // 새로고침하면 MSW 상태가 사라지므로, 모르는 세션은 처음 만든 것처럼 다룬다.
@@ -143,6 +172,74 @@ const createOutfits = (
   }));
 };
 
+const getSessionOutfits = (sessionId: number, session: MockSession) => {
+  session.outfits ??= createOutfits(sessionId, session);
+
+  return session.outfits;
+};
+
+const isRegenerationTarget = (
+  regeneration: MockRegeneration,
+  outfit: OutfitResult,
+) =>
+  regeneration.targetScopeCd === 'all' ||
+  regeneration.targetOutfitId === outfit.outfit_id;
+
+const regenerateOutfit = (outfit: OutfitResult): OutfitResult => {
+  const { previous_outfits: previousOutfits, ...current } = outfit;
+
+  return {
+    ...outfit,
+    outfit_id: nextRegeneratedOutfitId++,
+    reason: '요청하신 대로 바꿔 봤어요.',
+    previous_outfits: [current, ...previousOutfits],
+  };
+};
+
+const settleRegeneration = (sessionId: number, session: MockSession) => {
+  const { regeneration } = session;
+
+  if (
+    !regeneration ||
+    regeneration.isSettled ||
+    Date.now() - regeneration.startedAt < REGENERATION_MS
+  ) {
+    return;
+  }
+
+  regeneration.isSettled = true;
+
+  if (!regeneration.willFail) {
+    session.outfits = getSessionOutfits(sessionId, session).map((outfit) =>
+      isRegenerationTarget(regeneration, outfit)
+        ? regenerateOutfit(outfit)
+        : outfit,
+    );
+  }
+};
+
+const toLatestRegeneration = (
+  session: MockSession,
+): RecommendationResult['latest_regeneration'] => {
+  const { regeneration } = session;
+
+  if (!regeneration || session.sessionStatusCd !== 'active') {
+    return null;
+  }
+
+  const settledStatusCd = regeneration.willFail ? 'failed' : 'completed';
+
+  return {
+    request_seq: regeneration.requestSeq,
+    regeneration_status_cd: regeneration.isSettled
+      ? settledStatusCd
+      : 'processing',
+    target_scope_cd: regeneration.targetScopeCd,
+    target_outfit_id: regeneration.targetOutfitId,
+    target_slot_cd: null,
+  };
+};
+
 const getWeather = (session: MockSession | undefined) => ({
   temperature: 14.2,
   feels_like_temperature: 12.8,
@@ -151,7 +248,7 @@ const getWeather = (session: MockSession | undefined) => ({
 });
 
 const getVisibleOutfits = (sessionId: number, session: MockSession) => {
-  const outfits = createOutfits(sessionId, session);
+  const outfits = getSessionOutfits(sessionId, session);
 
   if (session.sessionStatusCd === 'completed') {
     return outfits.filter(
@@ -166,6 +263,8 @@ const toResult = (
   sessionId: number,
   session: MockSession,
 ): RecommendationResult => {
+  settleRegeneration(sessionId, session);
+
   const generationStatusCd = getGenerationStatusCd(sessionId, session);
   const isCompleted = generationStatusCd === 'completed';
 
@@ -183,7 +282,7 @@ const toResult = (
     },
     weather: isCompleted ? getWeather(session) : null,
     outfits: isCompleted ? getVisibleOutfits(sessionId, session) : [],
-    latest_regeneration: null,
+    latest_regeneration: toLatestRegeneration(session),
   };
 };
 
@@ -192,7 +291,9 @@ const toHistoryDetail = (
   sessionId: number,
   session: MockSession | undefined,
 ): RecommendationHistoryDetail => {
-  const outfits = createOutfits(sessionId, session);
+  const outfits = session
+    ? getSessionOutfits(sessionId, session)
+    : createOutfits(sessionId, session);
   const outfit =
     outfits.find(({ outfit_id: id }) => id === session?.rated?.outfitId) ??
     outfits[0];
@@ -307,6 +408,103 @@ export const recommendationHandlers = [
         rating: body.rating,
         session_status_cd: 'completed',
       });
+    },
+  ),
+  http.post<SessionParams>(
+    '/api/recommendation-sessions/:sessionId/regenerations',
+    async ({ params, request }) => {
+      const sessionId = Number(params.sessionId);
+      const session = getSession(sessionId);
+      const body = RegenerationCreate.parse(await request.json());
+      const requestText = body.request_text.trim();
+
+      if (session.sessionStatusCd === 'completed') {
+        return HttpResponse.json(
+          {
+            code: 'SESSION_ALREADY_SETTLED',
+            message: '이미 별점을 매겨 끝난 추천입니다.',
+          },
+          { status: 409 },
+        );
+      }
+
+      if (
+        session.sessionStatusCd !== 'active' ||
+        requestText.includes(REGENERATION_KEYWORD.SESSION_ENDED)
+      ) {
+        return HttpResponse.json(
+          {
+            code: 'SESSION_ENDED',
+            message: '이미 끝난 추천입니다. 새로 추천을 받아 주세요.',
+          },
+          { status: 409 },
+        );
+      }
+
+      if (session.regeneration && !session.regeneration.isSettled) {
+        return HttpResponse.json(
+          {
+            code: 'REGENERATION_IN_PROGRESS',
+            message:
+              '앞서 요청한 코디를 만들고 있습니다. 끝난 뒤에 다시 요청해 주세요.',
+          },
+          { status: 409 },
+        );
+      }
+
+      if ([...requestText].length > REGENERATION_REQUEST_MAX_LENGTH) {
+        return HttpResponse.json(
+          {
+            code: 'REGENERATION_REQUEST_TOO_LONG',
+            message: `요청은 ${REGENERATION_REQUEST_MAX_LENGTH}자까지 입력할 수 있습니다. 조금 줄여서 다시 입력해 주세요.`,
+          },
+          { status: 422 },
+        );
+      }
+
+      if (
+        requestText === '' ||
+        requestText.includes(REGENERATION_KEYWORD.UNCLEAR)
+      ) {
+        return HttpResponse.json(
+          {
+            code: 'REGENERATION_REQUEST_UNCLEAR',
+            message: '요청을 이해하지 못했습니다. 다시 말씀해 주세요.',
+          },
+          { status: 422 },
+        );
+      }
+
+      if (requestText.includes(REGENERATION_KEYWORD.UNAVAILABLE)) {
+        return HttpResponse.json(
+          {
+            code: 'REGENERATION_INTENT_UNAVAILABLE',
+            message: '요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.',
+          },
+          { status: 503 },
+        );
+      }
+
+      const requestSeq = (session.regeneration?.requestSeq ?? 0) + 1;
+
+      session.regeneration = {
+        requestSeq,
+        targetScopeCd: body.target_scope_cd,
+        targetOutfitId: body.target_outfit_id ?? null,
+        startedAt: Date.now(),
+        willFail: requestText.includes(REGENERATION_KEYWORD.FAILURE),
+        isSettled: false,
+      };
+
+      return HttpResponse.json<RegenerationCreated>(
+        {
+          recommendation_session_id: sessionId,
+          regeneration_request_id: requestSeq,
+          request_seq: requestSeq,
+          regeneration_status_cd: 'processing',
+        },
+        { status: 202 },
+      );
     },
   ),
   http.get<SessionParams>(

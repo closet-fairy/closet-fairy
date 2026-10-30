@@ -1,8 +1,11 @@
 import { Toggle } from '@base-ui/react/toggle';
 import { ToggleGroup } from '@base-ui/react/toggle-group';
+import { css } from '@emotion/react';
+import type { SerializedStyles } from '@emotion/react';
 import styled from '@emotion/styled';
 import {
   bg,
+  border,
   duration,
   easing,
   fg,
@@ -13,24 +16,65 @@ import {
   typography,
 } from '@/styles/tokens';
 import { transientOptions } from '@/styles/transientOptions';
+import type { SegmentedControlVariant } from './SegmentedControl';
 
 const SEGMENT_HEIGHT = 40;
 const MIN_TOUCH_SIZE = 44;
 
-export const Container = styled(ToggleGroup, transientOptions)`
+const CONTAINER_STYLE: Record<SegmentedControlVariant, SerializedStyles> = {
+  grouped: css`
+    gap: ${spacing[2]};
+    padding: ${spacing[4]};
+    border-radius: ${radius.md};
+    background-color: ${bg.neutral.soft};
+  `,
+  separated: css`
+    gap: ${spacing[8]};
+  `,
+};
+
+const SEGMENT_STYLE: Record<SegmentedControlVariant, SerializedStyles> = {
+  grouped: css`
+    height: ${SEGMENT_HEIGHT}px;
+    color: ${fg.neutral.light};
+
+    &[data-pressed] {
+      ${typography.body3Strong}
+      background-color: ${bg.white};
+      color: ${fg.neutral.strong};
+      box-shadow: ${shadow.sm};
+    }
+  `,
+  separated: css`
+    height: ${MIN_TOUCH_SIZE}px;
+    color: ${fg.neutral.default};
+    box-shadow: inset 0 0 0 1px ${border.neutral.default};
+
+    &[data-pressed] {
+      ${typography.body3Strong}
+      background-color: ${bg.neutral.strong};
+      color: ${fg.white};
+      box-shadow: none;
+    }
+  `,
+};
+
+export const Container = styled(ToggleGroup, transientOptions)<{
+  $variant: SegmentedControlVariant;
+}>`
   display: flex;
-  gap: ${spacing[2]};
   width: 100%;
-  padding: ${spacing[4]};
-  border-radius: ${radius.md};
-  background-color: ${bg.neutral.soft};
+
+  ${({ $variant }) => CONTAINER_STYLE[$variant]}
 
   &[data-disabled] {
     opacity: ${opacity.disabled};
   }
 `;
 
-export const Segment = styled(Toggle, transientOptions)`
+export const Segment = styled(Toggle, transientOptions)<{
+  $variant: SegmentedControlVariant;
+}>`
   ${typography.body3}
   position: relative;
   display: inline-flex;
@@ -39,9 +83,7 @@ export const Segment = styled(Toggle, transientOptions)`
   justify-content: center;
   gap: ${spacing[4]};
   min-width: 0;
-  height: ${SEGMENT_HEIGHT}px;
   border-radius: ${radius.sm};
-  color: ${fg.neutral.light};
   transition:
     background-color ${duration.fast} ${easing.standard},
     color ${duration.fast} ${easing.standard};
@@ -56,12 +98,7 @@ export const Segment = styled(Toggle, transientOptions)`
     transform: translateY(-50%);
   }
 
-  &[data-pressed] {
-    ${typography.body3Strong}
-    background-color: ${bg.white};
-    color: ${fg.neutral.strong};
-    box-shadow: ${shadow.sm};
-  }
+  ${({ $variant }) => SEGMENT_STYLE[$variant]}
 `;
 
 export const Label = styled.span`
