@@ -313,9 +313,20 @@ export const recommendationHandlers = [
     '/api/recommendation-history/:sessionId',
     ({ params }) => {
       const sessionId = Number(params.sessionId);
+      const session = sessions.get(sessionId);
+
+      if (session && session.sessionStatusCd !== 'completed') {
+        return HttpResponse.json(
+          {
+            code: 'SESSION_NOT_FOUND',
+            message: '추천 내역을 찾을 수 없습니다.',
+          },
+          { status: 404 },
+        );
+      }
 
       return HttpResponse.json<RecommendationHistoryDetail>(
-        toHistoryDetail(sessionId, sessions.get(sessionId)),
+        toHistoryDetail(sessionId, session),
       );
     },
   ),
