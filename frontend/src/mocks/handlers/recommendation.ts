@@ -2,6 +2,8 @@ import { http, HttpResponse } from 'msw';
 import type {
   CancelResult,
   ClothingShortagePrecheckResponse,
+  OutfitItemResult,
+  OutfitResult,
   RecommendationResult,
   RecommendationSessionCreated,
   RecommendationSessionCreateOutput,
@@ -23,6 +25,16 @@ const FAILURE_KEYWORD = '실패';
 const FIRST_FAILED_SESSION_ID = 9001;
 // 진행 화면과 취소를 dev:mock에서 직접 해 볼 수 있도록 생성에 몇 초가 걸리는 것처럼 둔다.
 const GENERATION_MS = 6000;
+const OUTFIT_COUNT = 4;
+const SAMPLE_CUTOUT_URL = '/media/clothing/1/sample_cutout.webp';
+// 직접 입력에 이 말을 넣으면 결과 화면의 해당 상태를 dev:mock에서 볼 수 있다.
+const RESULT_KEYWORD = {
+  SINGLE_OUTFIT: '한벌',
+  ESSENTIAL_ONLY: '에센셜',
+  CLOTHING_SHORTAGE: '옷부족',
+  ESTIMATED_WEATHER: '추정',
+  NO_REASON: '이유없음',
+} as const;
 
 const sessions = new Map<number, MockSession>();
 let nextSessionId = 1;
@@ -61,6 +73,76 @@ const getGenerationStatusCd = (
   return sessionId >= FIRST_FAILED_SESSION_ID ? 'failed' : 'completed';
 };
 
+const hasKeyword = (session: MockSession | undefined, keyword: string) =>
+  session?.request?.tpo_text?.includes(keyword) ?? false;
+
+const createItem = (
+  slotCd: OutfitItemResult['slot_cd'],
+  itemName: string,
+  overrides: Partial<OutfitItemResult> = {},
+): OutfitItemResult => ({
+  slot_cd: slotCd,
+  accessory_type_cd: null,
+  item_source_cd: 'owned',
+  item_name: itemName,
+  image_url: SAMPLE_CUTOUT_URL,
+  style_cds: ['minimal', 'casual'],
+  ...overrides,
+});
+
+const createEssentialItem = (
+  slotCd: OutfitItemResult['slot_cd'],
+  itemName: string,
+) =>
+  createItem(slotCd, itemName, {
+    item_source_cd: 'essential',
+    image_url: null,
+    style_cds: [],
+  });
+
+const createOutfits = (
+  sessionId: number,
+  session: MockSession | undefined,
+): OutfitResult[] => {
+  const outfitCount = hasKeyword(session, RESULT_KEYWORD.SINGLE_OUTFIT)
+    ? 1
+    : OUTFIT_COUNT;
+  const items = hasKeyword(session, RESULT_KEYWORD.ESSENTIAL_ONLY)
+    ? [
+        createEssentialItem('top', '흰 티셔츠'),
+        createEssentialItem('bottom', '검정 슬랙스'),
+        createEssentialItem('shoes', '흰 스니커즈'),
+      ]
+    : [
+        createItem('top', '베이지 터틀넥'),
+        createItem('bottom', '그레이 슬랙스'),
+        createItem('shoes', '브라운 스니커즈'),
+        createEssentialItem('socks', '흰 양말'),
+        createItem('accessories', '네이비 볼캡', {
+          accessory_type_cd: 'hat',
+          style_cds: ['street'],
+        }),
+      ];
+
+  return Array.from({ length: outfitCount }, (_, index) => ({
+    outfit_id: sessionId * 10 + index + 1,
+    outfit_seq: index + 1,
+    outfit_type_cd: 'preferred',
+    reason: hasKeyword(session, RESULT_KEYWORD.NO_REASON)
+      ? null
+      : '아침이 쌀쌀해 가벼운 아우터를 걸쳤어요.',
+    items,
+    previous_outfits: [],
+  }));
+};
+
+const getWeather = (session: MockSession | undefined) => ({
+  temperature: 14.2,
+  feels_like_temperature: 12.8,
+  weather_condition_cd: 'cloudy' as const,
+  is_fallback: hasKeyword(session, RESULT_KEYWORD.ESTIMATED_WEATHER),
+});
+
 const toResult = (
   sessionId: number,
   session: MockSession,
@@ -73,7 +155,7 @@ const toResult = (
     recommendation_session_id: sessionId,
     generation_status_cd: generationStatusCd,
     session_status_cd: session.sessionStatusCd,
-    is_clothing_shortage: true,
+    is_clothing_shortage: hasKeyword(session, RESULT_KEYWORD.CLOTHING_SHORTAGE),
     condition: {
       tpo_cd: session.request?.tpo_cd ?? 'daily',
       tpo_text: session.request?.tpo_text ?? null,
@@ -81,43 +163,8 @@ const toResult = (
       going_out_start_at: '2026-10-26T09:00:00+09:00',
       going_out_end_at: '2026-10-26T14:00:00+09:00',
     },
-    weather: isCompleted
-      ? {
-          temperature: 14.2,
-          feels_like_temperature: 12.8,
-          weather_condition_cd: 'cloudy',
-          is_fallback: false,
-        }
-      : null,
-    outfits: isCompleted
-      ? [
-          {
-            outfit_id: sessionId * 10 + 1,
-            outfit_seq: 1,
-            outfit_type_cd: 'preferred',
-            reason: '아침이 쌀쌀해 가벼운 아우터를 걸쳤어요.',
-            items: [
-              {
-                slot_cd: 'top',
-                accessory_type_cd: null,
-                item_source_cd: 'owned',
-                item_name: '화이트 옥스퍼드 셔츠',
-                image_url: null,
-                style_cds: ['classic'],
-              },
-              {
-                slot_cd: 'bottom',
-                accessory_type_cd: null,
-                item_source_cd: 'essential',
-                item_name: '블랙 슬랙스',
-                image_url: null,
-                style_cds: ['minimal'],
-              },
-            ],
-            previous_outfits: [],
-          },
-        ]
-      : [],
+    weather: isCompleted ? getWeather(session) : null,
+    outfits: isCompleted ? createOutfits(sessionId, session) : [],
     latest_regeneration: null,
   };
 };
