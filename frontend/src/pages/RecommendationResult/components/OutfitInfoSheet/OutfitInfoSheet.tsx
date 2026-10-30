@@ -18,6 +18,7 @@ interface OutfitInfoSheetProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   onAdoptClick: () => void;
+  onRegisterClothingClick: () => void;
   finalFocus?: RefObject<HTMLElement | null>;
 }
 
@@ -29,6 +30,7 @@ const OutfitInfoSheet = (props: OutfitInfoSheetProps) => {
     isOpen,
     onOpenChange,
     onAdoptClick,
+    onRegisterClothingClick,
     finalFocus,
   } = props;
   const styleCds = getOutfitStyleTags(outfit.items);
@@ -61,7 +63,9 @@ const OutfitInfoSheet = (props: OutfitInfoSheetProps) => {
             <S.ShortageText>
               옷장에 옷이 부족해 기본 아이템을 섞었어요
             </S.ShortageText>
-            <Button size="sm">옷 등록</Button>
+            <Button size="sm" onClick={onRegisterClothingClick}>
+              옷 등록
+            </Button>
           </S.Shortage>
         )}
         {styleCds.length > 0 && (

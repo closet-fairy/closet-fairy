@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { RouterHistory } from '@tanstack/react-router';
 import {
+  createBrowserHistory,
   createMemoryHistory,
   createRouter,
   RouterProvider,
@@ -8,7 +9,7 @@ import {
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
-import { describe, expect, test, vi } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import type {
   OutfitItemResult,
   OutfitResult,
@@ -200,6 +201,26 @@ const renderResult = async (
   return { router, history, queryClient };
 };
 
+// 메모리 히스토리는 뒤로 가기에 차단을 걸지 않아서, 나가기 동작은 브라우저 히스토리로 확인한다.
+const browserHistories: RouterHistory[] = [];
+
+const renderResultAfterInput = async () => {
+  window.history.replaceState(null, '', INPUT_PATH);
+  const history = createBrowserHistory();
+  browserHistories.push(history);
+  history.push(RESULT_PATH);
+  await Promise.resolve();
+
+  return renderResult(history);
+};
+
+afterEach(() => {
+  browserHistories.splice(0).forEach((history) => {
+    history.destroy();
+  });
+  window.history.replaceState(null, '', '/');
+});
+
 const openInfoSheet = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.click(await screen.findByRole('button', { name: '정보 확인' }));
 
@@ -376,6 +397,28 @@ describe('정보 서랍', () => {
     ).toBeInTheDocument();
   });
 
+  test('옷 부족 안내의 옷 등록은 그만두기 확인을 거쳐 옷장으로 보내야 한다.', async () => {
+    const user = userEvent.setup();
+    const cancelRequests = useCancelSpy();
+    useResult(createResult({ is_clothing_shortage: true }));
+    const { router } = await renderResult();
+
+    const sheet = await openInfoSheet(user);
+    await user.click(within(sheet).getByRole('button', { name: '옷 등록' }));
+
+    const leaveDialog = await screen.findByRole('dialog', {
+      name: '추천을 그만둘까요?',
+    });
+    await user.click(
+      within(leaveDialog).getByRole('button', { name: '그만두기' }),
+    );
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/closet');
+    });
+    expect(cancelRequests).toHaveLength(1);
+  });
+
   test('서랍의 채택하기를 누르면 서랍을 닫고 별점 모달을 띄워야 한다.', async () => {
     const user = userEvent.setup();
     useResult(createResult());
@@ -495,7 +538,7 @@ describe('채택', () => {
     expect(within(dialog).getByRole('radio', { name: '별 4개' })).toBeChecked();
   });
 
-  test('세션이 끝나 거절되면 볼 수 없는 추천 화면을 보여 줘야 한다.', async () => {
+  test('세션이 끝나 거절되면 세션 종료 안내를 띄워야 한다.', async () => {
     const user = userEvent.setup();
     useRatingError(
       409,
@@ -508,7 +551,7 @@ describe('채택', () => {
     await submitRating(user);
 
     expect(
-      await screen.findByText('볼 수 없는 추천이에요'),
+      await screen.findByRole('dialog', { name: '추천 시간이 끝났어요' }),
     ).toBeInTheDocument();
   });
 
@@ -622,5 +665,183 @@ describe('조회 상태', () => {
       expect(router.state.location.pathname).toBe(INPUT_PATH);
     });
     expect(cancelRequests).toHaveLength(1);
+  });
+
+  test('보던 중 세션이 끝나면 받아 둔 코디 위에 종료 안내를 띄워야 한다.', async () => {
+    const user = userEvent.setup();
+    useResult(createResult());
+    const { router, queryClient } = await renderResult();
+
+    await screen.findByAltText('1번 상의');
+    useResult(createResult({ session_status_cd: 'abandoned', outfits: [] }));
+    await queryClient.refetchQueries();
+
+    const dialog = await screen.findByRole('dialog', {
+      name: '추천 시간이 끝났어요',
+    });
+    expect(screen.getByAltText('1번 상의')).toBeInTheDocument();
+
+    await queryClient.refetchQueries();
+
+    expect(screen.getByAltText('1번 상의')).toBeInTheDocument();
+    expect(screen.queryByText('볼 수 없는 추천이에요')).not.toBeInTheDocument();
+
+    await user.click(
+      within(dialog).getByRole('button', { name: '새로 추천받기' }),
+    );
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe(INPUT_PATH);
+    });
+  });
+});
+
+describe('나가기', () => {
+  test('그만두는 사이에 재조회가 와도 세션 종료 안내를 띄우지 않아야 한다.', async () => {
+    const user = userEvent.setup();
+    let finishCancel = () => {};
+    server.use(
+      http.post(`${SESSION_URL}/cancel`, async () => {
+        await new Promise<void>((resolve) => {
+          finishCancel = resolve;
+        });
+
+        return HttpResponse.json({
+          recommendation_session_id: SESSION_ID,
+          session_status_cd: 'canceled',
+        });
+      }),
+    );
+    useResult(createResult());
+    const { router, queryClient } = await renderResult();
+
+    await screen.findByAltText('1번 상의');
+    await user.click(screen.getByRole('button', { name: '추천 그만두기' }));
+    const dialog = await screen.findByRole('dialog', {
+      name: '추천을 그만둘까요?',
+    });
+    await user.click(within(dialog).getByRole('button', { name: '그만두기' }));
+    useResult(createResult({ session_status_cd: 'canceled', outfits: [] }));
+    await queryClient.refetchQueries();
+
+    expect(
+      screen.queryByRole('dialog', { name: '추천 시간이 끝났어요' }),
+    ).not.toBeInTheDocument();
+
+    await waitFor(() => {
+      finishCancel();
+      expect(router.state.location.pathname).toBe(INPUT_PATH);
+    });
+  });
+
+  test('옷 등록으로 연 확인에서 뒤로 가기를 눌러도 옷장으로 가야 한다.', async () => {
+    const user = userEvent.setup();
+    useCancelSpy();
+    useResult(createResult({ is_clothing_shortage: true }));
+    const { router } = await renderResultAfterInput();
+
+    const sheet = await openInfoSheet(user);
+    await user.click(within(sheet).getByRole('button', { name: '옷 등록' }));
+    const dialog = await screen.findByRole('dialog', {
+      name: '추천을 그만둘까요?',
+    });
+    window.history.back();
+    await waitFor(() => {
+      expect(window.location.pathname).toBe(RESULT_PATH);
+    });
+    await user.click(within(dialog).getByRole('button', { name: '그만두기' }));
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/closet');
+    });
+  });
+
+  test('X를 누르면 그만두기 확인을 띄우고, 그만두면 세션을 취소해야 한다.', async () => {
+    const user = userEvent.setup();
+    const cancelRequests = useCancelSpy();
+    useResult(createResult());
+    const { router } = await renderResult();
+
+    await screen.findByAltText('1번 상의');
+    await user.click(screen.getByRole('button', { name: '추천 그만두기' }));
+    const dialog = await screen.findByRole('dialog', {
+      name: '추천을 그만둘까요?',
+    });
+    await user.click(within(dialog).getByRole('button', { name: '그만두기' }));
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe(INPUT_PATH);
+    });
+    expect(cancelRequests).toHaveLength(1);
+  });
+
+  test('계속 보기를 누르면 세션을 취소하지 않고 결과 화면에 남아야 한다.', async () => {
+    const user = userEvent.setup();
+    const cancelRequests = useCancelSpy();
+    useResult(createResult());
+    const { router } = await renderResult();
+
+    await screen.findByAltText('1번 상의');
+    await user.click(screen.getByRole('button', { name: '추천 그만두기' }));
+    const dialog = await screen.findByRole('dialog', {
+      name: '추천을 그만둘까요?',
+    });
+    await user.click(within(dialog).getByRole('button', { name: '계속 보기' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+    expect(cancelRequests).toHaveLength(0);
+    expect(router.state.location.pathname).toBe(RESULT_PATH);
+  });
+
+  test('뒤로 가기를 누르면 그만두기 확인을 띄우고 결과 화면에 남아야 한다.', async () => {
+    useResult(createResult());
+    const { router } = await renderResultAfterInput();
+
+    await screen.findByAltText('1번 상의');
+    window.history.back();
+
+    expect(
+      await screen.findByRole('dialog', { name: '추천을 그만둘까요?' }),
+    ).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe(RESULT_PATH);
+  });
+
+  test('서랍이 열린 상태의 뒤로 가기는 서랍만 닫고, 한 번 더 누르면 그만두기 확인을 띄워야 한다.', async () => {
+    const user = userEvent.setup();
+    useResult(createResult());
+    await renderResultAfterInput();
+
+    await openInfoSheet(user);
+    window.history.back();
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('dialog', { name: '코디 정보' }),
+      ).not.toBeInTheDocument();
+    });
+    expect(
+      screen.queryByRole('dialog', { name: '추천을 그만둘까요?' }),
+    ).not.toBeInTheDocument();
+
+    window.history.back();
+
+    expect(
+      await screen.findByRole('dialog', { name: '추천을 그만둘까요?' }),
+    ).toBeInTheDocument();
+  });
+
+  test('별점 모달이 열린 상태의 뒤로 가기는 모달만 닫아야 한다.', async () => {
+    const user = userEvent.setup();
+    useResult(createResult());
+    await renderResultAfterInput();
+
+    await openRatingDialog(user);
+    window.history.back();
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
   });
 });
