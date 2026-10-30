@@ -418,6 +418,16 @@ export const recommendationHandlers = [
       const body = RegenerationCreate.parse(await request.json());
       const requestText = body.request_text.trim();
 
+      if (session.sessionStatusCd === 'completed') {
+        return HttpResponse.json(
+          {
+            code: 'SESSION_ALREADY_SETTLED',
+            message: '이미 별점을 매겨 끝난 추천입니다.',
+          },
+          { status: 409 },
+        );
+      }
+
       if (
         session.sessionStatusCd !== 'active' ||
         requestText.includes(REGENERATION_KEYWORD.SESSION_ENDED)
