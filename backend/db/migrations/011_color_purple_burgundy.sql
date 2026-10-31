@@ -7,6 +7,7 @@ ALTER TABLE color
      'burgundy','purple'));
 
 ALTER TABLE clothing
+  MODIFY COLUMN color_cd VARCHAR(20) NULL COMMENT '색상 코드 16종. 점수·판정용 (E-1 제안)',
   DROP CHECK ck_clothing_color_cd,
   ADD CONSTRAINT ck_clothing_color_cd
     CHECK (color_cd IN ('black','white','gray','beige','brown','navy','blue',

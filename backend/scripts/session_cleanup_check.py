@@ -2,7 +2,7 @@
 
 검증용 회원·옷·세션·덱·코디를 SQL로 직접 넣고 서비스 함수를 호출한다.
   (a) 별점 → 정산 직후 정리: 코디 1·덱 1·피드백 1, 재추천 요청(single·all) 모두 삭제
-  (b) 취소: 덱·코디·피드백 0, settled_at NULL, ended_at 기록, 날씨 유지, 선호 점수 27행 S·N 그대로
+  (b) 취소: 덱·코디·피드백 0, settled_at NULL, ended_at 기록, 날씨 유지, 선호 점수 29행 S·N 그대로
   (c) 이탈: 무활동 세션만 abandoned + 정리, 최근 덱이 있거나 새 세션은 그대로, 선호 점수 그대로
       (배치 run()은 개발 회원 세션까지 건드리므로 부르지 않고,
        검증용 세션에만 abandon_if_inactive를 호출한다)
@@ -211,7 +211,7 @@ def expect_cleared(failures: list[str], counts: dict[str, int]) -> None:
 
 async def expect_scores_unchanged(factory, failures: list[str], member_id: int, before) -> None:
     after = await read_scores(factory, member_id)
-    expect(failures, "선호 점수 행 수", len(after), 27)
+    expect(failures, "선호 점수 행 수", len(after), 29)
     failures += compare_scores(
         after, {r.preference_score_id: (r.score_sum, r.exposure_count) for r in before}
     )

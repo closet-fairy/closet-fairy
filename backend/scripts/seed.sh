@@ -92,9 +92,9 @@ WHERE c.color_cd IS NULL;
 
 if [ "$SEED_DEV_MEMBER" = "1" ]; then
   echo
-  echo "=== 5. 개발 회원 선호 점수 27행 ==="
+  echo "=== 5. 개발 회원 선호 점수 29행 ==="
   run_sql --table -e "
-  SELECT COUNT(*) AS 실제, 27 AS 기대, IF(COUNT(*) = 27, 'OK', 'FAIL') AS 결과
+  SELECT COUNT(*) AS 실제, 29 AS 기대, IF(COUNT(*) = 29, 'OK', 'FAIL') AS 결과
   FROM preference_score
   WHERE member_id = (
     SELECT member_id FROM member
@@ -112,15 +112,15 @@ if [ "$SEED_DEV_MEMBER" = "1" ]; then
   "
 
   echo
-  echo "=== 7. 부족 회원 선호 점수 27행, 시드 옷 5벌 ==="
+  echo "=== 7. 부족 회원 선호 점수 29행, 시드 옷 5벌 ==="
   run_sql --table -e "
   SET @sparse_member_id = (
     SELECT member_id FROM member
     WHERE provider_cd = 'google'
       AND provider_user_id_hash = UNHEX(SHA2('dev-google-0002', 256))
   );
-  SELECT '선호 점수' AS 항목, COUNT(*) AS 실제, 27 AS 기대,
-         IF(COUNT(*) = 27, 'OK', 'FAIL') AS 결과
+  SELECT '선호 점수' AS 항목, COUNT(*) AS 실제, 29 AS 기대,
+         IF(COUNT(*) = 29, 'OK', 'FAIL') AS 결과
   FROM preference_score
   WHERE member_id = @sparse_member_id
   UNION ALL
