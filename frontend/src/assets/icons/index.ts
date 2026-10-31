@@ -19,6 +19,7 @@ import Edit from '@material-symbols/svg-400/outlined/edit.svg?react';
 import EditLocationAlt from '@material-symbols/svg-400/outlined/edit_location_alt.svg?react';
 import ErrorIcon from '@material-symbols/svg-400/outlined/error.svg?react';
 import ErrorFill from '@material-symbols/svg-400/outlined/error-fill.svg?react';
+import Event from '@material-symbols/svg-400/outlined/event.svg?react';
 import Exposure from '@material-symbols/svg-400/outlined/exposure.svg?react';
 import FitScreen from '@material-symbols/svg-400/outlined/fit_screen.svg?react';
 import HideImage from '@material-symbols/svg-400/outlined/hide_image.svg?react';
@@ -84,6 +85,7 @@ export const icons = {
   edit_location_alt: EditLocationAlt,
   error: ErrorIcon,
   'error-fill': ErrorFill,
+  event: Event,
   exposure: Exposure,
   fit_screen: FitScreen,
   hide_image: HideImage,
