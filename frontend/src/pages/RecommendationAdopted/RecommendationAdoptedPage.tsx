@@ -1,5 +1,5 @@
 import { useNavigate, useParams } from '@tanstack/react-router';
-import { ApiError } from '@/apis/apiError';
+import { isClientError } from '@/apis/apiError';
 import { isUnauthorizedError } from '@/apis/authSession';
 import Button from '@/components/common/Button';
 import Icon from '@/components/common/Icon';
@@ -12,8 +12,6 @@ import { useGetRecommendationHistoryDetailRecommendationHistoryRecommendationSes
 import type { RecommendationHistoryDetail } from '@/generated/models';
 import AdoptedOutfitCard from './components/AdoptedOutfitCard';
 import * as S from './RecommendationAdoptedPage.styled';
-
-const NOT_FOUND_STATUS = 404;
 
 const KST_DATE_FORMAT = new Intl.DateTimeFormat('ko-KR', {
   month: 'long',
@@ -79,6 +77,7 @@ const RecommendationAdoptedPage = () => {
           <AdoptedOutfitCard
             items={detail.outfit.items}
             summary={getSummary(detail)}
+            isWeatherEstimated={detail.weather?.is_fallback ?? false}
             rating={detail.rating}
           />
         </StatusView>
@@ -86,7 +85,7 @@ const RecommendationAdoptedPage = () => {
     );
   }
 
-  if (error instanceof ApiError && error.status === NOT_FOUND_STATUS) {
+  if (isClientError(error) && !isUnauthorizedError(error)) {
     return (
       <S.Container>
         <TopBar />

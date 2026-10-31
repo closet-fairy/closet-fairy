@@ -59,6 +59,7 @@ const REGENERATION_KEYWORD = {
   SESSION_ENDED: '끝난세션',
 } as const;
 const SAMPLE_CUTOUT_URL = '/media/clothing/1/sample_cutout.webp';
+const BROKEN_IMAGE_URL = '/missing-image.webp';
 // 직접 입력에 이 말을 넣으면 결과 화면의 해당 상태를 dev:mock에서 볼 수 있다.
 const RESULT_KEYWORD = {
   SINGLE_OUTFIT: '한벌',
@@ -69,6 +70,7 @@ const RESULT_KEYWORD = {
   RATING_FAILURE: '채택오류',
   RATING_EXPIRED: '시간끝',
   RATING_SETTLED: '이미채택',
+  IMAGE_FAILURE: '사진오류',
 } as const;
 
 const sessions = new Map<number, MockSession>();
@@ -151,7 +153,13 @@ const createOutfits = (
         createEssentialItem('shoes', '흰 스니커즈'),
       ]
     : [
-        createItem('top', '베이지 터틀넥'),
+        createItem(
+          'top',
+          '베이지 터틀넥',
+          hasKeyword(session, RESULT_KEYWORD.IMAGE_FAILURE)
+            ? { image_url: BROKEN_IMAGE_URL }
+            : {},
+        ),
         createItem('bottom', '그레이 슬랙스'),
         createItem('shoes', '브라운 스니커즈'),
         createEssentialItem('socks', '흰 양말'),

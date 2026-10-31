@@ -40,6 +40,11 @@ export const Image = styled.img<{ $size: OutfitItemImageSize }>`
   object-fit: contain;
 `;
 
+export const FailedIcon = styled.span`
+  display: flex;
+  color: ${fg.neutral.pale};
+`;
+
 export const Name = styled.span`
   ${typography.caption2Strong}
   padding: 0 ${spacing[6]};

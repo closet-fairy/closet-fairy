@@ -1,4 +1,5 @@
 import StarRating from '@/components/common/StarRating';
+import EstimatedBadge from '@/components/EstimatedBadge';
 import OutfitItemImage from '@/components/OutfitItemImage';
 import { getOutfitThumbnails } from '@/domains/recommendation/outfitThumbnails';
 import type { RecommendationHistoryDetail } from '@/generated/models';
@@ -7,11 +8,12 @@ import * as S from './AdoptedOutfitCard.styled';
 interface AdoptedOutfitCardProps {
   items: RecommendationHistoryDetail['outfit']['items'];
   summary: string;
+  isWeatherEstimated?: boolean;
   rating: number;
 }
 
 const AdoptedOutfitCard = (props: AdoptedOutfitCardProps) => {
-  const { items, summary, rating } = props;
+  const { items, summary, isWeatherEstimated = false, rating } = props;
   const { visibleItems, hiddenCount } = getOutfitThumbnails(items);
 
   return (
@@ -29,7 +31,10 @@ const AdoptedOutfitCard = (props: AdoptedOutfitCardProps) => {
       </S.Thumbnails>
       <S.Footer>
         <S.Summary>{summary}</S.Summary>
-        <StarRating value={rating} isReadOnly size="sm" />
+        {isWeatherEstimated && <EstimatedBadge />}
+        <S.Rating>
+          <StarRating value={rating} isReadOnly size="sm" />
+        </S.Rating>
       </S.Footer>
     </S.Container>
   );

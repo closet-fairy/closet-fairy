@@ -21,6 +21,15 @@ export const isOutfitRegenerating = (
   (regeneration?.target_scope_cd === 'all' ||
     regeneration?.target_outfit_id === outfitId);
 
+// 재추천이 끝나면 target_outfit_id는 이전 코디를 가리키므로, 그 코디가 쌓인 세트를 찾는다.
+export const findRegeneratedOutfitIndex = (
+  outfits: RecommendationResult['outfits'],
+  targetOutfitId: number,
+) =>
+  outfits.findIndex(({ previous_outfits: previousOutfits }) =>
+    previousOutfits.some(({ outfit_id: id }) => id === targetOutfitId),
+  );
+
 export const isRegenerationFailureNoticed = (
   storedNotice: unknown,
   sessionId: number,

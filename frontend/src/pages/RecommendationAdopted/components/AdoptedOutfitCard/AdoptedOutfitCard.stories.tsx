@@ -35,7 +35,14 @@ const meta = {
         '채택한 코디의 아이템입니다. 머리에서 발 순서로 왼쪽에 채우고, 5개 이상이면 3칸과 남은 개수를 보여 줍니다.',
       control: 'object',
     },
-    summary: { description: '날짜, 상황, 날씨를 이은 문구입니다.' },
+    summary: {
+      description:
+        '날짜, 상황, 날씨를 이은 문구입니다. 길면 한 줄로 말줄임하고, 별점과 추정 표시는 줄이지 않습니다.',
+    },
+    isWeatherEstimated: {
+      description: '날씨를 불러오지 못해 추정했으면 요약 뒤에 표시합니다.',
+      control: 'boolean',
+    },
     rating: { description: '매긴 별점입니다.' },
   },
   args: {
@@ -57,6 +64,17 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const ThreeItems: Story = {};
+
+export const EstimatedWeather: Story = {
+  args: { isWeatherEstimated: true },
+};
+
+export const LongSummary: Story = {
+  args: {
+    summary: '10월 31일 · 친구 생일 파티 저녁 모임 · 24° 흐림',
+    isWeatherEstimated: true,
+  },
+};
 
 export const WithEssential: Story = {
   args: {

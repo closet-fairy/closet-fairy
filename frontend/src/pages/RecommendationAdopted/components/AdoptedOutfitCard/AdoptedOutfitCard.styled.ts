@@ -28,8 +28,7 @@ export const HiddenCount = styled.span`
 export const Footer = styled.div`
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: ${spacing[8]};
+  gap: ${spacing[6]};
   margin-top: ${spacing[12]};
 `;
 
@@ -40,4 +39,10 @@ export const Summary = styled.p`
   color: ${fg.neutral.light};
   white-space: nowrap;
   text-overflow: ellipsis;
+`;
+
+export const Rating = styled.div`
+  display: flex;
+  flex: none;
+  margin-left: auto;
 `;
