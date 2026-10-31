@@ -78,6 +78,7 @@ export const FLOW: Record<FloorItemKind, number> = {
   shoes: 4,
 };
 
+// 같은 층의 순서는 시안 예시를 따른다. 예시는 상의를 아우터 위에, 양말을 신발 위에 둔다.
 export const FLOW_TIE: Record<FloorItemKind, number> = {
   hat: 0,
   eyewear: 1,
