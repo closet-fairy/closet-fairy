@@ -6,7 +6,7 @@ export interface ClothingArea {
   ratio: number;
 }
 
-interface Blob {
+interface PixelBlob {
   size: number;
   minX: number;
   maxX: number;
@@ -27,7 +27,7 @@ const measureBlobs = ({ data, width, height }: AlphaImage) => {
     isUnvisited[pixel] = data[pixel * 4 + 3] >= ALPHA_THRESHOLD ? 1 : 0;
   }
 
-  const blobs: Blob[] = [];
+  const blobs: PixelBlob[] = [];
   const stack = new Int32Array(pixelCount);
 
   for (let start = 0; start < pixelCount; start += 1) {
