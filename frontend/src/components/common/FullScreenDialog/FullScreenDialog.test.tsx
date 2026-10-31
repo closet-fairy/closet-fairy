@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import userEvent, { PointerEventsCheckLevel } from '@testing-library/user-event';
 import { describe, expect, test, vi } from 'vitest';
 import FullScreenDialog from './FullScreenDialog';
 
@@ -24,7 +24,9 @@ describe('닫기', () => {
   });
 
   test('다이얼로그 바깥을 눌러도 닫힘을 요청하지 않아야 한다.', async () => {
-    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    const user = userEvent.setup({
+      pointerEventsCheck: PointerEventsCheckLevel.Never,
+    });
     const handleOpenChange = vi.fn();
 
     render(
