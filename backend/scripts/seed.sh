@@ -40,7 +40,7 @@ run_sql --table -e "
 SELECT '스타일' AS 항목, COUNT(*) AS 실제, 13 AS 기대,
        IF(COUNT(*) = 13, 'OK', 'FAIL') AS 결과 FROM style
 UNION ALL
-SELECT '색상',   COUNT(*), 14, IF(COUNT(*) = 14, 'OK', 'FAIL') FROM color
+SELECT '색상',   COUNT(*), 16, IF(COUNT(*) = 16, 'OK', 'FAIL') FROM color
 UNION ALL
 SELECT '에센셜', COUNT(*), 30, IF(COUNT(*) = 30, 'OK', 'FAIL') FROM essential_item;
 "

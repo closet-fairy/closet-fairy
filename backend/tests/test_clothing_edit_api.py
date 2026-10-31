@@ -96,7 +96,7 @@ def test_patch_passes_only_sent_fields(client):
     "body",
     [
         {"category_cd": "hat"},
-        {"color_cd": "purple"},
+        {"color_cd": "gold"},
         {"style_cds": ["cool"]},
         {"item_name": "가" * 101},
         {"member_id": 1},

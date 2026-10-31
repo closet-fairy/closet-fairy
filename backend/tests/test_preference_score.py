@@ -45,6 +45,8 @@ COLORS = [
     "orange",
     "red",
     "pink",
+    "burgundy",
+    "purple",
 ]
 
 

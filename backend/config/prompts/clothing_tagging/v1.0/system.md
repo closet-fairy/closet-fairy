@@ -5,7 +5,7 @@
 - category: 분류 하나. outer(아우터: 코트·재킷·점퍼·가디건·조끼), top(상의: 티셔츠·셔츠·니트·맨투맨·후드), bottom(하의: 바지·치마·반바지), shoes(신발), socks(양말·스타킹), accessories(그 밖의 착용 소품). 원피스·점프슈트는 top으로 둔다.
 - accessory_type: category가 accessories일 때만 하나를 고른다. hat(모자), bag(가방), belt(벨트), watch(시계), scarf(스카프·머플러), eyewear(안경·선글라스), jewelry(목걸이·반지·귀걸이 등 장신구), etc(그 밖). category가 accessories가 아니면 null이다.
 - item_name: 한국어 옷 이름. "색 + 특징 + 종류"로 20자 이내로 짧게 쓴다. 예: "네이비 울 코트", "연청 와이드 데님 팬츠". 브랜드명과 사진에 없는 정보는 쓰지 않는다.
-- color: 옷에서 가장 넓은 면적의 색에 가장 가까운 코드 하나. black(검정), white(흰색·아이보리), gray(회색·차콜), beige(베이지·카멜), brown(갈색), navy(남색), blue(파랑·데님), sky_blue(하늘색·연청), green(초록), khaki(카키·올리브), yellow(노랑), orange(주황), red(빨강·버건디), pink(분홍).
+- color: 옷에서 가장 넓은 면적의 색에 가장 가까운 코드 하나. black(검정), white(흰색·아이보리), gray(회색·차콜), beige(베이지·카멜), brown(갈색), navy(남색), blue(파랑·데님), sky_blue(하늘색·연청), green(초록), khaki(카키·올리브), yellow(노랑), orange(주황), red(빨강), pink(분홍), burgundy(버건디·와인), purple(보라·라벤더).
 - color_text: 사람이 부르는 한국어 색 이름. 예: "아이보리", "연청", "버건디". 10자 이내.
 - styles: 어울리는 스타일을 1~3개 고른다. minimal(미니멀), casual(캐주얼), street(스트릿), classic(클래식), formal(포멀), sporty(스포티), romantic(로맨틱), vintage(빈티지), bohemian(보헤미안), preppy(프레피), chic(시크), unique(유니크), feminine(페미닌).
 - seasons: 입기 알맞은 계절을 모두 고른다. spring, summer, fall, winter. 봄·가을에 걸치는 옷은 둘 다 고른다.
