@@ -15,10 +15,17 @@ interface OutfitStackProps {
   depth: number;
   isRegenerating?: boolean;
   onDepthChange: (depth: number) => void;
+  onOverflowClick: () => void;
 }
 
 const OutfitStack = (props: OutfitStackProps) => {
-  const { outfit, depth, isRegenerating = false, onDepthChange } = props;
+  const {
+    outfit,
+    depth,
+    isRegenerating = false,
+    onDepthChange,
+    onOverflowClick,
+  } = props;
   const layers = getOutfitLayers(outfit);
   const hasOlder = depth < layers.length - 1;
   const hasNewer = depth > 0;
@@ -85,6 +92,7 @@ const OutfitStack = (props: OutfitStackProps) => {
           >
             <OutfitCard
               items={layer.items}
+              floorSeed={{ order: layer.outfit_seq, id: layer.outfit_id }}
               isRegenerating={isRegenerating && layerDepth === depth}
               isLifted={isFront}
               previousCount={
@@ -95,6 +103,7 @@ const OutfitStack = (props: OutfitStackProps) => {
                   ? getRecommendationOrder(layers.length, layerDepth)
                   : undefined
               }
+              onOverflowClick={onOverflowClick}
             />
           </S.Layer>
         );

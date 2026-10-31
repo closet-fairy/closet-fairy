@@ -37,6 +37,7 @@ export const Tags = styled.div`
   align-items: center;
   gap: ${spacing[6]};
   padding: ${spacing[14]} ${spacing[16]};
+  pointer-events: none;
 `;
 
 export const Cover = styled.div`

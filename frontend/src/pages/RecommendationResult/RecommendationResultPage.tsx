@@ -625,6 +625,7 @@ const RecommendationResultPage = () => {
                     depth,
                   });
                 }}
+                onOverflowClick={() => setOpenLayer('info')}
               />
             </S.Slide>
           ))}

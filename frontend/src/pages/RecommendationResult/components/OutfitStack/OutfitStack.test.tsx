@@ -50,6 +50,7 @@ const ControlledStack = (props: {
       depth={depth}
       isRegenerating={isRegenerating}
       onDepthChange={setDepth}
+      onOverflowClick={vi.fn()}
     />
   );
 };
@@ -246,7 +247,12 @@ describe('카드 끌기', () => {
     const onDepthChange = vi.fn();
     const outfit = createOutfit(1);
     const { rerender } = render(
-      <OutfitStack outfit={outfit} depth={1} onDepthChange={onDepthChange} />,
+      <OutfitStack
+        outfit={outfit}
+        depth={1}
+        onDepthChange={onDepthChange}
+        onOverflowClick={vi.fn()}
+      />,
     );
     const card = screen.getByText('1번째 추천');
 
@@ -254,7 +260,12 @@ describe('카드 끌기', () => {
     moveCard(card, START_X, START_Y - COMMIT_DISTANCE);
     fireEvent.pointerUp(card, { pointerId: POINTER_ID });
     rerender(
-      <OutfitStack outfit={outfit} depth={0} onDepthChange={onDepthChange} />,
+      <OutfitStack
+        outfit={outfit}
+        depth={0}
+        onDepthChange={onDepthChange}
+        onOverflowClick={vi.fn()}
+      />,
     );
     act(() => {
       vi.runOnlyPendingTimers();
@@ -268,14 +279,24 @@ describe('카드 끌기', () => {
     const onDepthChange = vi.fn();
     const outfit = createOutfit(1);
     const { rerender } = render(
-      <OutfitStack outfit={outfit} depth={1} onDepthChange={onDepthChange} />,
+      <OutfitStack
+        outfit={outfit}
+        depth={1}
+        onDepthChange={onDepthChange}
+        onOverflowClick={vi.fn()}
+      />,
     );
     const card = screen.getByText('1번째 추천');
 
     pressCard(card);
     moveCard(card, START_X, START_Y - COMMIT_DISTANCE);
     rerender(
-      <OutfitStack outfit={outfit} depth={0} onDepthChange={onDepthChange} />,
+      <OutfitStack
+        outfit={outfit}
+        depth={0}
+        onDepthChange={onDepthChange}
+        onOverflowClick={vi.fn()}
+      />,
     );
     releaseCard(card);
     dragCard(screen.getByText('이전 코디 1'), COMMIT_DISTANCE);

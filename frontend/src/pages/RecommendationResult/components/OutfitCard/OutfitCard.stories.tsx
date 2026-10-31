@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { fn } from 'storybook/test';
 import type { OutfitItemResult } from '@/generated/models';
 import cutoutUrl from '@/mocks/assets/clothing/cutout.webp';
 import OutfitCard from './OutfitCard';
@@ -21,10 +22,19 @@ const createItem = (
 
 const meta = {
   component: OutfitCard,
+  args: {
+    floorSeed: { order: 1, id: 4101 },
+    onOverflowClick: fn(),
+  },
   argTypes: {
     items: {
       description:
         '코디의 아이템입니다. 바닥에 옷을 놓고, 아이템의 스타일 태그를 합쳐 많이 나온 순으로 2개를 아래에 보여 줍니다.',
+      control: 'object',
+    },
+    floorSeed: {
+      description:
+        '바닥 배치를 고정하는 값입니다. order의 짝홀로 넓은 열의 좌우를 정하고, id의 해시로 나머지를 정합니다.',
       control: 'object',
     },
     isRegenerating: {
@@ -44,6 +54,9 @@ const meta = {
       description:
         '이전 코디가 몇 번째 추천인지 나타냅니다. 값이 있으면 이전 코디 카드로 그려 베이지 바탕에 검은 배지를 붙입니다.',
       control: 'number',
+    },
+    onOverflowClick: {
+      description: '넘친 아이템의 수 버튼을 누를 때 호출합니다.',
     },
   },
   decorators: [
@@ -102,6 +115,23 @@ export const NothingToPlace: Story = {
       createItem('top', { item_source_cd: 'essential', image_url: null }),
       createItem('bottom', { item_source_cd: 'essential', image_url: null }),
       createItem('shoes', { item_source_cd: 'essential', image_url: null }),
+    ],
+  },
+};
+
+export const Overflowing: Story = {
+  args: {
+    items: [
+      createItem('outer'),
+      createItem('top'),
+      createItem('bottom'),
+      createItem('shoes'),
+      createItem('socks'),
+      createItem('accessories', { accessory_type_cd: 'hat' }),
+      createItem('accessories', { accessory_type_cd: 'bag' }),
+      createItem('accessories', { accessory_type_cd: 'eyewear' }),
+      createItem('accessories', { accessory_type_cd: 'belt' }),
+      createItem('accessories', { accessory_type_cd: 'watch' }),
     ],
   },
 };
