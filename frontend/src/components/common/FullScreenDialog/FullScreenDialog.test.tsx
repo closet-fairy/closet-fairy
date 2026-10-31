@@ -23,6 +23,26 @@ describe('닫기', () => {
     expect(handleOpenChange).toHaveBeenCalledWith(false);
   });
 
+  test('다이얼로그 바깥을 눌러도 닫힘을 요청하지 않아야 한다.', async () => {
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    const handleOpenChange = vi.fn();
+
+    render(
+      <FullScreenDialog
+        isOpen
+        onOpenChange={handleOpenChange}
+        title="주소 입력"
+      >
+        본문
+      </FullScreenDialog>,
+    );
+
+    await screen.findByRole('dialog', { name: '주소 입력' });
+    await user.click(document.body);
+
+    expect(handleOpenChange).not.toHaveBeenCalled();
+  });
+
   test('Esc를 누르면 닫힘을 요청해야 한다.', async () => {
     const user = userEvent.setup();
     const handleOpenChange = vi.fn();
