@@ -158,6 +158,12 @@ const RecommendationResultPage = () => {
   const isExpired =
     !isUnavailable && (sessionRejection === 'expired' || isResultGone);
   const isLeaveConfirmNeeded = !isUnavailable && !isExpired && !isProcessing;
+  // 로그인이 만료되면 전역 다이얼로그가 안내하므로, 그 뒤에 실패 화면을 겹치지 않고 로딩 화면을 둔다.
+  const isLoadFailed =
+    !isUnavailable &&
+    (result === undefined || isProcessing || !hasOutfits) &&
+    error !== null &&
+    !isUnauthorizedError(error);
   const latestRegeneration = result?.latest_regeneration ?? null;
   const isRegenerating = isRegenerationProcessing(latestRegeneration);
   const lastRegenerationRef = useRef(latestRegeneration);
@@ -180,6 +186,15 @@ const RecommendationResultPage = () => {
 
       if (action === 'BACK' || action === 'FORWARD' || action === 'GO') {
         urlRestoreRef.current = waitForPopState();
+      }
+
+      // 불러오기 실패 화면에는 사라진다는 안내가 이미 있어서 [돌아가기]와 같게 처리한다.
+      if (isLoadFailed) {
+        if (!isCanceling) {
+          void cancelAndLeave('input');
+        }
+
+        return true;
       }
 
       // 서랍, 별점 모달, 요청 시트가 열려 있을 때 뒤로 가기는 나가려는 것이 아니라 그 층을 닫으려는 것으로 본다.
@@ -374,8 +389,7 @@ const RecommendationResultPage = () => {
   }
 
   if (result === undefined || isProcessing || !hasOutfits) {
-    // 로그인이 만료되면 전역 다이얼로그가 안내하므로, 그 뒤에 실패 화면을 겹치지 않고 로딩 화면을 둔다.
-    if (error !== null && !isUnauthorizedError(error)) {
+    if (isLoadFailed) {
       return (
         <S.StatusPage>
           <TopBar />
