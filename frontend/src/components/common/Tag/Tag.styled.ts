@@ -39,6 +39,11 @@ const variantStyles: Record<TagVariant, SerializedStyles> = {
     color: ${fg.neutral.strong};
     box-shadow: inset 0 0 0 1px ${border.neutral.strong};
   `,
+  white: css`
+    background-color: ${bg.white};
+    color: ${fg.neutral.default};
+    box-shadow: inset 0 0 0 1px ${border.neutral.default};
+  `,
 };
 
 export const Container = styled.span<{ $variant: TagVariant; $size: TagSize }>`

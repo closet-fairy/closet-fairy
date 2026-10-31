@@ -3,7 +3,7 @@ import type { IconName } from '@/assets/icons';
 import Icon from '@/components/common/Icon';
 import * as S from './Tag.styled';
 
-export type TagVariant = 'neutral' | 'inverse' | 'outline';
+export type TagVariant = 'neutral' | 'inverse' | 'outline' | 'white';
 export type TagSize = 'xs' | 'sm' | 'md';
 
 interface TagProps {
