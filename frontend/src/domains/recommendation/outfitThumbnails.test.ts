@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import type { OutfitItemResult } from '@/generated/models';
-import { getOutfitThumbnails } from './outfitThumbnails';
+import { getOutfitThumbnails, limitOutfitThumbnails } from './outfitThumbnails';
 
 const slot = (slot_cd: OutfitItemResult['slot_cd']) => ({
   slot_cd,
@@ -126,5 +126,21 @@ describe('채택 완료 썸네일 순서', () => {
 
     expect(visibleItems[0]).toEqual(slot('shoes'));
     expect(visibleItems).toHaveLength(4);
+  });
+});
+
+describe('응답 순서 썸네일 칸', () => {
+  test('4개까지는 순서를 바꾸지 않고 모두 보여 줘야 한다.', () => {
+    expect(limitOutfitThumbnails(['신발', '상의', '하의', '모자'])).toEqual({
+      visibleItems: ['신발', '상의', '하의', '모자'],
+      hiddenCount: 0,
+    });
+  });
+
+  test('5개면 3칸과 남은 2개로 나눠야 한다.', () => {
+    expect(limitOutfitThumbnails(['1', '2', '3', '4', '5'])).toEqual({
+      visibleItems: ['1', '2', '3'],
+      hiddenCount: 2,
+    });
   });
 });

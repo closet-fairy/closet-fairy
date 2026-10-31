@@ -31,6 +31,7 @@ import {
 import {
   getGetRecommendationHistoryDetailRecommendationHistoryRecommendationSessionIdGetQueryOptions,
   getGetRecommendationResultRecommendationSessionsRecommendationSessionIdGetQueryKey,
+  getListRecommendationHistoryRecommendationHistoryGetInfiniteQueryKey,
   useCancelRecommendationSessionRecommendationSessionsRecommendationSessionIdCancelPost,
   useGetRecommendationResultRecommendationSessionsRecommendationSessionIdGet,
   useRateRecommendationRecommendationSessionsRecommendationSessionIdRatingPost,
@@ -474,6 +475,11 @@ const RecommendationResultPage = () => {
 
   const moveToAdopted = async () => {
     setIsMovingToAdopted(true);
+    // 내역 탭을 봐 둔 적이 있으면 채택 전 목록이 캐시에 남아 있어, 방금 채택한 코디가 빠져 보이지 않게 지운다.
+    queryClient.removeQueries({
+      queryKey:
+        getListRecommendationHistoryRecommendationHistoryGetInfiniteQueryKey(),
+    });
     // 채택 완료 화면이 로딩 없이 바로 그려지도록 내역을 먼저 받아 둔다. 실패하면 그 화면이 다시 불러온다.
     await queryClient.prefetchQuery({
       ...getGetRecommendationHistoryDetailRecommendationHistoryRecommendationSessionIdGetQueryOptions(
