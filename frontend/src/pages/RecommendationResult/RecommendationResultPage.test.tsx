@@ -1583,6 +1583,27 @@ describe('세션 종료 안내의 사유', () => {
   });
 });
 
+describe('불러오기 실패의 뒤로 가기', () => {
+  test('확인 없이 세션을 취소하고 입력 화면으로 가야 한다.', async () => {
+    const requests = useCancelSpy();
+    useErrorResult(500);
+    const { router, history } = await renderResultAfterInput();
+
+    await screen.findByRole('button', { name: '다시 시도' });
+    act(() => {
+      history.back();
+    });
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe(INPUT_PATH);
+    });
+    expect(requests).toHaveLength(1);
+    expect(
+      screen.queryByRole('dialog', { name: '추천을 그만둘까요?' }),
+    ).not.toBeInTheDocument();
+  });
+});
+
 describe('불러오기 실패의 다시 시도', () => {
   test.each([500, 503])(
     '%i이면 다시 시도할 수 있어야 한다.',

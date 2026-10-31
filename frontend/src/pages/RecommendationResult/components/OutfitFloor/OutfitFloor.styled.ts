@@ -1,9 +1,17 @@
+import { css, keyframes } from '@emotion/react';
 import styled from '@emotion/styled';
 import { fg, shadow, spacing, typography } from '@/styles/tokens';
 import type { FloorSlot } from './OutfitFloor';
 
 const STAGE_WIDTH = 362;
 const STAGE_HEIGHT = 568;
+const SPIN_DURATION = '1s';
+
+const spin = keyframes`
+  to {
+    transform: rotate(360deg);
+  }
+`;
 
 interface SlotPosition {
   left: number;
@@ -31,7 +39,7 @@ export const Stage = styled.div`
   transform: translateX(-50%);
 `;
 
-export const Item = styled.img<{ $slot: FloorSlot }>`
+export const Item = styled.img<{ $slot: FloorSlot; $isHidden: boolean }>`
   position: absolute;
   left: ${({ $slot }) => toPercent(SLOT_POSITION[$slot].left, STAGE_WIDTH)};
   top: ${({ $slot }) => toPercent(SLOT_POSITION[$slot].top, STAGE_HEIGHT)};
@@ -39,6 +47,31 @@ export const Item = styled.img<{ $slot: FloorSlot }>`
   filter: drop-shadow(${shadow.md});
   pointer-events: none;
   transform: rotate(${({ $slot }) => SLOT_POSITION[$slot].rotate}deg);
+
+  ${({ $isHidden }) =>
+    $isHidden &&
+    css`
+      visibility: hidden;
+    `}
+`;
+
+export const Waiting = styled.div`
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: ${fg.neutral.pale};
+
+  & > span {
+    animation: ${spin} ${SPIN_DURATION} linear infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    & > span {
+      animation: none;
+    }
+  }
 `;
 
 export const Empty = styled.div`

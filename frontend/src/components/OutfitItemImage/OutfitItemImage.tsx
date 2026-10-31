@@ -49,7 +49,7 @@ const OutfitItemImage = (props: OutfitItemImageProps) => {
   };
 
   return (
-    <S.Container $size={size} $isDashed={imageUrl === null}>
+    <S.Container $size={size} $isDashed={item.item_source_cd === 'essential'}>
       {renderContent()}
       {size === 'md' && item.item_source_cd === 'essential' && (
         <S.Badge>

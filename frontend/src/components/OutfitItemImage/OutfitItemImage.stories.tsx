@@ -9,7 +9,7 @@ const meta = {
   argTypes: {
     item: {
       description:
-        '코디 아이템입니다. 이미지가 없으면 점선 칸에 이름을 보여 주고, 불러오지 못하면 실선 칸에 사진 아이콘을 보여 줍니다.',
+        '코디 아이템입니다. 기본 아이템은 이미지가 있어도 점선 칸입니다. 이미지가 없으면 칸에 이름을 보여 주고, 불러오지 못하면 사진 아이콘을 보여 줍니다.',
       control: 'object',
     },
     size: {
@@ -43,6 +43,26 @@ export const Default: Story = {};
 
 export const Thumbnail: Story = {
   args: { size: 'sm' },
+};
+
+export const EssentialWithImage: Story = {
+  args: {
+    item: {
+      item_name: '흰 양말',
+      item_source_cd: 'essential',
+      image_url: cutoutUrl,
+    },
+  },
+};
+
+export const OwnedWithoutImage: Story = {
+  args: {
+    item: {
+      item_name: '베이지 터틀넥',
+      item_source_cd: 'owned',
+      image_url: null,
+    },
+  },
 };
 
 export const LoadFailed: Story = {

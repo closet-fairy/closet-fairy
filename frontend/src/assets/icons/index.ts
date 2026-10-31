@@ -21,6 +21,7 @@ import ErrorIcon from '@material-symbols/svg-400/outlined/error.svg?react';
 import ErrorFill from '@material-symbols/svg-400/outlined/error-fill.svg?react';
 import Exposure from '@material-symbols/svg-400/outlined/exposure.svg?react';
 import FitScreen from '@material-symbols/svg-400/outlined/fit_screen.svg?react';
+import HideImage from '@material-symbols/svg-400/outlined/hide_image.svg?react';
 import History from '@material-symbols/svg-400/outlined/history.svg?react';
 import HistoryFill from '@material-symbols/svg-400/outlined/history-fill.svg?react';
 import Image from '@material-symbols/svg-400/outlined/image.svg?react';
@@ -85,6 +86,7 @@ export const icons = {
   'error-fill': ErrorFill,
   exposure: Exposure,
   fit_screen: FitScreen,
+  hide_image: HideImage,
   history: History,
   'history-fill': HistoryFill,
   image: Image,

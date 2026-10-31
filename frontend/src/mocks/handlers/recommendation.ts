@@ -1,4 +1,4 @@
-import { http, HttpResponse } from 'msw';
+import { delay, http, HttpResponse } from 'msw';
 import { getOutfitLayers } from '@/domains/recommendation/outfitLayers';
 import { REGENERATION_REQUEST_MAX_LENGTH } from '@/domains/recommendation/regeneration';
 import type {
@@ -60,6 +60,9 @@ const REGENERATION_KEYWORD = {
 } as const;
 const SAMPLE_CUTOUT_URL = '/media/clothing/1/sample_cutout.webp';
 const BROKEN_IMAGE_URL = '/missing-image.webp';
+const SLOW_IMAGE_URL = '/slow-image.webp';
+// 바닥이 사진을 기다리는 시간보다 길어서, 늦게 도착한 사진을 끼워 넣지 않는 것을 볼 수 있다.
+const SLOW_IMAGE_MS = 10000;
 // 직접 입력에 이 말을 넣으면 결과 화면의 해당 상태를 dev:mock에서 볼 수 있다.
 const RESULT_KEYWORD = {
   SINGLE_OUTFIT: '한벌',
@@ -71,6 +74,9 @@ const RESULT_KEYWORD = {
   RATING_EXPIRED: '시간끝',
   RATING_SETTLED: '이미채택',
   IMAGE_FAILURE: '사진오류',
+  IMAGE_ALL_FAILURE: '사진전부오류',
+  IMAGE_DELAY: '사진지연',
+  ESSENTIAL_IMAGE: '기본사진',
 } as const;
 
 const sessions = new Map<number, MockSession>();
@@ -146,28 +152,52 @@ const createOutfits = (
   const outfitCount = hasKeyword(session, RESULT_KEYWORD.SINGLE_OUTFIT)
     ? 1
     : OUTFIT_COUNT;
-  const items = hasKeyword(session, RESULT_KEYWORD.ESSENTIAL_ONLY)
-    ? [
+  const getTopImage = () => {
+    if (hasKeyword(session, RESULT_KEYWORD.IMAGE_FAILURE)) {
+      return { image_url: BROKEN_IMAGE_URL };
+    }
+
+    return hasKeyword(session, RESULT_KEYWORD.IMAGE_DELAY)
+      ? { image_url: SLOW_IMAGE_URL }
+      : {};
+  };
+
+  const getBaseItems = () => {
+    if (hasKeyword(session, RESULT_KEYWORD.ESSENTIAL_ONLY)) {
+      return [
         createEssentialItem('top', '흰 티셔츠'),
         createEssentialItem('bottom', '검정 슬랙스'),
         createEssentialItem('shoes', '흰 스니커즈'),
-      ]
-    : [
-        createItem(
-          'top',
-          '베이지 터틀넥',
-          hasKeyword(session, RESULT_KEYWORD.IMAGE_FAILURE)
-            ? { image_url: BROKEN_IMAGE_URL }
-            : {},
-        ),
-        createItem('bottom', '그레이 슬랙스'),
-        createItem('shoes', '브라운 스니커즈'),
-        createEssentialItem('socks', '흰 양말'),
-        createItem('accessories', '네이비 볼캡', {
-          accessory_type_cd: 'hat',
-          style_cds: ['street'],
-        }),
       ];
+    }
+
+    if (hasKeyword(session, RESULT_KEYWORD.IMAGE_ALL_FAILURE)) {
+      return [
+        createItem('top', '베이지 터틀넥', { image_url: BROKEN_IMAGE_URL }),
+        createItem('bottom', '그레이 슬랙스', { image_url: BROKEN_IMAGE_URL }),
+        createEssentialItem('socks', '흰 양말'),
+      ];
+    }
+
+    return [
+      createItem('top', '베이지 터틀넥', getTopImage()),
+      createItem(
+        'bottom',
+        '그레이 슬랙스',
+        hasKeyword(session, RESULT_KEYWORD.ESSENTIAL_IMAGE)
+          ? { item_source_cd: 'essential' }
+          : {},
+      ),
+      createItem('shoes', '브라운 스니커즈'),
+      createEssentialItem('socks', '흰 양말'),
+      createItem('accessories', '네이비 볼캡', {
+        accessory_type_cd: 'hat',
+        style_cds: ['street'],
+      }),
+    ];
+  };
+
+  const items = getBaseItems();
 
   return Array.from({ length: outfitCount }, (_, index) => ({
     outfit_id: sessionId * 10 + index + 1,
@@ -335,6 +365,11 @@ const toHistoryDetail = (
 };
 
 export const recommendationHandlers = [
+  http.get(SLOW_IMAGE_URL, async () => {
+    await delay(SLOW_IMAGE_MS);
+
+    return HttpResponse.redirect(SAMPLE_CUTOUT_URL);
+  }),
   http.get('/api/recommendations/precheck', () =>
     HttpResponse.json<ClothingShortagePrecheckResponse>({
       is_clothing_shortage: true,
