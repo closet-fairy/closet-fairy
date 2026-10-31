@@ -26,6 +26,7 @@ interface CarouselProps {
   'aria-label': string;
   index?: number;
   onIndexChange?: (index: number) => void;
+  onSettle?: () => void;
   isLooped?: boolean;
   hasArrows?: boolean;
   arrowVariant?: IconButtonVariant;
@@ -48,6 +49,7 @@ const Carousel = (props: CarouselProps) => {
     'aria-label': ariaLabel,
     index,
     onIndexChange,
+    onSettle,
     isLooped = true,
     hasArrows = true,
     arrowVariant = 'circle',
@@ -113,6 +115,24 @@ const Carousel = (props: CarouselProps) => {
 
     return () => {
       emblaApi.off('select', handleSelect).off('reInit', handleSelect);
+    };
+  }, [emblaApi]);
+
+  const notifySettle = useEffectEvent(() => {
+    onSettle?.();
+  });
+
+  useEffect(() => {
+    if (!emblaApi) return;
+
+    const handleSettle = () => {
+      notifySettle();
+    };
+
+    emblaApi.on('settle', handleSettle);
+
+    return () => {
+      emblaApi.off('settle', handleSettle);
     };
   }, [emblaApi]);
 
