@@ -29,8 +29,7 @@ const OutfitFloor = (props: OutfitFloorProps) => {
   const placedItems = FLOOR_SLOTS.flatMap((slot) => {
     const item = items.find(
       (candidate) =>
-        getFloorSlot(candidate) === slot &&
-        candidate.item_source_cd === 'owned',
+        getFloorSlot(candidate) === slot && candidate.image_url !== null,
     );
 
     if (!item || item.image_url === null) {
