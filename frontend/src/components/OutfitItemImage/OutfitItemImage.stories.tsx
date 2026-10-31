@@ -9,7 +9,7 @@ const meta = {
   argTypes: {
     item: {
       description:
-        '코디 아이템입니다. 이미지가 없으면 점선 칸에 이름을 보여 줍니다.',
+        '코디 아이템입니다. 이미지가 없으면 점선 칸에 이름을 보여 주고, 불러오지 못하면 실선 칸에 사진 아이콘을 보여 줍니다.',
       control: 'object',
     },
     size: {
@@ -43,6 +43,16 @@ export const Default: Story = {};
 
 export const Thumbnail: Story = {
   args: { size: 'sm' },
+};
+
+export const LoadFailed: Story = {
+  args: {
+    item: {
+      item_name: '베이지 터틀넥',
+      item_source_cd: 'owned',
+      image_url: '/image-not-found.webp',
+    },
+  },
 };
 
 export const Essential: Story = {
