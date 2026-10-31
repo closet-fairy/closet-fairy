@@ -8,7 +8,8 @@ import * as S from './OutfitItemImage.styled';
 export type OutfitItemImageSize = 'md' | 'sm';
 
 interface OutfitItemImageProps {
-  item: Pick<OutfitItemResult, 'item_name' | 'item_source_cd' | 'image_url'>;
+  item: Pick<OutfitItemResult, 'item_name' | 'image_url'> &
+    Partial<Pick<OutfitItemResult, 'item_source_cd'>>;
   size?: OutfitItemImageSize;
 }
 
@@ -19,7 +20,11 @@ const FAILED_ICON_SIZE: Record<OutfitItemImageSize, IconSize> = {
 
 const OutfitItemImage = (props: OutfitItemImageProps) => {
   const { item, size = 'md' } = props;
-  const { item_name: name, image_url: imageUrl } = item;
+  const {
+    item_name: name,
+    item_source_cd: sourceCd,
+    image_url: imageUrl,
+  } = item;
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
   // 큰 칸은 칸 아래에 이름이 함께 보이므로 화면 낭독기가 두 번 읽지 않게 한다.
   const imageLabel = size === 'sm' ? name : undefined;
@@ -49,9 +54,9 @@ const OutfitItemImage = (props: OutfitItemImageProps) => {
   };
 
   return (
-    <S.Container $size={size} $isDashed={item.item_source_cd === 'essential'}>
+    <S.Container $size={size} $isDashed={sourceCd === 'essential'}>
       {renderContent()}
-      {size === 'md' && item.item_source_cd === 'essential' && (
+      {size === 'md' && sourceCd === 'essential' && (
         <S.Badge>
           <Tag variant="inverse" size="xs">
             기본
