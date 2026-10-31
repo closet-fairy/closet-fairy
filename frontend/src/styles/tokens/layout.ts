@@ -1,3 +1,11 @@
+const APP_MAX_WIDTH = 480;
+
+export const appFrame = {
+  maxWidth: `${APP_MAX_WIDTH}px`,
+  // position: fixed 요소 전용이다. 50%가 화면 폭을 가리켜야 앱 가장자리까지의 거리가 된다.
+  sideInset: `max(0px, 50% - ${APP_MAX_WIDTH / 2}px)`,
+} as const;
+
 export const spacing = {
   0: '0',
   2: '2px',
@@ -31,6 +39,7 @@ export const shadow = {
   card: '0 8px 26px rgba(0, 0, 0, 0.12)',
   lifted: '0 18px 40px rgba(0, 0, 0, 0.22)',
   sheet: '0 -6px 22px rgba(0, 0, 0, 0.12)',
+  app: '0 10px 40px rgba(0, 0, 0, 0.08)',
 } as const;
 
 export const opacity = {

@@ -2,6 +2,7 @@ import { Dialog } from '@base-ui/react/dialog';
 import styled from '@emotion/styled';
 import { TOP_BAR_HEIGHT } from '@/components/common/TopBar/TopBar.styled';
 import {
+  appFrame,
   bg,
   border,
   duration,
@@ -18,8 +19,8 @@ const POPUP_HIDDEN_OFFSET = 24;
 export const Popup = styled(Dialog.Popup, transientOptions)`
   position: fixed;
   top: 0;
-  right: 0;
-  left: 0;
+  right: ${appFrame.sideInset};
+  left: ${appFrame.sideInset};
   height: 100%;
   z-index: ${zIndex.modal};
   display: flex;

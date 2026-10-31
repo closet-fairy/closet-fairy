@@ -75,6 +75,8 @@ const FullScreenDialog = (props: FullScreenDialogProps) => {
     <BaseDialog.Root
       open={isOpen}
       onOpenChange={(nextIsOpen) => onOpenChange(nextIsOpen)}
+      // 앱 폭보다 넓은 화면에서 양옆 바탕을 눌러도 입력 중인 화면이 닫히지 않게 한다.
+      disablePointerDismissal
     >
       <BaseDialog.Portal>
         <S.Popup

@@ -2,6 +2,7 @@ import { Toast } from '@base-ui/react/toast';
 import styled from '@emotion/styled';
 import type { ToastTone } from '@/components/common/ToastProvider/ToastProvider.toast';
 import {
+  appFrame,
   bg,
   border,
   duration,
@@ -28,12 +29,12 @@ export const Viewport = styled(Toast.Viewport, transientOptions)<{
   $bottomOffset: number;
 }>`
   position: fixed;
-  right: ${spacing[16]};
+  right: calc(${appFrame.sideInset} + ${spacing[16]});
   bottom: calc(
     ${({ $bottomOffset }) => $bottomOffset}px + ${VIEWPORT_GAP} +
       env(safe-area-inset-bottom, 0px)
   );
-  left: ${spacing[16]};
+  left: calc(${appFrame.sideInset} + ${spacing[16]});
   z-index: ${zIndex.toast};
 `;
 

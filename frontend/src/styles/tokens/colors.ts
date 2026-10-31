@@ -18,6 +18,7 @@ const colorValues = {
   'bg-neutral-light': palette.gray50,
   'bg-neutral-pale': palette.gray25,
   'bg-error-light': palette.red100,
+  'bg-outside': palette.warmGray100,
   'bg-floor': palette.warmGray200,
   'bg-card-previous': palette.beige100,
   'bg-card-stacked': palette.beige200,
@@ -82,6 +83,7 @@ export const bg = {
   error: {
     light: colorVar('bg-error-light'),
   },
+  outside: colorVar('bg-outside'),
   floor: colorVar('bg-floor'),
   card: {
     previous: colorVar('bg-card-previous'),

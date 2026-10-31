@@ -2,6 +2,7 @@ import { keyframes } from '@emotion/react';
 import styled from '@emotion/styled';
 import { BOTTOM_TAB_BAR_HEIGHT } from '@/components/BottomTabBar/BottomTabBar.styled';
 import {
+  appFrame,
   bg,
   border,
   duration,
@@ -83,10 +84,10 @@ export const EmptyVisual = styled.span`
   color: ${fg.neutral.pale};
 `;
 
-// 토스트가 떠 있으면 화면 폭을 가로지르는 토스트에 가리지 않도록 그 위로 올라간다.
+// 토스트가 떠 있으면 앱 폭을 가로지르는 토스트에 가리지 않도록 그 위로 올라간다.
 export const Fab = styled.button<{ $toastStackHeight: string | null }>`
   position: fixed;
-  right: ${spacing[20]};
+  right: calc(${appFrame.sideInset} + ${spacing[20]});
   bottom: calc(
     ${BOTTOM_TAB_BAR_HEIGHT}px +
       ${({ $toastStackHeight }) =>
