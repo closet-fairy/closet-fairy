@@ -399,9 +399,20 @@ const RecommendationResultPage = () => {
   const currentOutfit = getOutfitLayers(latestOutfit)[historyDepth];
   const isViewingPrevious = historyDepth > 0;
 
+  // 넘기는 동안 빠져나가는 카드의 내용이 바뀌어 보이지 않도록, 전환이 끝난 뒤에 그 세트를 최신으로 돌린다.
+  const resetLeftHistory = () => {
+    if (viewedHistory?.latestOutfitId !== latestOutfit.outfit_id) {
+      setViewedHistory(null);
+    }
+  };
+
+  // 전환이 끝나기 전에 돌아와도 떠났던 세트는 최신으로 보여 준다.
   const moveToOutfit = (nextIndex: number) => {
     setOutfitIndex(nextIndex);
-    setViewedHistory(null);
+
+    if (viewedHistory?.latestOutfitId === outfits[nextIndex].outfit_id) {
+      setViewedHistory(null);
+    }
   };
 
   const moveToAdopted = async () => {
@@ -531,6 +542,7 @@ const RecommendationResultPage = () => {
           aria-label="추천 코디"
           index={currentIndex}
           onIndexChange={moveToOutfit}
+          onSettle={resetLeftHistory}
           isLooped={false}
           arrowVariant="plain"
           arrowInset={S.ARROW_INSET}
