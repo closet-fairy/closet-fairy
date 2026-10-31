@@ -87,7 +87,9 @@ const OutfitStack = (props: OutfitStackProps) => {
               items={layer.items}
               isRegenerating={isRegenerating && layerDepth === depth}
               isLifted={isFront}
-              previousCount={outfit.previous_outfits.length}
+              previousCount={
+                layerDepth === 0 ? outfit.previous_outfits.length : 0
+              }
               recommendationOrder={
                 layerDepth > 0
                   ? getRecommendationOrder(layers.length, layerDepth)

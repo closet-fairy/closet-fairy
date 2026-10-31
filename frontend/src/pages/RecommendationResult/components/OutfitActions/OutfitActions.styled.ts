@@ -54,6 +54,7 @@ const LABEL_STYLE: Record<ActionVariant, SerializedStyles> = {
   `,
 };
 
+// 끌려 내려오는 카드가 버튼을 덮지 않도록 위치를 지정해 카드보다 위에 그린다.
 export const Container = styled.div`
   position: relative;
   display: flex;

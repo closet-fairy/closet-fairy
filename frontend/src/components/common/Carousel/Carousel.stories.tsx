@@ -98,6 +98,7 @@ const meta = {
     children: SLIDES,
     'aria-label': '추천 코디',
     onIndexChange: fn(),
+    onSettle: fn(),
   },
 } satisfies Meta<typeof Carousel>;
 
