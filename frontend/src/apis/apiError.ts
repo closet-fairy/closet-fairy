@@ -22,9 +22,13 @@ export class ApiError extends Error {
   }
 }
 
+const NOT_FOUND_STATUS = 404;
 const VALIDATION_STATUS = 422;
 const CLIENT_ERROR_MIN_STATUS = 400;
 const SERVER_ERROR_MIN_STATUS = 500;
+
+export const isNotFoundError = (error: unknown) =>
+  error instanceof ApiError && error.status === NOT_FOUND_STATUS;
 
 export const isValidationError = (error: unknown): error is ApiError =>
   error instanceof ApiError && error.status === VALIDATION_STATUS;
