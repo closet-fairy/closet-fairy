@@ -24,19 +24,17 @@ const ITEMS = [createItem('top', '상의'), createItem('bottom', '하의')];
 const SEED = { order: 1, id: 4101 };
 
 const MANY_ITEMS = [
-  '상의',
-  '겉옷',
-  '하의',
-  '신발',
-  '양말',
-  '모자',
-  '가방',
-  '벨트',
-  '시계',
-  '반지',
-].map((itemName, index) =>
-  createItem(index < 3 ? 'top' : 'accessories', itemName),
-);
+  createItem('top', '상의'),
+  createItem('outer', '겉옷'),
+  createItem('bottom', '하의'),
+  createItem('shoes', '신발'),
+  createItem('socks', '양말'),
+  createItem('accessories', '모자', { accessory_type_cd: 'hat' }),
+  createItem('accessories', '가방', { accessory_type_cd: 'bag' }),
+  createItem('accessories', '벨트', { accessory_type_cd: 'belt' }),
+  createItem('accessories', '시계', { accessory_type_cd: 'watch' }),
+  createItem('accessories', '반지', { accessory_type_cd: 'jewelry' }),
+];
 
 const loadAll = (failedNames: readonly string[] = []) => {
   screen.getAllByRole('img', { hidden: true }).forEach((image) => {
