@@ -57,6 +57,19 @@ export const DisplayStar = styled.span<{ $isFilled: boolean }>`
   color: ${({ $isFilled }) => ($isFilled ? fg.neutral.strong : fg.neutral.pale)};
 `;
 
+export const RowDisplay = styled.span`
+  ${typography.label1Strong}
+  display: inline-flex;
+  align-items: center;
+  gap: ${spacing[8]};
+  color: ${fg.neutral.default};
+`;
+
+export const RowStars = styled.span`
+  display: inline-flex;
+  gap: ${spacing[2]};
+`;
+
 export const CompactDisplay = styled.span`
   display: inline-flex;
   align-items: center;

@@ -4,6 +4,17 @@ import { describe, expect, test, vi } from 'vitest';
 import FormField from '@/components/common/FormField';
 import StarRating from './StarRating';
 
+describe('줄 모습 표시', () => {
+  test('별 다섯 개와 점수를 보여 주고 값을 바꿀 수 없어야 한다.', () => {
+    render(<StarRating value={4} isReadOnly size="row" />);
+
+    expect(
+      screen.getByRole('img', { name: '별점 5점 중 4점' }),
+    ).toHaveTextContent('4');
+    expect(screen.queryByRole('radio')).not.toBeInTheDocument();
+  });
+});
+
 describe('별점 입력', () => {
   test('별을 누르면 그 별의 개수로 onChange를 호출해야 한다.', async () => {
     const user = userEvent.setup();
