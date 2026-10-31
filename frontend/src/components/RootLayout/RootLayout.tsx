@@ -26,14 +26,16 @@ const RootLayout = () => {
   return (
     <ToastProvider>
       <Global styles={globalStyles} />
-      <AuthGate>
+      <S.Outside>
         <S.Container>
-          <S.Main>
-            <Outlet />
-          </S.Main>
-          {!isFullScreen && <BottomTabBar />}
+          <AuthGate>
+            <S.Main>
+              <Outlet />
+            </S.Main>
+            {!isFullScreen && <BottomTabBar />}
+          </AuthGate>
         </S.Container>
-      </AuthGate>
+      </S.Outside>
       <SessionExpiredDialog />
       <Toaster bottomOffset={isFullScreen ? 0 : BOTTOM_TAB_BAR_HEIGHT} />
       <ReactQueryDevtools />
