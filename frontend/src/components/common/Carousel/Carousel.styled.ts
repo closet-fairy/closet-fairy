@@ -8,8 +8,10 @@ export const Root = styled.section`
   position: relative;
 `;
 
+// 슬라이드 내용이 아래로 움직여도 잘리지 않도록 가로만 자른다.
 export const Viewport = styled.div`
   overflow: hidden;
+  overflow: clip visible;
 `;
 
 export const Container = styled.div`
