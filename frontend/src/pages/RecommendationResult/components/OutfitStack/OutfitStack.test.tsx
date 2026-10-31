@@ -100,7 +100,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe('OutfitStack 표시', () => {
+describe('겹침 표시', () => {
   test('재추천이 없으면 배지와 이동 버튼을 보여 주지 않아야 한다.', () => {
     render(<ControlledStack previousCount={0} />);
 
@@ -124,7 +124,7 @@ describe('OutfitStack 표시', () => {
   });
 });
 
-describe('OutfitStack 끌기', () => {
+describe('카드 끌기', () => {
   test('카드 높이의 15% 이상 끌어내리면 한 장 이전으로 넘어가야 한다.', () => {
     render(<ControlledStack previousCount={2} />);
 
@@ -322,7 +322,7 @@ describe('OutfitStack 끌기', () => {
   });
 });
 
-describe('OutfitStack 이동 버튼', () => {
+describe('이동 버튼', () => {
   test('버튼으로 한 장씩 오갈 수 있어야 한다.', async () => {
     vi.useRealTimers();
 

@@ -61,12 +61,11 @@ const OutfitStack = (props: OutfitStackProps) => {
       {motion === null && hasOlder && <S.Strip />}
       {/* 끌기를 시작할 때 사진이 비지 않도록 이웃 코디도 그려 둔다. 뒤쪽 코디부터 그려야 최신 쪽이 위에 온다. */}
       {[depth + 1, depth, depth - 1].flatMap((layerDepth) => {
-        const layer = layers[layerDepth];
-
         if (layerDepth < 0 || layerDepth >= layers.length) {
           return [];
         }
 
+        const layer = layers[layerDepth];
         const isFront = motion !== null && layerDepth === frontDepth;
         const isVisible =
           motion === null

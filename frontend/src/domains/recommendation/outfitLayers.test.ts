@@ -10,7 +10,7 @@ const createPreviousOutfit = (outfitId: number) => ({
   items: [],
 });
 
-describe('getOutfitLayers', () => {
+describe('코디 겹 순서', () => {
   test('최신 코디부터 이전 코디 순으로 돌려줘야 한다.', () => {
     const outfit: OutfitResult = {
       ...createPreviousOutfit(3),
@@ -23,7 +23,7 @@ describe('getOutfitLayers', () => {
   });
 });
 
-describe('getRecommendationOrder', () => {
+describe('추천 순번', () => {
   test.each([
     { depth: 0, order: 3 },
     { depth: 1, order: 2 },

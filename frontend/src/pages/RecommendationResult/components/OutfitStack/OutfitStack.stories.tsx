@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { useState } from 'react';
+import { useArgs } from 'storybook/preview-api';
+import { fn } from 'storybook/test';
 import type { OutfitItemResult, OutfitResult } from '@/generated/models';
 import cutoutUrl from '@/mocks/assets/clothing/cutout.webp';
 import OutfitStack from './OutfitStack';
@@ -33,35 +34,32 @@ const createOutfit = (previousCount: number): OutfitResult => ({
   ),
 });
 
-const OutfitStackStory = (props: {
-  previousCount: number;
-  isRegenerating?: boolean;
-}) => {
-  const { previousCount, isRegenerating } = props;
-  const [depth, setDepth] = useState(0);
-
-  return (
-    <OutfitStack
-      outfit={createOutfit(previousCount)}
-      depth={depth}
-      isRegenerating={isRegenerating}
-      onDepthChange={setDepth}
-    />
-  );
-};
-
 const meta = {
-  component: OutfitStackStory,
+  component: OutfitStack,
   argTypes: {
-    previousCount: {
+    outfit: {
       description:
-        '쌓인 이전 코디의 수입니다. 카드를 아래로 끌면 이전 코디로, 위로 끌면 최신 쪽으로 한 장씩 움직입니다.',
+        '세트의 최신 코디입니다. `previous_outfits`에 든 이전 코디가 그 뒤에 쌓입니다.',
+      control: 'object',
+    },
+    depth: {
+      description:
+        '지금 보는 겹입니다. 0이 최신 코디이고, 커질수록 이전 코디입니다. 카드를 아래로 끌면 커지고 위로 끌면 작아집니다.',
       control: 'number',
     },
     isRegenerating: {
       description: '재추천을 만드는 동안에는 덮개를 씌우고 끌 수 없게 합니다.',
       control: 'boolean',
     },
+    onDepthChange: {
+      description:
+        '끌기나 숨은 이동 버튼으로 다른 겹으로 넘어갈 때 새 깊이로 호출됩니다.',
+    },
+  },
+  args: {
+    outfit: createOutfit(0),
+    depth: 0,
+    onDepthChange: fn(),
   },
   decorators: [
     (Story) => (
@@ -76,24 +74,36 @@ const meta = {
       </div>
     ),
   ],
-} satisfies Meta<typeof OutfitStackStory>;
+  render: function Render(args) {
+    const [, updateArgs] = useArgs();
+
+    const handleDepthChange = (depth: number) => {
+      args.onDepthChange(depth);
+      updateArgs({ depth });
+    };
+
+    return <OutfitStack {...args} onDepthChange={handleDepthChange} />;
+  },
+} satisfies Meta<typeof OutfitStack>;
 
 export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-export const NoHistory: Story = {
-  args: { previousCount: 0 },
-};
+export const NoHistory: Story = {};
 
 export const OnePrevious: Story = {
-  args: { previousCount: 1 },
+  args: { outfit: createOutfit(1) },
 };
 
 export const ManyPrevious: Story = {
-  args: { previousCount: 3 },
+  args: { outfit: createOutfit(3) },
+};
+
+export const ViewingPrevious: Story = {
+  args: { outfit: createOutfit(3), depth: 1 },
 };
 
 export const Regenerating: Story = {
-  args: { previousCount: 1, isRegenerating: true },
+  args: { outfit: createOutfit(1), isRegenerating: true },
 };
