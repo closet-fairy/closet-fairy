@@ -333,11 +333,12 @@ const scoreCandidate = (
     sized.width * sized.height > best.width * best.height ? sized : best,
   );
   const isLargestInWide = wide.sizedItems.some(
-    ({ item }) => item.id === largest.item.id,
+    ({ item }) => item === largest.item,
   );
 
   const wideEnd = wideTop + wide.totalHeight;
   const narrowEnd = narrowTop + narrow.totalHeight;
+  // 옷이 하나면 빈 열을 늦게 시작하는 후보만 남아, 옷이 있는 열은 가장자리에서 시작한다.
   const endGap =
     wideEnd <= 0 || narrowEnd <= 0
       ? Number.MAX_SAFE_INTEGER
@@ -538,7 +539,7 @@ const rotatePlacements = (
   random: () => number,
 ) => {
   let sign = random() < 0.5 ? -1 : 1;
-  const rotations = new Map<string, number>();
+  const rotations = new Map<FloorPlacement, number>();
 
   [...placements]
     .sort((upper, lower) => upper.y - lower.y)
@@ -546,7 +547,7 @@ const rotatePlacements = (
       const share = MIN_ROTATION_SHARE + random() * (1 - MIN_ROTATION_SHARE);
 
       rotations.set(
-        placement.id,
+        placement,
         fitRotation(placement, sign * MAX_ROTATION * share),
       );
       sign = -sign;
@@ -554,7 +555,7 @@ const rotatePlacements = (
 
   return placements.map((placement) => ({
     ...placement,
-    rotation: rotations.get(placement.id) ?? 0,
+    rotation: rotations.get(placement) ?? 0,
   }));
 };
 
