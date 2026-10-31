@@ -28,3 +28,16 @@ export const formatHistoryDateTime = (dateTime: string, now: Date) => {
 
   return `${formatHistoryDate(date, now)} ${KST_TIME_FORMAT.format(date)}`;
 };
+
+// 구간의 끝은 시작에 딸린 값이라 지금이 아니라 시작을 기준으로 다음 날을 쓴다.
+export const formatHistoryGoingOutRange = (
+  startAt: string,
+  endAt: string,
+  now: Date,
+) => {
+  const endDate = new Date(endAt);
+  const endTime = KST_TIME_FORMAT.format(endDate);
+  const isSameDay = getKstDate(new Date(startAt)) === getKstDate(endDate);
+
+  return `${formatHistoryDateTime(startAt, now)} – ${isSameDay ? endTime : `다음 날 ${endTime}`}`;
+};

@@ -1,11 +1,46 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
-import { formatHistoryDateTime } from './historyTime';
+import {
+  formatHistoryDateTime,
+  formatHistoryGoingOutRange,
+} from './historyTime';
 
 const NOW = new Date('2026-10-31T12:00:00+09:00');
 
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.resetModules();
+});
+
+describe('추천 내역 외출 구간 표기', () => {
+  test('같은 날이면 끝은 시각만 써야 한다.', () => {
+    expect(
+      formatHistoryGoingOutRange(
+        '2026-10-31T18:00:00+09:00',
+        '2026-10-31T23:30:00+09:00',
+        NOW,
+      ),
+    ).toBe('오늘 18:00 – 23:30');
+  });
+
+  test('자정을 넘기면 끝에 다음 날을 붙여야 한다.', () => {
+    expect(
+      formatHistoryGoingOutRange(
+        '2026-10-31T18:00:00+09:00',
+        '2026-11-01T00:30:00+09:00',
+        NOW,
+      ),
+    ).toBe('오늘 18:00 – 다음 날 00:30');
+  });
+
+  test('오래된 기록도 끝은 시작을 기준으로 써야 한다.', () => {
+    expect(
+      formatHistoryGoingOutRange(
+        '2026-08-23T18:00:00+09:00',
+        '2026-08-24T00:30:00+09:00',
+        NOW,
+      ),
+    ).toBe('2026. 8. 23 18:00 – 다음 날 00:30');
+  });
 });
 
 describe('추천 내역 시각 표기', () => {
