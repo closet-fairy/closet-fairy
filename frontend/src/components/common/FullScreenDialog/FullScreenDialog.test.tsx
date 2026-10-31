@@ -1,5 +1,7 @@
 import { render, screen } from '@testing-library/react';
-import userEvent, { PointerEventsCheckLevel } from '@testing-library/user-event';
+import userEvent, {
+  PointerEventsCheckLevel,
+} from '@testing-library/user-event';
 import { describe, expect, test, vi } from 'vitest';
 import FullScreenDialog from './FullScreenDialog';
 
