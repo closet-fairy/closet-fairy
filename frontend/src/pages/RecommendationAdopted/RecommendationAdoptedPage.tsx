@@ -1,4 +1,4 @@
-import { useNavigate, useParams } from '@tanstack/react-router';
+import { useNavigate, useParams, useRouter } from '@tanstack/react-router';
 import { isClientError } from '@/apis/apiError';
 import { isUnauthorizedError } from '@/apis/authSession';
 import Button from '@/components/common/Button';
@@ -36,6 +36,7 @@ const RecommendationAdoptedPage = () => {
     from: '/recommendation_/sessions/$sessionId_/adopted',
   });
   const navigate = useNavigate();
+  const router = useRouter();
   const {
     data: detail,
     error,
@@ -44,6 +45,16 @@ const RecommendationAdoptedPage = () => {
   } = useGetRecommendationHistoryDetailRecommendationHistoryRecommendationSessionIdGet(
     sessionId,
   );
+
+  // 상세의 뒤로 가기가 목록으로 돌아오도록 채택 완료 자리를 목록으로 바꾼다. 목록이 화면에 스치지 않게 주소만 바꾸고 바로 상세로 간다.
+  const openHistoryDetail = () => {
+    router.history.replace('/recommendation-history');
+    router.history.flush();
+    void navigate({
+      to: '/recommendation-history/$sessionId',
+      params: { sessionId },
+    });
+  };
 
   if (detail) {
     return (
@@ -55,10 +66,7 @@ const RecommendationAdoptedPage = () => {
           description="추천 내역에 저장했습니다."
           actions={
             <>
-              <Button
-                isFullWidth
-                onClick={() => void navigate({ to: '/recommendation-history' })}
-              >
+              <Button isFullWidth onClick={openHistoryDetail}>
                 추천 내역에서 보기
               </Button>
               <Button
