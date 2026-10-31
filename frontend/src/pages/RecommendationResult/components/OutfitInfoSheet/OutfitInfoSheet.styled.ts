@@ -72,15 +72,6 @@ export const WeatherLabel = styled.span`
   ${typography.label1Strong}
 `;
 
-export const EstimatedBadge = styled.span`
-  ${typography.caption2Strong}
-  padding: ${spacing[2]} ${spacing[6]};
-  border-radius: ${radius.xs};
-  background-color: ${bg.white};
-  color: ${fg.neutral.soft};
-  box-shadow: inset 0 0 0 1px ${border.neutral.default};
-`;
-
 export const WeatherNotice = styled.p`
   ${typography.caption1}
   color: ${fg.neutral.light};

@@ -3,6 +3,7 @@ import BottomSheet from '@/components/common/BottomSheet';
 import Button from '@/components/common/Button';
 import Icon from '@/components/common/Icon';
 import Tag from '@/components/common/Tag';
+import EstimatedBadge from '@/components/EstimatedBadge';
 import OutfitItemImage from '@/components/OutfitItemImage';
 import { WEATHER_CONDITION_ICONS } from '@/constants/weatherConditionIcon';
 import { getStyleLabel } from '@/domains/member/memberSettingOptions';
@@ -106,7 +107,7 @@ const OutfitInfoSheet = (props: OutfitInfoSheetProps) => {
                 size="sm"
               />
               <S.WeatherLabel>{getWeatherLabel(weather)}</S.WeatherLabel>
-              {weather.is_fallback && <S.EstimatedBadge>추정</S.EstimatedBadge>}
+              {weather.is_fallback && <EstimatedBadge />}
             </S.WeatherLine>
             {weather.is_fallback && (
               <S.WeatherNotice>
