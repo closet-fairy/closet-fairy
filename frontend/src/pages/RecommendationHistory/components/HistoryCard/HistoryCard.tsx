@@ -1,7 +1,8 @@
 import Icon from '@/components/common/Icon';
+import StarRating from '@/components/common/StarRating';
 import EstimatedBadge from '@/components/EstimatedBadge';
 import HistoryTimeRow from '@/components/HistoryTimeRow';
-import OutfitItemImage from '@/components/OutfitItemImage';
+import OutfitThumbnails from '@/components/OutfitThumbnails';
 import { WEATHER_CONDITION_ICONS } from '@/constants/weatherConditionIcon';
 import { formatHistoryDateTime } from '@/domains/recommendation/historyTime';
 import { limitOutfitThumbnails } from '@/domains/recommendation/outfitThumbnails';
@@ -40,9 +41,8 @@ const HistoryCard = (props: HistoryCardProps) => {
       <S.Summary>
         <S.Heading>
           <S.Title>{getTpoLabel(condition)}</S.Title>
-          <S.Rating role="img" aria-label={`별점 ${rating}점`}>
-            <Icon name="star-fill" size="xs" />
-            <S.RatingValue aria-hidden>{rating}</S.RatingValue>
+          <S.Rating>
+            <StarRating value={rating} isReadOnly size="sm" />
           </S.Rating>
         </S.Heading>
         <S.Times>
@@ -58,17 +58,7 @@ const HistoryCard = (props: HistoryCardProps) => {
           />
         </S.Times>
       </S.Summary>
-      <S.Thumbnails>
-        {visibleItems.map((thumbnail, thumbnailIndex) => (
-          // 같은 옷이 두 번 올 수 없지만 고유 번호가 없어 이름과 순서로 구분한다.
-          <OutfitItemImage
-            key={`${thumbnail.item_name}-${thumbnailIndex}`}
-            item={thumbnail}
-            size="sm"
-          />
-        ))}
-        {hiddenCount > 0 && <S.HiddenCount>+{hiddenCount}</S.HiddenCount>}
-      </S.Thumbnails>
+      <OutfitThumbnails items={visibleItems} hiddenCount={hiddenCount} />
       {weather && (
         <S.Weather>
           <Icon

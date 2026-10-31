@@ -1,8 +1,6 @@
 import styled from '@emotion/styled';
 import { bg, border, fg, radius, spacing, typography } from '@/styles/tokens';
 
-const THUMBNAIL_COLUMN_COUNT = 4;
-
 export const Container = styled.article`
   display: flex;
   flex-direction: column;
@@ -35,39 +33,16 @@ export const Title = styled.h2`
   text-overflow: ellipsis;
 `;
 
-export const Rating = styled.span`
+export const Rating = styled.div`
   display: flex;
   flex: none;
-  align-items: center;
-  gap: ${spacing[2]};
   padding-top: ${spacing[2]};
-  color: ${fg.neutral.strong};
-`;
-
-export const RatingValue = styled.span`
-  ${typography.label1Strong}
 `;
 
 export const Times = styled.div`
   display: flex;
   flex-direction: column;
   gap: ${spacing[2]};
-`;
-
-export const Thumbnails = styled.div`
-  display: grid;
-  grid-template-columns: repeat(${THUMBNAIL_COLUMN_COUNT}, minmax(0, 1fr));
-  gap: ${spacing[8]};
-`;
-
-export const HiddenCount = styled.span`
-  ${typography.body3Strong}
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: ${radius.sm};
-  background-color: ${bg.neutral.light};
-  color: ${fg.neutral.soft};
 `;
 
 export const Weather = styled.div`

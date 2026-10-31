@@ -135,7 +135,9 @@ describe('추천 내역 목록', () => {
     const card = await screen.findByRole('article');
 
     expect(within(card).getByRole('heading')).toHaveTextContent('데이트');
-    expect(within(card).getByRole('img', { name: '별점 4점' })).toBeVisible();
+    expect(
+      within(card).getByRole('img', { name: '별점 5점 중 4점' }),
+    ).toBeVisible();
     expect(within(card).getByText('오늘 10:12')).toBeInTheDocument();
     expect(
       within(card).getByText('내일 18:00 · 서울 성동구'),
