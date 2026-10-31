@@ -1032,6 +1032,21 @@ describe('재추천 요청 시트', () => {
     },
   );
 
+  test('앞뒤 공백은 빼고 보내야 한다.', async () => {
+    const user = userEvent.setup();
+    const requests = useRegenerationSpy();
+    useResult(createResult());
+    await renderResult();
+
+    await submitRequest(user, await openRequestSheet(user), '  더 밝게  ');
+
+    await waitFor(() => {
+      expect(requests).toEqual([
+        expect.objectContaining({ request_text: '더 밝게' }),
+      ]);
+    });
+  });
+
   test('코디가 1벌이면 대상 선택을 숨겨야 한다.', async () => {
     const user = userEvent.setup();
     useResult(createResult({ outfits: [createOutfit(1)] }));

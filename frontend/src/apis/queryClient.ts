@@ -1,5 +1,5 @@
 import { QueryClient } from '@tanstack/react-query';
-import { ApiError } from './apiError';
+import { ApiError, isClientError } from './apiError';
 
 const MAX_RETRY_COUNT = 3;
 
@@ -11,7 +11,7 @@ export const queryClient = new QueryClient({
           return false;
         }
 
-        if (error.status !== null && error.status < 500) {
+        if (isClientError(error)) {
           return false;
         }
 

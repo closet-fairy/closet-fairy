@@ -31,12 +31,8 @@ const OutfitItemImage = (props: OutfitItemImageProps) => {
 
     if (imageUrl === failedUrl) {
       return (
-        <S.FailedIcon
-          role="img"
-          aria-label={imageLabel}
-          aria-hidden={!imageLabel}
-        >
-          <Icon name="image" size={FAILED_ICON_SIZE[size]} />
+        <S.FailedIcon>
+          <Icon name="image" size={FAILED_ICON_SIZE[size]} label={imageLabel} />
         </S.FailedIcon>
       );
     }

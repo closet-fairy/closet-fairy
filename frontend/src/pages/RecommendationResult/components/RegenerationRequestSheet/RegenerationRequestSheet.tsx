@@ -49,6 +49,8 @@ const RegenerationRequestSheet = (props: RegenerationRequestSheetProps) => {
     }
   }
 
+  const trimmedText = text.trim();
+
   const handleTextChange = (nextText: string) => {
     setText(nextText);
     onTextChange();
@@ -73,8 +75,8 @@ const RegenerationRequestSheet = (props: RegenerationRequestSheetProps) => {
         <Button
           isFullWidth
           isLoading={isSubmitting}
-          isDisabled={text.trim().length === 0}
-          onClick={() => onSubmit(text, scope)}
+          isDisabled={trimmedText.length === 0}
+          onClick={() => onSubmit(trimmedText, scope)}
         >
           수정 요청하기
         </Button>

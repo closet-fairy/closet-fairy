@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import type { RecommendationResult } from '@/generated/models';
 import {
+  findRegeneratedOutfitIndex,
   isOutfitRegenerating,
   isRegenerationFailureNoticed,
   isRegenerationProcessing,
@@ -19,6 +20,38 @@ const createRegeneration = (
   target_outfit_id: 11,
   target_slot_cd: null,
   ...overrides,
+});
+
+describe('재추천이 끝난 세트 찾기', () => {
+  const createOutfit = (outfitId: number, previousOutfitIds: number[] = []) => {
+    const base = {
+      outfit_id: outfitId,
+      outfit_seq: 1,
+      outfit_type_cd: 'preferred' as const,
+      reason: null,
+      items: [],
+    };
+
+    return {
+      ...base,
+      previous_outfits: previousOutfitIds.map((id) => ({
+        ...base,
+        outfit_id: id,
+      })),
+    };
+  };
+
+  test('대상 코디가 이전 코디로 쌓인 세트의 순서를 돌려줘야 한다.', () => {
+    const outfits = [createOutfit(21), createOutfit(32, [31, 22])];
+
+    expect(findRegeneratedOutfitIndex(outfits, 22)).toBe(1);
+  });
+
+  test('대상 코디가 어디에도 쌓이지 않았으면 -1을 돌려줘야 한다.', () => {
+    const outfits = [createOutfit(21), createOutfit(22)];
+
+    expect(findRegeneratedOutfitIndex(outfits, 22)).toBe(-1);
+  });
 });
 
 describe('재추천 진행 판단', () => {
