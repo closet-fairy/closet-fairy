@@ -61,7 +61,9 @@ export const CLOTHING_COLORS = [
   'yellow',
   'orange',
   'red',
+  'burgundy',
   'pink',
+  'purple',
 ] as const satisfies readonly ClothingColor[];
 
 export const CLOTHING_COLOR_LABEL: Record<ClothingColor, string> = {
@@ -78,7 +80,9 @@ export const CLOTHING_COLOR_LABEL: Record<ClothingColor, string> = {
   yellow: '노랑',
   orange: '주황',
   red: '빨강',
+  burgundy: '버건디',
   pink: '분홍',
+  purple: '보라',
 };
 
 export const CLOTHING_SEASONS = [

@@ -59,6 +59,8 @@ export const UpdateClothingClothingClothingIdPatchBody = zod
           'orange',
           'red',
           'pink',
+          'burgundy',
+          'purple',
         ]),
         zod.null(),
       ])

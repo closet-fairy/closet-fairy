@@ -66,6 +66,8 @@ export const ClothingDetail = zod.object({
       'orange',
       'red',
       'pink',
+      'burgundy',
+      'purple',
     ]),
     zod.null(),
   ]),

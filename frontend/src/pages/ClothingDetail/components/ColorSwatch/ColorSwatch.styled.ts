@@ -18,7 +18,9 @@ const SWATCH_COLOR: Record<ClothingColor, string> = {
   yellow: swatch.yellow,
   orange: swatch.orange,
   red: swatch.red,
+  burgundy: swatch.burgundy,
   pink: swatch.pink,
+  purple: swatch.purple,
 };
 
 // 흰색처럼 바탕과 비슷한 색도 보이도록 옅은 안쪽 테두리를 둘러 둔다.

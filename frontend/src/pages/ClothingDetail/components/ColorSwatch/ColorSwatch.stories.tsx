@@ -8,7 +8,7 @@ const meta = {
   argTypes: {
     color: {
       description:
-        '옷 색 코드입니다. 14색마다 정한 대표색으로 칠하고, 흰색도 보이도록 옅은 테두리를 두릅니다.',
+        '옷 색 코드입니다. 16색마다 정한 대표색으로 칠하고, 흰색도 보이도록 옅은 테두리를 두릅니다.',
       control: 'select',
       options: CLOTHING_COLORS,
     },

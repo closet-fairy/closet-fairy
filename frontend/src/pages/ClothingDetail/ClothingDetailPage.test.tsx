@@ -216,6 +216,25 @@ describe('옷 속성 바로 저장', () => {
     });
   });
 
+  test('버건디와 보라를 고르면 서버 색상 코드로 저장해야 한다.', async () => {
+    const user = userEvent.setup();
+    const patches = recordPatches();
+    await renderDetail(COMPLETED_ID);
+    await screen.findByDisplayValue('스트라이프 반팔 티셔츠');
+
+    await user.click(getRow('색상'));
+    await user.click(screen.getByRole('button', { name: '버건디' }));
+    await user.click(screen.getByRole('button', { name: '보라' }));
+
+    expect(getRow('색상')).toHaveTextContent('보라');
+    await waitFor(() => {
+      expect(patches).toEqual([
+        { color_cd: 'burgundy' },
+        { color_cd: 'purple' },
+      ]);
+    });
+  });
+
   test('여러 개를 고르는 속성은 고른 값 전체를 칩 순서대로 저장해야 한다.', async () => {
     const user = userEvent.setup();
     const patches = recordPatches();
