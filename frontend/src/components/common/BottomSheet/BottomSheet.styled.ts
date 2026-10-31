@@ -2,6 +2,7 @@ import { Drawer } from '@base-ui/react/drawer';
 import { css } from '@emotion/react';
 import styled from '@emotion/styled';
 import {
+  appFrame,
   bg,
   duration,
   easing,
@@ -66,7 +67,9 @@ export const Popup = styled(Drawer.Popup, transientOptions)<{
   position: relative;
   display: flex;
   flex-direction: column;
+  align-self: center;
   width: 100%;
+  max-width: ${appFrame.maxWidth};
   max-height: ${({ $maxHeight }) => $maxHeight ?? '100%'};
   padding-bottom: calc(${spacing[20]} + env(safe-area-inset-bottom, 0px));
   border-radius: ${radius.xl} ${radius.xl} 0 0;
