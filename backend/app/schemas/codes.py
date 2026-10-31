@@ -35,5 +35,7 @@ ColorCd = Literal[
     "orange",
     "red",
     "pink",
+    "burgundy",
+    "purple",
 ]
 ThicknessCd = Literal["thin", "medium", "thick"]
