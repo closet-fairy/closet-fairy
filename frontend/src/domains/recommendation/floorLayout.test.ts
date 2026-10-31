@@ -1,12 +1,11 @@
 import { describe, expect, test } from 'vitest';
 import { getFloorItemKind, layoutFloor } from './floorLayout';
 import type { FloorItem, FloorPlacement } from './floorLayout';
-import { FLOOR_CARD } from './floorLayout.constants';
+import { FLOOR_CARD, ROTATION_INSET } from './floorLayout.constants';
 import type { FloorItemKind } from './floorLayout.constants';
 
 const SEED = { order: 1, id: 4101 };
 const FLOOR_BOTTOM = FLOOR_CARD.height - FLOOR_CARD.reservedBottom;
-const ROTATION_INSET = 4;
 
 const createItems = (kinds: readonly FloorItemKind[], ratio = 0.8) =>
   kinds.map((kind, index): FloorItem => ({ id: `${index}`, kind, ratio }));
@@ -260,7 +259,7 @@ describe('칸 배치', () => {
       SEED,
     ).placements;
 
-    expect(y + height / 2).toBeCloseTo((FLOOR_CARD.edge + 498) / 2);
+    expect(y + height / 2).toBeCloseTo(FLOOR_BOTTOM / 2);
   });
 
   test('옷이 하나면 가운데에 놓은 자리를 기준으로 회전각을 정해야 한다.', () => {
