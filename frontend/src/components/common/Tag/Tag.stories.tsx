@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import StoryLabeled from '../../../../.storybook/StoryLabeled';
 import StoryStack from '../../../../.storybook/StoryStack';
 import { ICON_NAMES } from '../../../../.storybook/storyIconNames';
+import { bg, spacing } from '@/styles/tokens';
 import Tag from './Tag';
 
 const VARIANTS = ['neutral', 'inverse', 'outline', 'white'] as const;
@@ -89,6 +90,19 @@ export const WithIcon: Story = {
         </StoryLabeled>
       ))}
     </StoryStack>
+  ),
+};
+
+export const OnColoredBackground: Story = {
+  args: {
+    variant: 'white',
+    icon: 'layers',
+    children: '이전 코디 2',
+  },
+  render: (args) => (
+    <div style={{ padding: spacing[16], backgroundColor: bg.floor }}>
+      <Tag {...args} />
+    </div>
   ),
 };
 
