@@ -13,13 +13,10 @@ import {
 import type { KeyboardEvent, ReactNode, RefObject } from 'react';
 import IconButton from '@/components/common/IconButton';
 import type { IconButtonVariant } from '@/components/common/IconButton/IconButton';
+import isReducedMotion from '@/utils/isReducedMotion';
 import * as S from './Carousel.styled';
 
 type EmblaApi = NonNullable<UseEmblaCarouselType[1]>;
-
-const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
-
-const isReducedMotion = () => window.matchMedia(REDUCED_MOTION_QUERY).matches;
 
 const getSlideKey = (slide: ReactNode, slideIndex: number) =>
   isValidElement(slide) && slide.key !== null ? slide.key : slideIndex;
