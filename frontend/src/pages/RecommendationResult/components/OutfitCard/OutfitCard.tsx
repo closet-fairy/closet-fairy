@@ -9,15 +9,39 @@ import * as S from './OutfitCard.styled';
 interface OutfitCardProps {
   items: readonly OutfitItemResult[];
   isRegenerating?: boolean;
+  isLifted?: boolean;
+  previousCount?: number;
+  recommendationOrder?: number;
 }
 
 const OutfitCard = (props: OutfitCardProps) => {
-  const { items, isRegenerating = false } = props;
+  const {
+    items,
+    isRegenerating = false,
+    isLifted = false,
+    previousCount = 0,
+    recommendationOrder,
+  } = props;
   const styleCds = getOutfitStyleTags(items);
+  const isPrevious = recommendationOrder !== undefined;
 
   return (
-    <S.Card>
+    <S.Card $isPrevious={isPrevious} $isLifted={isLifted}>
       <OutfitFloor items={items} />
+      {isPrevious && (
+        <S.Badge>
+          <Tag variant="inverse" size="sm" icon="layers">
+            {recommendationOrder}번째 추천
+          </Tag>
+        </S.Badge>
+      )}
+      {!isPrevious && previousCount > 0 && (
+        <S.Badge>
+          <Tag variant="white" size="sm" icon="layers">
+            이전 코디 {previousCount}
+          </Tag>
+        </S.Badge>
+      )}
       {styleCds.length > 0 && (
         <S.Tags>
           {styleCds.map((styleCd) => (

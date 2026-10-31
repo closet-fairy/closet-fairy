@@ -1258,3 +1258,117 @@ describe('재추천 실패 안내', () => {
     ).not.toBeInTheDocument();
   });
 });
+
+describe('이전 코디', () => {
+  const createPreviousOutfit = (outfitId: number, itemName: string) => ({
+    outfit_id: outfitId,
+    outfit_seq: 1,
+    outfit_type_cd: 'preferred' as const,
+    reason: null,
+    items: [createItem('top', itemName)],
+  });
+
+  const createResultWithHistory = () =>
+    createResult({
+      outfits: [
+        createOutfit(1, {
+          outfit_id: 61,
+          previous_outfits: [createPreviousOutfit(51, '처음 상의')],
+        }),
+        createOutfit(2),
+      ],
+    });
+
+  const openPreviousOutfit = async (
+    user: ReturnType<typeof userEvent.setup>,
+  ) => {
+    await user.click(
+      await screen.findByRole('button', { name: '이전 코디 보기' }),
+    );
+  };
+
+  test('보는 동안 수정 요청만 막고 채택과 정보 확인은 둬야 한다.', async () => {
+    const user = userEvent.setup();
+    useResult(createResultWithHistory());
+    await renderResult();
+
+    await openPreviousOutfit(user);
+
+    expect(screen.getByText('1번째 추천')).toBeVisible();
+    expect(
+      screen.getByRole('button', { name: '수정 요청하기' }),
+    ).toBeDisabled();
+    expect(screen.getByRole('button', { name: '채택하기' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: '정보 확인' })).toBeEnabled();
+  });
+
+  test('서랍에는 이전 코디를 보여 주고 수정 요청을 막아야 한다.', async () => {
+    const user = userEvent.setup();
+    useResult(createResultWithHistory());
+    await renderResult();
+
+    await openPreviousOutfit(user);
+    await user.click(screen.getByRole('button', { name: '정보 확인' }));
+
+    const sheet = await screen.findByRole('dialog', { name: '코디 정보' });
+
+    expect(within(sheet).getByText('처음 상의')).toBeInTheDocument();
+    expect(
+      within(sheet).getByRole('button', { name: '수정 요청하기' }),
+    ).toBeDisabled();
+  });
+
+  test('채택하면 보던 이전 코디를 보내야 한다.', async () => {
+    const user = userEvent.setup();
+    const requests = useRatingSuccess();
+    useResult(createResultWithHistory());
+    await renderResult();
+
+    await openPreviousOutfit(user);
+    await submitRating(user);
+
+    await waitFor(() => {
+      expect(requests).toEqual([{ outfit_id: 51, rating: 4 }]);
+    });
+  });
+
+  test('최신으로 돌아오면 다시 수정을 요청할 수 있어야 한다.', async () => {
+    const user = userEvent.setup();
+    useResult(createResultWithHistory());
+    await renderResult();
+
+    await openPreviousOutfit(user);
+    await user.click(
+      screen.getByRole('button', { name: '최신 쪽으로 돌아가기' }),
+    );
+
+    expect(screen.getByText('이전 코디 1')).toBeVisible();
+    expect(screen.getByRole('button', { name: '수정 요청하기' })).toBeEnabled();
+  });
+
+  test('이 세트의 재추천이 끝나면 최신으로 돌아와야 한다.', async () => {
+    const user = userEvent.setup();
+    useResult(createResultWithHistory());
+    const { queryClient } = await renderResult();
+
+    await openPreviousOutfit(user);
+    useResult(
+      createResult({
+        outfits: [
+          createOutfit(1, {
+            outfit_id: 71,
+            previous_outfits: [
+              createPreviousOutfit(61, '두 번째 상의'),
+              createPreviousOutfit(51, '처음 상의'),
+            ],
+          }),
+          createOutfit(2),
+        ],
+      }),
+    );
+    await refetchAndRender(queryClient);
+
+    expect(screen.getByText('이전 코디 2')).toBeVisible();
+    expect(screen.getByRole('button', { name: '수정 요청하기' })).toBeEnabled();
+  });
+});

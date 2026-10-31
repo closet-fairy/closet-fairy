@@ -7,6 +7,7 @@ interface OutfitActionsProps {
   adoptButtonRef?: Ref<HTMLButtonElement>;
   requestButtonRef?: Ref<HTMLButtonElement>;
   isDisabled?: boolean;
+  isRequestDisabled?: boolean;
   onInfoClick: () => void;
   onAdoptClick: () => void;
   onRequestClick: () => void;
@@ -18,6 +19,7 @@ const OutfitActions = (props: OutfitActionsProps) => {
     adoptButtonRef,
     requestButtonRef,
     isDisabled = false,
+    isRequestDisabled = false,
     onInfoClick,
     onAdoptClick,
     onRequestClick,
@@ -50,7 +52,7 @@ const OutfitActions = (props: OutfitActionsProps) => {
       <S.Action
         ref={requestButtonRef}
         type="button"
-        disabled={isDisabled}
+        disabled={isDisabled || isRequestDisabled}
         onClick={onRequestClick}
       >
         <S.Circle $variant="sub">

@@ -19,6 +19,8 @@ const colorValues = {
   'bg-neutral-pale': palette.gray25,
   'bg-error-light': palette.red100,
   'bg-floor': palette.warmGray200,
+  'bg-card-previous': palette.beige100,
+  'bg-card-stacked': palette.beige200,
 
   'border-neutral-strong': palette.gray900,
   'border-neutral-default': palette.gray150,
@@ -81,6 +83,10 @@ export const bg = {
     light: colorVar('bg-error-light'),
   },
   floor: colorVar('bg-floor'),
+  card: {
+    previous: colorVar('bg-card-previous'),
+    stacked: colorVar('bg-card-stacked'),
+  },
 } as const;
 
 export const border = {

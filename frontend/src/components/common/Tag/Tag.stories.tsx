@@ -2,9 +2,10 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import StoryLabeled from '../../../../.storybook/StoryLabeled';
 import StoryStack from '../../../../.storybook/StoryStack';
 import { ICON_NAMES } from '../../../../.storybook/storyIconNames';
+import { bg, spacing } from '@/styles/tokens';
 import Tag from './Tag';
 
-const VARIANTS = ['neutral', 'inverse', 'outline'] as const;
+const VARIANTS = ['neutral', 'inverse', 'outline', 'white'] as const;
 const SIZES = ['xs', 'sm', 'md'] as const;
 
 const meta = {
@@ -17,7 +18,7 @@ const meta = {
     },
     variant: {
       description:
-        '태그의 모양입니다. neutral은 연한 회색 바탕, inverse는 진한 바탕에 흰 글자, outline은 바탕 없이 테두리만 둡니다.',
+        '태그의 모양입니다. neutral은 연한 회색 바탕, inverse는 진한 바탕에 흰 글자, outline은 바탕 없이 테두리만 둡니다. white는 사진이나 색 바탕 위에 올리는 흰 바탕입니다.',
       control: 'inline-radio',
       options: VARIANTS,
       table: { defaultValue: { summary: 'neutral' } },
@@ -89,6 +90,19 @@ export const WithIcon: Story = {
         </StoryLabeled>
       ))}
     </StoryStack>
+  ),
+};
+
+export const OnColoredBackground: Story = {
+  args: {
+    variant: 'white',
+    icon: 'layers',
+    children: '이전 코디 2',
+  },
+  render: (args) => (
+    <div style={{ padding: spacing[16], backgroundColor: bg.floor }}>
+      <Tag {...args} />
+    </div>
   ),
 };
 

@@ -13,13 +13,10 @@ import {
 import type { KeyboardEvent, ReactNode, RefObject } from 'react';
 import IconButton from '@/components/common/IconButton';
 import type { IconButtonVariant } from '@/components/common/IconButton/IconButton';
+import isReducedMotion from '@/utils/isReducedMotion';
 import * as S from './Carousel.styled';
 
 type EmblaApi = NonNullable<UseEmblaCarouselType[1]>;
-
-const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
-
-const isReducedMotion = () => window.matchMedia(REDUCED_MOTION_QUERY).matches;
 
 const getSlideKey = (slide: ReactNode, slideIndex: number) =>
   isValidElement(slide) && slide.key !== null ? slide.key : slideIndex;
@@ -29,6 +26,7 @@ interface CarouselProps {
   'aria-label': string;
   index?: number;
   onIndexChange?: (index: number) => void;
+  onSettle?: () => void;
   isLooped?: boolean;
   hasArrows?: boolean;
   arrowVariant?: IconButtonVariant;
@@ -51,6 +49,7 @@ const Carousel = (props: CarouselProps) => {
     'aria-label': ariaLabel,
     index,
     onIndexChange,
+    onSettle,
     isLooped = true,
     hasArrows = true,
     arrowVariant = 'circle',
@@ -116,6 +115,24 @@ const Carousel = (props: CarouselProps) => {
 
     return () => {
       emblaApi.off('select', handleSelect).off('reInit', handleSelect);
+    };
+  }, [emblaApi]);
+
+  const notifySettle = useEffectEvent(() => {
+    onSettle?.();
+  });
+
+  useEffect(() => {
+    if (!emblaApi) return;
+
+    const handleSettle = () => {
+      notifySettle();
+    };
+
+    emblaApi.on('settle', handleSettle);
+
+    return () => {
+      emblaApi.off('settle', handleSettle);
     };
   }, [emblaApi]);
 

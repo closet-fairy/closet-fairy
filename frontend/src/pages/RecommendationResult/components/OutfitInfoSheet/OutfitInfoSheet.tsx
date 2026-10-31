@@ -6,15 +6,17 @@ import Tag from '@/components/common/Tag';
 import OutfitItemImage from '@/components/OutfitItemImage';
 import { WEATHER_CONDITION_ICONS } from '@/constants/weatherConditionIcon';
 import { getStyleLabel } from '@/domains/member/memberSettingOptions';
+import type { ViewableOutfit } from '@/domains/recommendation/outfitLayers';
 import { getOutfitStyleTags } from '@/domains/recommendation/outfitStyleTags';
 import { getWeatherLabel } from '@/domains/recommendation/weatherSummary';
-import type { OutfitResult, RecommendationResult } from '@/generated/models';
+import type { RecommendationResult } from '@/generated/models';
 import * as S from './OutfitInfoSheet.styled';
 
 interface OutfitInfoSheetProps {
-  outfit: OutfitResult;
+  outfit: ViewableOutfit;
   weather: RecommendationResult['weather'];
   isClothingShortage: boolean;
+  isRequestDisabled?: boolean;
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   onAdoptClick: () => void;
@@ -28,6 +30,7 @@ const OutfitInfoSheet = (props: OutfitInfoSheetProps) => {
     outfit,
     weather,
     isClothingShortage,
+    isRequestDisabled = false,
     isOpen,
     onOpenChange,
     onAdoptClick,
@@ -55,6 +58,7 @@ const OutfitInfoSheet = (props: OutfitInfoSheetProps) => {
             size="md"
             icon="edit"
             isFullWidth
+            isDisabled={isRequestDisabled}
             onClick={onRequestClick}
           >
             수정 요청하기

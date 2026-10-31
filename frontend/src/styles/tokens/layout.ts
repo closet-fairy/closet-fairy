@@ -29,6 +29,7 @@ export const shadow = {
   md: '0 3px 10px rgba(0, 0, 0, 0.1)',
   lg: '0 6px 18px rgba(0, 0, 0, 0.16)',
   card: '0 8px 26px rgba(0, 0, 0, 0.12)',
+  lifted: '0 18px 40px rgba(0, 0, 0, 0.22)',
   sheet: '0 -6px 22px rgba(0, 0, 0, 0.12)',
 } as const;
 
