@@ -3,7 +3,7 @@ import { FormFieldContext } from '@/components/common/FormField/FormField.contex
 import Icon from '@/components/common/Icon';
 import * as S from './StarRating.styled';
 
-type StarRatingSize = 'md' | 'sm';
+type StarRatingSize = 'md' | 'row' | 'sm';
 
 interface StarRatingBaseProps {
   value: number;
@@ -52,6 +52,21 @@ const StarRating = (props: StarRatingProps) => {
         <Icon name="star-fill" size="xs" />
         {value}
       </S.CompactDisplay>
+    );
+  }
+
+  if (size === 'row') {
+    return (
+      <S.RowDisplay role="img" aria-label={readOnlyLabel}>
+        <S.RowStars>
+          {RATINGS.map((rating) => (
+            <S.DisplayStar key={rating} $isFilled={rating <= value}>
+              <Icon name={rating <= value ? 'star-fill' : 'star'} size="sm" />
+            </S.DisplayStar>
+          ))}
+        </S.RowStars>
+        {value}
+      </S.RowDisplay>
     );
   }
 

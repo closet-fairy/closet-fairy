@@ -10,6 +10,7 @@ import type {
   RatingResult,
   RecommendationHistoryDetail,
   RecommendationHistoryItem,
+  RecommendationHistoryOutfitItem,
   RecommendationHistoryPage,
   RecommendationResult,
   RegenerationCreated,
@@ -370,6 +371,8 @@ const HISTORY_SEED_COUNT = 45;
 const HISTORY_SEED_FIRST_SESSION_ID = 8000;
 const HISTORY_SEED_INTERVAL_MS = 7 * 60 * 60 * 1000;
 const HISTORY_DEFAULT_LIMIT = 20;
+const HOUR_MS = 60 * 60 * 1000;
+const HALF_HOUR_MS = HOUR_MS / 2;
 
 const createHistoryThumbnails = (
   sessionIndex: number,
@@ -421,8 +424,12 @@ const createHistoryCondition = (
   recommendedAt: number,
 ): RecommendationHistoryItem['condition'] => {
   const isCustom = sessionIndex % 3 === 1;
+  // BE처럼 외출 시각을 30분 단위로 맞춘다.
   const startAt =
-    recommendedAt + 60 * 60 * 1000 * (sessionIndex % 5 === 0 ? 20 : 2);
+    Math.ceil(
+      (recommendedAt + HOUR_MS * (sessionIndex % 5 === 0 ? 20 : 2)) /
+        HALF_HOUR_MS,
+    ) * HALF_HOUR_MS;
 
   return {
     tpo_cd: isCustom ? 'custom' : 'date',
@@ -450,6 +457,57 @@ const createHistorySeed = (sessionIndex: number): RecommendationHistoryItem => {
         : { ...getWeather(undefined), is_fallback: sessionIndex % 5 === 2 },
     rating: (sessionIndex % 5) + 1,
     thumbnails: createHistoryThumbnails(sessionIndex),
+  };
+};
+
+const getSeedAccessoryType = (
+  thumbnail: RecommendationHistoryItem['thumbnails'][number],
+) => {
+  if (thumbnail.slot_cd !== 'accessories') {
+    return null;
+  }
+
+  return thumbnail.item_name.includes('벨트') ? 'belt' : 'hat';
+};
+
+const toHistorySeedItem = (
+  thumbnail: RecommendationHistoryItem['thumbnails'][number],
+  sessionIndex: number,
+): RecommendationHistoryOutfitItem => ({
+  ...thumbnail,
+  accessory_type_cd: getSeedAccessoryType(thumbnail),
+  item_source_cd: thumbnail.slot_cd === 'socks' ? 'essential' : 'owned',
+  style_cds: [],
+  is_clothing_deleted: thumbnail.slot_cd === 'bottom' && sessionIndex % 3 === 0,
+});
+
+const createHistorySeedDetail = (
+  sessionIndex: number,
+): RecommendationHistoryDetail => {
+  const seed = createHistorySeed(sessionIndex);
+
+  return {
+    recommendation_session_id: seed.recommendation_session_id,
+    recommended_at: seed.recommended_at,
+    condition: seed.condition,
+    weather: seed.weather && {
+      ...seed.weather,
+      // BE의 대체 날씨는 강수와 바람이 항상 0이다.
+      precipitation:
+        !seed.weather.is_fallback && sessionIndex % 2 === 0 ? 1.5 : 0,
+      wind_speed: seed.weather.is_fallback ? 0 : 1.2,
+    },
+    rating: seed.rating,
+    outfit: {
+      outfit_type_cd: 'preferred',
+      reason:
+        sessionIndex % 4 === 2
+          ? null
+          : '저녁부터 비 소식이 있어 발이 젖지 않는 스니커즈를 골랐어요.',
+      items: seed.thumbnails.map((thumbnail) =>
+        toHistorySeedItem(thumbnail, sessionIndex),
+      ),
+    },
   };
 };
 
@@ -699,6 +757,13 @@ export const recommendationHandlers = [
     ({ params }) => {
       const sessionId = Number(params.sessionId);
       const session = sessions.get(sessionId);
+      const seedIndex = HISTORY_SEED_FIRST_SESSION_ID - sessionId;
+
+      if (!session && seedIndex >= 0 && seedIndex < HISTORY_SEED_COUNT) {
+        return HttpResponse.json<RecommendationHistoryDetail>(
+          createHistorySeedDetail(seedIndex),
+        );
+      }
 
       if (session && session.sessionStatusCd !== 'completed') {
         return HttpResponse.json(

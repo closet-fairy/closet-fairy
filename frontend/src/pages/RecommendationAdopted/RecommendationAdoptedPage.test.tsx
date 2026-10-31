@@ -158,7 +158,7 @@ describe('채택 완료 화면', () => {
     });
   });
 
-  test('추천 내역에서 보기를 누르면 내역 탭으로 보내야 한다.', async () => {
+  test('추천 내역에서 보기를 누르면 상세로 가고, 뒤로 가면 목록으로 돌아와야 한다.', async () => {
     const user = userEvent.setup();
     useDetail(createDetail([]));
     const { router } = await renderAdopted();
@@ -168,8 +168,18 @@ describe('채택 완료 화면', () => {
     );
 
     await waitFor(() => {
+      expect(router.state.location.pathname).toBe(
+        `/recommendation-history/${SESSION_ID}`,
+      );
+    });
+    expect(router.history.location.state.__TSR_index).toBe(1);
+
+    await user.click(await screen.findByRole('button', { name: '뒤로 가기' }));
+
+    await waitFor(() => {
       expect(router.state.location.pathname).toBe('/recommendation-history');
     });
+    expect(router.history.location.state.__TSR_index).toBe(0);
   });
 
   test('없는 내역이면 볼 수 없는 추천 화면을 보여 줘야 한다.', async () => {

@@ -126,7 +126,7 @@ beforeEach(() => {
   };
 });
 
-describe('추천 내역 목록', () => {
+describe('지난 추천 찾아보기', () => {
   test('카드에 상황, 별점, 두 시각, 썸네일, 날씨를 보여 줘야 한다.', async () => {
     usePage({ items: [createItem()], next_cursor: null });
 

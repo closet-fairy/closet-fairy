@@ -85,7 +85,12 @@ const RecommendationHistoryPage = () => {
         <S.List>
           {items.map((item) => (
             <li key={item.recommendation_session_id}>
-              <HistoryCard item={item} now={now} />
+              <S.CardLink
+                to="/recommendation-history/$sessionId"
+                params={{ sessionId: item.recommendation_session_id }}
+              >
+                <HistoryCard item={item} now={now} />
+              </S.CardLink>
             </li>
           ))}
         </S.List>

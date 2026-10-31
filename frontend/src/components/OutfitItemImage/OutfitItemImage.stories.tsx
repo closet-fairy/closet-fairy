@@ -3,6 +3,7 @@ import cutoutUrl from '@/mocks/assets/clothing/cutout.webp';
 import OutfitItemImage from './OutfitItemImage';
 
 const CELL_WIDTH = 80;
+const LARGE_CELL_WIDTH = 110;
 
 const meta = {
   component: OutfitItemImage,
@@ -14,9 +15,14 @@ const meta = {
     },
     size: {
       description:
-        'md는 정보 서랍의 격자 칸이고 에센셜에 [기본] 표시를 붙입니다. sm은 채택 완료의 썸네일 칸입니다.',
+        'lg는 추천 내역 상세의 정사각형 칸이고, md는 정보 서랍의 격자 칸입니다. 둘 다 에센셜에 [기본] 표시를 붙입니다. sm은 썸네일 칸입니다.',
       control: 'inline-radio',
-      options: ['md', 'sm'],
+      options: ['lg', 'md', 'sm'],
+    },
+    isDeleted: {
+      description:
+        '추천 뒤에 지운 옷입니다. 사진을 흐리게 하고 [지운 옷] 표시를 붙입니다.',
+      control: 'boolean',
     },
   },
   args: {
@@ -27,8 +33,10 @@ const meta = {
     },
   },
   decorators: [
-    (Story) => (
-      <div style={{ width: CELL_WIDTH }}>
+    (Story, { args }) => (
+      <div
+        style={{ width: args.size === 'lg' ? LARGE_CELL_WIDTH : CELL_WIDTH }}
+      >
         <Story />
       </div>
     ),
@@ -87,4 +95,23 @@ export const Essential: Story = {
 
 export const EssentialThumbnail: Story = {
   args: { ...Essential.args, size: 'sm' },
+};
+
+export const Large: Story = {
+  args: { size: 'lg' },
+};
+
+export const Deleted: Story = {
+  args: { size: 'lg', isDeleted: true },
+};
+
+export const LargeEssential: Story = {
+  args: {
+    size: 'lg',
+    item: {
+      item_name: '흰 양말',
+      item_source_cd: 'essential',
+      image_url: null,
+    },
+  },
 };

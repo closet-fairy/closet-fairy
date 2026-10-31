@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest';
 import type { WeatherPreview } from '@/generated/models';
 import {
   formatTemperature,
+  getPrecipitationLabel,
   getWeatherLabel,
   getWeatherSummary,
 } from './weatherSummary';
@@ -78,5 +79,19 @@ describe('날씨 요약', () => {
     const summary = getWeatherSummary(createPreview({ is_fallback: true }));
 
     expect(summary).toEqual({ isAvailable: false });
+  });
+});
+
+describe('강수량 표기', () => {
+  test.each([
+    [1.5, '강수 1.5mm'],
+    [2.0, '강수 2mm'],
+    [1.55, '강수 1.6mm'],
+  ])('%s mm는 한 자리까지 써야 한다.', (precipitation, expected) => {
+    expect(getPrecipitationLabel(precipitation)).toBe(expected);
+  });
+
+  test.each([0, 0.04])('%s mm는 표시하지 않아야 한다.', (precipitation) => {
+    expect(getPrecipitationLabel(precipitation)).toBeNull();
   });
 });

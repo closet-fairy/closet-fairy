@@ -37,9 +37,9 @@ const meta = {
     },
     size: {
       description:
-        '크기입니다. md는 36px 별 다섯 개, sm은 "★ 4"처럼 작은 글자 형태입니다. sm은 읽기 전용(`isReadOnly`)일 때만 쓸 수 있습니다.',
+        '크기입니다. md는 36px 별 다섯 개, row는 18px 별 다섯 개와 점수, sm은 "★ 4"처럼 작은 글자 형태입니다. row와 sm은 읽기 전용(`isReadOnly`)일 때만 쓸 수 있습니다.',
       control: 'inline-radio',
-      options: ['md', 'sm'],
+      options: ['md', 'row', 'sm'],
       table: { defaultValue: { summary: 'md' } },
     },
   },
@@ -97,6 +97,9 @@ export const Sizes: Story = {
     <StoryStack gap={24}>
       <StoryLabeled label="md">
         <StarRating value={args.value} size="md" isReadOnly />
+      </StoryLabeled>
+      <StoryLabeled label="row">
+        <StarRating value={args.value} size="row" isReadOnly />
       </StoryLabeled>
       <StoryLabeled label="sm">
         <StarRating value={args.value} size="sm" isReadOnly />

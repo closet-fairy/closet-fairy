@@ -1,14 +1,24 @@
 import { css } from '@emotion/react';
 import styled from '@emotion/styled';
-import { bg, border, fg, radius, spacing, typography } from '@/styles/tokens';
+import {
+  bg,
+  border,
+  fg,
+  opacity,
+  radius,
+  spacing,
+  typography,
+} from '@/styles/tokens';
 import type { OutfitItemImageSize } from './OutfitItemImage';
 
-const CELL_HEIGHT: Record<OutfitItemImageSize, number> = {
-  md: 78,
-  sm: 62,
+const CELL_HEIGHT: Record<OutfitItemImageSize, string> = {
+  lg: 'auto',
+  md: '78px',
+  sm: '62px',
 };
 
 const IMAGE_MAX_RATIO: Record<OutfitItemImageSize, string> = {
+  lg: '76%',
   md: '76%',
   sm: '80%',
 };
@@ -21,7 +31,8 @@ export const Container = styled.div<{
   display: flex;
   align-items: center;
   justify-content: center;
-  height: ${({ $size }) => CELL_HEIGHT[$size]}px;
+  height: ${({ $size }) => CELL_HEIGHT[$size]};
+  aspect-ratio: ${({ $size }) => ($size === 'lg' ? '1 / 1' : 'auto')};
   overflow: hidden;
   border-radius: ${radius.sm};
   background-color: ${bg.neutral.light};
@@ -34,10 +45,14 @@ export const Container = styled.div<{
     `}
 `;
 
-export const Image = styled.img<{ $size: OutfitItemImageSize }>`
+export const Image = styled.img<{
+  $size: OutfitItemImageSize;
+  $isDeleted: boolean;
+}>`
   max-width: ${({ $size }) => IMAGE_MAX_RATIO[$size]};
   max-height: ${({ $size }) => IMAGE_MAX_RATIO[$size]};
   object-fit: contain;
+  opacity: ${({ $isDeleted }) => ($isDeleted ? opacity.disabled : 1)};
 `;
 
 export const FailedIcon = styled.span`
@@ -45,16 +60,29 @@ export const FailedIcon = styled.span`
   color: ${fg.neutral.pale};
 `;
 
-export const Name = styled.span`
-  ${typography.caption2Strong}
-  padding: 0 ${spacing[6]};
+export const Name = styled.span<{ $size: OutfitItemImageSize }>`
+  ${({ $size }) =>
+    $size === 'lg' ? typography.caption1Strong : typography.caption2Strong}
+  padding: 0 ${({ $size }) => ($size === 'lg' ? spacing[8] : spacing[6])};
   color: ${fg.neutral.soft};
   text-align: center;
 `;
 
-export const Badge = styled.span`
+export const DeletedBadge = styled.span`
+  ${typography.caption2Strong}
   position: absolute;
-  top: ${spacing[4]};
-  right: ${spacing[4]};
+  top: ${spacing[6]};
+  left: ${spacing[6]};
+  padding: ${spacing[2]} ${spacing[6]};
+  border-radius: ${radius.xs};
+  background-color: ${bg.white};
+  color: ${fg.neutral.soft};
+  box-shadow: inset 0 0 0 1px ${border.neutral.default};
+`;
+
+export const Badge = styled.span<{ $size: OutfitItemImageSize }>`
+  position: absolute;
+  top: ${({ $size }) => ($size === 'lg' ? spacing[6] : spacing[4])};
+  right: ${({ $size }) => ($size === 'lg' ? spacing[6] : spacing[4])};
   display: flex;
 `;

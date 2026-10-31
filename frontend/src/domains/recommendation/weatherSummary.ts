@@ -30,6 +30,13 @@ export const formatTemperature = (temperature: number) => {
   return `${rounded}°`;
 };
 
+// 소수는 한 자리까지 보여 주고, 반올림해 0이 되면 표시하지 않는다.
+export const getPrecipitationLabel = (precipitation: number) => {
+  const rounded = Number(precipitation.toFixed(1));
+
+  return rounded > 0 ? `강수 ${rounded}mm` : null;
+};
+
 export const getWeatherLabel = (
   weather: Pick<WeatherPreview, 'temperature' | 'weather_condition_cd'>,
 ) => {
