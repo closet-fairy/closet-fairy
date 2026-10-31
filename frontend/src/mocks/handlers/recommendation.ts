@@ -1,4 +1,5 @@
 import { http, HttpResponse } from 'msw';
+import { getOutfitLayers } from '@/domains/recommendation/outfitLayers';
 import { REGENERATION_REQUEST_MAX_LENGTH } from '@/domains/recommendation/regeneration';
 import type {
   CancelResult,
@@ -295,7 +296,9 @@ const toHistoryDetail = (
     ? getSessionOutfits(sessionId, session)
     : createOutfits(sessionId, session);
   const outfit =
-    outfits.find(({ outfit_id: id }) => id === session?.rated?.outfitId) ??
+    outfits
+      .flatMap(getOutfitLayers)
+      .find(({ outfit_id: id }) => id === session?.rated?.outfitId) ??
     outfits[0];
 
   return {
