@@ -45,6 +45,26 @@ export const Thumbnail: Story = {
   args: { size: 'sm' },
 };
 
+export const EssentialWithImage: Story = {
+  args: {
+    item: {
+      item_name: '흰 양말',
+      item_source_cd: 'essential',
+      image_url: cutoutUrl,
+    },
+  },
+};
+
+export const OwnedWithoutImage: Story = {
+  args: {
+    item: {
+      item_name: '베이지 터틀넥',
+      item_source_cd: 'owned',
+      image_url: null,
+    },
+  },
+};
+
 export const LoadFailed: Story = {
   args: {
     item: {

@@ -5,7 +5,6 @@ import type { FloorSlot } from './OutfitFloor';
 
 const STAGE_WIDTH = 362;
 const STAGE_HEIGHT = 568;
-const TAG_ROW_HEIGHT = 56;
 const SPIN_DURATION = '1s';
 
 const spin = keyframes`
@@ -58,7 +57,7 @@ export const Item = styled.img<{ $slot: FloorSlot; $isHidden: boolean }>`
 
 export const Waiting = styled.div`
   position: absolute;
-  inset: 0 0 ${TAG_ROW_HEIGHT}px;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;

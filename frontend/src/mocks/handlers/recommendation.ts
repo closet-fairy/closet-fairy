@@ -165,43 +165,42 @@ const createOutfits = (
       : {};
   };
 
-  if (hasKeyword(session, RESULT_KEYWORD.IMAGE_ALL_FAILURE)) {
-    return Array.from({ length: outfitCount }, (_, index) => ({
-      outfit_id: sessionId * 10 + index + 1,
-      outfit_seq: index + 1,
-      outfit_type_cd: 'preferred',
-      reason: '아침이 쌀쌀해 가벼운 아우터를 걸쳤어요.',
-      items: [
-        createItem('top', '베이지 터틀넥', { image_url: BROKEN_IMAGE_URL }),
-        createItem('bottom', '그레이 슬랙스', { image_url: BROKEN_IMAGE_URL }),
-        createEssentialItem('socks', '흰 양말'),
-      ],
-      previous_outfits: [],
-    }));
-  }
-
-  const items = hasKeyword(session, RESULT_KEYWORD.ESSENTIAL_ONLY)
-    ? [
+  const getBaseItems = () => {
+    if (hasKeyword(session, RESULT_KEYWORD.ESSENTIAL_ONLY)) {
+      return [
         createEssentialItem('top', '흰 티셔츠'),
         createEssentialItem('bottom', '검정 슬랙스'),
         createEssentialItem('shoes', '흰 스니커즈'),
-      ]
-    : [
-        createItem('top', '베이지 터틀넥', getTopImage()),
-        createItem(
-          'bottom',
-          '그레이 슬랙스',
-          hasKeyword(session, RESULT_KEYWORD.ESSENTIAL_IMAGE)
-            ? { item_source_cd: 'essential' }
-            : {},
-        ),
-        createItem('shoes', '브라운 스니커즈'),
-        createEssentialItem('socks', '흰 양말'),
-        createItem('accessories', '네이비 볼캡', {
-          accessory_type_cd: 'hat',
-          style_cds: ['street'],
-        }),
       ];
+    }
+
+    if (hasKeyword(session, RESULT_KEYWORD.IMAGE_ALL_FAILURE)) {
+      return [
+        createItem('top', '베이지 터틀넥', { image_url: BROKEN_IMAGE_URL }),
+        createItem('bottom', '그레이 슬랙스', { image_url: BROKEN_IMAGE_URL }),
+        createEssentialItem('socks', '흰 양말'),
+      ];
+    }
+
+    return [
+      createItem('top', '베이지 터틀넥', getTopImage()),
+      createItem(
+        'bottom',
+        '그레이 슬랙스',
+        hasKeyword(session, RESULT_KEYWORD.ESSENTIAL_IMAGE)
+          ? { item_source_cd: 'essential' }
+          : {},
+      ),
+      createItem('shoes', '브라운 스니커즈'),
+      createEssentialItem('socks', '흰 양말'),
+      createItem('accessories', '네이비 볼캡', {
+        accessory_type_cd: 'hat',
+        style_cds: ['street'],
+      }),
+    ];
+  };
+
+  const items = getBaseItems();
 
   return Array.from({ length: outfitCount }, (_, index) => ({
     outfit_id: sessionId * 10 + index + 1,
