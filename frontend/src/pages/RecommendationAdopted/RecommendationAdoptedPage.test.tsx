@@ -4,7 +4,7 @@ import {
   createRouter,
   RouterProvider,
 } from '@tanstack/react-router';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { describe, expect, test } from 'vitest';
@@ -136,6 +136,16 @@ describe('채택 완료 화면', () => {
     expect(await screen.findByText('흰 양말')).toBeInTheDocument();
   });
 
+  test('불러오지 못한 사진은 아이콘으로 바꿔야 한다.', async () => {
+    useDetail(createDetail([createItem('top', '상의')]));
+    await renderAdopted();
+
+    fireEvent.error(await screen.findByAltText('상의'));
+
+    expect(screen.queryByAltText('상의')).not.toBeInTheDocument();
+    expect(screen.getByRole('img', { name: '상의' })).toBeInTheDocument();
+  });
+
   test('닫기를 누르면 추천 입력 화면으로 보내야 한다.', async () => {
     const user = userEvent.setup();
     useDetail(createDetail([]));
@@ -176,6 +186,46 @@ describe('채택 완료 화면', () => {
     expect(
       await screen.findByText('볼 수 없는 추천이에요'),
     ).toBeInTheDocument();
+  });
+
+  test('요청이 거절되면 다시 시도 없이 볼 수 없는 추천으로 안내해야 한다.', async () => {
+    server.use(
+      http.get(HISTORY_URL, () =>
+        HttpResponse.json(
+          { code: 'FORBIDDEN', message: '권한이 없어요.' },
+          { status: 403 },
+        ),
+      ),
+    );
+    await renderAdopted();
+
+    expect(
+      await screen.findByText('볼 수 없는 추천이에요'),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: '다시 시도' }),
+    ).not.toBeInTheDocument();
+  });
+
+  test('날씨가 추정이면 요약 뒤에 추정 표시를 보여 줘야 한다.', async () => {
+    const detail = createDetail([]);
+
+    useDetail({
+      ...detail,
+      weather: detail.weather && { ...detail.weather, is_fallback: true },
+    });
+    await renderAdopted();
+
+    expect(await screen.findByText('추정')).toBeInTheDocument();
+  });
+
+  test('날씨가 추정이 아니면 추정 표시가 없어야 한다.', async () => {
+    useDetail(createDetail([]));
+    await renderAdopted();
+
+    await screen.findByText('오늘의 코디로 채택했어요');
+
+    expect(screen.queryByText('추정')).not.toBeInTheDocument();
   });
 
   test('불러오지 못하면 다시 시도할 수 있어야 한다.', async () => {
