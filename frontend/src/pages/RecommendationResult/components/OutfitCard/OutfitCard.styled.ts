@@ -10,14 +10,22 @@ const spin = keyframes`
   }
 `;
 
-export const Card = styled.div`
+export const Card = styled.div<{ $isPrevious: boolean; $isLifted: boolean }>`
   position: relative;
   height: 100%;
   overflow: hidden;
   border-radius: ${radius.lg};
-  background-color: ${bg.white};
-  box-shadow: ${shadow.card};
+  background-color: ${({ $isPrevious }) =>
+    $isPrevious ? bg.card.previous : bg.white};
+  box-shadow: ${({ $isLifted }) => ($isLifted ? shadow.lifted : shadow.card)};
   container-type: size;
+`;
+
+export const Badge = styled.div`
+  position: absolute;
+  top: ${spacing[14]};
+  left: ${spacing[14]};
+  display: flex;
 `;
 
 export const Tags = styled.div`

@@ -16,6 +16,7 @@ import {
 import TopBar from '@/components/common/TopBar';
 import OutfitLoading from '@/components/OutfitLoading';
 import { REGENERATION_FAILURE_NOTICE_STORAGE_KEY } from '@/constants/recommendationStorageKey';
+import { getOutfitLayers } from '@/domains/recommendation/outfitLayers';
 import {
   canViewRecommendationResult,
   getRecommendationProgress,
@@ -34,13 +35,13 @@ import {
   useRateRecommendationRecommendationSessionsRecommendationSessionIdRatingPost,
   useRequestRegenerationRecommendationSessionsRecommendationSessionIdRegenerationsPost,
 } from '@/generated/endpoints/recommendation/recommendation';
-import type { RecommendationResult } from '@/generated/models';
+import type { OutfitResult, RecommendationResult } from '@/generated/models';
 import { readSessionJson, writeSessionJson } from '@/utils/sessionStorageJson';
 import waitForPopState from '@/utils/waitForPopState';
 import OutfitActions from './components/OutfitActions';
 import { OUTFIT_ACTIONS_HEIGHT } from './components/OutfitActions/OutfitActions.styled';
-import OutfitCard from './components/OutfitCard';
 import OutfitInfoSheet from './components/OutfitInfoSheet';
+import OutfitStack from './components/OutfitStack';
 import RatingDialog from './components/RatingDialog';
 import RegenerationRequestSheet from './components/RegenerationRequestSheet';
 import type { RegenerationScope } from './components/RegenerationRequestSheet/RegenerationRequestSheet';
@@ -49,6 +50,11 @@ import * as S from './RecommendationResultPage.styled';
 type OpenLayer = 'info' | 'rating' | 'request' | null;
 type SessionRejection = 'expired' | 'unavailable' | null;
 type LeaveTarget = 'input' | 'clothingRegister';
+
+interface ViewedHistory {
+  latestOutfitId: number;
+  depth: number;
+}
 
 const NOT_FOUND_STATUS = 404;
 const REGENERATION_POLLING_INTERVAL_MS = 2000;
@@ -107,6 +113,9 @@ const RecommendationResultPage = () => {
     isPending: isRequestingRegeneration,
   } = useRequestRegenerationRecommendationSessionsRecommendationSessionIdRegenerationsPost();
   const [outfitIndex, setOutfitIndex] = useState(0);
+  const [viewedHistory, setViewedHistory] = useState<ViewedHistory | null>(
+    null,
+  );
   const [openLayer, setOpenLayer] = useState<OpenLayer>(null);
   const [rating, setRating] = useState(0);
   const [sessionRejection, setSessionRejection] =
@@ -378,7 +387,22 @@ const RecommendationResultPage = () => {
 
   const { outfits, weather, is_clothing_shortage: isClothingShortage } = result;
   const currentIndex = Math.min(outfitIndex, outfits.length - 1);
-  const currentOutfit = outfits[currentIndex];
+  const latestOutfit = outfits[currentIndex];
+
+  // 재추천이 끝나면 최신 코디의 번호가 바뀌므로, 보던 이전 코디를 따로 지우지 않아도 최신으로 돌아온다.
+  const getHistoryDepth = (outfit: OutfitResult) =>
+    viewedHistory?.latestOutfitId === outfit.outfit_id
+      ? Math.min(viewedHistory.depth, outfit.previous_outfits.length)
+      : 0;
+
+  const historyDepth = getHistoryDepth(latestOutfit);
+  const currentOutfit = getOutfitLayers(latestOutfit)[historyDepth];
+  const isViewingPrevious = historyDepth > 0;
+
+  const moveToOutfit = (nextIndex: number) => {
+    setOutfitIndex(nextIndex);
+    setViewedHistory(null);
+  };
 
   const moveToAdopted = async () => {
     setIsMovingToAdopted(true);
@@ -439,7 +463,7 @@ const RecommendationResultPage = () => {
     targetScope: RegenerationScope,
   ) => {
     const targetOutfitId =
-      targetScope === 'single' ? currentOutfit.outfit_id : null;
+      targetScope === 'single' ? latestOutfit.outfit_id : null;
 
     requestRegeneration(
       {
@@ -506,19 +530,26 @@ const RecommendationResultPage = () => {
         <Carousel
           aria-label="추천 코디"
           index={currentIndex}
-          onIndexChange={setOutfitIndex}
+          onIndexChange={moveToOutfit}
           isLooped={false}
           arrowVariant="plain"
           arrowInset={S.ARROW_INSET}
         >
           {outfits.map((outfit) => (
-            <S.Slide key={outfit.outfit_id}>
-              <OutfitCard
-                items={outfit.items}
+            <S.Slide key={outfit.outfit_seq}>
+              <OutfitStack
+                outfit={outfit}
+                depth={getHistoryDepth(outfit)}
                 isRegenerating={isOutfitRegenerating(
                   latestRegeneration,
                   outfit.outfit_id,
                 )}
+                onDepthChange={(depth) => {
+                  setViewedHistory({
+                    latestOutfitId: outfit.outfit_id,
+                    depth,
+                  });
+                }}
               />
             </S.Slide>
           ))}
@@ -530,8 +561,9 @@ const RecommendationResultPage = () => {
         requestButtonRef={requestButtonRef}
         isDisabled={isOutfitRegenerating(
           latestRegeneration,
-          currentOutfit.outfit_id,
+          latestOutfit.outfit_id,
         )}
+        isRequestDisabled={isViewingPrevious}
         onInfoClick={() => setOpenLayer('info')}
         onAdoptClick={openRatingDialog}
         onRequestClick={openRequestSheet}
@@ -540,6 +572,7 @@ const RecommendationResultPage = () => {
         outfit={currentOutfit}
         weather={weather}
         isClothingShortage={isClothingShortage}
+        isRequestDisabled={isViewingPrevious}
         isOpen={openLayer === 'info' && !isExpired}
         onOpenChange={(isOpen) => setOpenLayer(isOpen ? 'info' : null)}
         onAdoptClick={openRatingDialog}
@@ -567,7 +600,7 @@ const RecommendationResultPage = () => {
         finalFocus={
           isExpired ||
           isLeaveDialogOpen ||
-          isOutfitRegenerating(latestRegeneration, currentOutfit.outfit_id)
+          isOutfitRegenerating(latestRegeneration, latestOutfit.outfit_id)
             ? undefined
             : requestButtonRef
         }

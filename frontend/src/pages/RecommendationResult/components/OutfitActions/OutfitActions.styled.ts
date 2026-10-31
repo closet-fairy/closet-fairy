@@ -55,6 +55,7 @@ const LABEL_STYLE: Record<ActionVariant, SerializedStyles> = {
 };
 
 export const Container = styled.div`
+  position: relative;
   display: flex;
   flex: none;
   align-items: center;
