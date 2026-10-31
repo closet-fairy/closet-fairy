@@ -1,14 +1,12 @@
 import { useNavigate, useParams } from '@tanstack/react-router';
-import { isClientError, isNotFoundError } from '@/apis/apiError';
-import { isUnauthorizedError } from '@/apis/authSession';
-import Button from '@/components/common/Button';
+import { isNotFoundError } from '@/apis/apiError';
 import Icon from '@/components/common/Icon';
 import IconButton from '@/components/common/IconButton';
 import StarRating from '@/components/common/StarRating';
-import StatusView from '@/components/common/StatusView';
 import TopBar from '@/components/common/TopBar';
+import HistoryDetailStatus from '@/components/HistoryDetailStatus';
 import HistoryTimeRow from '@/components/HistoryTimeRow';
-import OutfitLoading from '@/components/OutfitLoading';
+import { hasFloorCandidates } from '@/domains/recommendation/floorCandidates';
 import {
   formatHistoryDateTime,
   formatHistoryGoingOutRange,
@@ -26,7 +24,7 @@ const RecommendationHistoryDetailPage = () => {
     from: '/recommendation-history_/$sessionId',
   });
   const navigate = useNavigate();
-  const goBack = useGoBack('/recommendation-history');
+  const goBack = useGoBack({ to: '/recommendation-history' });
   const {
     data: detail,
     error,
@@ -76,6 +74,15 @@ const RecommendationHistoryDetailPage = () => {
           <section>
             <S.SectionHeader>
               <S.SectionTitle>코디 아이템</S.SectionTitle>
+              {hasFloorCandidates(items) && (
+                <S.FloorLink
+                  to="/recommendation-history/$sessionId/floor"
+                  params={{ sessionId }}
+                >
+                  <Icon name="styler" size="sm" />
+                  바닥에 펼쳐 보기
+                </S.FloorLink>
+              )}
             </S.SectionHeader>
             <HistoryItemGrid items={items} />
           </section>
@@ -93,45 +100,14 @@ const RecommendationHistoryDetailPage = () => {
       );
     }
 
-    if (isNotFoundError(error)) {
-      return (
-        <StatusView
-          visual={<Icon name="search_off" size="2xl" />}
-          title="내역을 찾을 수 없어요"
-          description="없거나 볼 수 없는 내역이에요."
-          actions={
-            <Button isFullWidth onClick={goToList}>
-              추천 내역으로 가기
-            </Button>
-          }
-        />
-      );
-    }
-
-    // 로그인이 만료되면 전역 다이얼로그가 안내하므로, 그 뒤에 실패 화면을 겹치지 않고 로딩 화면을 둔다.
-    if (error !== null && !isUnauthorizedError(error)) {
-      return (
-        <StatusView
-          visual={<Icon name="error" size="2xl" />}
-          title="코디를 불러오지 못했어요"
-          description={error.message}
-          actions={
-            !isClientError(error) && (
-              <Button
-                icon="refresh"
-                isFullWidth
-                isLoading={isFetching}
-                onClick={() => void refetch()}
-              >
-                다시 시도
-              </Button>
-            )
-          }
-        />
-      );
-    }
-
-    return <OutfitLoading />;
+    return (
+      <HistoryDetailStatus
+        error={error}
+        isRetrying={isFetching}
+        onRetry={() => void refetch()}
+        onGoToList={goToList}
+      />
+    );
   };
 
   return (
