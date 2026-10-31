@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { fn } from 'storybook/test';
 import type { OutfitItemResult } from '@/generated/models';
 import cutoutUrl from '@/mocks/assets/clothing/cutout.webp';
 import OutfitFloor from './OutfitFloor';
@@ -21,6 +22,20 @@ const createItem = (
 
 const HAT = createItem('accessories', { accessory_type_cd: 'hat' });
 
+const MANY_ITEMS = [
+  HAT,
+  createItem('accessories', { accessory_type_cd: 'eyewear' }),
+  createItem('outer'),
+  createItem('top'),
+  createItem('accessories', { accessory_type_cd: 'bag' }),
+  createItem('bottom'),
+  createItem('socks'),
+  createItem('shoes'),
+  createItem('accessories', { accessory_type_cd: 'belt' }),
+  createItem('accessories', { accessory_type_cd: 'watch' }),
+  createItem('accessories', { accessory_type_cd: 'jewelry' }),
+];
+
 const meta = {
   component: OutfitFloor,
   argTypes: {
@@ -39,9 +54,18 @@ const meta = {
         '카드 아래 태그 띠가 있는지 나타냅니다. 없으면 비워 둔 자리의 절반만큼 배치를 내려 세로 가운데를 맞춥니다.',
       control: 'boolean',
     },
+    isOverflowDisabled: {
+      description: '바닥에 놓지 않은 아이템의 수 버튼을 비활성으로 둡니다.',
+      control: 'boolean',
+    },
+    onOverflowClick: {
+      description:
+        '바닥에 놓지 않은 아이템의 수 버튼을 누를 때 호출합니다. 없으면 버튼을 그리지 않습니다.',
+    },
   },
   args: {
     seed: { order: 1, id: 4101 },
+    onOverflowClick: fn(),
   },
   decorators: [
     (Story) => (
@@ -84,6 +108,14 @@ export const WithEssential: Story = {
       createItem('shoes'),
     ],
   },
+};
+
+export const Overflowing: Story = {
+  args: { items: MANY_ITEMS },
+};
+
+export const OverflowDisabled: Story = {
+  args: { items: MANY_ITEMS, isOverflowDisabled: true },
 };
 
 export const EvenOrder: Story = {

@@ -60,6 +60,7 @@ const meta = {
     outfit: createOutfit(0),
     depth: 0,
     onDepthChange: fn(),
+    onOverflowClick: fn(),
   },
   decorators: [
     (Story) => (

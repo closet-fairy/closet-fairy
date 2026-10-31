@@ -14,6 +14,7 @@ interface OutfitCardProps {
   isLifted?: boolean;
   previousCount?: number;
   recommendationOrder?: number;
+  onOverflowClick?: () => void;
 }
 
 const OutfitCard = (props: OutfitCardProps) => {
@@ -24,13 +25,19 @@ const OutfitCard = (props: OutfitCardProps) => {
     isLifted = false,
     previousCount = 0,
     recommendationOrder,
+    onOverflowClick,
   } = props;
   const styleCds = getOutfitStyleTags(items);
   const isPrevious = recommendationOrder !== undefined;
 
   return (
     <S.Card $isPrevious={isPrevious} $isLifted={isLifted}>
-      <OutfitFloor items={items} seed={floorSeed} />
+      <OutfitFloor
+        items={items}
+        seed={floorSeed}
+        isOverflowDisabled={isRegenerating}
+        onOverflowClick={onOverflowClick}
+      />
       {isPrevious && (
         <S.Badge>
           <Tag variant="inverse" size="sm" icon="layers">

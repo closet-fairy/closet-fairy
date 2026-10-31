@@ -1,5 +1,6 @@
 import type { IconName } from '@/assets/icons';
 import Icon from '@/components/common/Icon';
+import Tag from '@/components/common/Tag';
 import type { ClothingArea } from '@/domains/recommendation/clothingArea';
 import {
   getFloorItemKind,
@@ -20,6 +21,8 @@ interface OutfitFloorProps {
   items: readonly OutfitItemResult[];
   seed: FloorSeed;
   hasTagStrip?: boolean;
+  isOverflowDisabled?: boolean;
+  onOverflowClick?: () => void;
 }
 
 const floorLayouts = new Map<string, FloorLayout>();
@@ -75,12 +78,18 @@ const EMPTY_NOTICE: Record<
 };
 
 const OutfitFloor = (props: OutfitFloorProps) => {
-  const { items, seed, hasTagStrip = true } = props;
+  const {
+    items,
+    seed,
+    hasTagStrip = true,
+    isOverflowDisabled = false,
+    onOverflowClick,
+  } = props;
   const candidates = getFloorCandidates(items);
   const { isSettled, isSlow, getLoadedArea, markLoaded, markFailed } =
     useFloorImages(candidates.map(({ imageUrl }) => imageUrl));
 
-  const { placements } = getFloorLayout(
+  const { placements, overflowCount } = getFloorLayout(
     isSettled
       ? candidates.flatMap(({ id, kind, imageUrl }) => {
           const area = getLoadedArea(imageUrl);
@@ -147,6 +156,18 @@ const OutfitFloor = (props: OutfitFloorProps) => {
             );
           })}
       </S.Stage>
+      {overflowCount > 0 && onOverflowClick && (
+        <S.OverflowButton
+          type="button"
+          aria-label={`바닥에 놓지 않은 아이템 ${overflowCount}개 보기`}
+          disabled={isOverflowDisabled}
+          onClick={onOverflowClick}
+        >
+          <Tag variant="white" size="sm">
+            +{overflowCount}
+          </Tag>
+        </S.OverflowButton>
+      )}
     </>
   );
 };

@@ -7,6 +7,7 @@ const STAGE_MAX_WIDTH = 480;
 const TAGLESS_STAGE_SHIFT =
   (FLOOR_CARD.reservedBottom / 2 / FLOOR_CARD.height) * 100;
 const SPIN_DURATION = '1s';
+const TOUCH_TARGET_SIZE = 44;
 
 const spin = keyframes`
   to {
@@ -47,6 +48,24 @@ export const Item = styled.div<{ $isHidden: boolean }>`
 export const Image = styled.img`
   position: absolute;
   max-width: none;
+`;
+
+export const OverflowButton = styled.button`
+  position: absolute;
+  right: ${spacing[16]};
+  bottom: ${spacing[14]};
+  display: flex;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 100%;
+    min-width: ${TOUCH_TARGET_SIZE}px;
+    height: ${TOUCH_TARGET_SIZE}px;
+    transform: translate(-50%, -50%);
+  }
 `;
 
 export const Waiting = styled.div`

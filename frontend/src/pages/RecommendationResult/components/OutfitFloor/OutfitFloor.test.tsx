@@ -23,6 +23,31 @@ const createItem = (
 const ITEMS = [createItem('top', '상의'), createItem('bottom', '하의')];
 const SEED = { order: 1, id: 4101 };
 
+const MANY_ITEMS = [
+  '상의',
+  '겉옷',
+  '하의',
+  '신발',
+  '양말',
+  '모자',
+  '가방',
+  '벨트',
+  '시계',
+  '반지',
+].map((itemName, index) =>
+  createItem(index < 3 ? 'top' : 'accessories', itemName),
+);
+
+const loadAll = (failedNames: readonly string[] = []) => {
+  screen.getAllByRole('img', { hidden: true }).forEach((image) => {
+    if (failedNames.includes(image.getAttribute('alt') ?? '')) {
+      fireEvent.error(image);
+    } else {
+      fireEvent.load(image);
+    }
+  });
+};
+
 const advance = (ms: number) => {
   act(() => {
     vi.advanceTimersByTime(ms);
@@ -180,5 +205,72 @@ describe('시간 제한', () => {
     advance(TIMEOUT_MS);
 
     expect(screen.getByText('사진을 불러오지 못했어요')).toBeInTheDocument();
+  });
+});
+
+describe('넘친 옷', () => {
+  test('8개를 넘으면 넘친 수를 보여 줘야 한다.', () => {
+    render(
+      <OutfitFloor items={MANY_ITEMS} seed={SEED} onOverflowClick={vi.fn()} />,
+    );
+
+    loadAll();
+
+    expect(screen.getByRole('button', { name: /2개 보기/ })).toHaveTextContent(
+      '+2',
+    );
+  });
+
+  test('넘친 수를 누르면 알려야 한다.', () => {
+    const onOverflowClick = vi.fn();
+
+    render(
+      <OutfitFloor
+        items={MANY_ITEMS}
+        seed={SEED}
+        onOverflowClick={onOverflowClick}
+      />,
+    );
+
+    loadAll();
+    fireEvent.click(screen.getByRole('button', { name: /2개 보기/ }));
+
+    expect(onOverflowClick).toHaveBeenCalledOnce();
+  });
+
+  test('사진을 불러오지 못한 옷은 넘친 수에 넣지 않아야 한다.', () => {
+    render(
+      <OutfitFloor items={MANY_ITEMS} seed={SEED} onOverflowClick={vi.fn()} />,
+    );
+
+    loadAll(['시계', '반지']);
+
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  test('8개 이하면 넘친 수가 없어야 한다.', () => {
+    render(<OutfitFloor items={ITEMS} seed={SEED} onOverflowClick={vi.fn()} />);
+
+    loadAll();
+
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  test('비활성이면 넘친 수를 눌러도 알리지 않아야 한다.', () => {
+    const onOverflowClick = vi.fn();
+
+    render(
+      <OutfitFloor
+        items={MANY_ITEMS}
+        seed={SEED}
+        isOverflowDisabled
+        onOverflowClick={onOverflowClick}
+      />,
+    );
+
+    loadAll();
+    fireEvent.click(screen.getByRole('button', { name: /2개 보기/ }));
+
+    expect(onOverflowClick).not.toHaveBeenCalled();
   });
 });
