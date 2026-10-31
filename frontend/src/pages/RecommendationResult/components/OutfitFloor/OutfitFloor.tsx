@@ -140,7 +140,7 @@ const OutfitFloor = (props: OutfitFloorProps) => {
               <S.Item
                 key={`${id}-${imageUrl}`}
                 $isHidden={!isSettled}
-                style={placement && getItemStyle(placement)}
+                style={placement ? getItemStyle(placement) : undefined}
               >
                 <S.Image
                   src={imageUrl}
@@ -159,7 +159,7 @@ const OutfitFloor = (props: OutfitFloorProps) => {
       {overflowCount > 0 && onOverflowClick && (
         <S.OverflowButton
           type="button"
-          aria-label={`바닥에 놓지 않은 아이템 ${overflowCount}개 보기`}
+          aria-label={`넘친 아이템 ${overflowCount}개 보기`}
           disabled={isOverflowDisabled}
           onClick={onOverflowClick}
         >

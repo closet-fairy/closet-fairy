@@ -55,12 +55,12 @@ const meta = {
       control: 'boolean',
     },
     isOverflowDisabled: {
-      description: '바닥에 놓지 않은 아이템의 수 버튼을 비활성으로 둡니다.',
+      description: '넘친 아이템의 수 버튼을 비활성으로 둡니다.',
       control: 'boolean',
     },
     onOverflowClick: {
       description:
-        '바닥에 놓지 않은 아이템의 수 버튼을 누를 때 호출합니다. 없으면 버튼을 그리지 않습니다.',
+        '넘친 아이템의 수 버튼을 누를 때 호출합니다. 없으면 버튼을 그리지 않습니다.',
     },
   },
   args: {

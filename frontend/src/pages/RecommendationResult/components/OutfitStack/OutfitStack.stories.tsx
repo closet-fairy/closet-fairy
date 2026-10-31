@@ -55,6 +55,9 @@ const meta = {
       description:
         '끌기나 숨은 이동 버튼으로 다른 겹으로 넘어갈 때 새 깊이로 호출됩니다.',
     },
+    onOverflowClick: {
+      description: '넘친 아이템의 수 버튼을 누를 때 호출합니다.',
+    },
   },
   args: {
     outfit: createOutfit(0),
