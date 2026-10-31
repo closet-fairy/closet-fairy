@@ -56,6 +56,7 @@ import Star from '@material-symbols/svg-400/outlined/star.svg?react';
 import StarFill from '@material-symbols/svg-400/outlined/star-fill.svg?react';
 import StarShine from '@material-symbols/svg-400/outlined/star_shine.svg?react';
 import StarShineFill from '@material-symbols/svg-400/outlined/star_shine-fill.svg?react';
+import Styler from '@material-symbols/svg-400/outlined/styler.svg?react';
 import Sunny from '@material-symbols/svg-400/outlined/sunny.svg?react';
 import SyncProblem from '@material-symbols/svg-400/outlined/sync_problem.svg?react';
 import Undo from '@material-symbols/svg-400/outlined/undo.svg?react';
@@ -123,6 +124,7 @@ export const icons = {
   'star-fill': StarFill,
   star_shine: StarShine,
   'star_shine-fill': StarShineFill,
+  styler: Styler,
   sunny: Sunny,
   sync_problem: SyncProblem,
   undo: Undo,
