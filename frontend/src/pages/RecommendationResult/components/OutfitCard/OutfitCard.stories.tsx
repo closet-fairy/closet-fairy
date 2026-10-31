@@ -21,6 +21,9 @@ const createItem = (
 
 const meta = {
   component: OutfitCard,
+  args: {
+    floorSeed: { order: 1, id: 4101 },
+  },
   argTypes: {
     items: {
       description:

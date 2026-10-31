@@ -85,6 +85,7 @@ const OutfitStack = (props: OutfitStackProps) => {
           >
             <OutfitCard
               items={layer.items}
+              floorSeed={{ order: layer.outfit_seq, id: layer.outfit_id }}
               isRegenerating={isRegenerating && layerDepth === depth}
               isLifted={isFront}
               previousCount={

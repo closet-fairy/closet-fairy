@@ -1,6 +1,7 @@
 import Icon from '@/components/common/Icon';
 import Tag from '@/components/common/Tag';
 import { getStyleLabel } from '@/domains/member/memberSettingOptions';
+import type { FloorSeed } from '@/domains/recommendation/floorLayout';
 import { getOutfitStyleTags } from '@/domains/recommendation/outfitStyleTags';
 import type { OutfitItemResult } from '@/generated/models';
 import OutfitFloor from '@/pages/RecommendationResult/components/OutfitFloor';
@@ -8,6 +9,7 @@ import * as S from './OutfitCard.styled';
 
 interface OutfitCardProps {
   items: readonly OutfitItemResult[];
+  floorSeed: FloorSeed;
   isRegenerating?: boolean;
   isLifted?: boolean;
   previousCount?: number;
@@ -17,6 +19,7 @@ interface OutfitCardProps {
 const OutfitCard = (props: OutfitCardProps) => {
   const {
     items,
+    floorSeed,
     isRegenerating = false,
     isLifted = false,
     previousCount = 0,
@@ -27,7 +30,7 @@ const OutfitCard = (props: OutfitCardProps) => {
 
   return (
     <S.Card $isPrevious={isPrevious} $isLifted={isLifted}>
-      <OutfitFloor items={items} />
+      <OutfitFloor items={items} seed={floorSeed} />
       {isPrevious && (
         <S.Badge>
           <Tag variant="inverse" size="sm" icon="layers">

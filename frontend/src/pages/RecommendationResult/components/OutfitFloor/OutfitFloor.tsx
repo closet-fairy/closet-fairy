@@ -1,37 +1,70 @@
 import type { IconName } from '@/assets/icons';
 import Icon from '@/components/common/Icon';
+import type { ClothingArea } from '@/domains/recommendation/clothingArea';
+import {
+  getFloorItemKind,
+  layoutFloor,
+} from '@/domains/recommendation/floorLayout';
+import type {
+  FloorItem,
+  FloorLayout,
+  FloorPlacement,
+  FloorSeed,
+} from '@/domains/recommendation/floorLayout';
+import { FLOOR_CARD } from '@/domains/recommendation/floorLayout.constants';
 import type { OutfitItemResult } from '@/generated/models';
 import useFloorImages from '@/pages/RecommendationResult/hooks/useFloorImages';
 import * as S from './OutfitFloor.styled';
 
-export type FloorSlot = 'hat' | 'top' | 'bottom' | 'shoes';
-
 interface OutfitFloorProps {
   items: readonly OutfitItemResult[];
+  seed: FloorSeed;
+  hasTagStrip?: boolean;
 }
 
-const FLOOR_SLOTS: readonly FloorSlot[] = ['hat', 'top', 'bottom', 'shoes'];
+const floorLayouts = new Map<string, FloorLayout>();
 
-const getFloorSlot = (item: OutfitItemResult): FloorSlot | null => {
-  const { slot_cd: slotCd, accessory_type_cd: accessoryTypeCd } = item;
+// 옷이 많으면 계산이 오래 걸려서, 카드가 다시 그려져도 같은 코디는 다시 계산하지 않는다.
+const getFloorLayout = (items: readonly FloorItem[], seed: FloorSeed) => {
+  const key = JSON.stringify([seed, items]);
+  const layout = floorLayouts.get(key) ?? layoutFloor(items, seed);
 
-  if (slotCd === 'accessories') {
-    return accessoryTypeCd === 'hat' ? 'hat' : null;
-  }
+  floorLayouts.set(key, layout);
 
-  return slotCd === 'top' || slotCd === 'bottom' || slotCd === 'shoes'
-    ? slotCd
-    : null;
+  return layout;
 };
 
 const getFloorCandidates = (items: readonly OutfitItemResult[]) =>
-  items.flatMap((item) => {
-    const slot = getFloorSlot(item);
+  items.flatMap((item, index) =>
+    item.image_url !== null
+      ? [
+          {
+            id: String(index),
+            kind: getFloorItemKind(item),
+            name: item.item_name,
+            imageUrl: item.image_url,
+          },
+        ]
+      : [],
+  );
 
-    return slot !== null && item.image_url !== null
-      ? [{ slot, name: item.item_name, imageUrl: item.image_url }]
-      : [];
-  });
+const toPercent = (value: number) => `${value * 100}%`;
+
+const getItemStyle = (placement: FloorPlacement) => ({
+  left: toPercent(placement.x / FLOOR_CARD.width),
+  top: toPercent(placement.y / FLOOR_CARD.height),
+  width: toPercent(placement.width / FLOOR_CARD.width),
+  height: toPercent(placement.height / FLOOR_CARD.height),
+  transform: `rotate(${placement.rotation}deg)`,
+  zIndex: placement.stackOrder,
+});
+
+const getImageStyle = (area: ClothingArea) => ({
+  left: toPercent(-area.left / area.width),
+  top: toPercent(-area.top / area.height),
+  width: toPercent(1 / area.width),
+  height: toPercent(1 / area.height),
+});
 
 const EMPTY_NOTICE: Record<
   'noImage' | 'loadFailed',
@@ -41,23 +74,24 @@ const EMPTY_NOTICE: Record<
   loadFailed: { icon: 'hide_image', title: '사진을 불러오지 못했어요' },
 };
 
-// 배치 방식이 정해지기 전의 임시 구현이다. 네 자리에 놓을 수 있는 옷만 놓고, 나머지는 서랍에서 보여 준다.
 const OutfitFloor = (props: OutfitFloorProps) => {
-  const { items } = props;
+  const { items, seed, hasTagStrip = true } = props;
   const candidates = getFloorCandidates(items);
-  const { isSettled, isSlow, isLoaded, markResult } = useFloorImages(
-    candidates.map(({ imageUrl }) => imageUrl),
+  const { isSettled, isSlow, getLoadedArea, markLoaded, markFailed } =
+    useFloorImages(candidates.map(({ imageUrl }) => imageUrl));
+
+  const { placements } = getFloorLayout(
+    isSettled
+      ? candidates.flatMap(({ id, kind, imageUrl }) => {
+          const area = getLoadedArea(imageUrl);
+
+          return area !== null ? [{ id, kind, ratio: area.ratio }] : [];
+        })
+      : [],
+    seed,
   );
 
-  const placedItems = FLOOR_SLOTS.flatMap((slot) =>
-    candidates
-      .filter(
-        (candidate) => candidate.slot === slot && isLoaded(candidate.imageUrl),
-      )
-      .slice(0, 1),
-  );
-
-  if (isSettled && placedItems.length === 0) {
+  if (isSettled && placements.length === 0) {
     const notice =
       EMPTY_NOTICE[candidates.length > 0 ? 'loadFailed' : 'noImage'];
 
@@ -74,6 +108,10 @@ const OutfitFloor = (props: OutfitFloorProps) => {
     );
   }
 
+  const placementsById = new Map(
+    placements.map((placement) => [placement.id, placement]),
+  );
+
   return (
     <>
       {!isSettled && isSlow && (
@@ -81,22 +119,33 @@ const OutfitFloor = (props: OutfitFloorProps) => {
           <Icon name="progress_activity" size="lg" />
         </S.Waiting>
       )}
-      <S.Stage>
+      <S.Stage $hasTagStrip={hasTagStrip}>
         {/* 결과를 받으려고 먼저 그려 두고, 정해지면 놓을 옷만 남겨 같은 사진을 다시 불러오지 않게 한다. */}
-        {(isSettled ? placedItems : candidates).map(
-          ({ slot, name, imageUrl }) => (
-            <S.Item
-              key={`${slot}-${imageUrl}`}
-              src={imageUrl}
-              alt={name}
-              draggable={false}
-              $slot={slot}
-              $isHidden={!isSettled}
-              onLoad={() => markResult(imageUrl, 'loaded')}
-              onError={() => markResult(imageUrl, 'failed')}
-            />
-          ),
-        )}
+        {candidates
+          .filter(({ id }) => !isSettled || placementsById.has(id))
+          .map(({ id, name, imageUrl }) => {
+            const placement = placementsById.get(id);
+            const area = getLoadedArea(imageUrl);
+
+            return (
+              <S.Item
+                key={`${id}-${imageUrl}`}
+                $isHidden={!isSettled}
+                style={placement && getItemStyle(placement)}
+              >
+                <S.Image
+                  src={imageUrl}
+                  alt={name}
+                  draggable={false}
+                  style={area ? getImageStyle(area) : undefined}
+                  onLoad={({ currentTarget }) =>
+                    markLoaded(imageUrl, currentTarget)
+                  }
+                  onError={() => markFailed(imageUrl)}
+                />
+              </S.Item>
+            );
+          })}
       </S.Stage>
     </>
   );
