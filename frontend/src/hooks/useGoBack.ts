@@ -1,8 +1,7 @@
 import { useNavigate, useRouter } from '@tanstack/react-router';
+import type { NavigateOptions } from '@tanstack/react-router';
 
-type GoBackFallback = '/my-info' | '/recommendation-history';
-
-const useGoBack = (fallback: GoBackFallback = '/my-info') => {
+const useGoBack = (fallback: NavigateOptions = { to: '/my-info' }) => {
   const navigate = useNavigate();
   const router = useRouter();
 
@@ -12,7 +11,7 @@ const useGoBack = (fallback: GoBackFallback = '/my-info') => {
       return;
     }
 
-    void navigate({ to: fallback, replace: true });
+    void navigate({ ...fallback, replace: true });
   };
 };
 

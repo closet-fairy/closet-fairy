@@ -2,6 +2,7 @@ import { css, keyframes } from '@emotion/react';
 import styled from '@emotion/styled';
 import { FLOOR_CARD } from '@/domains/recommendation/floorLayout.constants';
 import { fg, shadow, spacing, typography } from '@/styles/tokens';
+import type { OutfitFloorVariant } from './OutfitFloor';
 
 const STAGE_MAX_WIDTH = 480;
 const TAGLESS_STAGE_SHIFT =
@@ -16,19 +17,29 @@ const spin = keyframes`
 `;
 
 // 배치는 362×568 기준으로 계산하고, 무대 크기에 맞춰 칸을 비율로 그려 배치 전체를 통째로 확대·축소한다.
-export const Stage = styled.div<{ $hasTagStrip: boolean }>`
+export const Stage = styled.div<{
+  $variant: OutfitFloorVariant;
+  $hasTagStrip: boolean;
+}>`
   position: absolute;
-  top: 0;
+  top: ${({ $variant }) => ($variant === 'floor' ? '50%' : 0)};
   left: 50%;
   width: min(
     100cqw,
     calc(100cqh * ${FLOOR_CARD.width} / ${FLOOR_CARD.height}),
-    ${STAGE_MAX_WIDTH}px
+    ${({ $variant }) =>
+      $variant === 'floor' ? FLOOR_CARD.width : STAGE_MAX_WIDTH}px
   );
   aspect-ratio: ${FLOOR_CARD.width} / ${FLOOR_CARD.height};
   transform: translate(
     -50%,
-    ${({ $hasTagStrip }) => ($hasTagStrip ? 0 : TAGLESS_STAGE_SHIFT)}%
+    ${({ $variant, $hasTagStrip }) => {
+      if ($variant === 'floor') {
+        return -50;
+      }
+
+      return $hasTagStrip ? 0 : TAGLESS_STAGE_SHIFT;
+    }}%
   );
 `;
 

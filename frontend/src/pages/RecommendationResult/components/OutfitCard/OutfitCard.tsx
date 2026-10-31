@@ -1,10 +1,10 @@
 import Icon from '@/components/common/Icon';
 import Tag from '@/components/common/Tag';
+import OutfitFloor from '@/components/OutfitFloor';
 import { getStyleLabel } from '@/domains/member/memberSettingOptions';
 import type { FloorSeed } from '@/domains/recommendation/floorLayout';
 import { getOutfitStyleTags } from '@/domains/recommendation/outfitStyleTags';
 import type { OutfitItemResult } from '@/generated/models';
-import OutfitFloor from '@/pages/RecommendationResult/components/OutfitFloor';
 import * as S from './OutfitCard.styled';
 
 interface OutfitCardProps {
