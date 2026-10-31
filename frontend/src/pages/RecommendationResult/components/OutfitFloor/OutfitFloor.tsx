@@ -1,5 +1,5 @@
-import Icon from '@/components/common/Icon';
 import type { IconName } from '@/assets/icons';
+import Icon from '@/components/common/Icon';
 import type { OutfitItemResult } from '@/generated/models';
 import useFloorImages from '@/pages/RecommendationResult/hooks/useFloorImages';
 import * as S from './OutfitFloor.styled';

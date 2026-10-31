@@ -64,7 +64,6 @@ const SLOW_IMAGE_URL = '/slow-image.webp';
 // 바닥이 사진을 기다리는 시간보다 길어서, 늦게 도착한 사진을 끼워 넣지 않는 것을 볼 수 있다.
 const SLOW_IMAGE_MS = 10000;
 // 직접 입력에 이 말을 넣으면 결과 화면의 해당 상태를 dev:mock에서 볼 수 있다.
-// 조회오류와 조회거절은 세션 조회 자체를 막으므로, 진행 화면을 거치지 않고 결과 주소로 바로 열어야 보인다.
 const RESULT_KEYWORD = {
   SINGLE_OUTFIT: '한벌',
   ESSENTIAL_ONLY: '에센셜',
@@ -78,8 +77,6 @@ const RESULT_KEYWORD = {
   IMAGE_ALL_FAILURE: '사진전부오류',
   IMAGE_DELAY: '사진지연',
   ESSENTIAL_IMAGE: '기본사진',
-  LOAD_FAILURE: '조회오류',
-  LOAD_REJECTED: '조회거절',
 } as const;
 
 const sessions = new Map<number, MockSession>();
@@ -402,20 +399,6 @@ export const recommendationHandlers = [
     ({ params }) => {
       const sessionId = Number(params.sessionId);
       const session = getSession(sessionId);
-
-      if (hasKeyword(session, RESULT_KEYWORD.LOAD_FAILURE)) {
-        return HttpResponse.json(
-          { code: 'INTERNAL_ERROR', message: '서버에 문제가 생겼어요.' },
-          { status: 500 },
-        );
-      }
-
-      if (hasKeyword(session, RESULT_KEYWORD.LOAD_REJECTED)) {
-        return HttpResponse.json(
-          { code: 'FORBIDDEN', message: '볼 수 없는 추천입니다.' },
-          { status: 403 },
-        );
-      }
 
       return HttpResponse.json<RecommendationResult>(
         toResult(sessionId, session),

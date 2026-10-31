@@ -73,6 +73,15 @@ export const WithEssential: Story = {
   },
 };
 
+export const LoadFailed: Story = {
+  args: {
+    items: [
+      createItem('top', { image_url: '/image-not-found.webp' }),
+      createItem('bottom', { image_url: '/image-not-found.webp' }),
+    ],
+  },
+};
+
 export const NothingToPlace: Story = {
   args: {
     items: [
