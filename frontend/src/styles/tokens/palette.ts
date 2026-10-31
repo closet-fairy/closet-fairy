@@ -35,5 +35,7 @@ export const palette = {
   clothingYellow: '#f1cc3d',
   clothingOrange: '#ec8233',
   clothingRed: '#d23b3b',
+  clothingBurgundy: '#7d2a37',
   clothingPink: '#f0a6be',
+  clothingPurple: '#8a5dae',
 } as const;

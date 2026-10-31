@@ -54,6 +54,8 @@ export const ClothingUpdate = zod
           'orange',
           'red',
           'pink',
+          'burgundy',
+          'purple',
         ]),
         zod.null(),
       ])

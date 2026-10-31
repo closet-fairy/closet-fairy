@@ -39,7 +39,9 @@ const colorValues = {
   'swatch-yellow': palette.clothingYellow,
   'swatch-orange': palette.clothingOrange,
   'swatch-red': palette.clothingRed,
+  'swatch-burgundy': palette.clothingBurgundy,
   'swatch-pink': palette.clothingPink,
+  'swatch-purple': palette.clothingPurple,
 } as const;
 
 type ColorName = keyof typeof colorValues;
@@ -107,5 +109,7 @@ export const swatch = {
   yellow: colorVar('swatch-yellow'),
   orange: colorVar('swatch-orange'),
   red: colorVar('swatch-red'),
+  burgundy: colorVar('swatch-burgundy'),
   pink: colorVar('swatch-pink'),
+  purple: colorVar('swatch-purple'),
 } as const;
