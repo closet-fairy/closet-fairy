@@ -29,20 +29,24 @@ const getThumbnailRank = (item: ThumbnailItem) =>
       : item.slot_cd,
   );
 
-// 썸네일 칸은 넷뿐이라, 넘치면 마지막 칸을 남은 개수 표시에 내주고 머리에서 발 순서로 앞의 것을 보여 준다.
-export const getOutfitThumbnails = <Item extends ThumbnailItem>(
-  items: readonly Item[],
-) => {
-  const sortedItems = [...items].sort(
-    (left, right) => getThumbnailRank(left) - getThumbnailRank(right),
-  );
+// 썸네일 칸은 넷뿐이라, 넘치면 마지막 칸을 남은 개수 표시에 내주고 앞의 것을 보여 준다.
+export const limitOutfitThumbnails = <Item>(items: readonly Item[]) => {
   const visibleCount =
-    sortedItems.length > THUMBNAIL_CELL_COUNT
+    items.length > THUMBNAIL_CELL_COUNT
       ? THUMBNAIL_CELL_COUNT - 1
-      : sortedItems.length;
+      : items.length;
 
   return {
-    visibleItems: sortedItems.slice(0, visibleCount),
-    hiddenCount: sortedItems.length - visibleCount,
+    visibleItems: items.slice(0, visibleCount),
+    hiddenCount: items.length - visibleCount,
   };
 };
+
+export const getOutfitThumbnails = <Item extends ThumbnailItem>(
+  items: readonly Item[],
+) =>
+  limitOutfitThumbnails(
+    [...items].sort(
+      (left, right) => getThumbnailRank(left) - getThumbnailRank(right),
+    ),
+  );
