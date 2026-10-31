@@ -33,8 +33,10 @@ const meta = {
     },
   },
   decorators: [
-    (Story) => (
-      <div style={{ width: CELL_WIDTH }}>
+    (Story, { args }) => (
+      <div
+        style={{ width: args.size === 'lg' ? LARGE_CELL_WIDTH : CELL_WIDTH }}
+      >
         <Story />
       </div>
     ),
@@ -95,22 +97,12 @@ export const EssentialThumbnail: Story = {
   args: { ...Essential.args, size: 'sm' },
 };
 
-const largeDecorator: Story['decorators'] = [
-  (Story) => (
-    <div style={{ width: LARGE_CELL_WIDTH }}>
-      <Story />
-    </div>
-  ),
-];
-
 export const Large: Story = {
   args: { size: 'lg' },
-  decorators: largeDecorator,
 };
 
 export const Deleted: Story = {
   args: { size: 'lg', isDeleted: true },
-  decorators: largeDecorator,
 };
 
 export const LargeEssential: Story = {
@@ -122,5 +114,4 @@ export const LargeEssential: Story = {
       image_url: null,
     },
   },
-  decorators: largeDecorator,
 };

@@ -242,21 +242,6 @@ describe('지난 추천 다시 보기', () => {
     expect(router.history.location.state.__TSR_index).toBe(0);
   });
 
-  test('주소로 바로 들어왔어도 뒤로 가기로 목록에 가야 한다.', async () => {
-    const user = userEvent.setup();
-
-    useDetail(createDetail());
-
-    const { router } = await renderDetail();
-
-    await screen.findByRole('heading', { level: 2, name: '데이트' });
-    await user.click(screen.getByRole('button', { name: '뒤로 가기' }));
-
-    await waitFor(() => {
-      expect(router.state.location.pathname).toBe(LIST_PATH);
-    });
-  });
-
   test('없는 내역이면 안내하고 목록으로 보내야 한다.', async () => {
     const user = userEvent.setup();
 

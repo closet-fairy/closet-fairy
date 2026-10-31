@@ -40,30 +40,20 @@ const RecommendationHistoryDetailPage = () => {
   const goToList = () =>
     void navigate({ to: '/recommendation-history', replace: true });
 
-  const renderTopBar = (onBack: () => void) => (
-    <TopBar
-      title="추천 내역"
-      leading={
-        <IconButton icon="arrow_back" aria-label="뒤로 가기" onClick={onBack} />
-      }
-    />
-  );
+  const renderBody = () => {
+    if (detail) {
+      const { recommended_at: recommendedAt, condition } = detail;
+      const { reason, items } = detail.outfit;
+      // 켜 둔 채 날이 바뀌어도 어제, 오늘 표기가 맞도록 데이터를 받은 시각을 기준으로 삼는다.
+      const now = new Date(dataUpdatedAt);
+      const goingOutRange = formatHistoryGoingOutRange(
+        condition.going_out_start_at,
+        condition.going_out_end_at,
+        now,
+      );
+      const region = formatRegionLabel(condition.sido_nm, condition.sigungu_nm);
 
-  if (detail) {
-    const { recommended_at: recommendedAt, condition } = detail;
-    const { reason, items } = detail.outfit;
-    // 켜 둔 채 날이 바뀌어도 어제, 오늘 표기가 맞도록 데이터를 받은 시각을 기준으로 삼는다.
-    const now = new Date(dataUpdatedAt);
-    const goingOutRange = formatHistoryGoingOutRange(
-      condition.going_out_start_at,
-      condition.going_out_end_at,
-      now,
-    );
-    const region = formatRegionLabel(condition.sido_nm, condition.sigungu_nm);
-
-    return (
-      <S.Container>
-        {renderTopBar(goBack)}
+      return (
         <S.Content>
           <S.Summary>
             <S.Title>{getTpoLabel(condition)}</S.Title>
@@ -100,14 +90,11 @@ const RecommendationHistoryDetailPage = () => {
             </section>
           )}
         </S.Content>
-      </S.Container>
-    );
-  }
+      );
+    }
 
-  if (isNotFoundError(error)) {
-    return (
-      <S.Container>
-        {renderTopBar(goToList)}
+    if (isNotFoundError(error)) {
+      return (
         <StatusView
           visual={<Icon name="search_off" size="2xl" />}
           title="내역을 찾을 수 없어요"
@@ -118,15 +105,12 @@ const RecommendationHistoryDetailPage = () => {
             </Button>
           }
         />
-      </S.Container>
-    );
-  }
+      );
+    }
 
-  // 로그인이 만료되면 전역 다이얼로그가 안내하므로, 그 뒤에 실패 화면을 겹치지 않고 로딩 화면을 둔다.
-  if (error !== null && !isUnauthorizedError(error)) {
-    return (
-      <S.Container>
-        {renderTopBar(goBack)}
+    // 로그인이 만료되면 전역 다이얼로그가 안내하므로, 그 뒤에 실패 화면을 겹치지 않고 로딩 화면을 둔다.
+    if (error !== null && !isUnauthorizedError(error)) {
+      return (
         <StatusView
           visual={<Icon name="error" size="2xl" />}
           title="코디를 불러오지 못했어요"
@@ -144,14 +128,25 @@ const RecommendationHistoryDetailPage = () => {
             )
           }
         />
-      </S.Container>
-    );
-  }
+      );
+    }
+
+    return <OutfitLoading />;
+  };
 
   return (
     <S.Container>
-      {renderTopBar(goBack)}
-      <OutfitLoading />
+      <TopBar
+        title="추천 내역"
+        leading={
+          <IconButton
+            icon="arrow_back"
+            aria-label="뒤로 가기"
+            onClick={isNotFoundError(error) ? goToList : goBack}
+          />
+        }
+      />
+      {renderBody()}
     </S.Container>
   );
 };

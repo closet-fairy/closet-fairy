@@ -25,8 +25,6 @@ export const List = styled.ul`
 
 const CardAnchor = styled.a`
   display: block;
-  color: inherit;
-  text-decoration: none;
 `;
 
 export const CardLink = createLink(CardAnchor);
