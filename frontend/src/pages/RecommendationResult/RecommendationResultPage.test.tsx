@@ -6,7 +6,14 @@ import {
   createRouter,
   RouterProvider,
 } from '@tanstack/react-router';
-import { act, render, screen, waitFor, within } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, describe, expect, test, vi } from 'vitest';
@@ -349,7 +356,26 @@ describe('결과 기본 화면', () => {
     ).not.toBeInTheDocument();
   });
 
-  test('에센셜과 이미지가 없는 아이템은 바닥에서 빼야 한다.', async () => {
+  test('사진이 있는 에센셜은 바닥에 놓아야 한다.', async () => {
+    useResult(
+      createResult({
+        outfits: [
+          createOutfit(1, {
+            items: [
+              createItem('bottom', '기본 하의', {
+                item_source_cd: 'essential',
+              }),
+            ],
+          }),
+        ],
+      }),
+    );
+    await renderResult();
+
+    expect(await screen.findByAltText('기본 하의')).toBeInTheDocument();
+  });
+
+  test('이미지가 없는 아이템은 바닥에서 빼야 한다.', async () => {
     useResult(
       createResult({
         outfits: [
@@ -634,7 +660,7 @@ describe('채택', () => {
     await submitRating(user);
 
     expect(
-      await screen.findByRole('dialog', { name: '추천 시간이 끝났어요' }),
+      await screen.findByRole('dialog', { name: '추천이 끝났어요' }),
     ).toBeInTheDocument();
   });
 
@@ -760,7 +786,7 @@ describe('조회 상태', () => {
     await queryClient.refetchQueries();
 
     const dialog = await screen.findByRole('dialog', {
-      name: '추천 시간이 끝났어요',
+      name: '추천이 끝났어요',
     });
     expect(screen.getByAltText('1번 상의')).toBeInTheDocument();
 
@@ -808,7 +834,7 @@ describe('나가기', () => {
     await refetchAndRender(queryClient);
 
     expect(
-      screen.queryByRole('dialog', { name: '추천 시간이 끝났어요' }),
+      screen.queryByRole('dialog', { name: '추천이 끝났어요' }),
     ).not.toBeInTheDocument();
 
     await waitFor(() => {
@@ -983,6 +1009,29 @@ describe('재추천 요청 시트', () => {
     ).toBeInTheDocument();
   });
 
+  test.each(['', '   '])(
+    '입력란이 "%s"이면 시트의 버튼을 막아야 한다.',
+    async (text) => {
+      const user = userEvent.setup();
+      useResult(createResult());
+      await renderResult();
+
+      const sheet = await openRequestSheet(user);
+      const button = within(sheet).getByRole('button', {
+        name: '수정 요청하기',
+      });
+
+      if (text) {
+        await user.type(
+          within(sheet).getByRole('textbox', { name: '수정 요청 내용' }),
+          text,
+        );
+      }
+
+      expect(button).toBeDisabled();
+    },
+  );
+
   test('코디가 1벌이면 대상 선택을 숨겨야 한다.', async () => {
     const user = userEvent.setup();
     useResult(createResult({ outfits: [createOutfit(1)] }));
@@ -1097,7 +1146,7 @@ describe('재추천 요청 시트', () => {
     await submitRequest(user, await openRequestSheet(user));
 
     expect(
-      await screen.findByRole('dialog', { name: '추천 시간이 끝났어요' }),
+      await screen.findByRole('dialog', { name: '추천이 끝났어요' }),
     ).toBeInTheDocument();
   });
 
@@ -1168,7 +1217,7 @@ describe('재추천 진행 표시', () => {
     ).toBeDisabled();
   });
 
-  test('다른 세트를 재추천하는 중이면 보던 세트의 버튼은 쓸 수 있어야 한다.', async () => {
+  test('다른 세트를 재추천하는 중이면 수정 요청만 막아야 한다.', async () => {
     useResult(
       createResult({
         latest_regeneration: createRegeneration({ target_outfit_id: 52 }),
@@ -1180,6 +1229,27 @@ describe('재추천 진행 표시', () => {
       await screen.findByRole('button', { name: '채택하기' }),
     ).toBeEnabled();
     expect(screen.getByRole('button', { name: '정보 확인' })).toBeEnabled();
+    expect(
+      screen.getByRole('button', { name: '수정 요청하기' }),
+    ).toBeDisabled();
+  });
+
+  test('다른 세트를 재추천하는 중이면 서랍의 수정 요청도 막아야 한다.', async () => {
+    const user = userEvent.setup();
+    useResult(
+      createResult({
+        latest_regeneration: createRegeneration({ target_outfit_id: 52 }),
+      }),
+    );
+    await renderResult();
+
+    await user.click(await screen.findByRole('button', { name: '정보 확인' }));
+
+    const sheet = await screen.findByRole('dialog', { name: '코디 정보' });
+
+    expect(
+      within(sheet).getByRole('button', { name: '수정 요청하기' }),
+    ).toBeDisabled();
   });
 
   test('전체 재추천이면 모든 카드에 덮개를 씌워야 한다.', async () => {
@@ -1370,5 +1440,252 @@ describe('이전 코디', () => {
 
     expect(screen.getByText('이전 코디 2')).toBeVisible();
     expect(screen.getByRole('button', { name: '수정 요청하기' })).toBeEnabled();
+  });
+});
+
+describe('다른 세트의 재추천 완료 안내', () => {
+  const createCompletedResult = (targetSeq: number) => {
+    const targetOutfitId = 50 + targetSeq;
+
+    return createResult({
+      outfits: [createOutfit(1), createOutfit(2)].map((outfit) =>
+        outfit.outfit_seq === targetSeq
+          ? {
+              ...outfit,
+              outfit_id: 70 + targetSeq,
+              previous_outfits: [
+                {
+                  outfit_id: targetOutfitId,
+                  outfit_seq: targetSeq,
+                  outfit_type_cd: outfit.outfit_type_cd,
+                  reason: null,
+                  items: outfit.items,
+                },
+              ],
+            }
+          : outfit,
+      ),
+      latest_regeneration: createRegeneration({
+        regeneration_status_cd: 'completed',
+        target_outfit_id: targetOutfitId,
+      }),
+    });
+  };
+
+  test('다른 세트를 보던 중 끝나면 몇 번째 코디인지 알려야 한다.', async () => {
+    useResult(
+      createResult({
+        latest_regeneration: createRegeneration({ target_outfit_id: 52 }),
+      }),
+    );
+    const { queryClient } = await renderResult();
+
+    await screen.findByRole('button', { name: '채택하기' });
+    useResult(createCompletedResult(2));
+    await refetchAndRender(queryClient);
+
+    expect(
+      await screen.findByText('2번째 코디에 요청을 반영했어요'),
+    ).toBeInTheDocument();
+  });
+
+  test('보던 세트의 재추천이 끝나면 안내하지 않아야 한다.', async () => {
+    useResult(createResult({ latest_regeneration: createRegeneration() }));
+    const { queryClient } = await renderResult();
+
+    await screen.findByRole('button', { name: '채택하기' });
+    useResult(createCompletedResult(1));
+    await refetchAndRender(queryClient);
+
+    expect(
+      screen.queryByText(/코디에 요청을 반영했어요/),
+    ).not.toBeInTheDocument();
+  });
+
+  test('이미 끝난 재추천은 다시 들어와도 안내하지 않아야 한다.', async () => {
+    useResult(createCompletedResult(2));
+    await renderResult();
+
+    await screen.findByRole('button', { name: '채택하기' });
+
+    expect(
+      screen.queryByText(/코디에 요청을 반영했어요/),
+    ).not.toBeInTheDocument();
+  });
+
+  test('전체 재추천이 끝나면 안내하지 않아야 한다.', async () => {
+    useResult(
+      createResult({
+        latest_regeneration: createRegeneration({
+          target_scope_cd: 'all',
+          target_outfit_id: null,
+        }),
+      }),
+    );
+    const { queryClient } = await renderResult();
+
+    await screen.findAllByText('요청을 반영하는 중이에요');
+    useResult(
+      createResult({
+        latest_regeneration: createRegeneration({
+          regeneration_status_cd: 'completed',
+          target_scope_cd: 'all',
+          target_outfit_id: null,
+        }),
+      }),
+    );
+    await refetchAndRender(queryClient);
+
+    expect(
+      screen.queryByText(/코디에 요청을 반영했어요/),
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe('세션 종료 안내의 사유', () => {
+  test.each([
+    {
+      statusCd: 'canceled' as const,
+      notice: /다른 화면에서 추천을 그만뒀어요/,
+    },
+    {
+      statusCd: 'abandoned' as const,
+      notice: /30분 동안 아무 동작이 없어 끝났어요/,
+    },
+  ])('$statusCd이면 그 사유를 알려야 한다.', async ({ statusCd, notice }) => {
+    useResult(createResult());
+    const { queryClient } = await renderResult();
+
+    await screen.findByRole('button', { name: '채택하기' });
+    useResult(createResult({ session_status_cd: statusCd, outfits: [] }));
+    await refetchAndRender(queryClient);
+
+    expect(
+      within(
+        await screen.findByRole('dialog', { name: '추천이 끝났어요' }),
+      ).getByText(notice),
+    ).toBeInTheDocument();
+  });
+});
+
+describe('불러오기 실패의 다시 시도', () => {
+  test.each([500, 503])(
+    '%i이면 다시 시도할 수 있어야 한다.',
+    async (status) => {
+      useErrorResult(status);
+      await renderResult();
+
+      expect(
+        await screen.findByRole('button', { name: '다시 시도' }),
+      ).toBeInTheDocument();
+    },
+  );
+
+  test('네트워크 오류면 다시 시도할 수 있어야 한다.', async () => {
+    server.use(http.get(SESSION_URL, () => HttpResponse.error()));
+    await renderResult();
+
+    expect(
+      await screen.findByRole('button', { name: '다시 시도' }),
+    ).toBeInTheDocument();
+  });
+
+  test.each([400, 403, 409])(
+    '%i이면 다시 시도 없이 볼 수 없는 추천으로 안내해야 한다.',
+    async (status) => {
+      useErrorResult(status);
+      await renderResult();
+
+      expect(
+        await screen.findByText('볼 수 없는 추천이에요'),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: '다시 시도' }),
+      ).not.toBeInTheDocument();
+    },
+  );
+});
+
+describe('거절된 세션의 종료 사유', () => {
+  test('재조회로 취소를 확인하면 그만뒀다고 알려야 한다.', async () => {
+    const user = userEvent.setup();
+    useRatingError(
+      409,
+      'SESSION_NOT_RATABLE',
+      '별점을 매길 수 없는 세션입니다.',
+    );
+    useResult(createResult());
+    await renderResult();
+
+    const dialog = await openRatingDialog(user);
+
+    useResult(createResult({ session_status_cd: 'canceled', outfits: [] }));
+    await user.click(within(dialog).getByRole('radio', { name: '별 4개' }));
+    await user.click(within(dialog).getByRole('button', { name: '채택하기' }));
+
+    expect(
+      within(
+        await screen.findByRole('dialog', { name: '추천이 끝났어요' }),
+      ).getByText(/다른 화면에서 추천을 그만뒀어요/),
+    ).toBeInTheDocument();
+  });
+
+  test('재조회가 실패하면 30분 안내를 보여 줘야 한다.', async () => {
+    const user = userEvent.setup();
+    useRatingError(
+      409,
+      'SESSION_NOT_RATABLE',
+      '별점을 매길 수 없는 세션입니다.',
+    );
+    useResult(createResult());
+    await renderResult();
+
+    const dialog = await openRatingDialog(user);
+
+    useErrorResult(500);
+    await user.click(within(dialog).getByRole('radio', { name: '별 4개' }));
+    await user.click(within(dialog).getByRole('button', { name: '채택하기' }));
+
+    expect(
+      within(
+        await screen.findByRole('dialog', { name: '추천이 끝났어요' }),
+      ).getByText(/30분 동안 아무 동작이 없어 끝났어요/),
+    ).toBeInTheDocument();
+  });
+});
+
+describe('서랍의 사진 실패', () => {
+  test('불러오지 못한 사진 칸에도 이름을 남겨야 한다.', async () => {
+    const user = userEvent.setup();
+    useResult(createResult());
+    await renderResult();
+
+    const sheet = await openInfoSheet(user);
+    const [image] = within(sheet).getAllByRole('presentation');
+
+    fireEvent.error(image);
+
+    expect(within(sheet).getByText('1번 상의')).toBeInTheDocument();
+    expect(within(sheet).getAllByRole('presentation')).toHaveLength(2);
+  });
+
+  test('서랍을 다시 열면 사진을 다시 요청해야 한다.', async () => {
+    const user = userEvent.setup();
+    useResult(createResult());
+    await renderResult();
+
+    const sheet = await openInfoSheet(user);
+
+    fireEvent.error(within(sheet).getAllByRole('presentation')[0]);
+    await user.keyboard('{Escape}');
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('dialog', { name: '코디 정보' }),
+      ).not.toBeInTheDocument();
+    });
+
+    expect(
+      within(await openInfoSheet(user)).getAllByRole('presentation'),
+    ).toHaveLength(3);
   });
 });

@@ -1,7 +1,7 @@
 import { replaceEqualDeep, useQueryClient } from '@tanstack/react-query';
 import { useBlocker, useNavigate, useParams } from '@tanstack/react-router';
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
-import { ApiError } from '@/apis/apiError';
+import { ApiError, isClientError } from '@/apis/apiError';
 import { isUnauthorizedError } from '@/apis/authSession';
 import Button from '@/components/common/Button';
 import Carousel from '@/components/common/Carousel';
@@ -23,6 +23,7 @@ import {
   keepViewedOutfits,
 } from '@/domains/recommendation/recommendationProgress';
 import {
+  findRegeneratedOutfitIndex,
   isOutfitRegenerating,
   isRegenerationFailureNoticed,
   isRegenerationProcessing,
@@ -124,6 +125,7 @@ const RecommendationResultPage = () => {
   const [leaveTarget, setLeaveTarget] = useState<LeaveTarget>('input');
   const [isCanceling, setIsCanceling] = useState(false);
   const [isMovingToAdopted, setIsMovingToAdopted] = useState(false);
+  const [isCheckingSessionEnd, setIsCheckingSessionEnd] = useState(false);
   const isLeaveAllowedRef = useRef(false);
   const urlRestoreRef = useRef<Promise<void> | null>(null);
   const leaveFocusRef = useRef<HTMLButtonElement>(null);
@@ -133,7 +135,8 @@ const RecommendationResultPage = () => {
 
   const isProcessing =
     result !== undefined && getRecommendationProgress(result) === 'processing';
-  const isSubmittingRating = isRatingPending || isMovingToAdopted;
+  const isSubmittingRating =
+    isRatingPending || isMovingToAdopted || isCheckingSessionEnd;
   // 채택이나 취소가 끝나는 사이에 재조회가 도착해도 세션이 끝난 것으로 안내하지 않는다.
   const isResultGone =
     result !== undefined &&
@@ -145,14 +148,19 @@ const RecommendationResultPage = () => {
   const hasOutfits = result !== undefined && result.outfits.length > 0;
   const isNotFound =
     error instanceof ApiError && error.status === NOT_FOUND_STATUS;
+  const isLoadRejected =
+    result === undefined && isClientError(error) && !isUnauthorizedError(error);
   const isUnavailable =
     sessionRejection === 'unavailable' ||
     isNotFound ||
+    isLoadRejected ||
     (isResultGone && (!hasOutfits || isAdopted));
   const isExpired =
     !isUnavailable && (sessionRejection === 'expired' || isResultGone);
   const isLeaveConfirmNeeded = !isUnavailable && !isExpired && !isProcessing;
   const latestRegeneration = result?.latest_regeneration ?? null;
+  const isRegenerating = isRegenerationProcessing(latestRegeneration);
+  const lastRegenerationRef = useRef(latestRegeneration);
 
   const openLeaveDialog = (target: LeaveTarget) => {
     setOpenLayer(null);
@@ -231,6 +239,33 @@ const RecommendationResultPage = () => {
     });
   }, [latestRegeneration, sessionId]);
 
+  const noticeRegeneratedOutfit = useEffectEvent((targetOutfitId: number) => {
+    const outfits = result?.outfits ?? [];
+    const targetIndex = findRegeneratedOutfitIndex(outfits, targetOutfitId);
+    const viewedIndex = Math.min(outfitIndex, outfits.length - 1);
+
+    if (targetIndex >= 0 && targetIndex !== viewedIndex) {
+      showToast({
+        tone: 'info',
+        title: `${targetIndex + 1}번째 코디에 요청을 반영했어요`,
+      });
+    }
+  });
+
+  useEffect(() => {
+    const lastRegeneration = lastRegenerationRef.current;
+
+    lastRegenerationRef.current = latestRegeneration;
+
+    if (
+      isRegenerationProcessing(lastRegeneration) &&
+      latestRegeneration?.regeneration_status_cd === 'completed' &&
+      latestRegeneration.target_outfit_id !== null
+    ) {
+      noticeRegeneratedOutfit(latestRegeneration.target_outfit_id);
+    }
+  }, [latestRegeneration]);
+
   useEffect(() => {
     setToastBottomOffset(openLayer === null ? OUTFIT_ACTIONS_HEIGHT : null);
 
@@ -266,6 +301,14 @@ const RecommendationResultPage = () => {
     }
 
     leaveToInput();
+  };
+
+  // 거절 응답에는 끝난 사유가 없어서, 다시 조회해 사유를 읽은 뒤에 안내한다.
+  const expireSession = async () => {
+    setIsCheckingSessionEnd(true);
+    await refetch();
+    setIsCheckingSessionEnd(false);
+    setSessionRejection('expired');
   };
 
   const openRatingDialog = () => {
@@ -455,7 +498,7 @@ const RecommendationResultPage = () => {
           }
 
           if (ratingError.code === SESSION_NOT_RATABLE_CODE) {
-            setSessionRejection('expired');
+            void expireSession();
             return;
           }
 
@@ -509,7 +552,7 @@ const RecommendationResultPage = () => {
         },
         onError: (requestError) => {
           if (requestError.code === SESSION_ENDED_CODE) {
-            setSessionRejection('expired');
+            void expireSession();
           } else if (
             requestError.code === SESSION_NOT_FOUND_CODE ||
             requestError.code === SESSION_ALREADY_SETTLED_CODE
@@ -575,7 +618,7 @@ const RecommendationResultPage = () => {
           latestRegeneration,
           latestOutfit.outfit_id,
         )}
-        isRequestDisabled={isViewingPrevious}
+        isRequestDisabled={isViewingPrevious || isRegenerating}
         onInfoClick={() => setOpenLayer('info')}
         onAdoptClick={openRatingDialog}
         onRequestClick={openRequestSheet}
@@ -584,7 +627,7 @@ const RecommendationResultPage = () => {
         outfit={currentOutfit}
         weather={weather}
         isClothingShortage={isClothingShortage}
-        isRequestDisabled={isViewingPrevious}
+        isRequestDisabled={isViewingPrevious || isRegenerating}
         isOpen={openLayer === 'info' && !isExpired}
         onOpenChange={(isOpen) => setOpenLayer(isOpen ? 'info' : null)}
         onAdoptClick={openRatingDialog}
@@ -600,9 +643,11 @@ const RecommendationResultPage = () => {
         isOpen={openLayer === 'request' && !isExpired}
         onOpenChange={(isOpen) => setOpenLayer(isOpen ? 'request' : null)}
         outfitCount={outfits.length}
-        isSubmitting={isRequestingRegeneration}
+        isSubmitting={isRequestingRegeneration || isCheckingSessionEnd}
         errorMessage={
           regenerationRequestError === null ||
+          isCheckingSessionEnd ||
+          isExpired ||
           isUnauthorizedError(regenerationRequestError)
             ? undefined
             : regenerationRequestError.message
@@ -630,9 +675,11 @@ const RecommendationResultPage = () => {
       <Dialog
         isOpen={isExpired}
         onOpenChange={() => {}}
-        title="추천 시간이 끝났어요"
+        title="추천이 끝났어요"
         description={
-          '30분 동안 아무 동작이 없어 추천이 끝났어요.\n새로 추천받아 주세요.'
+          result.session_status_cd === 'canceled'
+            ? '다른 화면에서 추천을 그만뒀어요.\n새로 추천받아 주세요.'
+            : '30분 동안 아무 동작이 없어 끝났어요.\n새로 추천받아 주세요.'
         }
         isDismissable={false}
         footer={
