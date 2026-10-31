@@ -1,5 +1,6 @@
 import { keyframes } from '@emotion/react';
 import styled from '@emotion/styled';
+import { createLink } from '@tanstack/react-router';
 import { bg, fg, spacing, typography } from '@/styles/tokens';
 
 const spin = keyframes`
@@ -21,6 +22,14 @@ export const List = styled.ul`
   gap: ${spacing[12]};
   padding: ${spacing[2]} ${spacing[20]} 0;
 `;
+
+const CardAnchor = styled.a`
+  display: block;
+  color: inherit;
+  text-decoration: none;
+`;
+
+export const CardLink = createLink(CardAnchor);
 
 export const ListEnd = styled.div`
   display: flex;

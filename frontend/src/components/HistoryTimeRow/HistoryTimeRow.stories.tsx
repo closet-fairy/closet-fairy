@@ -18,6 +18,15 @@ export const GoingOut: Story = {
   args: { icon: 'event', label: '외출', value: '내일 18:00 · 서울 성동구' },
 };
 
+export const Large: Story = {
+  args: {
+    icon: 'event',
+    label: '외출',
+    value: '오늘 18:00 – 다음 날 00:30 · 서울 성동구',
+    size: 'md',
+  },
+};
+
 export const Overflow: Story = {
   args: {
     icon: 'event',
