@@ -21,6 +21,7 @@ import { Route as MyInfoEditRouteImport } from './routes/my-info_.edit'
 import { Route as MyInfoWithdrawRouteImport } from './routes/my-info_.withdraw'
 import { Route as RecommendationHistorySessionIdRouteImport } from './routes/recommendation-history_.$sessionId'
 import { Route as ClosetClothingIdEditRouteImport } from './routes/closet_.$clothingId_.edit'
+import { Route as RecommendationHistorySessionIdFloorRouteImport } from './routes/recommendation-history_.$sessionId_.floor'
 import { Route as RecommendationSessionsSessionIdRouteImport } from './routes/recommendation_.sessions.$sessionId'
 import { Route as RecommendationSessionsSessionIdAdoptedRouteImport } from './routes/recommendation_.sessions.$sessionId_.adopted'
 import { Route as RecommendationSessionsSessionIdResultRouteImport } from './routes/recommendation_.sessions.$sessionId_.result'
@@ -86,6 +87,12 @@ const ClosetClothingIdEditRoute = ClosetClothingIdEditRouteImport.update({
   path: '/closet/$clothingId/edit',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RecommendationHistorySessionIdFloorRoute =
+  RecommendationHistorySessionIdFloorRouteImport.update({
+    id: '/recommendation-history_/$sessionId_/floor',
+    path: '/recommendation-history/$sessionId/floor',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const RecommendationSessionsSessionIdRoute =
   RecommendationSessionsSessionIdRouteImport.update({
     id: '/recommendation_/sessions/$sessionId',
@@ -118,6 +125,7 @@ export interface FileRoutesByFullPath {
   '/my-info/withdraw': typeof MyInfoWithdrawRoute
   '/recommendation-history/$sessionId': typeof RecommendationHistorySessionIdRoute
   '/closet/$clothingId/edit': typeof ClosetClothingIdEditRoute
+  '/recommendation-history/$sessionId/floor': typeof RecommendationHistorySessionIdFloorRoute
   '/recommendation/sessions/$sessionId': typeof RecommendationSessionsSessionIdRoute
   '/recommendation/sessions/$sessionId/adopted': typeof RecommendationSessionsSessionIdAdoptedRoute
   '/recommendation/sessions/$sessionId/result': typeof RecommendationSessionsSessionIdResultRoute
@@ -135,6 +143,7 @@ export interface FileRoutesByTo {
   '/my-info/withdraw': typeof MyInfoWithdrawRoute
   '/recommendation-history/$sessionId': typeof RecommendationHistorySessionIdRoute
   '/closet/$clothingId/edit': typeof ClosetClothingIdEditRoute
+  '/recommendation-history/$sessionId/floor': typeof RecommendationHistorySessionIdFloorRoute
   '/recommendation/sessions/$sessionId': typeof RecommendationSessionsSessionIdRoute
   '/recommendation/sessions/$sessionId/adopted': typeof RecommendationSessionsSessionIdAdoptedRoute
   '/recommendation/sessions/$sessionId/result': typeof RecommendationSessionsSessionIdResultRoute
@@ -153,6 +162,7 @@ export interface FileRoutesById {
   '/my-info_/withdraw': typeof MyInfoWithdrawRoute
   '/recommendation-history_/$sessionId': typeof RecommendationHistorySessionIdRoute
   '/closet_/$clothingId_/edit': typeof ClosetClothingIdEditRoute
+  '/recommendation-history_/$sessionId_/floor': typeof RecommendationHistorySessionIdFloorRoute
   '/recommendation_/sessions/$sessionId': typeof RecommendationSessionsSessionIdRoute
   '/recommendation_/sessions/$sessionId_/adopted': typeof RecommendationSessionsSessionIdAdoptedRoute
   '/recommendation_/sessions/$sessionId_/result': typeof RecommendationSessionsSessionIdResultRoute
@@ -172,6 +182,7 @@ export interface FileRouteTypes {
     | '/my-info/withdraw'
     | '/recommendation-history/$sessionId'
     | '/closet/$clothingId/edit'
+    | '/recommendation-history/$sessionId/floor'
     | '/recommendation/sessions/$sessionId'
     | '/recommendation/sessions/$sessionId/adopted'
     | '/recommendation/sessions/$sessionId/result'
@@ -189,6 +200,7 @@ export interface FileRouteTypes {
     | '/my-info/withdraw'
     | '/recommendation-history/$sessionId'
     | '/closet/$clothingId/edit'
+    | '/recommendation-history/$sessionId/floor'
     | '/recommendation/sessions/$sessionId'
     | '/recommendation/sessions/$sessionId/adopted'
     | '/recommendation/sessions/$sessionId/result'
@@ -206,6 +218,7 @@ export interface FileRouteTypes {
     | '/my-info_/withdraw'
     | '/recommendation-history_/$sessionId'
     | '/closet_/$clothingId_/edit'
+    | '/recommendation-history_/$sessionId_/floor'
     | '/recommendation_/sessions/$sessionId'
     | '/recommendation_/sessions/$sessionId_/adopted'
     | '/recommendation_/sessions/$sessionId_/result'
@@ -224,6 +237,7 @@ export interface RootRouteChildren {
   MyInfoWithdrawRoute: typeof MyInfoWithdrawRoute
   RecommendationHistorySessionIdRoute: typeof RecommendationHistorySessionIdRoute
   ClosetClothingIdEditRoute: typeof ClosetClothingIdEditRoute
+  RecommendationHistorySessionIdFloorRoute: typeof RecommendationHistorySessionIdFloorRoute
   RecommendationSessionsSessionIdRoute: typeof RecommendationSessionsSessionIdRoute
   RecommendationSessionsSessionIdAdoptedRoute: typeof RecommendationSessionsSessionIdAdoptedRoute
   RecommendationSessionsSessionIdResultRoute: typeof RecommendationSessionsSessionIdResultRoute
@@ -315,6 +329,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ClosetClothingIdEditRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/recommendation-history_/$sessionId_/floor': {
+      id: '/recommendation-history_/$sessionId_/floor'
+      path: '/recommendation-history/$sessionId/floor'
+      fullPath: '/recommendation-history/$sessionId/floor'
+      preLoaderRoute: typeof RecommendationHistorySessionIdFloorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/recommendation_/sessions/$sessionId': {
       id: '/recommendation_/sessions/$sessionId'
       path: '/recommendation/sessions/$sessionId'
@@ -352,6 +373,8 @@ const rootRouteChildren: RootRouteChildren = {
   MyInfoWithdrawRoute: MyInfoWithdrawRoute,
   RecommendationHistorySessionIdRoute: RecommendationHistorySessionIdRoute,
   ClosetClothingIdEditRoute: ClosetClothingIdEditRoute,
+  RecommendationHistorySessionIdFloorRoute:
+    RecommendationHistorySessionIdFloorRoute,
   RecommendationSessionsSessionIdRoute: RecommendationSessionsSessionIdRoute,
   RecommendationSessionsSessionIdAdoptedRoute:
     RecommendationSessionsSessionIdAdoptedRoute,

@@ -2,10 +2,8 @@ import type { IconName } from '@/assets/icons';
 import Icon from '@/components/common/Icon';
 import Tag from '@/components/common/Tag';
 import type { ClothingArea } from '@/domains/recommendation/clothingArea';
-import {
-  getFloorItemKind,
-  layoutFloor,
-} from '@/domains/recommendation/floorLayout';
+import { getFloorCandidates } from '@/domains/recommendation/floorCandidates';
+import { layoutFloor } from '@/domains/recommendation/floorLayout';
 import type {
   FloorItem,
   FloorLayout,
@@ -14,12 +12,15 @@ import type {
 } from '@/domains/recommendation/floorLayout';
 import { FLOOR_CARD } from '@/domains/recommendation/floorLayout.constants';
 import type { OutfitItemResult } from '@/generated/models';
-import useFloorImages from '@/pages/RecommendationResult/hooks/useFloorImages';
+import useFloorImages from '@/hooks/useFloorImages';
 import * as S from './OutfitFloor.styled';
+
+export type OutfitFloorVariant = 'card' | 'floor';
 
 interface OutfitFloorProps {
   items: readonly OutfitItemResult[];
   seed: FloorSeed;
+  variant?: OutfitFloorVariant;
   hasTagStrip?: boolean;
   isOverflowDisabled?: boolean;
   onOverflowClick?: () => void;
@@ -36,20 +37,6 @@ const getFloorLayout = (items: readonly FloorItem[], seed: FloorSeed) => {
 
   return layout;
 };
-
-const getFloorCandidates = (items: readonly OutfitItemResult[]) =>
-  items.flatMap((item, index) =>
-    item.image_url !== null
-      ? [
-          {
-            id: String(index),
-            kind: getFloorItemKind(item),
-            name: item.item_name,
-            imageUrl: item.image_url,
-          },
-        ]
-      : [],
-  );
 
 const toPercent = (value: number) => `${value * 100}%`;
 
@@ -81,6 +68,7 @@ const OutfitFloor = (props: OutfitFloorProps) => {
   const {
     items,
     seed,
+    variant = 'card',
     hasTagStrip = true,
     isOverflowDisabled = false,
     onOverflowClick,
@@ -110,9 +98,11 @@ const OutfitFloor = (props: OutfitFloorProps) => {
           <Icon name={notice.icon} size="xl" />
         </S.EmptyIcon>
         <S.EmptyTitle>{notice.title}</S.EmptyTitle>
-        <S.EmptyDescription>
-          정보 확인에서 아이템을 볼 수 있어요.
-        </S.EmptyDescription>
+        {variant === 'card' && (
+          <S.EmptyDescription>
+            정보 확인에서 아이템을 볼 수 있어요.
+          </S.EmptyDescription>
+        )}
       </S.Empty>
     );
   }
@@ -128,7 +118,7 @@ const OutfitFloor = (props: OutfitFloorProps) => {
           <Icon name="progress_activity" size="lg" />
         </S.Waiting>
       )}
-      <S.Stage $hasTagStrip={hasTagStrip}>
+      <S.Stage $variant={variant} $hasTagStrip={hasTagStrip}>
         {/* 결과를 받으려고 먼저 그려 두고, 정해지면 놓을 옷만 남겨 같은 사진을 다시 불러오지 않게 한다. */}
         {candidates
           .filter(({ id }) => !isSettled || placementsById.has(id))

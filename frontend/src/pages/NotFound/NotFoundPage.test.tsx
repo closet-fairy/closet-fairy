@@ -56,6 +56,8 @@ describe('찾을 수 없는 주소', () => {
     '/closet/abc/edit',
     '/recommendation/sessions/abc',
     '/recommendation/sessions/abc/result',
+    '/recommendation-history/abc/floor',
+    '/recommendation-history/0/floor',
   ])('%s에서는 404 화면과 하단 탭을 보여 줘야 한다.', async (path) => {
     await renderAt(path);
 

@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import type { OutfitItemResult } from '@/generated/models';
 import OutfitFloor from './OutfitFloor';
+import { Stage } from './OutfitFloor.styled';
 
 const SLOW_MS = 400;
 const TIMEOUT_MS = 8000;
@@ -270,5 +271,45 @@ describe('넘친 옷', () => {
     fireEvent.click(screen.getByRole('button', { name: /2개 보기/ }));
 
     expect(onOverflowClick).not.toHaveBeenCalled();
+  });
+});
+
+describe('바닥 위에 바로 그리는 모습', () => {
+  test('사진을 모두 불러오지 못해도 없는 정보 확인을 안내하지 않아야 한다.', () => {
+    render(<OutfitFloor items={ITEMS} seed={SEED} variant="floor" />);
+
+    loadAll(['상의', '하의']);
+
+    expect(screen.getByText('사진을 불러오지 못했어요')).toBeInTheDocument();
+    expect(
+      screen.queryByText('정보 확인에서 아이템을 볼 수 있어요.'),
+    ).not.toBeInTheDocument();
+  });
+});
+
+const getStagePlacement = (variant: 'card' | 'floor') => {
+  render(<Stage data-testid="stage" $variant={variant} $hasTagStrip />);
+
+  const { top, transform } = getComputedStyle(screen.getByTestId('stage'));
+
+  return {
+    top,
+    transform: transform.replace(/\s/g, ''),
+  };
+};
+
+describe('배치 영역의 자리', () => {
+  test('바닥 위에서는 남는 공간의 가운데에 둬야 한다.', () => {
+    const { top, transform } = getStagePlacement('floor');
+
+    expect(top).toBe('50%');
+    expect(transform).toBe('translate(-50%,-50%)');
+  });
+
+  test('카드 안에서는 위쪽에 붙여야 한다.', () => {
+    const { top, transform } = getStagePlacement('card');
+
+    expect(top).toBe('0px');
+    expect(transform).toBe('translate(-50%,0%)');
   });
 });

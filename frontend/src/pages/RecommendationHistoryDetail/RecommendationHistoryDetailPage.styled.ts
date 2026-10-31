@@ -1,5 +1,17 @@
 import styled from '@emotion/styled';
-import { bg, fg, spacing, typography } from '@/styles/tokens';
+import { createLink } from '@tanstack/react-router';
+import {
+  bg,
+  duration,
+  easing,
+  fg,
+  radius,
+  spacing,
+  typography,
+} from '@/styles/tokens';
+
+const FLOOR_LINK_HEIGHT = 36;
+const PRESSED_SCALE = 0.94;
 
 export const Container = styled.div`
   display: flex;
@@ -42,6 +54,25 @@ export const SectionHeader = styled.div`
   justify-content: space-between;
   margin-bottom: ${spacing[10]};
 `;
+
+const FloorAnchor = styled.a`
+  ${typography.label1Strong}
+  display: flex;
+  align-items: center;
+  gap: ${spacing[4]};
+  height: ${FLOOR_LINK_HEIGHT}px;
+  margin: -${spacing[6]} -${spacing[6]} -${spacing[6]} 0;
+  padding: 0 ${spacing[10]};
+  border-radius: ${radius.sm};
+  color: ${fg.neutral.strong};
+  transition: transform ${duration.fast} ${easing.standard};
+
+  &:active {
+    transform: scale(${PRESSED_SCALE});
+  }
+`;
+
+export const FloorLink = createLink(FloorAnchor);
 
 export const SectionTitle = styled.h3`
   ${typography.label1Strong}
