@@ -322,6 +322,18 @@ describe('카드 끌기', () => {
   });
 });
 
+describe('숨겨진 겹의 사진', () => {
+  test('옆 겹의 사진이 정해져도 보던 카드 위로 나오지 않아야 한다.', () => {
+    render(<ControlledStack previousCount={1} initialDepth={1} />);
+
+    const hiddenPhoto = screen.getByAltText('100번 상의');
+
+    fireEvent.load(hiddenPhoto);
+
+    expect(getComputedStyle(hiddenPhoto).visibility).toBe('hidden');
+  });
+});
+
 describe('이동 버튼', () => {
   test('버튼으로 한 장씩 오갈 수 있어야 한다.', async () => {
     vi.useRealTimers();
