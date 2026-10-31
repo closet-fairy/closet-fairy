@@ -48,7 +48,9 @@ const RecommendationAdoptedPage = () => {
 
   // 상세의 뒤로 가기가 목록으로 돌아오도록 채택 완료 자리를 목록으로 바꾼다. 목록이 화면에 스치지 않게 주소만 바꾸고 바로 상세로 간다.
   const openHistoryDetail = () => {
-    router.history.replace('/recommendation-history');
+    router.history.replace(
+      router.buildLocation({ to: '/recommendation-history' }).href,
+    );
     router.history.flush();
     void navigate({
       to: '/recommendation-history/$sessionId',

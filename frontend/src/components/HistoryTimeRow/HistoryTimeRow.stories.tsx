@@ -5,6 +5,15 @@ const NARROW_WIDTH = 200;
 
 const meta = {
   component: HistoryTimeRow,
+  argTypes: {
+    size: {
+      description:
+        'sm은 추천 내역 목록의 카드에, md는 추천 내역 상세에 씁니다.',
+      control: 'inline-radio',
+      options: ['md', 'sm'],
+      table: { defaultValue: { summary: 'sm' } },
+    },
+  },
   args: { icon: 'schedule', label: '추천', value: '오늘 10:12' },
 } satisfies Meta<typeof HistoryTimeRow>;
 
