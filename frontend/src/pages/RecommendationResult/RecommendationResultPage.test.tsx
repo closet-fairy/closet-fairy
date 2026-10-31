@@ -18,6 +18,7 @@ import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { REGENERATION_FAILURE_NOTICE_STORAGE_KEY } from '@/constants/recommendationStorageKey';
+import { getListRecommendationHistoryRecommendationHistoryGetInfiniteQueryKey } from '@/generated/endpoints/recommendation/recommendation';
 import type {
   OutfitItemResult,
   OutfitResult,
@@ -593,6 +594,27 @@ describe('채택', () => {
     expect(
       await screen.findByText('오늘의 코디로 채택했어요'),
     ).toBeInTheDocument();
+  });
+
+  test('채택하면 캐시에 남은 내역 목록을 지워야 한다.', async () => {
+    const user = userEvent.setup();
+    useRatingSuccess();
+    useResult(createResult());
+    const { router, queryClient } = await renderResult();
+    const listKey =
+      getListRecommendationHistoryRecommendationHistoryGetInfiniteQueryKey();
+
+    queryClient.setQueryData(listKey, {
+      pages: [{ items: [], next_cursor: null }],
+      pageParams: [null],
+    });
+
+    await submitRating(user);
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe(ADOPTED_PATH);
+    });
+    expect(queryClient.getQueryData(listKey)).toBeUndefined();
   });
 
   test('채택 뒤 내역을 받는 동안에는 다시 제출할 수 없어야 한다.', async () => {

@@ -4,16 +4,20 @@
  * Outfit Recommendation API
  * OpenAPI spec version: 0.1.0
  */
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query';
 import type {
   DataTag,
   DefinedInitialDataOptions,
+  DefinedUseInfiniteQueryResult,
   DefinedUseQueryResult,
+  InfiniteData,
   MutationFunction,
   QueryClient,
   QueryFunction,
   QueryKey,
   UndefinedInitialDataOptions,
+  UseInfiniteQueryOptions,
+  UseInfiniteQueryResult,
   UseMutationOptions,
   UseMutationResult,
   UseQueryOptions,
@@ -1176,11 +1180,244 @@ export const listRecommendationHistoryRecommendationHistoryGet = async (
   );
 };
 
+export const getListRecommendationHistoryRecommendationHistoryGetInfiniteQueryKey =
+  (params?: ListRecommendationHistoryRecommendationHistoryGetParams) => {
+    return [
+      'infinite',
+      `/recommendation-history`,
+      ...(params ? [params] : []),
+    ] as const;
+  };
+
 export const getListRecommendationHistoryRecommendationHistoryGetQueryKey = (
   params?: ListRecommendationHistoryRecommendationHistoryGetParams,
 ) => {
   return [`/recommendation-history`, ...(params ? [params] : [])] as const;
 };
+
+export const getListRecommendationHistoryRecommendationHistoryGetInfiniteQueryOptions =
+  <
+    TData = InfiniteData<
+      Awaited<
+        ReturnType<typeof listRecommendationHistoryRecommendationHistoryGet>
+      >,
+      ListRecommendationHistoryRecommendationHistoryGetParams['cursor']
+    >,
+    TError = ErrorType<ErrorResponse>,
+  >(
+    params?: ListRecommendationHistoryRecommendationHistoryGetParams,
+    options?: {
+      query?: Partial<
+        UseInfiniteQueryOptions<
+          Awaited<
+            ReturnType<typeof listRecommendationHistoryRecommendationHistoryGet>
+          >,
+          TError,
+          TData,
+          QueryKey,
+          ListRecommendationHistoryRecommendationHistoryGetParams['cursor']
+        >
+      >;
+      request?: SecondParameter<typeof fetcher>;
+    },
+  ) => {
+    const { query: queryOptions, request: requestOptions } = options ?? {};
+
+    const queryKey =
+      queryOptions?.queryKey ??
+      getListRecommendationHistoryRecommendationHistoryGetInfiniteQueryKey(
+        params,
+      );
+
+    const queryFn: QueryFunction<
+      Awaited<
+        ReturnType<typeof listRecommendationHistoryRecommendationHistoryGet>
+      >,
+      QueryKey,
+      ListRecommendationHistoryRecommendationHistoryGetParams['cursor']
+    > = ({ signal, pageParam }) =>
+      listRecommendationHistoryRecommendationHistoryGet(
+        { ...params, cursor: pageParam ?? params?.['cursor'] },
+        { signal, ...requestOptions },
+      );
+
+    return { queryKey, queryFn, ...queryOptions } as UseInfiniteQueryOptions<
+      Awaited<
+        ReturnType<typeof listRecommendationHistoryRecommendationHistoryGet>
+      >,
+      TError,
+      TData,
+      QueryKey,
+      ListRecommendationHistoryRecommendationHistoryGetParams['cursor']
+    > & { queryKey: DataTag<QueryKey, TData, TError> };
+  };
+
+export type ListRecommendationHistoryRecommendationHistoryGetInfiniteQueryResult =
+  NonNullable<
+    Awaited<
+      ReturnType<typeof listRecommendationHistoryRecommendationHistoryGet>
+    >
+  >;
+export type ListRecommendationHistoryRecommendationHistoryGetInfiniteQueryError =
+  ErrorType<ErrorResponse>;
+
+export function useListRecommendationHistoryRecommendationHistoryGetInfinite<
+  TData = InfiniteData<
+    Awaited<
+      ReturnType<typeof listRecommendationHistoryRecommendationHistoryGet>
+    >,
+    ListRecommendationHistoryRecommendationHistoryGetParams['cursor']
+  >,
+  TError = ErrorType<ErrorResponse>,
+>(
+  params: undefined | ListRecommendationHistoryRecommendationHistoryGetParams,
+  options: {
+    query: Partial<
+      UseInfiniteQueryOptions<
+        Awaited<
+          ReturnType<typeof listRecommendationHistoryRecommendationHistoryGet>
+        >,
+        TError,
+        TData,
+        QueryKey,
+        ListRecommendationHistoryRecommendationHistoryGetParams['cursor']
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<
+            ReturnType<typeof listRecommendationHistoryRecommendationHistoryGet>
+          >,
+          TError,
+          Awaited<
+            ReturnType<typeof listRecommendationHistoryRecommendationHistoryGet>
+          >,
+          QueryKey
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof fetcher>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseInfiniteQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useListRecommendationHistoryRecommendationHistoryGetInfinite<
+  TData = InfiniteData<
+    Awaited<
+      ReturnType<typeof listRecommendationHistoryRecommendationHistoryGet>
+    >,
+    ListRecommendationHistoryRecommendationHistoryGetParams['cursor']
+  >,
+  TError = ErrorType<ErrorResponse>,
+>(
+  params?: ListRecommendationHistoryRecommendationHistoryGetParams,
+  options?: {
+    query?: Partial<
+      UseInfiniteQueryOptions<
+        Awaited<
+          ReturnType<typeof listRecommendationHistoryRecommendationHistoryGet>
+        >,
+        TError,
+        TData,
+        QueryKey,
+        ListRecommendationHistoryRecommendationHistoryGetParams['cursor']
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<
+            ReturnType<typeof listRecommendationHistoryRecommendationHistoryGet>
+          >,
+          TError,
+          Awaited<
+            ReturnType<typeof listRecommendationHistoryRecommendationHistoryGet>
+          >,
+          QueryKey
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof fetcher>;
+  },
+  queryClient?: QueryClient,
+): UseInfiniteQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+export function useListRecommendationHistoryRecommendationHistoryGetInfinite<
+  TData = InfiniteData<
+    Awaited<
+      ReturnType<typeof listRecommendationHistoryRecommendationHistoryGet>
+    >,
+    ListRecommendationHistoryRecommendationHistoryGetParams['cursor']
+  >,
+  TError = ErrorType<ErrorResponse>,
+>(
+  params?: ListRecommendationHistoryRecommendationHistoryGetParams,
+  options?: {
+    query?: Partial<
+      UseInfiniteQueryOptions<
+        Awaited<
+          ReturnType<typeof listRecommendationHistoryRecommendationHistoryGet>
+        >,
+        TError,
+        TData,
+        QueryKey,
+        ListRecommendationHistoryRecommendationHistoryGetParams['cursor']
+      >
+    >;
+    request?: SecondParameter<typeof fetcher>;
+  },
+  queryClient?: QueryClient,
+): UseInfiniteQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+};
+/**
+ * @summary List Recommendation History
+ */
+
+export function useListRecommendationHistoryRecommendationHistoryGetInfinite<
+  TData = InfiniteData<
+    Awaited<
+      ReturnType<typeof listRecommendationHistoryRecommendationHistoryGet>
+    >,
+    ListRecommendationHistoryRecommendationHistoryGetParams['cursor']
+  >,
+  TError = ErrorType<ErrorResponse>,
+>(
+  params?: ListRecommendationHistoryRecommendationHistoryGetParams,
+  options?: {
+    query?: Partial<
+      UseInfiniteQueryOptions<
+        Awaited<
+          ReturnType<typeof listRecommendationHistoryRecommendationHistoryGet>
+        >,
+        TError,
+        TData,
+        QueryKey,
+        ListRecommendationHistoryRecommendationHistoryGetParams['cursor']
+      >
+    >;
+    request?: SecondParameter<typeof fetcher>;
+  },
+  queryClient?: QueryClient,
+): UseInfiniteQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>;
+} {
+  const queryOptions =
+    getListRecommendationHistoryRecommendationHistoryGetInfiniteQueryOptions(
+      params,
+      options,
+    );
+
+  const query = useInfiniteQuery(
+    queryOptions,
+    queryClient,
+  ) as UseInfiniteQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
 
 export const getListRecommendationHistoryRecommendationHistoryGetQueryOptions =
   <

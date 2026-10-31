@@ -9,6 +9,7 @@ import { useToastStackHeight } from '@/components/common/Toaster/Toaster.hooks';
 import TopBar from '@/components/common/TopBar';
 import DeleteClothingDialog from '@/components/DeleteClothingDialog';
 import type { ClothingCard as ClothingCardData } from '@/generated/models';
+import useLoadMoreTrigger from '@/hooks/useLoadMoreTrigger';
 import {
   dismissClothingUpload,
   resendClothingUpload,
@@ -20,7 +21,6 @@ import UploadCard from './components/UploadCard';
 import useClosetClothingList from './hooks/useClosetClothingList';
 import useClothingStatusPolling from './hooks/useClothingStatusPolling';
 import useClothingUploads from './hooks/useClothingUploads';
-import useLoadMoreTrigger from './hooks/useLoadMoreTrigger';
 import useRetryClothing from './hooks/useRetryClothing';
 import type { ClothingStatusDialogVariant } from './types';
 import * as S from './ClosetPage.styled';

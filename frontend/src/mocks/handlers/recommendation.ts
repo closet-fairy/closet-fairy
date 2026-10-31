@@ -9,6 +9,8 @@ import type {
   RegenerationCreateOutput,
   RatingResult,
   RecommendationHistoryDetail,
+  RecommendationHistoryItem,
+  RecommendationHistoryPage,
   RecommendationResult,
   RegenerationCreated,
   RecommendationSessionCreated,
@@ -364,6 +366,125 @@ const toHistoryDetail = (
   };
 };
 
+const HISTORY_SEED_COUNT = 45;
+const HISTORY_SEED_FIRST_SESSION_ID = 8000;
+const HISTORY_SEED_INTERVAL_MS = 7 * 60 * 60 * 1000;
+const HISTORY_DEFAULT_LIMIT = 20;
+
+const createHistoryThumbnails = (
+  sessionIndex: number,
+): RecommendationHistoryItem['thumbnails'] => {
+  const thumbnails: RecommendationHistoryItem['thumbnails'] = [
+    {
+      slot_cd: 'top',
+      item_name: '베이지 터틀넥',
+      image_url: SAMPLE_CUTOUT_URL,
+    },
+    {
+      slot_cd: 'bottom',
+      item_name: '그레이 슬랙스',
+      image_url: SAMPLE_CUTOUT_URL,
+    },
+    {
+      slot_cd: 'shoes',
+      item_name: '브라운 스니커즈',
+      image_url: SAMPLE_CUTOUT_URL,
+    },
+  ];
+
+  if (sessionIndex % 2 === 0) {
+    return thumbnails;
+  }
+
+  return [
+    ...thumbnails,
+    { slot_cd: 'socks', item_name: '흰 양말', image_url: null },
+    ...(sessionIndex % 4 === 1
+      ? []
+      : [
+          {
+            slot_cd: 'accessories' as const,
+            item_name: '네이비 볼캡',
+            image_url: SAMPLE_CUTOUT_URL,
+          },
+          {
+            slot_cd: 'accessories' as const,
+            item_name: '가죽 벨트',
+            image_url: SAMPLE_CUTOUT_URL,
+          },
+        ]),
+  ];
+};
+
+const createHistoryCondition = (
+  sessionIndex: number,
+  recommendedAt: number,
+): RecommendationHistoryItem['condition'] => {
+  const isCustom = sessionIndex % 3 === 1;
+  const startAt =
+    recommendedAt + 60 * 60 * 1000 * (sessionIndex % 5 === 0 ? 20 : 2);
+
+  return {
+    tpo_cd: isCustom ? 'custom' : 'date',
+    tpo_text: isCustom
+      ? '회사 동기 결혼식 2부 피로연이 강남 루프탑 바에서 있어서'
+      : null,
+    season_cd: 'fall',
+    going_out_start_at: new Date(startAt).toISOString(),
+    going_out_end_at: new Date(startAt + 5 * 60 * 60 * 1000).toISOString(),
+    sido_nm: '서울특별시',
+    sigungu_nm: '성동구',
+  };
+};
+
+const createHistorySeed = (sessionIndex: number): RecommendationHistoryItem => {
+  const recommendedAt = Date.now() - sessionIndex * HISTORY_SEED_INTERVAL_MS;
+
+  return {
+    recommendation_session_id: HISTORY_SEED_FIRST_SESSION_ID - sessionIndex,
+    recommended_at: new Date(recommendedAt).toISOString(),
+    condition: createHistoryCondition(sessionIndex, recommendedAt),
+    weather:
+      sessionIndex % 7 === 3
+        ? null
+        : { ...getWeather(undefined), is_fallback: sessionIndex % 5 === 2 },
+    rating: (sessionIndex % 5) + 1,
+    thumbnails: createHistoryThumbnails(sessionIndex),
+  };
+};
+
+const toHistoryItem = (
+  sessionId: number,
+  session: MockSession,
+): RecommendationHistoryItem => {
+  const { condition, rating, outfit } = toHistoryDetail(sessionId, session);
+
+  return {
+    recommendation_session_id: sessionId,
+    recommended_at: new Date(session.createdAt).toISOString(),
+    condition,
+    weather: getWeather(session),
+    rating,
+    thumbnails: outfit.items.map(
+      ({ slot_cd: slotCd, item_name: itemName, image_url: imageUrl }) => ({
+        slot_cd: slotCd,
+        item_name: itemName,
+        image_url: imageUrl,
+      }),
+    ),
+  };
+};
+
+const getHistoryItems = () => [
+  ...[...sessions]
+    .filter(([, session]) => session.sessionStatusCd === 'completed')
+    .map(([sessionId, session]) => toHistoryItem(sessionId, session))
+    .reverse(),
+  ...Array.from({ length: HISTORY_SEED_COUNT }, (_, sessionIndex) =>
+    createHistorySeed(sessionIndex),
+  ),
+];
+
 export const recommendationHandlers = [
   http.get(SLOW_IMAGE_URL, async () => {
     await delay(SLOW_IMAGE_MS);
@@ -553,6 +674,26 @@ export const recommendationHandlers = [
       );
     },
   ),
+  http.get('/api/recommendation-history', ({ request }) => {
+    const { searchParams } = new URL(request.url);
+    const cursor = searchParams.get('cursor');
+    const limit = Number(searchParams.get('limit') ?? HISTORY_DEFAULT_LIMIT);
+    const historyItems = getHistoryItems();
+    const start = cursor
+      ? historyItems.findIndex(
+          (item) => item.recommendation_session_id === Number(cursor),
+        ) + 1
+      : 0;
+    const items = historyItems.slice(start, start + limit);
+
+    return HttpResponse.json<RecommendationHistoryPage>({
+      items,
+      next_cursor:
+        start + limit < historyItems.length
+          ? (items.at(-1)?.recommendation_session_id ?? null)
+          : null,
+    });
+  }),
   http.get<SessionParams>(
     '/api/recommendation-history/:sessionId',
     ({ params }) => {

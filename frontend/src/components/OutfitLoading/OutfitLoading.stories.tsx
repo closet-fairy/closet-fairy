@@ -17,3 +17,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
+
+export const CustomLabel: Story = {
+  args: { label: '추천 내역을 불러오는 중이에요' },
+};

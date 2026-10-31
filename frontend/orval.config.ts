@@ -142,11 +142,14 @@ if (unsupportedResponseErrors.length > 0) {
   throw new Error(unsupportedResponseErrors.join('\n'));
 }
 
-// 옷장 목록은 cursor로 이어 받는 무한 스크롤이라 useInfiniteQuery 훅도 만든다.
+// 옷장 목록과 추천 내역 목록은 cursor로 이어 받는 무한 스크롤이라 useInfiniteQuery 훅도 만든다.
+const infiniteQuery = {
+  query: { useInfinite: true, useInfiniteQueryParam: 'cursor' },
+};
+
 const infiniteOperations = {
-  list_clothing_clothing_get: {
-    query: { useInfinite: true, useInfiniteQueryParam: 'cursor' },
-  },
+  list_clothing_clothing_get: infiniteQuery,
+  list_recommendation_history_recommendation_history_get: infiniteQuery,
 };
 
 const noContentOperations = Object.fromEntries(
