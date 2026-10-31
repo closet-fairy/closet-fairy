@@ -1,8 +1,8 @@
 import styled from '@emotion/styled';
+import { TOP_BAR_HEIGHT } from '@/components/common/TopBar/TopBar.styled';
 import { bg, fg, spacing, typography, zIndex } from '@/styles/tokens';
 
-const HEADER_HEIGHT = 54;
-const HEADER_BOTTOM = `calc(${HEADER_HEIGHT}px + env(safe-area-inset-top, 0px))`;
+const HEADER_BOTTOM = `calc(${TOP_BAR_HEIGHT}px + env(safe-area-inset-top, 0px))`;
 const HEADER_FADE_START = '70%';
 
 export const StatusPage = styled.div`
@@ -20,7 +20,7 @@ export const Container = styled.div`
   background-color: ${bg.floor};
 `;
 
-// 위로 뻗은 옷이 상단 바와 겹쳐도 어색하지 않도록 바닥색이 아래쪽에서 투명하게 풀린다.
+// 시안대로 바닥색이 아래쪽에서 투명하게 풀린다. 지금 배치는 옷이 영역 안에 머물러 겹치지 않지만, 배치가 바뀌어 옷이 바에 닿아도 경계가 보이지 않게 둔다.
 export const Header = styled.header`
   position: absolute;
   top: 0;
