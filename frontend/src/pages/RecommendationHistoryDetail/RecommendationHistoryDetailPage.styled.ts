@@ -1,8 +1,17 @@
 import styled from '@emotion/styled';
 import { createLink } from '@tanstack/react-router';
-import { bg, fg, radius, spacing, typography } from '@/styles/tokens';
+import {
+  bg,
+  duration,
+  easing,
+  fg,
+  radius,
+  spacing,
+  typography,
+} from '@/styles/tokens';
 
 const FLOOR_LINK_HEIGHT = 36;
+const PRESSED_SCALE = 0.94;
 
 export const Container = styled.div`
   display: flex;
@@ -56,6 +65,11 @@ const FloorAnchor = styled.a`
   padding: 0 ${spacing[10]};
   border-radius: ${radius.sm};
   color: ${fg.neutral.strong};
+  transition: transform ${duration.fast} ${easing.standard};
+
+  &:active {
+    transform: scale(${PRESSED_SCALE});
+  }
 `;
 
 export const FloorLink = createLink(FloorAnchor);
