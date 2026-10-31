@@ -6,6 +6,8 @@ import OutfitFloor from './OutfitFloor';
 
 const CARD_WIDTH = 362;
 const CARD_HEIGHT = 568;
+const SCREEN_WIDTH = 390;
+const SCREEN_HEIGHT = 746;
 
 const createItem = (
   slotCd: OutfitItemResult['slot_cd'],
@@ -39,6 +41,13 @@ const MANY_ITEMS = [
 const meta = {
   component: OutfitFloor,
   argTypes: {
+    variant: {
+      description:
+        'card는 결과 카드 안에 그립니다. floor는 카드 없이 바닥 위에 바로 그리고, 배치 영역을 남는 공간의 가운데에 둡니다.',
+      control: 'inline-radio',
+      options: ['card', 'floor'],
+      table: { defaultValue: { summary: 'card' } },
+    },
     items: {
       description:
         '코디의 아이템입니다. 사진이 있는 옷을 사진 결과가 정해진 뒤 한 번에 놓습니다. 놓을 옷이 없으면 전부 이미지가 없을 때와 사진을 불러오지 못했을 때를 나눠 안내합니다.',
@@ -68,12 +77,12 @@ const meta = {
     onOverflowClick: fn(),
   },
   decorators: [
-    (Story) => (
+    (Story, { args }) => (
       <div
         style={{
           position: 'relative',
-          width: CARD_WIDTH,
-          height: CARD_HEIGHT,
+          width: args.variant === 'floor' ? SCREEN_WIDTH : CARD_WIDTH,
+          height: args.variant === 'floor' ? SCREEN_HEIGHT : CARD_HEIGHT,
           overflow: 'hidden',
           containerType: 'size',
         }}
@@ -149,4 +158,8 @@ export const NothingToPlace: Story = {
       createItem('shoes', { item_source_cd: 'essential', image_url: null }),
     ],
   },
+};
+
+export const OnFloor: Story = {
+  args: { items: MANY_ITEMS, variant: 'floor' },
 };
