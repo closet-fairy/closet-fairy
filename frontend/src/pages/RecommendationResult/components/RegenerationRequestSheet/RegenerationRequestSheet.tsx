@@ -73,6 +73,7 @@ const RegenerationRequestSheet = (props: RegenerationRequestSheetProps) => {
         <Button
           isFullWidth
           isLoading={isSubmitting}
+          isDisabled={text.trim().length === 0}
           onClick={() => onSubmit(text, scope)}
         >
           수정 요청하기
