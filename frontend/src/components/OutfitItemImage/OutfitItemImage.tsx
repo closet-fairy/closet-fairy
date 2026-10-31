@@ -5,21 +5,23 @@ import Tag from '@/components/common/Tag';
 import type { OutfitItemResult } from '@/generated/models';
 import * as S from './OutfitItemImage.styled';
 
-export type OutfitItemImageSize = 'md' | 'sm';
+export type OutfitItemImageSize = 'lg' | 'md' | 'sm';
 
 interface OutfitItemImageProps {
   item: Pick<OutfitItemResult, 'item_name' | 'image_url'> &
     Partial<Pick<OutfitItemResult, 'item_source_cd'>>;
   size?: OutfitItemImageSize;
+  isDeleted?: boolean;
 }
 
 const FAILED_ICON_SIZE: Record<OutfitItemImageSize, IconSize> = {
+  lg: 'lg',
   md: 'lg',
   sm: 'md',
 };
 
 const OutfitItemImage = (props: OutfitItemImageProps) => {
-  const { item, size = 'md' } = props;
+  const { item, size = 'md', isDeleted = false } = props;
   const {
     item_name: name,
     item_source_cd: sourceCd,
@@ -31,7 +33,7 @@ const OutfitItemImage = (props: OutfitItemImageProps) => {
 
   const renderContent = () => {
     if (imageUrl === null) {
-      return <S.Name>{name}</S.Name>;
+      return <S.Name $size={size}>{name}</S.Name>;
     }
 
     if (imageUrl === failedUrl) {
@@ -48,6 +50,7 @@ const OutfitItemImage = (props: OutfitItemImageProps) => {
         alt={imageLabel ?? ''}
         draggable={false}
         $size={size}
+        $isDeleted={isDeleted}
         onError={() => setFailedUrl(imageUrl)}
       />
     );
@@ -56,8 +59,9 @@ const OutfitItemImage = (props: OutfitItemImageProps) => {
   return (
     <S.Container $size={size} $isDashed={sourceCd === 'essential'}>
       {renderContent()}
-      {size === 'md' && sourceCd === 'essential' && (
-        <S.Badge>
+      {isDeleted && <S.DeletedBadge>지운 옷</S.DeletedBadge>}
+      {size !== 'sm' && sourceCd === 'essential' && (
+        <S.Badge $size={size}>
           <Tag variant="inverse" size="xs">
             기본
           </Tag>
