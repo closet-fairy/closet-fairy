@@ -23,9 +23,18 @@ export class ApiError extends Error {
 }
 
 const VALIDATION_STATUS = 422;
+const CLIENT_ERROR_MIN_STATUS = 400;
+const SERVER_ERROR_MIN_STATUS = 500;
 
 export const isValidationError = (error: unknown): error is ApiError =>
   error instanceof ApiError && error.status === VALIDATION_STATUS;
+
+// 네트워크 오류는 status가 없으므로 여기에 들지 않는다.
+export const isClientError = (error: unknown): error is ApiError =>
+  error instanceof ApiError &&
+  error.status !== null &&
+  error.status >= CLIENT_ERROR_MIN_STATUS &&
+  error.status < SERVER_ERROR_MIN_STATUS;
 
 const serverErrorSchema = z.object({
   code: z.string(),
