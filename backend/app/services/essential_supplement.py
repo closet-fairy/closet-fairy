@@ -125,18 +125,20 @@ def _sort_candidates(
 def _outer_thickness_rank(c: SupplementedCandidate, min_feels_like: float) -> int:
     if min_feels_like < float(get_settings().THIN_CLOTHING_MIN_FEELS_LIKE_TEMPERATURE):
         return 0 if c.thickness_cd == "thick" else 1
-    # 5도 위에서도 얇은 아우터 한 장은 리뷰어가 보온 부족으로 떨어뜨릴 수 있어
+    # 기준 온도 위에서도 얇은 아우터 한 장은 리뷰어가 보온 부족으로 떨어뜨릴 수 있어
     # 보통 두께를 먼저 고른다
-    if c.thickness_cd == "thin":
-        return 1
-    return 2 if c.thickness_cd == "thick" else 0
+    # 두께 태깅이 없는 옷은 보통으로 본다
+    return {"thin": 1, "thick": 2}.get(c.thickness_cd, 0)
 
 
-# items는 _sort_candidates를 거친 목록이다.
-# 안정 정렬이라 같은 순위 안에서는 선호 스타일·격식·번호 순서가 유지된다
 def _sort_essential_outers(
     items: list[SupplementedCandidate], precipitation_expected: bool, min_feels_like: float
 ) -> list[SupplementedCandidate]:
+    """방수 우선(비 예보 때) > 체감온도에 맞는 두께 순으로 정렬한다.
+
+    items는 _sort_candidates를 거친 목록이다. 안정 정렬이라 같은 순위 안에서는
+    선호 스타일·격식·번호 순서가 유지된다.
+    """
     return sorted(
         items,
         key=lambda c: (
