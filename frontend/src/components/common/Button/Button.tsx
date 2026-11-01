@@ -4,7 +4,7 @@ import Icon from '@/components/common/Icon';
 import type { IconSize } from '@/components/common/Icon/Icon';
 import * as S from './Button.styled';
 
-export type ButtonVariant = 'primary' | 'outline' | 'text';
+export type ButtonVariant = 'primary' | 'outline' | 'text' | 'danger';
 export type ButtonSize = 'lg' | 'md' | 'sm';
 
 interface ButtonProps {
