@@ -1,7 +1,12 @@
 import styled from '@emotion/styled';
-import { bg, fg, spacing, typography, zIndex } from '@/styles/tokens';
-
-export const TOP_BAR_HEIGHT = 54;
+import {
+  bg,
+  fg,
+  spacing,
+  topBarHeight,
+  typography,
+  zIndex,
+} from '@/styles/tokens';
 
 export const Container = styled.header`
   position: sticky;
@@ -17,7 +22,7 @@ export const Inner = styled.div`
   display: flex;
   align-items: center;
   gap: ${spacing[10]};
-  height: ${TOP_BAR_HEIGHT}px;
+  height: ${topBarHeight}px;
   padding: 0 ${spacing[20]};
 `;
 

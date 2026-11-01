@@ -1,5 +1,7 @@
 const APP_MAX_WIDTH = 480;
 
+export const topBarHeight = 54;
+
 export const appFrame = {
   maxWidth: `${APP_MAX_WIDTH}px`,
   // position: fixed 요소 전용이다. 50%가 화면 폭을 가리켜야 앱 가장자리까지의 거리가 된다.

@@ -1,8 +1,14 @@
 import styled from '@emotion/styled';
-import { TOP_BAR_HEIGHT } from '@/components/common/TopBar/TopBar.styled';
-import { bg, fg, spacing, typography, zIndex } from '@/styles/tokens';
+import {
+  bg,
+  fg,
+  spacing,
+  topBarHeight,
+  typography,
+  zIndex,
+} from '@/styles/tokens';
 
-const HEADER_BOTTOM = `calc(${TOP_BAR_HEIGHT}px + env(safe-area-inset-top, 0px))`;
+const HEADER_BOTTOM = `calc(${topBarHeight}px + env(safe-area-inset-top, 0px))`;
 const HEADER_FADE_START = '70%';
 
 export const StatusPage = styled.div`
