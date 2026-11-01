@@ -42,7 +42,14 @@ VALUES
 
   -- 악세서리 2
   ('블랙 가죽 벨트',           'accessories', 'belt',  'formal',  'black',    NULL,     FALSE, 5, 'unisex', NULL, TRUE),
-  ('차콜 머플러',              'accessories', 'scarf', 'casual',  'gray',     NULL,     FALSE, 2, 'unisex', NULL, TRUE);
+  ('차콜 머플러',              'accessories', 'scarf', 'casual',  'gray',     NULL,     FALSE, 2, 'unisex', NULL, TRUE),
+
+  -- 여름 데이트 5
+  ('네이비 반팔 피케 폴로',    'top',       NULL,    'preppy',  'navy',     'thin',   FALSE, 3, 'unisex', NULL, TRUE),
+  ('베이지 린넨 반팔 셔츠',    'top',         NULL,    'casual',  'beige',    'thin',   FALSE, 3, 'unisex', NULL, TRUE),
+  ('라이트그레이 린넨 슬랙스', 'bottom',      NULL,    'minimal', 'gray',     'thin',   FALSE, 3, 'unisex', NULL, TRUE),
+  ('카키 치노 반바지',         'bottom',      NULL,    'casual',  'khaki',    'thin',   FALSE, 2, 'unisex', NULL, TRUE),
+  ('브라운 페니 로퍼',         'shoes',       NULL,    'classic', 'brown',    NULL,     FALSE, 3, 'unisex', NULL, TRUE);
 
 INSERT INTO essential_item_season (essential_item_id, season_cd)
 SELECT e.essential_item_id, s.season_cd
@@ -66,6 +73,7 @@ JOIN (
   UNION ALL SELECT '화이트 베이직 셔츠',       'spring'
   UNION ALL SELECT '화이트 베이직 셔츠',       'summer'
   UNION ALL SELECT '화이트 베이직 셔츠',       'fall'
+  UNION ALL SELECT '화이트 베이직 셔츠',       'winter'
   UNION ALL SELECT '라이트블루 옥스포드 셔츠', 'spring'
   UNION ALL SELECT '라이트블루 옥스포드 셔츠', 'fall'
   UNION ALL SELECT '화이트 반팔 티셔츠',       'summer'
@@ -77,12 +85,15 @@ JOIN (
 
   -- 하의
   UNION ALL SELECT '블랙 슬랙스',              'spring'
+  UNION ALL SELECT '블랙 슬랙스',              'summer'
   UNION ALL SELECT '블랙 슬랙스',              'fall'
+  UNION ALL SELECT '블랙 슬랙스',              'winter'
   UNION ALL SELECT '차콜 울 슬랙스',           'winter'
   UNION ALL SELECT '베이지 치노 팬츠',         'spring'
   UNION ALL SELECT '베이지 치노 팬츠',         'fall'
   UNION ALL SELECT '인디고 데님 팬츠',         'spring'
   UNION ALL SELECT '인디고 데님 팬츠',         'fall'
+  UNION ALL SELECT '인디고 데님 팬츠',         'winter'
   UNION ALL SELECT '그레이 반바지',            'summer'
   UNION ALL SELECT '블랙 트레이닝 팬츠',       'spring'
   UNION ALL SELECT '블랙 트레이닝 팬츠',       'fall'
@@ -92,7 +103,9 @@ JOIN (
   UNION ALL SELECT '화이트 스니커즈',          'summer'
   UNION ALL SELECT '화이트 스니커즈',          'fall'
   UNION ALL SELECT '블랙 로퍼',                'spring'
+  UNION ALL SELECT '블랙 로퍼',                'summer'
   UNION ALL SELECT '블랙 로퍼',                'fall'
+  UNION ALL SELECT '블랙 로퍼',                'winter'
   UNION ALL SELECT '블랙 첼시부츠',            'spring'   -- 작업 지시로 추가
   UNION ALL SELECT '블랙 첼시부츠',            'fall'
   UNION ALL SELECT '블랙 첼시부츠',            'winter'
@@ -125,4 +138,13 @@ JOIN (
   UNION ALL SELECT '블랙 가죽 벨트',           'fall'
   UNION ALL SELECT '블랙 가죽 벨트',           'winter'
   UNION ALL SELECT '차콜 머플러',              'winter'
+
+  -- 여름 데이트
+  UNION ALL SELECT '네이비 반팔 피케 폴로',    'summer'
+  UNION ALL SELECT '베이지 린넨 반팔 셔츠',    'summer'
+  UNION ALL SELECT '라이트그레이 린넨 슬랙스', 'summer'
+  UNION ALL SELECT '카키 치노 반바지',         'summer'
+  UNION ALL SELECT '브라운 페니 로퍼',         'spring'
+  UNION ALL SELECT '브라운 페니 로퍼',         'summer'
+  UNION ALL SELECT '브라운 페니 로퍼',         'fall'
 ) s ON s.item_name = e.item_name;

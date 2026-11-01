@@ -42,7 +42,7 @@ SELECT '스타일' AS 항목, COUNT(*) AS 실제, 13 AS 기대,
 UNION ALL
 SELECT '색상',   COUNT(*), 16, IF(COUNT(*) = 16, 'OK', 'FAIL') FROM color
 UNION ALL
-SELECT '에센셜', COUNT(*), 30, IF(COUNT(*) = 30, 'OK', 'FAIL') FROM essential_item;
+SELECT '에센셜', COUNT(*), 35, IF(COUNT(*) = 35, 'OK', 'FAIL') FROM essential_item;
 "
 
 echo
