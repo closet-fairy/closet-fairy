@@ -45,7 +45,7 @@ VALUES
   ('차콜 머플러',              'accessories', 'scarf', 'casual',  'gray',     NULL,     FALSE, 2, 'unisex', NULL, TRUE),
 
   -- 여름 데이트 5
-  ('네이비 반팔 피케 폴로',    'top',       NULL,    'preppy',  'navy',     'thin',   FALSE, 3, 'unisex', NULL, TRUE),
+  ('네이비 반팔 피케 폴로',    'top',         NULL,    'preppy',  'navy',     'thin',   FALSE, 3, 'unisex', NULL, TRUE),
   ('베이지 린넨 반팔 셔츠',    'top',         NULL,    'casual',  'beige',    'thin',   FALSE, 3, 'unisex', NULL, TRUE),
   ('라이트그레이 린넨 슬랙스', 'bottom',      NULL,    'minimal', 'gray',     'thin',   FALSE, 3, 'unisex', NULL, TRUE),
   ('카키 치노 반바지',         'bottom',      NULL,    'casual',  'khaki',    'thin',   FALSE, 2, 'unisex', NULL, TRUE),
