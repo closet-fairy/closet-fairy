@@ -321,7 +321,7 @@ describe('온보딩 중 로그아웃', () => {
     await user.click(within(dialog).getByRole('button', { name: '로그아웃' }));
 
     expect(
-      await screen.findByRole('button', { name: '구글로 시작하기' }),
+      await screen.findByRole('button', { name: 'Google로 로그인' }),
     ).toBeInTheDocument();
     expect(history.location.pathname).toBe('/login');
   });

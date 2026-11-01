@@ -6,6 +6,7 @@ import Dialog from '@/components/common/Dialog';
 import Notice from '@/components/common/Notice';
 import type { ProviderCd } from '@/domains/member/memberSettingOptions';
 import useRedirectLock from '@/hooks/useRedirectLock';
+import SocialLoginButton from './components/SocialLoginButton';
 import * as S from './LoginPage.styled';
 
 const LOGIN_URL: Record<ProviderCd, string> = {
@@ -52,22 +53,16 @@ const LoginPage = () => {
         <AppBrand />
       </S.Brand>
       <S.Actions>
-        <Button
-          variant="outline"
-          isFullWidth
+        <SocialLoginButton
+          provider="google"
           isDisabled={isRedirecting}
           onClick={() => handleLogin('google')}
-        >
-          구글로 시작하기
-        </Button>
-        <Button
-          variant="outline"
-          isFullWidth
+        />
+        <SocialLoginButton
+          provider="kakao"
           isDisabled={isRedirecting}
           onClick={() => handleLogin('kakao')}
-        >
-          카카오로 시작하기
-        </Button>
+        />
       </S.Actions>
       <Dialog
         isOpen={isWithdrawnNoticeOpen}
