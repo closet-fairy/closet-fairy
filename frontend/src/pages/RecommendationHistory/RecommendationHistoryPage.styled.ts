@@ -1,13 +1,7 @@
-import { keyframes } from '@emotion/react';
 import styled from '@emotion/styled';
 import { createLink } from '@tanstack/react-router';
 import { bg, fg, spacing, typography } from '@/styles/tokens';
-
-const spin = keyframes`
-  to {
-    transform: rotate(360deg);
-  }
-`;
+import { visuallyHidden } from '@/styles/visuallyHidden';
 
 export const Container = styled.div`
   display: flex;
@@ -42,17 +36,6 @@ export const ListEndMessage = styled.p`
   color: ${fg.neutral.light};
 `;
 
-export const Spinner = styled.span`
-  display: flex;
-  color: ${fg.neutral.light};
-
-  & > span {
-    animation: ${spin} 1s linear infinite;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    & > span {
-      animation: none;
-    }
-  }
+export const LoadingMessage = styled.p`
+  ${visuallyHidden}
 `;
