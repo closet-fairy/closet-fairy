@@ -40,29 +40,29 @@ afterEach(() => {
 });
 
 describe('소셜 로그인 시작', () => {
-  test('구글로 시작하기를 누르면 구글 로그인 주소로 이동하고 두 버튼을 모두 막아야 한다.', async () => {
+  test('Google로 로그인을 누르면 구글 로그인 주소로 이동하고 두 버튼을 모두 막아야 한다.', async () => {
     const user = userEvent.setup();
     await renderAt('/login');
 
     await user.click(
-      await screen.findByRole('button', { name: '구글로 시작하기' }),
+      await screen.findByRole('button', { name: 'Google로 로그인' }),
     );
 
     expect(assign).toHaveBeenCalledWith('/api/auth/google/login');
     expect(
-      screen.getByRole('button', { name: '구글로 시작하기' }),
+      screen.getByRole('button', { name: 'Google로 로그인' }),
     ).toBeDisabled();
     expect(
-      screen.getByRole('button', { name: '카카오로 시작하기' }),
+      screen.getByRole('button', { name: '카카오 로그인' }),
     ).toBeDisabled();
   });
 
-  test('카카오로 시작하기를 누르면 카카오 로그인 주소로 이동해야 한다.', async () => {
+  test('카카오 로그인을 누르면 카카오 로그인 주소로 이동해야 한다.', async () => {
     const user = userEvent.setup();
     await renderAt('/login');
 
     await user.click(
-      await screen.findByRole('button', { name: '카카오로 시작하기' }),
+      await screen.findByRole('button', { name: '카카오 로그인' }),
     );
 
     expect(assign).toHaveBeenCalledWith('/api/auth/kakao/login');

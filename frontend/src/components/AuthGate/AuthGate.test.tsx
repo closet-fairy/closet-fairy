@@ -40,7 +40,7 @@ describe('로그인·온보딩 상태에 따른 이동', () => {
     const { history } = await renderAt('/closet');
 
     expect(
-      await screen.findByRole('button', { name: '구글로 시작하기' }),
+      await screen.findByRole('button', { name: 'Google로 로그인' }),
     ).toBeInTheDocument();
     expect(history.location.pathname).toBe('/login');
   });
@@ -49,7 +49,7 @@ describe('로그인·온보딩 상태에 따른 이동', () => {
     setMockMemberStatus('signedOut');
     await renderAt('/my-info');
 
-    await screen.findByRole('button', { name: '구글로 시작하기' });
+    await screen.findByRole('button', { name: 'Google로 로그인' });
 
     expect(screen.queryByText('로그인이 만료되었어요')).not.toBeInTheDocument();
   });
@@ -130,7 +130,7 @@ describe('세션 만료', () => {
     await user.click(screen.getByRole('button', { name: '다시 로그인' }));
 
     expect(
-      await screen.findByRole('button', { name: '구글로 시작하기' }),
+      await screen.findByRole('button', { name: 'Google로 로그인' }),
     ).toBeInTheDocument();
     expect(history.location.pathname).toBe('/login');
     expect(screen.queryByText('로그인이 만료되었어요')).not.toBeInTheDocument();

@@ -100,7 +100,7 @@ describe('찾을 수 없는 주소', () => {
     expect(
       await screen.findByRole(
         'button',
-        { name: '구글로 시작하기' },
+        { name: 'Google로 로그인' },
         { timeout: ROUTE_LOAD_TIMEOUT },
       ),
     ).toBeInTheDocument();
