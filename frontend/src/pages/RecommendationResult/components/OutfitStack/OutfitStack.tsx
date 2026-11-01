@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import type { RefObject } from 'react';
 import Button from '@/components/common/Button';
 import {
@@ -14,6 +14,7 @@ interface OutfitStackProps {
   outfit: OutfitResult;
   depth: number;
   isRegenerating?: boolean;
+  isActive?: boolean;
   onDepthChange: (depth: number) => void;
   onOverflowClick: () => void;
 }
@@ -23,12 +24,15 @@ const OutfitStack = (props: OutfitStackProps) => {
     outfit,
     depth,
     isRegenerating = false,
+    isActive = true,
     onDepthChange,
     onOverflowClick,
   } = props;
   const layers = getOutfitLayers(outfit);
   const hasOlder = depth < layers.length - 1;
   const hasNewer = depth > 0;
+  // 등장 애니메이션은 코디마다 처음 한 번만 보여 준다. 최신 코디에만 쓰고, 넘겼다 돌아오거나 이전 코디를 볼 때는 다시 보여 주지 않는다.
+  const [playedOutfitIds, setPlayedOutfitIds] = useState<readonly number[]>([]);
   const olderButtonRef = useRef<HTMLButtonElement>(null);
   const newerButtonRef = useRef<HTMLButtonElement>(null);
   const { motion, dragHandlers } = useOutfitStackDrag({
@@ -104,6 +108,15 @@ const OutfitStack = (props: OutfitStackProps) => {
                   : undefined
               }
               onOverflowClick={onOverflowClick}
+              entrance={
+                layerDepth === 0 && !playedOutfitIds.includes(layer.outfit_id)
+                  ? {
+                      isActive: isActive && depth === 0,
+                      onPlay: () =>
+                        setPlayedOutfitIds((ids) => [...ids, layer.outfit_id]),
+                    }
+                  : undefined
+              }
             />
           </S.Layer>
         );

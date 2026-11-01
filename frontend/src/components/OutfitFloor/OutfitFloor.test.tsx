@@ -313,3 +313,118 @@ describe('배치 영역의 자리', () => {
     expect(transform).toBe('translate(-50%,0%)');
   });
 });
+
+describe('등장 애니메이션', () => {
+  beforeEach(() => {
+    vi.stubGlobal('matchMedia', () => ({ matches: false }));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  test('사진 결과가 정해지기 전에는 재생을 시작하지 않아야 한다.', () => {
+    const onPlay = vi.fn();
+
+    render(
+      <OutfitFloor
+        items={ITEMS}
+        seed={SEED}
+        entrance={{ isActive: true, onPlay }}
+      />,
+    );
+    fireEvent.load(screen.getByAltText('상의'));
+
+    expect(onPlay).not.toHaveBeenCalled();
+  });
+
+  test('사진 결과가 모두 정해지면 재생을 시작해야 한다.', () => {
+    const onPlay = vi.fn();
+
+    render(
+      <OutfitFloor
+        items={ITEMS}
+        seed={SEED}
+        entrance={{ isActive: true, onPlay }}
+      />,
+    );
+    loadAll();
+
+    expect(onPlay).toHaveBeenCalledTimes(1);
+    expect(screen.getByAltText('상의')).toBeVisible();
+  });
+
+  test('보고 있는 자리가 아니면 옷을 숨긴 채 기다려야 한다.', () => {
+    const onPlay = vi.fn();
+
+    render(
+      <OutfitFloor
+        items={ITEMS}
+        seed={SEED}
+        entrance={{ isActive: false, onPlay }}
+      />,
+    );
+    loadAll();
+
+    expect(onPlay).not.toHaveBeenCalled();
+    expect(screen.getByAltText('상의')).not.toBeVisible();
+    expect(screen.getByAltText('하의')).not.toBeVisible();
+  });
+
+  test('보게 되면 그때 재생을 시작해야 한다.', () => {
+    const onPlay = vi.fn();
+    const { rerender } = render(
+      <OutfitFloor
+        items={ITEMS}
+        seed={SEED}
+        entrance={{ isActive: false, onPlay }}
+      />,
+    );
+
+    loadAll();
+    rerender(
+      <OutfitFloor
+        items={ITEMS}
+        seed={SEED}
+        entrance={{ isActive: true, onPlay }}
+      />,
+    );
+
+    expect(onPlay).toHaveBeenCalledTimes(1);
+  });
+
+  test('재생을 시작한 뒤에는 등장 설정이 없어져도 다시 숨기지 않아야 한다.', () => {
+    const { rerender } = render(
+      <OutfitFloor items={ITEMS} seed={SEED} entrance={{ isActive: true }} />,
+    );
+
+    loadAll();
+    rerender(<OutfitFloor items={ITEMS} seed={SEED} />);
+
+    expect(screen.getByAltText('상의')).toBeVisible();
+  });
+
+  test('등장 설정이 없으면 바로 보여 줘야 한다.', () => {
+    render(<OutfitFloor items={ITEMS} seed={SEED} />);
+    loadAll();
+
+    expect(screen.getByAltText('상의')).toBeVisible();
+  });
+
+  test('움직임 줄이기 설정이면 재생하지 않고 바로 보여 줘야 한다.', () => {
+    const onPlay = vi.fn();
+
+    vi.stubGlobal('matchMedia', () => ({ matches: true }));
+    render(
+      <OutfitFloor
+        items={ITEMS}
+        seed={SEED}
+        entrance={{ isActive: true, onPlay }}
+      />,
+    );
+    loadAll();
+
+    expect(onPlay).not.toHaveBeenCalled();
+    expect(screen.getByAltText('상의')).toBeVisible();
+  });
+});

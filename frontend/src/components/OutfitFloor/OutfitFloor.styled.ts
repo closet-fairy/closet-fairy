@@ -1,10 +1,12 @@
 import { css, keyframes } from '@emotion/react';
 import styled from '@emotion/styled';
+import { FLOOR_ENTRANCE } from '@/domains/recommendation/floorEntrance';
 import { FLOOR_CARD } from '@/domains/recommendation/floorLayout.constants';
-import { fg, shadow, spacing, typography } from '@/styles/tokens';
+import { easing, fg, shadow, spacing, typography } from '@/styles/tokens';
 import type { OutfitFloorVariant } from './OutfitFloor';
 
 const STAGE_MAX_WIDTH = 480;
+const ENTRANCE_DISTANCE = 10;
 const TAGLESS_STAGE_SHIFT =
   (FLOOR_CARD.reservedBottom / 2 / FLOOR_CARD.height) * 100;
 const SPIN_DURATION = '1s';
@@ -43,7 +45,23 @@ export const Stage = styled.div<{
   );
 `;
 
-export const Item = styled.div<{ $isHidden: boolean }>`
+// 옷의 기울기는 인라인 transform에 있어서, 움직임은 개별 속성인 translate로 준다.
+const enter = keyframes`
+  from {
+    opacity: 0;
+    translate: 0 -${ENTRANCE_DISTANCE}px;
+  }
+
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+`;
+
+export const Item = styled.div<{
+  $isHidden: boolean;
+  $entrance?: 'waiting' | 'playing';
+}>`
   position: absolute;
   overflow: hidden;
   filter: drop-shadow(${shadow.md});
@@ -53,6 +71,18 @@ export const Item = styled.div<{ $isHidden: boolean }>`
     $isHidden &&
     css`
       visibility: hidden;
+    `}
+
+  ${({ $entrance }) =>
+    $entrance === 'waiting' &&
+    css`
+      opacity: 0;
+    `}
+
+  ${({ $entrance }) =>
+    $entrance === 'playing' &&
+    css`
+      animation: ${enter} ${FLOOR_ENTRANCE.duration}ms ${easing.standard} both;
     `}
 `;
 

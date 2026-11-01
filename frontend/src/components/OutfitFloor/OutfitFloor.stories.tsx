@@ -71,6 +71,11 @@ const meta = {
       description:
         '넘친 아이템의 수 버튼을 누를 때 호출합니다. 없으면 버튼을 그리지 않습니다.',
     },
+    entrance: {
+      description:
+        '옷이 위에서 내려앉으며 나타나는 등장 애니메이션입니다. 없으면 바로 보여 줍니다. 사진 결과가 정해지고 isActive가 true가 되면 시작하고, 시작하는 순간 onPlay를 호출합니다. 움직임 줄이기 설정이면 재생하지 않습니다.',
+      control: 'object',
+    },
   },
   args: {
     seed: { order: 1, id: 4101 },
@@ -162,4 +167,18 @@ export const NothingToPlace: Story = {
 
 export const OnFloor: Story = {
   args: { items: MANY_ITEMS, variant: 'floor' },
+};
+
+export const WithEntrance: Story = {
+  args: {
+    items: MANY_ITEMS,
+    entrance: { isActive: true },
+  },
+};
+
+export const WaitingForEntrance: Story = {
+  args: {
+    items: [createItem('top'), createItem('bottom'), createItem('shoes'), HAT],
+    entrance: { isActive: false },
+  },
 };
