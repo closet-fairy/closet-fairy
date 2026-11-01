@@ -4,11 +4,17 @@ import { mswLoader } from 'msw-storybook-addon/csf3';
 import { INITIAL_VIEWPORTS } from 'storybook/viewport';
 import { warnOnUnhandledApiRequest, worker } from '@/mocks/browser';
 import { globalStyles } from '@/styles/globalStyles';
+import { bg } from '@/styles/tokens';
 import StoryQueryClientProvider from './StoryQueryClientProvider';
 import StoryRouterProvider from './StoryRouterProvider';
 import '@fontsource-variable/asta-sans';
 
 const storyRootStyles = css`
+  /* 스토리에는 앱 양옆 바탕을 칠하는 요소가 없어서 전역 스타일의 회색이 그대로 보이지 않게 한다. */
+  html {
+    background-color: ${bg.white};
+  }
+
   .sb-main-fullscreen #storybook-root:not([hidden]) {
     display: flex;
     flex-direction: column;
