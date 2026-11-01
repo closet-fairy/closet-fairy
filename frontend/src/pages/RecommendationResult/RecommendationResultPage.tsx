@@ -348,7 +348,7 @@ const RecommendationResultPage = () => {
       footer={
         <>
           <Button
-            variant="outline"
+            variant="danger"
             isFullWidth
             isLoading={isCanceling}
             onClick={() => void cancelAndLeave(leaveTarget)}

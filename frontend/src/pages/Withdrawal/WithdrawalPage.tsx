@@ -110,7 +110,7 @@ const WithdrawalPage = () => {
           </S.ErrorMessage>
         )}
         <Button
-          variant="outline"
+          variant="danger"
           isFullWidth
           isDisabled={!isConfirmed}
           isLoading={isBusy}

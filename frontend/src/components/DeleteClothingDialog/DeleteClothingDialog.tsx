@@ -81,7 +81,7 @@ const DeleteClothingDialog = (props: DeleteClothingDialogProps) => {
       footer={
         <>
           <Button
-            variant="outline"
+            variant="danger"
             isFullWidth
             isLoading={deletion.isPending}
             onClick={handleDelete}
