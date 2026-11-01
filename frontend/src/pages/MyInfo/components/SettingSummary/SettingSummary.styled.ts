@@ -1,12 +1,17 @@
+import { css } from '@emotion/react';
 import styled from '@emotion/styled';
 import { border, fg, radius, spacing, typography } from '@/styles/tokens';
 
 const LABEL_WIDTH = 74;
 
-export const Card = styled.dl`
+export const cardBox = css`
   overflow: hidden;
   border: 1px solid ${border.neutral.default};
   border-radius: ${radius.md};
+`;
+
+export const Card = styled.dl`
+  ${cardBox}
 `;
 
 export const Row = styled.div<{ $isTopAligned?: boolean }>`

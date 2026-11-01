@@ -1,5 +1,6 @@
 import styled from '@emotion/styled';
 import { fg, spacing, typography } from '@/styles/tokens';
+import { visuallyHidden } from '@/styles/visuallyHidden';
 
 export const Container = styled.div`
   display: flex;
@@ -40,4 +41,8 @@ export const Section = styled.section`
 export const SectionTitle = styled.h2`
   ${typography.label1Strong}
   color: ${fg.neutral.light};
+`;
+
+export const LoadingMessage = styled.p`
+  ${visuallyHidden}
 `;
