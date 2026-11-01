@@ -1,9 +1,12 @@
 import styled from '@emotion/styled';
-import { bg, fg, spacing, typography } from '@/styles/tokens';
+import { bg, fg, spacing, typography, zIndex } from '@/styles/tokens';
 
 export const TOP_BAR_HEIGHT = 54;
 
 export const Container = styled.header`
+  position: sticky;
+  top: 0;
+  z-index: ${zIndex.sticky};
   flex: none;
   width: 100%;
   padding-top: env(safe-area-inset-top, 0px);

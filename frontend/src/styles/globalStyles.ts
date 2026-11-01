@@ -1,4 +1,5 @@
 import { css } from '@emotion/react';
+import { TOP_BAR_HEIGHT } from '@/components/common/TopBar/TopBar.styled';
 import { bg, border, colorVariables, fg } from '@/styles/tokens';
 
 export const globalStyles = css`
@@ -15,6 +16,9 @@ export const globalStyles = css`
   }
 
   html {
+    scroll-padding-top: calc(
+      ${TOP_BAR_HEIGHT}px + env(safe-area-inset-top, 0px)
+    );
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
   }
