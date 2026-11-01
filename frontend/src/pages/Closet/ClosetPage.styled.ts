@@ -1,4 +1,3 @@
-import { keyframes } from '@emotion/react';
 import styled from '@emotion/styled';
 import { BOTTOM_TAB_BAR_HEIGHT } from '@/components/BottomTabBar/BottomTabBar.styled';
 import {
@@ -14,16 +13,12 @@ import {
   typography,
   zIndex,
 } from '@/styles/tokens';
+import { visuallyHidden } from '@/styles/visuallyHidden';
+import { GRID_COLUMN_COUNT } from './constants';
 
 const FAB_SIZE = 56;
 const FAB_PRESSED_SCALE = 0.94;
 const EMPTY_VISUAL_SIZE = 88;
-
-const spin = keyframes`
-  to {
-    transform: rotate(360deg);
-  }
-`;
 
 export const Container = styled.div`
   display: flex;
@@ -34,7 +29,7 @@ export const Container = styled.div`
 
 export const Grid = styled.ul`
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(${GRID_COLUMN_COUNT}, minmax(0, 1fr));
   gap: ${spacing[14]} ${spacing[8]};
   padding: ${spacing[8]} ${spacing[20]} 0;
 `;
@@ -57,19 +52,8 @@ export const ListEndMessage = styled.p`
   color: ${fg.neutral.light};
 `;
 
-export const Spinner = styled.span`
-  display: flex;
-  color: ${fg.neutral.light};
-
-  & > span {
-    animation: ${spin} 1s linear infinite;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    & > span {
-      animation: none;
-    }
-  }
+export const LoadingMessage = styled.p`
+  ${visuallyHidden}
 `;
 
 export const EmptyVisual = styled.span`

@@ -28,7 +28,12 @@ import {
   getClothingUploadState,
   startClothingUpload,
 } from '@/pages/Closet/clothingUploadStore';
-import { CLOSET_LIST_PARAMS } from '@/pages/Closet/constants';
+import {
+  CLOSET_LIST_PARAMS,
+  FIRST_LOAD_SKELETON_COUNT,
+  GRID_COLUMN_COUNT,
+  NEXT_PAGE_SKELETON_ROW_COUNT,
+} from '@/pages/Closet/constants';
 import { routeTree } from '@/routeTree.gen';
 
 type IntersectionCallback = (entries: { isIntersecting: boolean }[]) => void;
@@ -201,6 +206,50 @@ describe('옷장 목록', () => {
         SECOND_PAGE_ITEM_TOTAL,
       );
     });
+  });
+});
+
+describe('스켈레톤', () => {
+  // 스켈레톤 칸은 스크린리더에서 숨겨지므로, 숨김 포함 개수에서 보이는 개수를 뺀 값이 스켈레톤 칸 수다.
+  const countSkeletonCells = () =>
+    screen.getAllByRole('listitem', { hidden: true }).length -
+    screen.getAllByRole('listitem').length;
+
+  test('처음 불러오는 동안에는 안내 문구와 함께 15칸을 격자에 채워야 한다.', async () => {
+    server.use(http.get('/api/clothing', () => delay('infinite')));
+    await renderCloset();
+
+    expect(await screen.findByText('옷장을 불러오는 중이에요')).toHaveAttribute(
+      'role',
+      'status',
+    );
+    expect(countSkeletonCells()).toBe(FIRST_LOAD_SKELETON_COUNT);
+  });
+
+  test('다음 묶음을 불러오는 동안에는 마지막 줄의 빈칸부터 채워 두 줄 분량을 이어 붙여야 한다.', async () => {
+    await renderCloset();
+    await screen.findByText('처리 중');
+    const tabCount = within(
+      screen.getByRole('navigation', { name: '주요 메뉴' }),
+    ).getAllByRole('listitem').length;
+    const loadedCount = screen.getAllByRole('listitem').length - tabCount;
+
+    server.use(
+      http.get('/api/clothing', ({ request }) =>
+        new URL(request.url).searchParams.has('cursor')
+          ? delay('infinite')
+          : undefined,
+      ),
+    );
+    scrollToListEnd();
+
+    await screen.findByText('더 불러오는 중');
+    expect(countSkeletonCells()).toBe(
+      (Math.floor(loadedCount / GRID_COLUMN_COUNT) +
+        NEXT_PAGE_SKELETON_ROW_COUNT) *
+        GRID_COLUMN_COUNT -
+        loadedCount,
+    );
   });
 });
 

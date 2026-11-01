@@ -49,6 +49,11 @@ const ellipsis = css`
   text-overflow: ellipsis;
 `;
 
+export const imageBoxShape = css`
+  aspect-ratio: 3 / 4;
+  border-radius: ${radius.sm};
+`;
+
 export const Container = styled.div`
   position: relative;
   isolation: isolate;
@@ -70,8 +75,7 @@ export const StatusButton = styled.button`
 export const ImageBox = styled.div<{ $tone: ImageTone }>`
   position: relative;
   overflow: hidden;
-  aspect-ratio: 3 / 4;
-  border-radius: ${radius.sm};
+  ${imageBoxShape}
   ${({ $tone }) => IMAGE_BOX_TONE[$tone]}
 `;
 
