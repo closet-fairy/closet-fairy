@@ -92,6 +92,7 @@ const RecommendationHistoryFloorPage = () => {
           items={outfit.items}
           seed={{ order: sessionId, id: sessionId }}
           variant="floor"
+          entrance={{ isActive: true }}
         />
       </S.Floor>
     </S.Container>

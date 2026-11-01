@@ -610,11 +610,12 @@ const RecommendationResultPage = () => {
           arrowVariant="plain"
           arrowInset={S.ARROW_INSET}
         >
-          {outfits.map((outfit) => (
+          {outfits.map((outfit, index) => (
             <S.Slide key={outfit.outfit_seq}>
               <OutfitStack
                 outfit={outfit}
                 depth={getHistoryDepth(outfit)}
+                isActive={index === currentIndex}
                 isRegenerating={isOutfitRegenerating(
                   latestRegeneration,
                   outfit.outfit_id,

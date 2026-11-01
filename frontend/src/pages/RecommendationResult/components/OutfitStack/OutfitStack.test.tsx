@@ -40,8 +40,9 @@ const ControlledStack = (props: {
   previousCount: number;
   initialDepth?: number;
   isRegenerating?: boolean;
+  isActive?: boolean;
 }) => {
-  const { previousCount, initialDepth = 0, isRegenerating } = props;
+  const { previousCount, initialDepth = 0, isRegenerating, isActive } = props;
   const [depth, setDepth] = useState(initialDepth);
 
   return (
@@ -49,6 +50,7 @@ const ControlledStack = (props: {
       outfit={createOutfit(previousCount)}
       depth={depth}
       isRegenerating={isRegenerating}
+      isActive={isActive}
       onDepthChange={setDepth}
       onOverflowClick={vi.fn()}
     />
@@ -394,5 +396,94 @@ describe('이동 버튼', () => {
     expect(
       screen.queryByRole('button', { name: '이전 코디 보기' }),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe('등장 애니메이션', () => {
+  const loadImages = () => {
+    screen.getAllByRole('img', { hidden: true }).forEach((image) => {
+      fireEvent.load(image);
+    });
+  };
+
+  test('보고 있지 않은 카드의 옷은 숨긴 채 기다려야 한다.', () => {
+    render(<ControlledStack previousCount={0} isActive={false} />);
+    loadImages();
+
+    expect(screen.getByAltText('100번 상의')).not.toBeVisible();
+  });
+
+  test('보게 되면 옷이 나타나야 한다.', () => {
+    const { rerender } = render(
+      <OutfitStack
+        outfit={createOutfit(0)}
+        depth={0}
+        isActive={false}
+        onDepthChange={vi.fn()}
+        onOverflowClick={vi.fn()}
+      />,
+    );
+
+    loadImages();
+    rerender(
+      <OutfitStack
+        outfit={createOutfit(0)}
+        depth={0}
+        isActive
+        onDepthChange={vi.fn()}
+        onOverflowClick={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByAltText('100번 상의')).toBeVisible();
+  });
+
+  test('이전 코디의 옷은 숨기지 않고 바로 보여 줘야 한다.', () => {
+    render(<ControlledStack previousCount={2} initialDepth={1} />);
+    loadImages();
+
+    expect(screen.getByAltText('2번 상의')).toBeVisible();
+  });
+
+  test('이전 코디를 보다가 최신으로 돌아와도 다시 숨기지 않아야 한다.', () => {
+    const createStack = (depth: number, isActive: boolean) => (
+      <OutfitStack
+        outfit={createOutfit(2)}
+        depth={depth}
+        isActive={isActive}
+        onDepthChange={vi.fn()}
+        onOverflowClick={vi.fn()}
+      />
+    );
+    const { rerender } = render(createStack(0, true));
+
+    loadImages();
+    rerender(createStack(2, true));
+    rerender(createStack(0, false));
+    loadImages();
+
+    expect(screen.getByAltText('100번 상의')).toBeVisible();
+  });
+
+  test('보기 전에 재추천으로 이전 코디가 된 옷도 보여 줘야 한다.', () => {
+    const createStack = (outfit: OutfitResult, depth: number) => (
+      <OutfitStack
+        outfit={outfit}
+        depth={depth}
+        isActive={false}
+        onDepthChange={vi.fn()}
+        onOverflowClick={vi.fn()}
+      />
+    );
+    const regenerated: OutfitResult = {
+      ...createPreviousOutfit(101),
+      previous_outfits: [createPreviousOutfit(100)],
+    };
+    const { rerender } = render(createStack(createOutfit(0), 0));
+
+    rerender(createStack(regenerated, 1));
+    loadImages();
+
+    expect(screen.getByAltText('100번 상의')).toBeVisible();
   });
 });

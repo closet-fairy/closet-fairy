@@ -5,6 +5,7 @@ import { getStyleLabel } from '@/domains/member/memberSettingOptions';
 import type { FloorSeed } from '@/domains/recommendation/floorLayout';
 import { getOutfitStyleTags } from '@/domains/recommendation/outfitStyleTags';
 import type { OutfitItemResult } from '@/generated/models';
+import type { FloorEntranceOption } from '@/hooks/useFloorEntrance';
 import * as S from './OutfitCard.styled';
 
 interface OutfitCardProps {
@@ -15,6 +16,7 @@ interface OutfitCardProps {
   previousCount?: number;
   recommendationOrder?: number;
   onOverflowClick?: () => void;
+  entrance?: FloorEntranceOption;
 }
 
 const OutfitCard = (props: OutfitCardProps) => {
@@ -26,6 +28,7 @@ const OutfitCard = (props: OutfitCardProps) => {
     previousCount = 0,
     recommendationOrder,
     onOverflowClick,
+    entrance,
   } = props;
   const styleCds = getOutfitStyleTags(items);
   const isPrevious = recommendationOrder !== undefined;
@@ -37,6 +40,7 @@ const OutfitCard = (props: OutfitCardProps) => {
         seed={floorSeed}
         isOverflowDisabled={isRegenerating}
         onOverflowClick={onOverflowClick}
+        entrance={entrance}
       />
       {isPrevious && (
         <S.Badge>

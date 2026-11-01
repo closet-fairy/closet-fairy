@@ -12,6 +12,8 @@ import type {
 } from '@/domains/recommendation/floorLayout';
 import { FLOOR_CARD } from '@/domains/recommendation/floorLayout.constants';
 import type { OutfitItemResult } from '@/generated/models';
+import useFloorEntrance from '@/hooks/useFloorEntrance';
+import type { FloorEntranceOption } from '@/hooks/useFloorEntrance';
 import useFloorImages from '@/hooks/useFloorImages';
 import * as S from './OutfitFloor.styled';
 
@@ -24,6 +26,7 @@ interface OutfitFloorProps {
   hasTagStrip?: boolean;
   isOverflowDisabled?: boolean;
   onOverflowClick?: () => void;
+  entrance?: FloorEntranceOption;
 }
 
 const floorLayouts = new Map<string, FloorLayout>();
@@ -72,6 +75,7 @@ const OutfitFloor = (props: OutfitFloorProps) => {
     hasTagStrip = true,
     isOverflowDisabled = false,
     onOverflowClick,
+    entrance,
   } = props;
   const candidates = getFloorCandidates(items);
   const { isSettled, isSlow, getLoadedArea, markLoaded, markFailed } =
@@ -87,6 +91,8 @@ const OutfitFloor = (props: OutfitFloorProps) => {
       : [],
     seed,
   );
+
+  const { phase, getDelay } = useFloorEntrance(entrance, placements, isSettled);
 
   if (isSettled && placements.length === 0) {
     const notice =
@@ -130,7 +136,17 @@ const OutfitFloor = (props: OutfitFloorProps) => {
               <S.Item
                 key={`${id}-${imageUrl}`}
                 $isHidden={!isSettled}
-                style={placement ? getItemStyle(placement) : undefined}
+                $entrance={phase === 'done' ? undefined : phase}
+                style={
+                  placement
+                    ? {
+                        ...getItemStyle(placement),
+                        ...(phase === 'playing' && {
+                          animationDelay: `${getDelay(id)}ms`,
+                        }),
+                      }
+                    : undefined
+                }
               >
                 <S.Image
                   src={imageUrl}

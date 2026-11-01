@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import type { RefObject } from 'react';
 import Button from '@/components/common/Button';
 import {
@@ -14,6 +14,7 @@ interface OutfitStackProps {
   outfit: OutfitResult;
   depth: number;
   isRegenerating?: boolean;
+  isActive?: boolean;
   onDepthChange: (depth: number) => void;
   onOverflowClick: () => void;
 }
@@ -23,12 +24,14 @@ const OutfitStack = (props: OutfitStackProps) => {
     outfit,
     depth,
     isRegenerating = false,
+    isActive = true,
     onDepthChange,
     onOverflowClick,
   } = props;
   const layers = getOutfitLayers(outfit);
   const hasOlder = depth < layers.length - 1;
   const hasNewer = depth > 0;
+  const [playedOutfitIds, setPlayedOutfitIds] = useState<readonly number[]>([]);
   const olderButtonRef = useRef<HTMLButtonElement>(null);
   const newerButtonRef = useRef<HTMLButtonElement>(null);
   const { motion, dragHandlers } = useOutfitStackDrag({
@@ -104,6 +107,15 @@ const OutfitStack = (props: OutfitStackProps) => {
                   : undefined
               }
               onOverflowClick={onOverflowClick}
+              entrance={
+                layerDepth === 0 && !playedOutfitIds.includes(layer.outfit_id)
+                  ? {
+                      isActive: isActive && depth === 0,
+                      onPlay: () =>
+                        setPlayedOutfitIds((ids) => [...ids, layer.outfit_id]),
+                    }
+                  : undefined
+              }
             />
           </S.Layer>
         );

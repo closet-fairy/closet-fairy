@@ -15,6 +15,8 @@ import type {
 import { server } from '@/mocks/node';
 import { routeTree } from '@/routeTree.gen';
 
+vi.stubGlobal('matchMedia', () => ({ matches: false }));
+
 const LIST_PATH = '/recommendation-history';
 const DETAIL_PATH = `${LIST_PATH}/41`;
 const FLOOR_PATH = `${DETAIL_PATH}/floor`;
