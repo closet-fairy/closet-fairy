@@ -14,9 +14,9 @@ const meta = {
     },
     variant: {
       description:
-        '버튼의 모양입니다. primary는 주요 동작, outline은 보조 동작, text는 닫기처럼 가벼운 동작에 씁니다.',
+        '버튼의 모양입니다. primary는 주요 동작, outline은 보조 동작, text는 닫기처럼 가벼운 동작, danger는 삭제와 탈퇴처럼 되돌릴 수 없는 동작에 씁니다.',
       control: 'inline-radio',
-      options: ['primary', 'outline', 'text'],
+      options: ['primary', 'outline', 'text', 'danger'],
       table: { defaultValue: { summary: 'primary' } },
     },
     size: {
@@ -123,6 +123,9 @@ export const Variants: Story = {
       <StoryLabeled label="text">
         <Button {...args} variant="text" />
       </StoryLabeled>
+      <StoryLabeled label="danger">
+        <Button {...args} variant="danger" />
+      </StoryLabeled>
     </StoryStack>
   ),
 };
@@ -130,7 +133,7 @@ export const Variants: Story = {
 export const Sizes: Story = {
   render: (args) => (
     <StoryStack direction="column" gap={24}>
-      {(['primary', 'outline', 'text'] as const).map((variant) => (
+      {(['primary', 'outline', 'text', 'danger'] as const).map((variant) => (
         <StoryStack key={variant} gap={16}>
           <StoryLabeled label={`${variant} / lg`}>
             <Button {...args} variant={variant} size="lg" />
@@ -181,6 +184,9 @@ export const Disabled: Story = {
       <StoryLabeled label="text">
         <Button {...args} variant="text" />
       </StoryLabeled>
+      <StoryLabeled label="danger">
+        <Button {...args} variant="danger" />
+      </StoryLabeled>
     </StoryStack>
   ),
 };
@@ -197,6 +203,9 @@ export const Loading: Story = {
       </StoryLabeled>
       <StoryLabeled label="outline / lg">
         <Button {...args} variant="outline" size="lg" />
+      </StoryLabeled>
+      <StoryLabeled label="danger / lg">
+        <Button {...args} variant="danger" size="lg" />
       </StoryLabeled>
     </StoryStack>
   ),
@@ -228,6 +237,19 @@ export const RecommendationFooter: Story = {
       </Button>
       <Button {...args} variant="text" size="md" isFullWidth>
         다시 볼게요
+      </Button>
+    </StoryStack>
+  ),
+};
+
+export const DestructiveFooter: Story = {
+  render: (args) => (
+    <StoryStack direction="column" gap={12}>
+      <Button {...args} variant="danger" isFullWidth>
+        삭제
+      </Button>
+      <Button {...args} variant="text" isFullWidth>
+        취소
       </Button>
     </StoryStack>
   ),

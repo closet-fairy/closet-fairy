@@ -77,6 +77,11 @@ const variantStyles: Record<ButtonVariant, SerializedStyles> = {
     background-color: transparent;
     color: ${fg.neutral.light};
   `,
+  danger: css`
+    background-color: ${bg.white};
+    color: ${fg.error.default};
+    box-shadow: inset 0 0 0 1px ${border.error.default};
+  `,
 };
 
 export const Button = styled.button<{
