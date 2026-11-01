@@ -345,6 +345,17 @@ describe('결과 기본 화면', () => {
     expect(screen.getAllByText('미니멀')[0]).toBeInTheDocument();
   });
 
+  test('보고 있는 코디의 옷만 나타나고 다른 코디는 넘기기 전까지 숨겨 둬야 한다.', async () => {
+    useResult(createResult());
+    await renderResult();
+
+    fireEvent.load(await screen.findByAltText('1번 상의'));
+    fireEvent.load(screen.getByAltText('2번 상의'));
+
+    expect(screen.getByAltText('1번 상의')).toBeVisible();
+    expect(screen.getByAltText('2번 상의')).not.toBeVisible();
+  });
+
   test('코디가 1벌이면 번호와 좌우 화살표를 숨겨야 한다.', async () => {
     useResult(createResult({ outfits: [createOutfit(1)] }));
     await renderResult();

@@ -464,4 +464,26 @@ describe('등장 애니메이션', () => {
 
     expect(screen.getByAltText('100번 상의')).toBeVisible();
   });
+
+  test('보기 전에 재추천으로 이전 코디가 된 옷도 보여 줘야 한다.', () => {
+    const createStack = (outfit: OutfitResult, depth: number) => (
+      <OutfitStack
+        outfit={outfit}
+        depth={depth}
+        isActive={false}
+        onDepthChange={vi.fn()}
+        onOverflowClick={vi.fn()}
+      />
+    );
+    const regenerated: OutfitResult = {
+      ...createPreviousOutfit(101),
+      previous_outfits: [createPreviousOutfit(100)],
+    };
+    const { rerender } = render(createStack(createOutfit(0), 0));
+
+    rerender(createStack(regenerated, 1));
+    loadImages();
+
+    expect(screen.getByAltText('100번 상의')).toBeVisible();
+  });
 });

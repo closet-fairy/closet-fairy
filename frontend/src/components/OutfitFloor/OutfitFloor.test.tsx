@@ -404,6 +404,17 @@ describe('등장 애니메이션', () => {
     expect(screen.getByAltText('상의')).toBeVisible();
   });
 
+  test('숨긴 채 기다리다 등장 설정이 없어지면 바로 보여 줘야 한다.', () => {
+    const { rerender } = render(
+      <OutfitFloor items={ITEMS} seed={SEED} entrance={{ isActive: false }} />,
+    );
+
+    loadAll();
+    rerender(<OutfitFloor items={ITEMS} seed={SEED} />);
+
+    expect(screen.getByAltText('상의')).toBeVisible();
+  });
+
   test('등장 설정이 없으면 바로 보여 줘야 한다.', () => {
     render(<OutfitFloor items={ITEMS} seed={SEED} />);
     loadAll();

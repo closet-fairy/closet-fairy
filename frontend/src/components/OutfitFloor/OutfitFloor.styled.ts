@@ -45,7 +45,6 @@ export const Stage = styled.div<{
   );
 `;
 
-// 옷의 기울기는 인라인 transform에 있어서, 움직임은 개별 속성인 translate로 준다.
 const enter = keyframes`
   from {
     opacity: 0;

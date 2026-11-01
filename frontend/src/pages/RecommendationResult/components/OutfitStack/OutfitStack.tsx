@@ -31,7 +31,6 @@ const OutfitStack = (props: OutfitStackProps) => {
   const layers = getOutfitLayers(outfit);
   const hasOlder = depth < layers.length - 1;
   const hasNewer = depth > 0;
-  // 등장 애니메이션은 코디마다 처음 한 번만 보여 준다. 최신 코디에만 쓰고, 넘겼다 돌아오거나 이전 코디를 볼 때는 다시 보여 주지 않는다.
   const [playedOutfitIds, setPlayedOutfitIds] = useState<readonly number[]>([]);
   const olderButtonRef = useRef<HTMLButtonElement>(null);
   const newerButtonRef = useRef<HTMLButtonElement>(null);

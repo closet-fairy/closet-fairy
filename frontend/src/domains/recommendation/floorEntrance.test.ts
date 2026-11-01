@@ -65,7 +65,7 @@ describe('등장 간격', () => {
   test('옷이 많아도 전체가 상한을 넘지 않도록 간격을 줄여야 한다.', () => {
     const { totalMs } = getFloorEntranceSchedule(createGrid(10));
 
-    expect(totalMs).toBeLessThanOrEqual(FLOOR_ENTRANCE.totalLimit);
+    expect(totalMs).toBe(FLOOR_ENTRANCE.totalLimit);
   });
 
   test('한 벌이면 기다림 없이 바로 나와야 한다.', () => {
