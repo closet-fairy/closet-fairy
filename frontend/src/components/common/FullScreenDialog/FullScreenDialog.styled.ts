@@ -1,6 +1,5 @@
 import { Dialog } from '@base-ui/react/dialog';
 import styled from '@emotion/styled';
-import { TOP_BAR_HEIGHT } from '@/components/common/TopBar/TopBar.styled';
 import {
   appFrame,
   bg,
@@ -9,6 +8,7 @@ import {
   easing,
   fg,
   spacing,
+  topBarHeight,
   typography,
   zIndex,
 } from '@/styles/tokens';
@@ -48,7 +48,7 @@ export const TopBar = styled.div`
   flex: none;
   align-items: center;
   gap: ${spacing[4]};
-  height: ${TOP_BAR_HEIGHT}px;
+  height: ${topBarHeight}px;
   padding: 0 ${spacing[20]} 0 ${spacing[8]};
 `;
 

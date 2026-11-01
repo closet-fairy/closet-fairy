@@ -1,5 +1,12 @@
 import { css } from '@emotion/react';
-import { bg, border, colorVariables, fg } from '@/styles/tokens';
+import {
+  appFrame,
+  bg,
+  border,
+  colorVariables,
+  fg,
+  topBarHeight,
+} from '@/styles/tokens';
 
 export const globalStyles = css`
   *,
@@ -15,8 +22,17 @@ export const globalStyles = css`
   }
 
   html {
+    scroll-padding-top: calc(${topBarHeight}px + env(safe-area-inset-top, 0px));
+    scrollbar-gutter: stable;
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
+  }
+
+  /* 비워 둔 스크롤바 자리는 캔버스 색으로 칠해지므로, 앱 양옆 바탕과 색을 맞춘다. */
+  @media (min-width: ${appFrame.maxWidth}) {
+    html {
+      background-color: ${bg.outside};
+    }
   }
 
   body {
