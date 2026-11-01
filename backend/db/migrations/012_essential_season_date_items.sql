@@ -1,4 +1,4 @@
--- migrate.sh가 문자셋을 지정하지 않아 latin1로 실행되므로, 한글 이름이 깨지지 않게 지정한다
+-- 파일만 따로 적용할 때도 한글 이름이 깨지지 않게 지정한다
 SET NAMES utf8mb4;
 
 ALTER TABLE essential_item
