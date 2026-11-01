@@ -11,9 +11,7 @@ import {
   typography,
 } from '@/styles/tokens';
 import { transientOptions } from '@/styles/transientOptions';
-
-const ROW_MIN_HEIGHT = 56;
-const LABEL_WIDTH = 76;
+import { LABEL_WIDTH, ROW_MIN_HEIGHT } from './AccordionItem.constants';
 
 export const Item = styled(Accordion.Item, transientOptions)`
   border-bottom: 1px solid ${border.neutral.soft};

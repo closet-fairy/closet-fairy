@@ -10,8 +10,8 @@ import {
   spacing,
   typography,
 } from '@/styles/tokens';
+import { FIELD_HEIGHT } from './TextField.constants';
 
-const FIELD_HEIGHT = 52;
 const CLEAR_BUTTON_SIZE = 44;
 
 export const Container = styled.div`
