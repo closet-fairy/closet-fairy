@@ -1,9 +1,10 @@
 import styled from '@emotion/styled';
 import {
-  CHEVRON_SIZE,
+  CHEVRON_ICON_SIZE,
   LABEL_WIDTH,
   ROW_MIN_HEIGHT,
 } from '@/components/common/AccordionItem/AccordionItem.constants';
+import { ICON_SIZE } from '@/components/common/Icon/Icon.constants';
 import SkeletonBlock from '@/components/common/SkeletonBlock';
 import SkeletonText from '@/components/common/SkeletonText';
 import { FIELD_HEIGHT } from '@/components/common/TextField/TextField.constants';
@@ -47,5 +48,5 @@ export const AttributeSummaryText = styled(SkeletonText)`
 
 export const AttributeChevron = styled.div`
   flex: none;
-  width: ${CHEVRON_SIZE}px;
+  width: ${ICON_SIZE[CHEVRON_ICON_SIZE]}px;
 `;
