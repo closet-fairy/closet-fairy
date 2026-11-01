@@ -25,6 +25,11 @@ export const palette = {
   dim: 'rgba(20, 20, 22, 0.4)',
   veil: 'rgba(255, 255, 255, 0.78)',
 
+  kakaoYellow: '#fee500',
+  kakaoLabel: 'rgba(0, 0, 0, 0.85)',
+  googleLabel: '#1f1f1f',
+  googleStroke: '#747775',
+
   clothingBlack: '#1c1c1e',
   clothingWhite: '#ffffff',
   clothingGray: '#9a9a9f',

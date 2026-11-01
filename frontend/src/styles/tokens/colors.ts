@@ -8,6 +8,8 @@ const colorValues = {
   'fg-neutral-light': palette.gray400,
   'fg-neutral-pale': palette.gray300,
   'fg-error-default': palette.red500,
+  'fg-brand-google': palette.googleLabel,
+  'fg-brand-kakao': palette.kakaoLabel,
 
   'bg-white': palette.white,
   'bg-dim': palette.dim,
@@ -22,12 +24,14 @@ const colorValues = {
   'bg-floor': palette.warmGray200,
   'bg-card-previous': palette.beige100,
   'bg-card-stacked': palette.beige200,
+  'bg-brand-kakao': palette.kakaoYellow,
 
   'border-neutral-strong': palette.gray900,
   'border-neutral-default': palette.gray150,
   'border-neutral-soft': palette.gray100,
   'border-neutral-dashed': palette.gray250,
   'border-error-default': palette.red500,
+  'border-brand-google': palette.googleStroke,
 
   'swatch-black': palette.clothingBlack,
   'swatch-white': palette.clothingWhite,
@@ -67,6 +71,10 @@ export const fg = {
   error: {
     default: colorVar('fg-error-default'),
   },
+  brand: {
+    google: colorVar('fg-brand-google'),
+    kakao: colorVar('fg-brand-kakao'),
+  },
 } as const;
 
 export const bg = {
@@ -89,6 +97,9 @@ export const bg = {
     previous: colorVar('bg-card-previous'),
     stacked: colorVar('bg-card-stacked'),
   },
+  brand: {
+    kakao: colorVar('bg-brand-kakao'),
+  },
 } as const;
 
 export const border = {
@@ -100,6 +111,9 @@ export const border = {
   },
   error: {
     default: colorVar('border-error-default'),
+  },
+  brand: {
+    google: colorVar('border-brand-google'),
   },
 } as const;
 

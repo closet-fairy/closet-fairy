@@ -3,7 +3,7 @@ import { css } from '@emotion/react';
 const textStyle = (
   fontSize: number,
   lineHeight: number,
-  fontWeight: 400 | 600,
+  fontWeight: 400 | 500 | 600,
 ) => css`
   font-size: ${fontSize}px;
   line-height: ${lineHeight};
@@ -16,6 +16,7 @@ export const typography = {
   title3: textStyle(17, 1.4, 600),
 
   body1: textStyle(16, 1.5, 400),
+  body1Medium: textStyle(16, 1.5, 500),
   body1Strong: textStyle(16, 1.5, 600),
   body2: textStyle(15, 1.5, 400),
   body2Strong: textStyle(15, 1.5, 600),
