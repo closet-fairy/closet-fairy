@@ -1,8 +1,6 @@
 import styled from '@emotion/styled';
+import { LABEL_WIDTH } from '@/components/common/AccordionItem/AccordionItem.constants';
 import { border, fg, spacing, typography } from '@/styles/tokens';
-
-// 아코디언 행의 라벨 칸과 폭을 맞춘다.
-const LABEL_WIDTH = 76;
 
 export const Row = styled.div`
   display: flex;

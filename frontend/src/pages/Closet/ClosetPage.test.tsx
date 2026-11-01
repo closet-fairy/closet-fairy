@@ -31,8 +31,6 @@ import {
 import {
   CLOSET_LIST_PARAMS,
   FIRST_LOAD_SKELETON_COUNT,
-  GRID_COLUMN_COUNT,
-  NEXT_PAGE_SKELETON_ROW_COUNT,
 } from '@/pages/Closet/constants';
 import { routeTree } from '@/routeTree.gen';
 
@@ -229,11 +227,6 @@ describe('스켈레톤', () => {
   test('다음 묶음을 불러오는 동안에는 마지막 줄의 빈칸부터 채워 두 줄 분량을 이어 붙여야 한다.', async () => {
     await renderCloset();
     await screen.findByText('처리 중');
-    const tabCount = within(
-      screen.getByRole('navigation', { name: '주요 메뉴' }),
-    ).getAllByRole('listitem').length;
-    const loadedCount = screen.getAllByRole('listitem').length - tabCount;
-
     server.use(
       http.get('/api/clothing', ({ request }) =>
         new URL(request.url).searchParams.has('cursor')
@@ -244,12 +237,8 @@ describe('스켈레톤', () => {
     scrollToListEnd();
 
     await screen.findByText('더 불러오는 중');
-    expect(countSkeletonCells()).toBe(
-      (Math.floor(loadedCount / GRID_COLUMN_COUNT) +
-        NEXT_PAGE_SKELETON_ROW_COUNT) *
-        GRID_COLUMN_COUNT -
-        loadedCount,
-    );
+    // 첫 묶음이 20벌이라 마지막 줄의 빈칸 1칸에 한 줄 3칸을 더한 4칸이 붙는다.
+    expect(countSkeletonCells()).toBe(4);
   });
 });
 

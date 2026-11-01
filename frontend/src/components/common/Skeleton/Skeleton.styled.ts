@@ -42,7 +42,6 @@ export const Container = styled.div<{ $delay: number }>`
     transform: translateX(-${SWEEP_DISTANCE});
     animation: ${sweep} ${SHIMMER_PERIOD} ease-in-out
       ${({ $delay }) => $delay}ms infinite;
-    will-change: transform;
   }
 
   @media (prefers-reduced-motion: reduce) {

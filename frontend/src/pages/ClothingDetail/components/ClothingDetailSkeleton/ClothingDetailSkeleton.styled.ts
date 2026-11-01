@@ -1,5 +1,6 @@
 import styled from '@emotion/styled';
 import {
+  CHEVRON_SIZE,
   LABEL_WIDTH,
   ROW_MIN_HEIGHT,
 } from '@/components/common/AccordionItem/AccordionItem.constants';
@@ -42,4 +43,9 @@ export const AttributeSummary = styled.div`
 
 export const AttributeSummaryText = styled(SkeletonText)`
   justify-content: flex-end;
+`;
+
+export const AttributeChevron = styled.div`
+  flex: none;
+  width: ${CHEVRON_SIZE}px;
 `;

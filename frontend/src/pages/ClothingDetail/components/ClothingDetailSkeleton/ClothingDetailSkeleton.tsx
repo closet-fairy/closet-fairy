@@ -26,6 +26,7 @@ const ClothingDetailSkeleton = () => (
           <S.AttributeSummary>
             <S.AttributeSummaryText textStyle={typography.body2} width="40%" />
           </S.AttributeSummary>
+          <S.AttributeChevron />
         </S.AttributeTrigger>
       </S.AttributeRow>
     ))}
