@@ -1,7 +1,8 @@
+import { css } from '@emotion/react';
 import styled from '@emotion/styled';
 import { bg, border, fg, radius, spacing, typography } from '@/styles/tokens';
 
-export const Container = styled.article`
+export const cardBox = css`
   display: flex;
   flex-direction: column;
   gap: ${spacing[12]};
@@ -9,6 +10,10 @@ export const Container = styled.article`
   border: 1px solid ${border.neutral.default};
   border-radius: ${radius.md};
   background-color: ${bg.white};
+`;
+
+export const Container = styled.article`
+  ${cardBox}
 `;
 
 export const Summary = styled.div`

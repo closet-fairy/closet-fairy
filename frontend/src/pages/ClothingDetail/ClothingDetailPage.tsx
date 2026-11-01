@@ -18,6 +18,7 @@ import {
 } from '@/generated/endpoints/clothing/clothing';
 import type { ClothingDetail, ClothingUpdate } from '@/generated/models';
 import ClothingAttributes from './components/ClothingAttributes';
+import ClothingDetailSkeleton from './components/ClothingDetailSkeleton';
 import ClothingNameField from './components/ClothingNameField';
 import useClothingAttributeSave from './hooks/useClothingAttributeSave';
 import * as S from './ClothingDetailPage.styled';
@@ -172,14 +173,12 @@ const ClothingDetailPage = () => {
     return (
       <S.Container>
         {topBar}
-        <StatusView
-          visual={
-            <S.Spinner>
-              <Icon name="progress_activity" size="xl" />
-            </S.Spinner>
-          }
-          title="옷을 불러오는 중이에요"
-        />
+        <S.Content>
+          <ClothingDetailSkeleton />
+        </S.Content>
+        <S.LoadingMessage role="status">
+          옷을 불러오는 중이에요
+        </S.LoadingMessage>
       </S.Container>
     );
   }

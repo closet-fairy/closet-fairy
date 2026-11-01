@@ -1,12 +1,7 @@
-import { keyframes } from '@emotion/react';
+import { css } from '@emotion/react';
 import styled from '@emotion/styled';
 import { bg, fg, radius, spacing } from '@/styles/tokens';
-
-const spin = keyframes`
-  to {
-    transform: rotate(360deg);
-  }
-`;
+import { visuallyHidden } from '@/styles/visuallyHidden';
 
 export const Container = styled.div`
   display: flex;
@@ -21,12 +16,16 @@ export const Content = styled.div`
   padding: 0 ${spacing[20]} ${spacing[32]};
 `;
 
-export const ImageBox = styled.div`
-  position: relative;
-  overflow: hidden;
+export const imageBoxShape = css`
   aspect-ratio: 3 / 2;
   margin-bottom: ${spacing[8]};
   border-radius: ${radius.lg};
+`;
+
+export const ImageBox = styled.div`
+  position: relative;
+  overflow: hidden;
+  ${imageBoxShape}
   background-color: ${bg.neutral.light};
 `;
 
@@ -53,19 +52,8 @@ export const EditImage = styled.div`
   bottom: ${spacing[10]};
 `;
 
-export const Spinner = styled.span`
-  display: flex;
-  color: ${fg.neutral.light};
-
-  & > span {
-    animation: ${spin} 1s linear infinite;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    & > span {
-      animation: none;
-    }
-  }
+export const LoadingMessage = styled.p`
+  ${visuallyHidden}
 `;
 
 export const DeleteArea = styled.div`

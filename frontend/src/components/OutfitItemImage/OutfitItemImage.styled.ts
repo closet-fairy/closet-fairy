@@ -9,13 +9,8 @@ import {
   spacing,
   typography,
 } from '@/styles/tokens';
+import { CELL_HEIGHT } from './OutfitItemImage.constants';
 import type { OutfitItemImageSize } from './OutfitItemImage';
-
-const CELL_HEIGHT: Record<OutfitItemImageSize, string> = {
-  lg: 'auto',
-  md: '78px',
-  sm: '62px',
-};
 
 const IMAGE_MAX_RATIO: Record<OutfitItemImageSize, string> = {
   lg: '76%',

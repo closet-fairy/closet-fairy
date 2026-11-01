@@ -1,14 +1,6 @@
 import styled from '@emotion/styled';
+import { ICON_SIZE } from './Icon.constants';
 import type { IconSize } from './Icon';
-
-const ICON_SIZE: Record<IconSize, number> = {
-  xs: 16,
-  sm: 18,
-  md: 20,
-  lg: 24,
-  xl: 36,
-  '2xl': 48,
-};
 
 export const Container = styled.span<{ $size: IconSize }>`
   display: inline-flex;

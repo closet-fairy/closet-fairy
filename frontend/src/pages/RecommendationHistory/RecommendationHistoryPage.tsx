@@ -6,11 +6,13 @@ import Button from '@/components/common/Button';
 import Icon from '@/components/common/Icon';
 import StatusView from '@/components/common/StatusView';
 import TopBar from '@/components/common/TopBar';
-import OutfitLoading from '@/components/OutfitLoading';
 import useLoadMoreTrigger from '@/hooks/useLoadMoreTrigger';
 import HistoryCard from './components/HistoryCard';
+import HistoryCardSkeleton from './components/HistoryCardSkeleton';
 import useRecommendationHistoryList from './hooks/useRecommendationHistoryList';
 import * as S from './RecommendationHistoryPage.styled';
+
+const FIRST_LOAD_SKELETON_COUNT = 3;
 
 const RecommendationHistoryPage = () => {
   const navigate = useNavigate();
@@ -36,7 +38,20 @@ const RecommendationHistoryPage = () => {
       listQuery.isPending ||
       (listQuery.data === undefined && isUnauthorizedError(listQuery.error))
     ) {
-      return <OutfitLoading label="추천 내역을 불러오는 중이에요" />;
+      return (
+        <>
+          <S.List>
+            {Array.from({ length: FIRST_LOAD_SKELETON_COUNT }, (_, index) => (
+              <li key={index} aria-hidden="true">
+                <HistoryCardSkeleton index={index} />
+              </li>
+            ))}
+          </S.List>
+          <S.LoadingMessage role="status">
+            추천 내역을 불러오는 중이에요
+          </S.LoadingMessage>
+        </>
+      );
     }
 
     // 다음 묶음을 불러오다 실패해도 쿼리 전체가 error가 되므로, 받아 둔 목록이 없을 때만 실패 화면을 보여 준다.
@@ -93,12 +108,15 @@ const RecommendationHistoryPage = () => {
               </S.CardLink>
             </li>
           ))}
+          {isFetchingNextPage && (
+            <li aria-hidden="true">
+              <HistoryCardSkeleton index={0} />
+            </li>
+          )}
         </S.List>
         <S.ListEnd ref={loadMoreRef}>
           {isFetchingNextPage && (
-            <S.Spinner>
-              <Icon name="progress_activity" size="md" label="더 불러오는 중" />
-            </S.Spinner>
+            <S.LoadingMessage role="status">더 불러오는 중</S.LoadingMessage>
           )}
           {isNextPageFailed && (
             <>

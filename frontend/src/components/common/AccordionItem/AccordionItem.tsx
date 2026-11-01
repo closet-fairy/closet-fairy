@@ -1,6 +1,7 @@
 import { useId } from 'react';
 import type { ReactNode } from 'react';
 import Icon from '@/components/common/Icon';
+import { CHEVRON_ICON_SIZE } from './AccordionItem.constants';
 import * as S from './AccordionItem.styled';
 
 interface AccordionItemProps {
@@ -42,7 +43,7 @@ const AccordionItem = (props: AccordionItemProps) => {
             )}
           </S.Summary>
           <S.Chevron>
-            <Icon name="keyboard_arrow_down" size="md" />
+            <Icon name="keyboard_arrow_down" size={CHEVRON_ICON_SIZE} />
           </S.Chevron>
         </S.Trigger>
       </S.Header>

@@ -14,6 +14,7 @@ import {
   useGetMySettingsMembersMeSettingsGet,
 } from '@/generated/endpoints/member/member';
 import SettingSummary from './components/SettingSummary';
+import SettingSummarySkeleton from './components/SettingSummarySkeleton';
 import * as S from './MyInfoPage.styled';
 
 const KST_DATE_FORMAT = new Intl.DateTimeFormat('ko-KR', {
@@ -90,9 +91,10 @@ const MyInfoPage = () => {
         <S.Section>
           <S.SectionTitle>추천에 쓰이는 정보</S.SectionTitle>
           {settingsQuery.isPending && (
-            <div role="status">
-              <Notice variant="subtle" title="불러오고 있어요" />
-            </div>
+            <>
+              <SettingSummarySkeleton />
+              <S.LoadingMessage role="status">불러오고 있어요</S.LoadingMessage>
+            </>
           )}
           {settingsQuery.data && (
             <SettingSummary

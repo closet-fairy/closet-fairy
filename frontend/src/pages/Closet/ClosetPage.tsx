@@ -15,9 +15,15 @@ import {
   resendClothingUpload,
 } from './clothingUploadStore';
 import ClothingCard from './components/ClothingCard';
+import ClothingCardSkeleton from './components/ClothingCardSkeleton';
 import ClothingRegistration from './components/ClothingRegistration';
 import ClothingStatusDialog from './components/ClothingStatusDialog';
 import UploadCard from './components/UploadCard';
+import {
+  FIRST_LOAD_SKELETON_COUNT,
+  GRID_COLUMN_COUNT,
+  NEXT_PAGE_SKELETON_ROW_COUNT,
+} from './constants';
 import useClosetClothingList from './hooks/useClosetClothingList';
 import useClothingStatusPolling from './hooks/useClothingStatusPolling';
 import useClothingUploads from './hooks/useClothingUploads';
@@ -56,6 +62,23 @@ const toDialogContent = (
     failureReason: clothing.failure_reason,
   };
 };
+
+const renderSkeletonCells = (startIndex: number, count: number) =>
+  Array.from({ length: count }, (_, offset) => {
+    const cellIndex = startIndex + offset;
+
+    return (
+      <S.GridItem key={`skeleton-${cellIndex}`} aria-hidden="true">
+        <ClothingCardSkeleton
+          column={cellIndex % GRID_COLUMN_COUNT}
+          row={
+            Math.floor(cellIndex / GRID_COLUMN_COUNT) -
+            Math.floor(startIndex / GRID_COLUMN_COUNT)
+          }
+        />
+      </S.GridItem>
+    );
+  });
 
 const ClosetPage = () => {
   const listQuery = useClosetClothingList();
@@ -153,15 +176,13 @@ const ClosetPage = () => {
     ) {
       return (
         <>
-          {pendingUploadGrid}
-          <StatusView
-            visual={
-              <S.Spinner>
-                <Icon name="progress_activity" size="xl" />
-              </S.Spinner>
-            }
-            title="옷장을 불러오는 중이에요"
-          />
+          <S.Grid>
+            {uploadCards}
+            {renderSkeletonCells(uploads.length, FIRST_LOAD_SKELETON_COUNT)}
+          </S.Grid>
+          <S.LoadingMessage role="status">
+            옷장을 불러오는 중이에요
+          </S.LoadingMessage>
         </>
       );
     }
@@ -214,6 +235,8 @@ const ClosetPage = () => {
       );
     }
 
+    const gridCellCount = uploads.length + clothings.length;
+
     return (
       <>
         <S.Grid>
@@ -238,12 +261,18 @@ const ClosetPage = () => {
               />
             </S.GridItem>
           ))}
+          {isFetchingNextPage &&
+            renderSkeletonCells(
+              gridCellCount,
+              (Math.floor(gridCellCount / GRID_COLUMN_COUNT) +
+                NEXT_PAGE_SKELETON_ROW_COUNT) *
+                GRID_COLUMN_COUNT -
+                gridCellCount,
+            )}
         </S.Grid>
         <S.ListEnd ref={loadMoreRef}>
           {isFetchingNextPage && (
-            <S.Spinner>
-              <Icon name="progress_activity" size="md" label="더 불러오는 중" />
-            </S.Spinner>
+            <S.LoadingMessage role="status">더 불러오는 중</S.LoadingMessage>
           )}
           {isNextPageFailed && (
             <>
