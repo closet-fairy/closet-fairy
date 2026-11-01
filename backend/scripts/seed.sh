@@ -67,6 +67,7 @@ FROM (           SELECT 'spring' AS season_cd
        UNION ALL SELECT 'fall'
        UNION ALL SELECT 'winter') s
 CROSS JOIN (           SELECT '캐주얼 1~3' AS band_nm, 1 AS lo, 3 AS hi
+             UNION ALL SELECT '데이트 2~4', 2,         4
              UNION ALL SELECT '격식 4~5',   4,         5) b
 LEFT JOIN essential_item_season es ON es.season_cd = s.season_cd
 LEFT JOIN essential_item e
