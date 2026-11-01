@@ -6,7 +6,7 @@ import * as S from './SocialLoginButton.styled';
 interface SocialLoginButtonProps {
   provider: ProviderCd;
   isDisabled?: boolean;
-  onClick: () => void;
+  onClick: (provider: ProviderCd) => void;
 }
 
 const LABEL: Record<ProviderCd, string> = {
@@ -26,7 +26,7 @@ const SocialLoginButton = (props: SocialLoginButtonProps) => {
     <S.Button
       type="button"
       disabled={isDisabled}
-      onClick={onClick}
+      onClick={() => onClick(provider)}
       $provider={provider}
     >
       <S.Logo src={LOGO[provider]} alt="" $provider={provider} />

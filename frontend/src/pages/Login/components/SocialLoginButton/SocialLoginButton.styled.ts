@@ -18,6 +18,11 @@ const HEIGHT = 54;
 
 const PRESSED_SCALE = 0.98;
 
+const LOGO_SIZE: Record<ProviderCd, number> = {
+  google: 20,
+  kakao: 14,
+};
+
 const providerStyles: Record<ProviderCd, SerializedStyles> = {
   google: css`
     gap: ${spacing[10]};
@@ -29,18 +34,6 @@ const providerStyles: Record<ProviderCd, SerializedStyles> = {
     gap: ${spacing[8]};
     background-color: ${bg.brand.kakao};
     color: ${fg.brand.kakao};
-  `,
-};
-
-const logoStyles: Record<ProviderCd, SerializedStyles> = {
-  google: css`
-    width: ${spacing[20]};
-    height: ${spacing[20]};
-    object-fit: contain;
-  `,
-  kakao: css`
-    width: ${spacing[14]};
-    height: ${spacing[14]};
   `,
 };
 
@@ -69,7 +62,8 @@ export const Button = styled.button<{ $provider: ProviderCd }>`
 
 export const Logo = styled.img<{ $provider: ProviderCd }>`
   flex: none;
+  width: ${({ $provider }) => LOGO_SIZE[$provider]}px;
+  height: ${({ $provider }) => LOGO_SIZE[$provider]}px;
+  object-fit: contain;
   pointer-events: none;
-
-  ${({ $provider }) => logoStyles[$provider]}
 `;

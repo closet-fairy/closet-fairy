@@ -22,7 +22,8 @@ const meta = {
       table: { defaultValue: { summary: 'false' } },
     },
     onClick: {
-      description: '버튼을 누르면 호출됩니다. 비활성이면 호출되지 않습니다.',
+      description:
+        '버튼을 누르면 제공자와 함께 호출됩니다. 비활성이면 호출되지 않습니다.',
     },
   },
   args: {

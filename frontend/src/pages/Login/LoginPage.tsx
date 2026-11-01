@@ -56,12 +56,12 @@ const LoginPage = () => {
         <SocialLoginButton
           provider="google"
           isDisabled={isRedirecting}
-          onClick={() => handleLogin('google')}
+          onClick={handleLogin}
         />
         <SocialLoginButton
           provider="kakao"
           isDisabled={isRedirecting}
-          onClick={() => handleLogin('kakao')}
+          onClick={handleLogin}
         />
       </S.Actions>
       <Dialog
