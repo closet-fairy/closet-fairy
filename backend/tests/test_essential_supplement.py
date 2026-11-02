@@ -3,6 +3,9 @@
 from types import SimpleNamespace
 from typing import get_args
 
+import pytest
+
+from app.core.config import get_settings
 from app.repositories import essential_item as essential_item_repo
 from app.repositories.clothing import ClothingCandidate
 from app.repositories.essential_item import EssentialItemCandidate
@@ -253,6 +256,224 @@ def test_precipitation_expected_prioritizes_waterproof_over_style_in_cap():
     assert len(shoes) == 8
     assert shoes[0].key == "o9"
     assert shoes[0].is_waterproof is True
+
+
+def _thin_clothing_min() -> float:
+    return float(get_settings().THIN_CLOTHING_MIN_FEELS_LIKE_TEMPERATURE)
+
+
+def _cold() -> float:
+    return _thin_clothing_min() - 0.1
+
+
+def _mild() -> float:
+    return _thin_clothing_min() + 7.0
+
+
+def _essential_key(item: EssentialItemCandidate) -> str:
+    return candidate_key("essential", item.essential_item_id)
+
+
+def _picked_outer_key(
+    essentials: list[EssentialItemCandidate],
+    min_feels_like: float,
+    preferred_styles: list[str] | None = None,
+    precipitation_expected: bool = False,
+) -> str:
+    result = supplement_essentials(
+        _filter_result(
+            _full_basics(),
+            outer_requirement="required",
+            precipitation_expected=precipitation_expected,
+        ),
+        preferred_styles or [],
+        {"outer": essentials},
+        min_feels_like_temperature=min_feels_like,
+    )
+    outers = [c for c in result.candidates if c.category_cd == "outer"]
+    assert len(outers) == 1
+    return outers[0].key
+
+
+def test_cold_day_picks_thick_essential_outer_over_formality_order():
+    hoodie = _essential(7, "outer", thickness_cd="medium")
+    trench = _essential(2, "outer", style_cd="minimal", thickness_cd="medium")
+    blazer = _essential(3, "outer", style_cd="classic", thickness_cd="medium")
+    wool_coat = _essential(4, "outer", style_cd="classic", thickness_cd="thick")
+
+    assert _picked_outer_key([hoodie, trench, blazer, wool_coat], _cold()) == _essential_key(
+        wool_coat
+    )
+
+
+def test_thick_outer_is_first_only_below_thin_clothing_minimum():
+    medium = _essential(1, "outer", thickness_cd="medium")
+    thick = _essential(2, "outer", thickness_cd="thick")
+
+    assert _picked_outer_key([medium, thick], _thin_clothing_min()) == _essential_key(medium)
+    assert _picked_outer_key([medium, thick], _cold()) == _essential_key(thick)
+
+
+def test_cold_day_thickness_comes_before_preferred_style():
+    preferred_medium = _essential(1, "outer", style_cd="casual", thickness_cd="medium")
+    thick = _essential(2, "outer", style_cd="classic", thickness_cd="thick")
+
+    picked = _picked_outer_key([preferred_medium, thick], _cold(), preferred_styles=["casual"])
+
+    assert picked == _essential_key(thick)
+
+
+def test_mild_day_thickness_comes_before_preferred_style():
+    preferred_thick = _essential(1, "outer", style_cd="classic", thickness_cd="thick")
+    medium = _essential(2, "outer", style_cd="casual", thickness_cd="medium")
+
+    picked = _picked_outer_key([preferred_thick, medium], _mild(), preferred_styles=["classic"])
+
+    assert picked == _essential_key(medium)
+
+
+def test_mild_day_picks_medium_outer_before_thin_without_preferred_style():
+    thin = _essential(1, "outer", thickness_cd="thin")
+    medium = _essential(2, "outer", thickness_cd="medium")
+
+    assert _picked_outer_key([thin, medium], _mild()) == _essential_key(medium)
+
+
+def test_mild_day_picks_medium_outer_when_preferred_style_matches_only_thin():
+    preferred_thin = _essential(1, "outer", style_cd="sporty", thickness_cd="thin")
+    medium = _essential(2, "outer", style_cd="casual", thickness_cd="medium")
+
+    picked = _picked_outer_key([preferred_thin, medium], _mild(), preferred_styles=["sporty"])
+
+    assert picked == _essential_key(medium)
+
+
+def test_mild_day_picks_thin_outer_before_thick():
+    thick = _essential(1, "outer", thickness_cd="thick")
+    thin = _essential(2, "outer", thickness_cd="thin")
+
+    assert _picked_outer_key([thick, thin], _mild()) == _essential_key(thin)
+
+
+def test_outer_without_thickness_ranks_with_medium_on_mild_day():
+    thin = _essential(1, "outer", thickness_cd="thin")
+    untagged = _essential(2, "outer", thickness_cd=None)
+
+    assert _picked_outer_key([thin, untagged], _mild()) == _essential_key(untagged)
+
+
+def test_precipitation_prioritizes_waterproof_outer_over_thickness_and_style_on_cold_day():
+    preferred_thick = _essential(1, "outer", style_cd="classic", thickness_cd="thick")
+    waterproof = _essential(2, "outer", thickness_cd="medium", is_waterproof=True)
+
+    picked = _picked_outer_key(
+        [preferred_thick, waterproof],
+        _cold(),
+        preferred_styles=["classic"],
+        precipitation_expected=True,
+    )
+
+    assert picked == _essential_key(waterproof)
+
+
+def test_precipitation_prioritizes_thin_waterproof_outer_on_mild_day():
+    preferred_medium = _essential(1, "outer", style_cd="classic", thickness_cd="medium")
+    waterproof_thin = _essential(2, "outer", thickness_cd="thin", is_waterproof=True)
+
+    picked = _picked_outer_key(
+        [preferred_medium, waterproof_thin],
+        _mild(),
+        preferred_styles=["classic"],
+        precipitation_expected=True,
+    )
+
+    assert picked == _essential_key(waterproof_thin)
+
+
+def test_cold_rainy_day_excludes_thin_waterproof_outer():
+    waterproof_thin = _essential(1, "outer", thickness_cd="thin", is_waterproof=True)
+    thick = _essential(2, "outer", thickness_cd="thick")
+
+    picked = _picked_outer_key([waterproof_thin, thick], _cold(), precipitation_expected=True)
+
+    assert picked == _essential_key(thick)
+
+
+def test_same_thickness_outers_keep_preferred_style_then_fetched_order():
+    first = _essential(1, "outer", style_cd="casual", thickness_cd="medium")
+    second = _essential(2, "outer", style_cd="casual", thickness_cd="medium")
+    preferred = _essential(3, "outer", style_cd="minimal", thickness_cd="medium")
+    outers = [first, second, preferred]
+
+    assert _picked_outer_key(outers, _mild()) == _essential_key(first)
+    assert _picked_outer_key(outers, _mild(), ["minimal"]) == _essential_key(preferred)
+
+
+def test_only_thick_outers_still_fill_required_outer_on_mild_day():
+    thick_outers = [
+        _essential(1, "outer", thickness_cd="thick"),
+        _essential(2, "outer", thickness_cd="thick"),
+    ]
+
+    assert _picked_outer_key(thick_outers, _mild()) == _essential_key(thick_outers[0])
+
+
+@pytest.mark.parametrize("category_cd", ["top", "bottom", "shoes"])
+@pytest.mark.parametrize(
+    ("min_feels_like", "thicknesses"),
+    [(_cold, ["medium", "medium", "thick"]), (_mild, ["thick", "thin", "medium"])],
+)
+def test_shortage_supplement_keeps_fetched_order_regardless_of_thickness(
+    category_cd, min_feels_like, thicknesses
+):
+    owned = [c for c in _full_basics() if c.category_cd != category_cd]
+    essentials = [
+        _essential(item_id, category_cd, thickness_cd=thickness)
+        for item_id, thickness in enumerate(thicknesses, start=1)
+    ]
+
+    result = supplement_essentials(
+        _filter_result(owned),
+        [],
+        {category_cd: essentials},
+        min_feels_like_temperature=min_feels_like(),
+    )
+
+    picked = [c.key for c in result.candidates if c.category_cd == category_cd]
+    assert picked == [_essential_key(e) for e in essentials[:2]]
+
+
+@pytest.mark.parametrize(
+    ("min_feels_like", "kept_thickness", "last_thickness"),
+    [(_cold, "medium", "thick"), (_mild, "thick", "medium")],
+)
+def test_category_cap_keeps_owned_order_regardless_of_thickness(
+    min_feels_like, kept_thickness, last_thickness
+):
+    outers = [_owned(i, "outer", thickness_cd=kept_thickness) for i in range(101, 109)]
+    outers.append(_owned(109, "outer", thickness_cd=last_thickness))
+
+    result = supplement_essentials(
+        _filter_result(_full_basics() + outers, outer_requirement="required"),
+        [],
+        {},
+        min_feels_like_temperature=min_feels_like(),
+    )
+
+    picked = [c.key for c in result.candidates if c.category_cd == "outer"]
+    assert picked == [candidate_key("owned", c.clothing_id) for c in outers[:8]]
+
+
+def test_optional_outer_does_not_add_essential_outer():
+    result = supplement_essentials(
+        _filter_result(_full_basics(), outer_requirement="optional"),
+        [],
+        {"outer": [_essential(1, "outer")]},
+        min_feels_like_temperature=18.0,
+    )
+
+    assert [c for c in result.candidates if c.category_cd == "outer"] == []
+    assert result.outer_requirement == "optional"
 
 
 def test_candidate_ids_follow_prompt_candidate_key_rule():

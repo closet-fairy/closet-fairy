@@ -62,6 +62,8 @@ JOIN (
   UNION ALL SELECT '블랙 트렌치코트',          'fall'
   UNION ALL SELECT '네이비 블레이저',          'spring'
   UNION ALL SELECT '네이비 블레이저',          'fall'
+  UNION ALL SELECT '차콜 울코트',              'spring'
+  UNION ALL SELECT '차콜 울코트',              'fall'
   UNION ALL SELECT '차콜 울코트',              'winter'
   UNION ALL SELECT '네이비 패딩 점퍼',         'winter'
   UNION ALL SELECT '네이비 바람막이',          'spring'

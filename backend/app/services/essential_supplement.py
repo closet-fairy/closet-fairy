@@ -10,6 +10,7 @@ from dataclasses import dataclass
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.core.db import AsyncSessionLocal
 from app.repositories import essential_item as essential_item_repo
 from app.repositories.clothing import ClothingCandidate
@@ -103,6 +104,10 @@ def _from_essential(item: EssentialItemCandidate) -> SupplementedCandidate:
     )
 
 
+def _waterproof_rank(c: SupplementedCandidate, precipitation_expected: bool) -> int:
+    return 0 if (precipitation_expected and c.is_waterproof) else 1
+
+
 def _sort_candidates(
     items: list[SupplementedCandidate], preferred_styles: list[str], precipitation_expected: bool
 ) -> list[SupplementedCandidate]:
@@ -110,11 +115,37 @@ def _sort_candidates(
     preferred = set(preferred_styles)
 
     def sort_key(c: SupplementedCandidate) -> tuple[int, int]:
-        waterproof_rank = 0 if (precipitation_expected and c.is_waterproof) else 1
+        waterproof_rank = _waterproof_rank(c, precipitation_expected)
         style_rank = 0 if preferred.intersection(c.styles) else 1
         return (waterproof_rank, style_rank)
 
     return sorted(items, key=sort_key)
+
+
+def _outer_thickness_rank(c: SupplementedCandidate, min_feels_like: float) -> int:
+    if min_feels_like < float(get_settings().THIN_CLOTHING_MIN_FEELS_LIKE_TEMPERATURE):
+        return 0 if c.thickness_cd == "thick" else 1
+    # 기준 온도 위에서도 얇은 아우터 한 장은 리뷰어가 보온 부족으로 떨어뜨릴 수 있어
+    # 보통 두께를 먼저 고른다
+    # 두께 태깅이 없는 옷은 보통으로 본다
+    return {"thin": 1, "thick": 2}.get(c.thickness_cd, 0)
+
+
+def _sort_essential_outers(
+    items: list[SupplementedCandidate], precipitation_expected: bool, min_feels_like: float
+) -> list[SupplementedCandidate]:
+    """방수 우선(비 예보 때) > 체감온도에 맞는 두께 순으로 정렬한다.
+
+    items는 _sort_candidates를 거친 목록이다. 안정 정렬이라 같은 순위 안에서는
+    선호 스타일·격식·번호 순서가 유지된다.
+    """
+    return sorted(
+        items,
+        key=lambda c: (
+            _waterproof_rank(c, precipitation_expected),
+            _outer_thickness_rank(c, min_feels_like),
+        ),
+    )
 
 
 def _cap_groups(
@@ -183,7 +214,9 @@ def supplement_essentials(
         # 체감온도가 높아 아우터를 입지 않는 날: 보유 아우터도 후보에서 뺀다.
         by_category.pop("outer", None)
     elif outer_requirement == "required" and not by_category.get("outer"):
-        essentials = _essentials_for("outer")
+        essentials = _sort_essential_outers(
+            _essentials_for("outer"), precipitation_expected, min_feels_like_temperature
+        )
         if essentials:
             by_category["outer"] = [essentials[0]]
         else:
