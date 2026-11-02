@@ -9,7 +9,7 @@ from app.services.prompt.outfit_generation import AssembledPrompt, sanitize_inli
 from app.services.prompt.template import load_prompt_template, render
 
 PROMPT_NAME = "regeneration_intent"
-PROMPT_VERSION = "v1.0"
+PROMPT_VERSION = "v1.1"
 ITEM_NAME_MAX_LENGTH = 20
 
 IntentStatus = Literal["ok", "unclear", "harmful"]

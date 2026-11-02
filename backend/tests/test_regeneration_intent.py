@@ -211,7 +211,7 @@ async def test_call_config_and_prompt_are_passed():
     kwargs = llm.call_structured.await_args.kwargs
     config: LLMCallConfig = llm.call_structured.await_args.args[0]
     assert config.call_name == "regeneration_intent"
-    assert config.prompt_version == "regeneration_intent/v1.0"
+    assert config.prompt_version == "regeneration_intent/v1.1"
     assert config.temperature == 0.0
     assert config.model == get_settings().LLM_INTENT_MODEL
     assert config.timeout_s == get_settings().REGENERATION_INTENT_TIMEOUT_S
