@@ -39,6 +39,11 @@ SCENARIOS: list[tuple[str, dict]] = [
     ("하의만 바꿔 줘", {"status": "ok", "replace_items": {"bottom": None}}),
     ("더 캐주얼하고 더 포멀하게", {"status": "ok", "preferred_styles": ["formal"]}),
     ("오늘 점심 뭐 먹을지 추천해 줘", {"status": "unclear"}),
+    ("컬러풀하게 바꿔 주세요", {"status": "ok"}),
+    ("칙칙하지 않게", {"status": "ok"}),
+    ("깔끔하게", {"status": "ok"}),
+    ("더 편하게", {"status": "ok", "preferred_styles": ["casual"]}),
+    ("더 밝게", {"status": "ok", "avoided_colors": []}),
 ]
 
 
