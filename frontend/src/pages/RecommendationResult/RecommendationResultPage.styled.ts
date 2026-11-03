@@ -1,4 +1,6 @@
+import { css } from '@emotion/react';
 import styled from '@emotion/styled';
+import waveBackgroundUrl from '@/assets/images/resultWaveBackground.jpg';
 import { bg, fg, spacing, typography, zIndex } from '@/styles/tokens';
 
 const SAFE_TOP = 'env(safe-area-inset-top, 0px)';
@@ -13,7 +15,7 @@ const SLIDE_PADDING_SIDE = 14;
 
 export const ARROW_INSET = spacing[12];
 
-export const Container = styled.div`
+export const Container = styled.div<{ $hasBackdrop?: boolean }>`
   position: relative;
   display: flex;
   flex: 1;
@@ -21,6 +23,12 @@ export const Container = styled.div`
   min-height: 100dvh;
   overflow: hidden;
   background-color: ${bg.floor};
+
+  ${({ $hasBackdrop }) =>
+    $hasBackdrop &&
+    css`
+      background: ${bg.white} url(${waveBackgroundUrl}) center / cover no-repeat;
+    `}
 `;
 
 export const StatusPage = styled.div`
