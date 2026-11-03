@@ -790,6 +790,49 @@ describe('재추천 결과가 도착할 때', () => {
   });
 });
 
+describe('재추천 결과가 연달아 도착할 때', () => {
+  const createRegenerated = (latestId: number, previousIds: number[]) => ({
+    ...createPreviousOutfit(latestId),
+    previous_outfits: previousIds.map(createPreviousOutfit),
+  });
+  const createStack = (outfit: OutfitResult, depth: number) => (
+    <OutfitStack
+      outfit={outfit}
+      depth={depth}
+      onDepthChange={vi.fn()}
+      onOverflowClick={vi.fn()}
+    />
+  );
+  const loadAllImages = () => {
+    screen.getAllByRole('img', { hidden: true }).forEach((image) => {
+      fireEvent.load(image);
+    });
+  };
+
+  test('두 번 연달아 도착해도 가장 새 코디만 보여야 한다.', () => {
+    const { rerender } = render(createStack(createOutfit(0), 0));
+
+    rerender(createStack(createRegenerated(101, [100]), 0));
+    rerender(createStack(createRegenerated(102, [101, 100]), 0));
+    loadAllImages();
+
+    expect(
+      screen.getAllByRole('img').map((image) => image.getAttribute('alt')),
+    ).toEqual(['102번 상의']);
+  });
+
+  test('이전 코디를 보던 중에 도착해 맨 앞으로 돌아와도 가장 새 코디만 보여야 한다.', () => {
+    const { rerender } = render(createStack(createRegenerated(101, [100]), 1));
+
+    rerender(createStack(createRegenerated(102, [101, 100]), 0));
+    loadAllImages();
+
+    expect(
+      screen.getAllByRole('img').map((image) => image.getAttribute('alt')),
+    ).toEqual(['102번 상의']);
+  });
+});
+
 describe('등장 애니메이션', () => {
   const loadImages = () => {
     screen.getAllByRole('img', { hidden: true }).forEach((image) => {
