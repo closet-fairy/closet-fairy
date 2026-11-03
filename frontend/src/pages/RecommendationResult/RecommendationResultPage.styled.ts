@@ -5,7 +5,7 @@ import { OUTFIT_PAGER } from './hooks/useOutfitPager.constants';
 
 const SAFE_TOP = 'env(safe-area-inset-top, 0px)';
 const SAFE_BOTTOM = 'env(safe-area-inset-bottom, 0px)';
-const CARD_TOP = 58;
+export const CARD_TOP = 58;
 const CARD_BOTTOM_SPACE = 174;
 
 // 카드 그림자가 잘리지 않도록 캐러셀을 카드보다 넓게 잡은 여백이다. 위아래가 달라야 화살표가 시안 높이에 온다.

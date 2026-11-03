@@ -1,10 +1,9 @@
 import { keyframes } from '@emotion/react';
 import styled from '@emotion/styled';
+import { CARD_TOP } from '@/pages/RecommendationResult/RecommendationResultPage.styled';
 import { bg, fg, radius, spacing, typography } from '@/styles/tokens';
 
 const SPIN_DURATION = '1s';
-const FOG_SPREAD_TOP = 58;
-const FOG_SPREAD_SIDE = 14;
 const FOG_SPREAD_BOTTOM = 120;
 const FOG_CONTENT_RISE = 80;
 const FOG_SHAPE = 'ellipse 70% 45% at 50% 44%';
@@ -47,13 +46,14 @@ export const Tags = styled.div`
 
 export const Fog = styled.div`
   position: absolute;
-  inset: -${FOG_SPREAD_TOP}px -${FOG_SPREAD_SIDE}px -${FOG_SPREAD_BOTTOM}px;
+  inset: -${CARD_TOP}px calc(${spacing[14]} * -1) -${FOG_SPREAD_BOTTOM}px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: ${spacing[12]};
   padding-bottom: ${FOG_CONTENT_RISE}px;
+  pointer-events: none;
   background: radial-gradient(
     ${FOG_SHAPE},
     ${bg.fog.dense} 0%,
