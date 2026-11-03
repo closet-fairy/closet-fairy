@@ -1497,7 +1497,7 @@ describe('이전 코디', () => {
   });
 });
 
-describe('다른 세트의 재추천 완료 안내', () => {
+describe('재추천 완료 안내', () => {
   const createCompletedResult = (targetSeq: number) => {
     const targetOutfitId = 50 + targetSeq;
 
@@ -1526,7 +1526,9 @@ describe('다른 세트의 재추천 완료 안내', () => {
     });
   };
 
-  test('다른 세트를 보던 중 끝나면 몇 번째 코디인지 알려야 한다.', async () => {
+  test('다른 세트를 보던 중 끝나면 몇 번 코디가 바뀌었는지 알리고 보러 갈 수 있어야 한다.', async () => {
+    const user = userEvent.setup();
+    const requests = useRatingSuccess();
     useResult(
       createResult({
         latest_regeneration: createRegeneration({ target_outfit_id: 52 }),
@@ -1538,12 +1540,23 @@ describe('다른 세트의 재추천 완료 안내', () => {
     useResult(createCompletedResult(2));
     await refetchAndRender(queryClient);
 
-    expect(
-      await screen.findByText('2번째 코디에 요청을 반영했어요'),
-    ).toBeInTheDocument();
+    const toast = await screen.findByRole('dialog', {
+      name: '2번 코디가 새로 바뀌었어요',
+    });
+
+    expect(toast).toHaveAccessibleDescription(
+      '이전 코디는 위아래로 넘겨 볼 수 있어요',
+    );
+
+    await user.click(within(toast).getByRole('button', { name: '보기' }));
+    await submitRating(user);
+
+    await waitFor(() => {
+      expect(requests).toEqual([{ outfit_id: 72, rating: 4 }]);
+    });
   });
 
-  test('보던 세트의 재추천이 끝나면 안내하지 않아야 한다.', async () => {
+  test('보던 세트의 재추천이 끝나면 이 코디가 바뀌었다고 알리고 보러 가는 버튼은 두지 않아야 한다.', async () => {
     useResult(createResult({ latest_regeneration: createRegeneration() }));
     const { queryClient } = await renderResult();
 
@@ -1551,8 +1564,12 @@ describe('다른 세트의 재추천 완료 안내', () => {
     useResult(createCompletedResult(1));
     await refetchAndRender(queryClient);
 
+    const toast = await screen.findByRole('dialog', {
+      name: '이 코디가 새로 바뀌었어요',
+    });
+
     expect(
-      screen.queryByText(/코디에 요청을 반영했어요/),
+      within(toast).queryByRole('button', { name: '보기' }),
     ).not.toBeInTheDocument();
   });
 
@@ -1563,11 +1580,11 @@ describe('다른 세트의 재추천 완료 안내', () => {
     await screen.findByRole('button', { name: '채택하기' });
 
     expect(
-      screen.queryByText(/코디에 요청을 반영했어요/),
+      screen.queryByText(/코디가 새로 바뀌었어요/),
     ).not.toBeInTheDocument();
   });
 
-  test('전체 재추천이 끝나면 안내하지 않아야 한다.', async () => {
+  test('전체 재추천이 끝나면 모두 바뀌었다고 알리고 보러 가는 버튼은 두지 않아야 한다.', async () => {
     useResult(
       createResult({
         latest_regeneration: createRegeneration({
@@ -1590,8 +1607,12 @@ describe('다른 세트의 재추천 완료 안내', () => {
     );
     await refetchAndRender(queryClient);
 
+    const toast = await screen.findByRole('dialog', {
+      name: '코디가 모두 새로 바뀌었어요',
+    });
+
     expect(
-      screen.queryByText(/코디에 요청을 반영했어요/),
+      within(toast).queryByRole('button', { name: '보기' }),
     ).not.toBeInTheDocument();
   });
 });

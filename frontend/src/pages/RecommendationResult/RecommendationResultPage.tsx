@@ -66,6 +66,7 @@ const SESSION_ALREADY_SETTLED_CODE = 'SESSION_ALREADY_SETTLED';
 // 취소나 이탈로 이미 끝난 세션에 별점을 보냈을 때 내려오는 코드다.
 const SESSION_NOT_RATABLE_CODE = 'SESSION_NOT_RATABLE';
 const SESSION_ENDED_CODE = 'SESSION_ENDED';
+const REGENERATED_DESCRIPTION = '이전 코디는 위아래로 넘겨 볼 수 있어요';
 
 const hasOutfitList = (
   value: unknown,
@@ -262,12 +263,23 @@ const RecommendationResultPage = () => {
     const targetIndex = findRegeneratedOutfitIndex(outfits, targetOutfitId);
     const viewedIndex = Math.min(outfitIndex, outfits.length - 1);
 
-    if (targetIndex >= 0 && targetIndex !== viewedIndex) {
+    if (targetIndex < 0) return;
+
+    if (targetIndex === viewedIndex) {
       showToast({
         tone: 'info',
-        title: `${targetIndex + 1}번째 코디에 요청을 반영했어요`,
+        title: '이 코디가 새로 바뀌었어요',
+        description: REGENERATED_DESCRIPTION,
       });
+      return;
     }
+
+    showToast({
+      tone: 'info',
+      title: `${targetIndex + 1}번 코디가 새로 바뀌었어요`,
+      description: REGENERATED_DESCRIPTION,
+      action: { label: '보기', onClick: () => setOutfitIndex(targetIndex) },
+    });
   });
 
   useEffect(() => {
@@ -276,12 +288,22 @@ const RecommendationResultPage = () => {
     lastRegenerationRef.current = latestRegeneration;
 
     if (
-      isRegenerationProcessing(lastRegeneration) &&
-      latestRegeneration?.regeneration_status_cd === 'completed' &&
-      latestRegeneration.target_outfit_id !== null
+      !isRegenerationProcessing(lastRegeneration) ||
+      latestRegeneration?.regeneration_status_cd !== 'completed'
     ) {
-      noticeRegeneratedOutfit(latestRegeneration.target_outfit_id);
+      return;
     }
+
+    if (latestRegeneration.target_outfit_id === null) {
+      showToast({
+        tone: 'info',
+        title: '코디가 모두 새로 바뀌었어요',
+        description: REGENERATED_DESCRIPTION,
+      });
+      return;
+    }
+
+    noticeRegeneratedOutfit(latestRegeneration.target_outfit_id);
   }, [latestRegeneration]);
 
   useEffect(() => {
