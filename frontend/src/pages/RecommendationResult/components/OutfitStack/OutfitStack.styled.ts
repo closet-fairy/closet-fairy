@@ -47,8 +47,11 @@ export const Surface = styled.div`
     ${shadow.card},
     inset 0 0 0 1px ${border.neutral.default};
   opacity: var(--surface-opacity, 0);
-  backdrop-filter: blur(${blur.card});
   pointer-events: none;
+
+  [data-revealed] & {
+    backdrop-filter: blur(${blur.card});
+  }
 `;
 
 export const Content = styled.div`
