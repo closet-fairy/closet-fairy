@@ -2,7 +2,7 @@
 
 캡스톤 비상업 용도 (상업용 아님).
 
-원본 상품 사진에서 배경을 제거해 긴 변 1200px WEBP로 저장했다.
+원본 상품 사진에서 배경을 제거하고, 긴 변 1200px 이하로 줄인 뒤 남는 여백을 잘라 WEBP로 저장했다.
 
 - H&M: Kaggle [H&M Personalized Fashion Recommendations](https://www.kaggle.com/competitions/h-and-m-personalized-fashion-recommendations) 대회 데이터 (대회 규칙에 따름)
 - Myntra: Kaggle [Fashion Product Images Dataset](https://www.kaggle.com/datasets/paramaggarwal/fashion-product-images-dataset)
@@ -37,10 +37,10 @@
 | `beige-linen-short-sleeve-shirt.webp` | 베이지 린넨 반팔 셔츠 | H&M | 0568456017 |
 | `lightgray-linen-slacks.webp` | 라이트그레이 린넨 슬랙스 | H&M | 0631804005 |
 | `khaki-chino-shorts.webp` | 카키 치노 반바지 | H&M | 0740337002 |
-| `brown-penny-loafers.webp` | 브라운 페니 로퍼 | H&M | 0479453002 |
+| `brown-penny-loafers.webp` | 브라운 페니 로퍼 | Myntra | 21103 |
 | `white-ankle-socks.webp` | 화이트 발목 양말 | H&M | 0619506007 |
-| `black-dress-socks.webp` | 블랙 정장 양말 | H&M | 0539961001 |
+| `black-dress-socks.webp` | 블랙 정장 양말 | Myntra | 51346 |
 | `gray-sports-socks.webp` | 그레이 스포츠 양말 | H&M | 0502660003 |
-| `charcoal-wool-socks.webp` | 차콜 울 양말 | Myntra | 51346 |
-| `black-leather-belt.webp` | 블랙 가죽 벨트 | H&M | 0416387002 |
+| `charcoal-wool-socks.webp` | 차콜 울 양말 | Myntra | 51337 |
+| `black-leather-belt.webp` | 블랙 가죽 벨트 | H&M | 0338016001 |
 | `charcoal-muffler.webp` | 차콜 머플러 | H&M | 0412664013 |
