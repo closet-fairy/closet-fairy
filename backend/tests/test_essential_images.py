@@ -34,8 +34,9 @@ def _migration_items() -> dict[str, str]:
 
 
 def test_seed_gives_every_essential_an_image():
+    item_rows = re.findall(r"^\s*\('", SEED.read_text(encoding="utf-8"), flags=re.MULTILINE)
     keys = _keys(SEED)
-    assert len(keys) == 35
+    assert len(keys) == len(item_rows) == 35
     assert len(set(keys)) == len(keys)
 
 
