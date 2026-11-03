@@ -133,6 +133,7 @@ const RecommendationResultPage = () => {
   const infoButtonRef = useRef<HTMLButtonElement>(null);
   const adoptButtonRef = useRef<HTMLButtonElement>(null);
   const requestButtonRef = useRef<HTMLButtonElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const isProcessing =
     result !== undefined && getRecommendationProgress(result) === 'processing';
@@ -584,8 +585,16 @@ const RecommendationResultPage = () => {
     );
   };
 
+  const changePresence = (presence: number) => {
+    containerRef.current?.style.setProperty(
+      '--card-presence',
+      String(presence),
+    );
+    containerRef.current?.toggleAttribute('data-card-shown', presence >= 0.5);
+  };
+
   return (
-    <S.Container $hasBackdrop>
+    <S.Container ref={containerRef} $hasBackdrop>
       {outfits.length > 1 && (
         <S.Counter>
           <S.CounterCurrent>{currentIndex + 1}</S.CounterCurrent>
@@ -620,6 +629,7 @@ const RecommendationResultPage = () => {
                   latestRegeneration,
                   outfit.outfit_id,
                 )}
+                onPresenceChange={changePresence}
                 onDepthChange={(depth) => {
                   setViewedHistory({
                     latestOutfitId: outfit.outfit_id,
@@ -632,19 +642,21 @@ const RecommendationResultPage = () => {
           ))}
         </Carousel>
       </S.CarouselArea>
-      <OutfitActions
-        infoButtonRef={infoButtonRef}
-        adoptButtonRef={adoptButtonRef}
-        requestButtonRef={requestButtonRef}
-        isDisabled={isOutfitRegenerating(
-          latestRegeneration,
-          latestOutfit.outfit_id,
-        )}
-        isRequestDisabled={isViewingPrevious || isRegenerating}
-        onInfoClick={() => setOpenLayer('info')}
-        onAdoptClick={openRatingDialog}
-        onRequestClick={openRequestSheet}
-      />
+      <S.Chrome>
+        <OutfitActions
+          infoButtonRef={infoButtonRef}
+          adoptButtonRef={adoptButtonRef}
+          requestButtonRef={requestButtonRef}
+          isDisabled={isOutfitRegenerating(
+            latestRegeneration,
+            latestOutfit.outfit_id,
+          )}
+          isRequestDisabled={isViewingPrevious || isRegenerating}
+          onInfoClick={() => setOpenLayer('info')}
+          onAdoptClick={openRatingDialog}
+          onRequestClick={openRequestSheet}
+        />
+      </S.Chrome>
       <OutfitInfoSheet
         outfit={currentOutfit}
         weather={weather}

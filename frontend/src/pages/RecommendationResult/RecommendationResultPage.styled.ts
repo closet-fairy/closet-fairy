@@ -82,3 +82,14 @@ export const Slide = styled.div`
   padding: ${SLIDE_PADDING_TOP}px ${SLIDE_PADDING_SIDE}px
     ${SLIDE_PADDING_BOTTOM}px;
 `;
+
+export const Chrome = styled.div`
+  position: relative;
+  flex: none;
+  opacity: calc(1 - var(--card-presence, 0));
+  transform: translateY(calc(var(--card-presence, 0) * ${spacing[16]}));
+
+  [data-card-shown] > & {
+    pointer-events: none;
+  }
+`;
