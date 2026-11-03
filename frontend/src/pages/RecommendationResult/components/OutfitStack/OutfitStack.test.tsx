@@ -283,6 +283,44 @@ describe('카드 끌기', () => {
     expect(onPresenceChange).not.toHaveBeenCalledWith(1);
   });
 
+  test('세로로 끄는 동안에는 좌우 넘김에 손 움직임을 넘기지 않아야 한다.', () => {
+    const onCarouselTouchMove = vi.fn();
+
+    render(
+      <div onTouchMove={onCarouselTouchMove}>
+        <ControlledStack previousCount={1} />
+      </div>,
+    );
+
+    const card = getOrderBadge(2, 2);
+
+    pressCard(card);
+    fireEvent.touchMove(card);
+    moveCard(card, START_X, START_Y + 20);
+    moveCard(card, START_X + 60, START_Y + 30);
+    fireEvent.touchMove(card);
+
+    expect(onCarouselTouchMove).not.toHaveBeenCalled();
+  });
+
+  test('가로로 정하면 좌우 넘김이 손 움직임을 받아야 한다.', () => {
+    const onCarouselTouchMove = vi.fn();
+
+    render(
+      <div onTouchMove={onCarouselTouchMove}>
+        <ControlledStack previousCount={1} />
+      </div>,
+    );
+
+    const card = getOrderBadge(2, 2);
+
+    pressCard(card);
+    moveCard(card, START_X + 20, START_Y + 2);
+    fireEvent.touchMove(card);
+
+    expect(onCarouselTouchMove).toHaveBeenCalled();
+  });
+
   test('넘어가는 중에 다시 잡아 끌면 잡은 자리에서 이어 끌려야 한다.', () => {
     render(<ControlledStack previousCount={2} />);
 
@@ -326,6 +364,29 @@ describe('카드 끌기', () => {
     dragCard(card, -Math.ceil(DRAGGING_SPACING));
 
     expect(getOrderBadge(3, 3)).toBeInTheDocument();
+  });
+
+  test('넘어가는 중에 다시 잡으면 가로로 움직여도 세로로 이어져야 한다.', () => {
+    const onCarouselTouchMove = vi.fn();
+
+    render(
+      <div onTouchMove={onCarouselTouchMove}>
+        <ControlledStack previousCount={2} />
+      </div>,
+    );
+
+    const card = getOrderBadge(3, 3);
+
+    pressCard(card);
+    moveCard(card, START_X, START_Y + COMMIT_DISTANCE);
+    wait(PAUSE_BEFORE_RELEASE_MS);
+    liftCard(card, START_X, START_Y + COMMIT_DISTANCE);
+    wait(FRAME_MS * 3);
+    pressCard(card);
+    moveCard(card, START_X + 60, START_Y);
+    fireEvent.touchMove(card);
+
+    expect(onCarouselTouchMove).not.toHaveBeenCalled();
   });
 
   test('끌기가 취소되면 제자리로 돌아와야 한다.', () => {

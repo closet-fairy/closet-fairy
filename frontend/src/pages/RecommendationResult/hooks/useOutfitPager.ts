@@ -42,6 +42,7 @@ const MAX_FRAME_MS = 64;
 const REST_DISTANCE_PX = 0.5;
 const REST_SPEED_PX_PER_MS = 0.02;
 const MIN_LANDING_DISTANCE = 0.02;
+const CAROUSEL_REST_TOLERANCE_PX = 2;
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value));
@@ -66,6 +67,19 @@ const getVelocity = (
   const elapsed = last.time - first.time;
 
   return elapsed > 0 ? (last.y - first.y) / elapsed : 0;
+};
+
+const isCarouselMoving = (stack: HTMLElement) => {
+  const carousel = stack.closest('[aria-roledescription="캐러셀"]');
+
+  if (carousel === null) return false;
+
+  const stackRect = stack.getBoundingClientRect();
+  const carouselRect = carousel.getBoundingClientRect();
+  const leftGap = stackRect.left - carouselRect.left;
+  const rightGap = carouselRect.right - stackRect.right;
+
+  return Math.abs(leftGap - rightGap) > CAROUSEL_REST_TOLERANCE_PX;
 };
 
 const getScale = (presence: number) =>
@@ -286,6 +300,28 @@ const useOutfitPager = (options: UseOutfitPagerOptions) => {
 
   useEffect(() => stopFrame, []);
 
+  useEffect(() => {
+    const stack = stackRef.current;
+
+    if (stack === null) return;
+
+    const blockCarousel = (event: Event) => {
+      const gesture = gestureRef.current;
+
+      if (gesture !== null && gesture.axis !== 'x') {
+        event.stopPropagation();
+      }
+    };
+
+    stack.addEventListener('touchmove', blockCarousel);
+    stack.addEventListener('mousemove', blockCarousel);
+
+    return () => {
+      stack.removeEventListener('touchmove', blockCarousel);
+      stack.removeEventListener('mousemove', blockCarousel);
+    };
+  }, []);
+
   const getRubberPos = (rawPos: number, spacing: number) => {
     const max = layerCountRef.current - 1;
 
@@ -322,6 +358,8 @@ const useOutfitPager = (options: UseOutfitPagerOptions) => {
     if (event.pointerType === 'mouse' && event.button !== 0) return;
 
     const isCatching = phaseRef.current === 'settle';
+
+    if (!isCatching && isCarouselMoving(event.currentTarget)) return;
 
     if (isCatching) {
       stopFrame();
