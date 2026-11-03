@@ -7,7 +7,7 @@ import OutfitStack from './OutfitStack';
 
 const CARD_WIDTH = 362;
 const CARD_HEIGHT = 568;
-const STRIP_SPACE = 14;
+const ORDER_BADGE_SPACE = 40;
 
 const createItem = (slotCd: OutfitItemResult['slot_cd']): OutfitItemResult => ({
   slot_cd: slotCd,
@@ -44,7 +44,7 @@ const meta = {
     },
     depth: {
       description:
-        '지금 보는 겹입니다. 0이 최신 코디이고, 커질수록 이전 코디입니다. 카드를 아래로 끌면 커지고 위로 끌면 작아집니다.',
+        '지금 보는 겹입니다. 0이 최신 코디이고, 커질수록 이전 코디입니다. 아래로 끌면 위에서 이전 코디가 내려오며 커지고, 위로 끌면 작아집니다.',
       control: 'number',
     },
     isRegenerating: {
@@ -54,6 +54,10 @@ const meta = {
     onDepthChange: {
       description:
         '끌기나 숨은 이동 버튼으로 다른 겹으로 넘어갈 때 새 깊이로 호출됩니다.',
+    },
+    onPresenceChange: {
+      description:
+        '카드가 드러난 정도(0~1)가 바뀔 때 호출됩니다. 화면은 이 값으로 하단 버튼을 흐리게 합니다.',
     },
     onOverflowClick: {
       description: '넘친 아이템의 수 버튼을 누를 때 호출합니다.',
@@ -71,7 +75,7 @@ const meta = {
         style={{
           width: CARD_WIDTH,
           height: CARD_HEIGHT,
-          marginTop: STRIP_SPACE,
+          marginTop: ORDER_BADGE_SPACE,
         }}
       >
         <Story />

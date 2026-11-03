@@ -12,9 +12,6 @@ interface OutfitCardProps {
   items: readonly OutfitItemResult[];
   floorSeed: FloorSeed;
   isRegenerating?: boolean;
-  isLifted?: boolean;
-  previousCount?: number;
-  recommendationOrder?: number;
   onOverflowClick?: () => void;
   entrance?: FloorEntranceOption;
 }
@@ -24,17 +21,13 @@ const OutfitCard = (props: OutfitCardProps) => {
     items,
     floorSeed,
     isRegenerating = false,
-    isLifted = false,
-    previousCount = 0,
-    recommendationOrder,
     onOverflowClick,
     entrance,
   } = props;
   const styleCds = getOutfitStyleTags(items);
-  const isPrevious = recommendationOrder !== undefined;
 
   return (
-    <S.Card $isPrevious={isPrevious} $isLifted={isLifted}>
+    <S.Card>
       <OutfitFloor
         items={items}
         seed={floorSeed}
@@ -42,20 +35,6 @@ const OutfitCard = (props: OutfitCardProps) => {
         onOverflowClick={onOverflowClick}
         entrance={entrance}
       />
-      {isPrevious && (
-        <S.Badge>
-          <Tag variant="inverse" size="sm" icon="layers">
-            {recommendationOrder}번째 추천
-          </Tag>
-        </S.Badge>
-      )}
-      {!isPrevious && previousCount > 0 && (
-        <S.Badge>
-          <Tag variant="white" size="sm" icon="layers">
-            이전 코디 {previousCount}
-          </Tag>
-        </S.Badge>
-      )}
       {styleCds.length > 0 && (
         <S.Tags>
           {styleCds.map((styleCd) => (

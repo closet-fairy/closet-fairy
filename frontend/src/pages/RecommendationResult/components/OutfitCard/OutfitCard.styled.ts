@@ -1,6 +1,6 @@
 import { keyframes } from '@emotion/react';
 import styled from '@emotion/styled';
-import { bg, fg, radius, shadow, spacing, typography } from '@/styles/tokens';
+import { bg, fg, radius, spacing, typography } from '@/styles/tokens';
 
 const SPIN_DURATION = '1s';
 
@@ -10,22 +10,12 @@ const spin = keyframes`
   }
 `;
 
-export const Card = styled.div<{ $isPrevious: boolean; $isLifted: boolean }>`
+export const Card = styled.div`
   position: relative;
   height: 100%;
   overflow: hidden;
   border-radius: ${radius.lg};
-  background-color: ${({ $isPrevious }) =>
-    $isPrevious ? bg.card.previous : bg.white};
-  box-shadow: ${({ $isLifted }) => ($isLifted ? shadow.lifted : shadow.card)};
   container-type: size;
-`;
-
-export const Badge = styled.div`
-  position: absolute;
-  top: ${spacing[14]};
-  left: ${spacing[14]};
-  display: flex;
 `;
 
 export const Tags = styled.div`
@@ -37,6 +27,7 @@ export const Tags = styled.div`
   align-items: center;
   gap: ${spacing[6]};
   padding: ${spacing[14]} ${spacing[16]};
+  opacity: calc(1 - var(--card-presence, 0));
   pointer-events: none;
 `;
 
