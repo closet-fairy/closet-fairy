@@ -51,6 +51,7 @@ const Toaster = (props: ToasterProps) => {
                   <S.Title />
                   {toast.description && <S.Description />}
                 </S.Text>
+                <S.Action />
               </S.Content>
             </S.Root>
           );

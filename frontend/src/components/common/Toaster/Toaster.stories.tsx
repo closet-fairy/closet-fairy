@@ -3,7 +3,10 @@ import { useEffect } from 'react';
 import StoryStack from '../../../../.storybook/StoryStack';
 import Button from '@/components/common/Button';
 import ToastProvider from '@/components/common/ToastProvider';
-import type { ToastTone } from '@/components/common/ToastProvider/ToastProvider.toast';
+import type {
+  ToastAction,
+  ToastTone,
+} from '@/components/common/ToastProvider/ToastProvider.toast';
 import {
   showToast,
   toastManager,
@@ -14,6 +17,7 @@ interface StoryToast {
   tone: ToastTone;
   title: string;
   description?: string;
+  action?: ToastAction;
 }
 
 const SUCCESS_TOASTS: StoryToast[] = [
@@ -30,6 +34,15 @@ const ERROR_TOASTS: StoryToast[] = [
 
 const INFO_TOASTS: StoryToast[] = [
   { tone: 'info', title: '옷을 찾을 수 없어요' },
+];
+
+const ACTION_TOASTS: StoryToast[] = [
+  {
+    tone: 'info',
+    title: '1번 코디가 새로 바뀌었어요',
+    description: '이전 코디는 위아래로 넘겨 볼 수 있어요',
+    action: { label: '보기', onClick: () => {} },
+  },
 ];
 
 const STACKED_TOASTS: StoryToast[] = [
@@ -135,6 +148,14 @@ export const Success: Story = {
 export const ErrorToast: Story = {
   render: function Render(args) {
     useStaticToasts(ERROR_TOASTS);
+
+    return <Toaster {...args} />;
+  },
+};
+
+export const WithAction: Story = {
+  render: function Render(args) {
+    useStaticToasts(ACTION_TOASTS);
 
     return <Toaster {...args} />;
   },
