@@ -40,6 +40,7 @@ const TABS: Tab[] = [
 ];
 
 const SETTLE_CHECK_INTERVAL_MS = 1000;
+const MAX_SETTLE_CHECKS = 5;
 
 const hasLoadingImage = () =>
   Array.from(document.images).some((image) => {
@@ -62,9 +63,15 @@ const useIsLoadSettled = () => {
 
   useEffect(() => {
     let timerId: number | undefined;
+    let checkCount = 0;
 
     const check = () => {
-      if (queryClient.isFetching() > 0 || hasLoadingImage()) {
+      checkCount += 1;
+
+      if (
+        checkCount < MAX_SETTLE_CHECKS &&
+        (queryClient.isFetching() > 0 || hasLoadingImage())
+      ) {
         timerId = window.setTimeout(check, SETTLE_CHECK_INTERVAL_MS);
         return;
       }

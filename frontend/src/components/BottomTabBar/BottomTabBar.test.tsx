@@ -97,3 +97,20 @@ test('사진을 받는 중에는 미리 받지 않아야 한다.', async () => {
 
   expect(preloadRoute).toHaveBeenCalledTimes(TAB_PATHS.length);
 });
+
+test('요청이 끝나지 않아도 확인을 5번 하면 미리 받아야 한다.', async () => {
+  const queryClient = new QueryClient();
+  const { preloadRoute } = await renderTabBar(queryClient);
+
+  void queryClient.fetchQuery({
+    queryKey: ['polling'],
+    queryFn: () => new Promise(() => undefined),
+  });
+  await act(() => vi.advanceTimersByTimeAsync(4100));
+
+  expect(preloadRoute).not.toHaveBeenCalled();
+
+  await act(() => vi.advanceTimersByTimeAsync(1000));
+
+  expect(preloadRoute).toHaveBeenCalledTimes(TAB_PATHS.length);
+});
