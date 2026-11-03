@@ -8,7 +8,27 @@ import {
   topBarHeight,
 } from '@/styles/tokens';
 
+const COUNTER_FONT_BASE_URL =
+  'https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2310@1.0';
+const COUNTER_FONT_RANGE = 'U+0030-0039, U+002F';
+
 export const globalStyles = css`
+  @font-face {
+    font-family: 'JeonjuCraftMyungjo';
+    src: url('${COUNTER_FONT_BASE_URL}/JeonjuCraftMjL.woff2') format('woff2');
+    font-weight: 300;
+    font-display: swap;
+    unicode-range: ${COUNTER_FONT_RANGE};
+  }
+
+  @font-face {
+    font-family: 'JeonjuCraftMyungjo';
+    src: url('${COUNTER_FONT_BASE_URL}/JeonjuCraftMjB.woff2') format('woff2');
+    font-weight: 700;
+    font-display: swap;
+    unicode-range: ${COUNTER_FONT_RANGE};
+  }
+
   *,
   *::before,
   *::after {

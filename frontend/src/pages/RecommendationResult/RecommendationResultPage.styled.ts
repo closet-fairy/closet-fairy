@@ -44,12 +44,12 @@ export const Counter = styled.p`
 `;
 
 export const CounterCurrent = styled.span`
-  ${typography.title3}
+  ${typography.counterCurrent}
   color: ${fg.neutral.strong};
 `;
 
 export const CounterTotal = styled.span`
-  ${typography.body3}
+  ${typography.counterTotal}
   color: ${fg.neutral.soft};
 `;
 
