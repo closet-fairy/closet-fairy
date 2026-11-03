@@ -131,7 +131,7 @@ const flickCard = (target: Element, distance: number) => {
 };
 
 const getCurrentOutfit = (order: number, total: number) =>
-  screen.getByRole('group', { name: `${order}번째 추천, 전체 ${total}장` });
+  screen.getByRole('group', { name: `${order}번째 추천, 총 ${total}장` });
 
 beforeEach(() => {
   vi.useFakeTimers({
@@ -163,14 +163,14 @@ describe('겹침 표시', () => {
 
     expect(screen.queryByText(/번째 추천/)).not.toBeInTheDocument();
     expect(
-      screen.queryByRole('button', { name: '이전 코디 보기' }),
+      screen.queryByRole('button', { name: /^이전 코디 보기/ }),
     ).not.toBeInTheDocument();
   });
 
   test('보고 있는 코디의 순서와 전체 수를 배지에 담아야 한다.', () => {
     render(<ControlledStack previousCount={2} initialDepth={1} />);
 
-    expect(screen.getByText('2번째 추천 · 3장')).toBeInTheDocument();
+    expect(screen.getByText('2번째 추천 · 총 3장')).toBeInTheDocument();
   });
 
   test('보고 있는 코디가 몇 번째 추천인지 스크린리더에 알려야 한다.', async () => {
@@ -181,13 +181,13 @@ describe('겹침 표시', () => {
     render(<ControlledStack previousCount={2} />);
 
     expect(
-      screen.getByRole('group', { name: '3번째 추천, 전체 3장' }),
+      screen.getByRole('group', { name: '3번째 추천, 총 3장' }),
     ).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: '이전 코디 보기' }));
+    await user.click(screen.getByRole('button', { name: /^이전 코디 보기/ }));
 
     expect(
-      screen.getByRole('group', { name: '2번째 추천, 전체 3장' }),
+      screen.getByRole('group', { name: '2번째 추천, 총 3장' }),
     ).toBeInTheDocument();
   });
 
@@ -722,22 +722,41 @@ describe('숨겨진 겹의 사진', () => {
 });
 
 describe('이동 버튼', () => {
-  test('버튼으로 한 장씩 오갈 수 있어야 한다.', async () => {
+  test('이전 코디 버튼은 이 세트의 전체 장 수를 보이고 한 장씩 이전으로 가야 한다.', async () => {
     vi.useRealTimers();
 
     const user = userEvent.setup();
 
     render(<ControlledStack previousCount={2} />);
 
-    await user.click(screen.getByRole('button', { name: '이전 코디 보기' }));
+    await user.click(
+      screen.getByRole('button', { name: '이전 코디 보기 · 총 3장' }),
+    );
 
     expect(getCurrentOutfit(2, 3)).toBeInTheDocument();
 
     await user.click(
-      screen.getByRole('button', { name: '최신 쪽으로 돌아가기' }),
+      screen.getByRole('button', { name: '이전 코디 보기 · 총 3장' }),
+    );
+
+    expect(getCurrentOutfit(1, 3)).toBeInTheDocument();
+  });
+
+  test('최신 코디로 돌아가기는 가장 최근 코디로 바로 가고 이전 코디 버튼으로 포커스를 옮겨야 한다.', async () => {
+    vi.useRealTimers();
+
+    const user = userEvent.setup();
+
+    render(<ControlledStack previousCount={2} initialDepth={2} />);
+
+    await user.click(
+      screen.getByRole('button', { name: '최신 코디로 돌아가기' }),
     );
 
     expect(getCurrentOutfit(3, 3)).toBeInTheDocument();
+    expect(
+      await screen.findByRole('button', { name: '이전 코디 보기 · 총 3장' }),
+    ).toHaveFocus();
   });
 
   test('끝에 닿아 버튼이 사라지면 반대쪽 버튼으로 포커스를 옮겨야 한다.', async () => {
@@ -747,10 +766,10 @@ describe('이동 버튼', () => {
 
     render(<ControlledStack previousCount={1} />);
 
-    await user.click(screen.getByRole('button', { name: '이전 코디 보기' }));
+    await user.click(screen.getByRole('button', { name: /^이전 코디 보기/ }));
 
     expect(
-      await screen.findByRole('button', { name: '최신 쪽으로 돌아가기' }),
+      await screen.findByRole('button', { name: '최신 코디로 돌아가기' }),
     ).toHaveFocus();
   });
 
@@ -758,7 +777,7 @@ describe('이동 버튼', () => {
     render(<ControlledStack previousCount={1} isRegenerating />);
 
     expect(
-      screen.queryByRole('button', { name: '이전 코디 보기' }),
+      screen.queryByRole('button', { name: /^이전 코디 보기/ }),
     ).not.toBeInTheDocument();
   });
 });

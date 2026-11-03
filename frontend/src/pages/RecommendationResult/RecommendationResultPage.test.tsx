@@ -1401,7 +1401,7 @@ describe('이전 코디', () => {
     user: ReturnType<typeof userEvent.setup>,
   ) => {
     await user.click(
-      await screen.findByRole('button', { name: '이전 코디 보기' }),
+      await screen.findByRole('button', { name: '이전 코디 보기 · 총 2장' }),
     );
   };
 
@@ -1413,7 +1413,7 @@ describe('이전 코디', () => {
     await openPreviousOutfit(user);
 
     expect(
-      screen.getByRole('group', { name: '1번째 추천, 전체 2장' }),
+      screen.getByRole('group', { name: '1번째 추천, 총 2장' }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: '수정 요청하기' }),
@@ -1459,11 +1459,11 @@ describe('이전 코디', () => {
 
     await openPreviousOutfit(user);
     await user.click(
-      screen.getByRole('button', { name: '최신 쪽으로 돌아가기' }),
+      screen.getByRole('button', { name: '최신 코디로 돌아가기' }),
     );
 
     expect(
-      screen.getByRole('group', { name: '2번째 추천, 전체 2장' }),
+      screen.getByRole('group', { name: '2번째 추천, 총 2장' }),
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '수정 요청하기' })).toBeEnabled();
   });
@@ -1491,7 +1491,7 @@ describe('이전 코디', () => {
     await refetchAndRender(queryClient);
 
     expect(
-      screen.getByRole('group', { name: '3번째 추천, 전체 3장' }),
+      screen.getByRole('group', { name: '3번째 추천, 총 3장' }),
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '수정 요청하기' })).toBeEnabled();
   });

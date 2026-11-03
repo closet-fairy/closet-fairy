@@ -68,7 +68,7 @@ const OutfitStack = (props: OutfitStackProps) => {
         {layers.length > 1 && (
           <S.OrderBadge aria-hidden>
             <Tag variant="white" size="sm" icon="layers">
-              {getRecommendationOrder(layers.length, nearest)}번째 추천 ·{' '}
+              {getRecommendationOrder(layers.length, nearest)}번째 추천 · 총{' '}
               {layers.length}장
             </Tag>
           </S.OrderBadge>
@@ -88,7 +88,7 @@ const OutfitStack = (props: OutfitStackProps) => {
               role={hasOrderLabel ? 'group' : undefined}
               aria-label={
                 hasOrderLabel
-                  ? `${getRecommendationOrder(layers.length, layerDepth)}번째 추천, 전체 ${layers.length}장`
+                  ? `${getRecommendationOrder(layers.length, layerDepth)}번째 추천, 총 ${layers.length}장`
                   : undefined
               }
               aria-hidden={!isCurrent}
@@ -133,7 +133,7 @@ const OutfitStack = (props: OutfitStackProps) => {
                 );
               }}
             >
-              이전 코디 보기
+              이전 코디 보기 · 총 {layers.length}장
             </Button>
           </S.HistoryButton>
         )}
@@ -144,10 +144,10 @@ const OutfitStack = (props: OutfitStackProps) => {
               variant="outline"
               size="sm"
               onClick={() => {
-                moveByButton(depth - 1, depth === 1, olderButtonRef);
+                moveByButton(0, true, olderButtonRef);
               }}
             >
-              최신 쪽으로 돌아가기
+              최신 코디로 돌아가기
             </Button>
           </S.HistoryButton>
         )}
