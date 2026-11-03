@@ -32,6 +32,17 @@ FastAPI + MySQL 8.0 (최소 8.0.19). Python 3.12.
 
 `/health`가 200을 반환하면 정상이다.
 
+## 기존 DB에 새 마이그레이션 반영
+
+`migrate.sh`는 빈 DB 기준이라 DB가 이미 있으면 첫 단계에서 멈춘다. 새로 추가된 마이그레이션 파일만 골라 실행한다. 아래는 이번에 추가된 014 기준 예시이며, 이후에는 새로 추가된 파일명으로 바꿔 실행한다.
+
+```bash
+docker exec -i closet-fairy-db mysql -uroot -pdev fashion --default-character-set=utf8mb4 < db/migrations/014_essential_images.sql
+bash scripts/copy_essential_images.sh
+```
+
+`copy_essential_images.sh`는 에센셜 이미지를 `media/essential/`로 복사한다. 이미지가 바뀌었을 때도 이것만 다시 실행하면 된다.
+
 ## DB를 처음 상태로 초기화
 
 ```bash

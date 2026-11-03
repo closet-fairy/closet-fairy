@@ -220,7 +220,7 @@ class RecommendationResult(BaseModel):
                                     "accessory_type_cd": None,
                                     "item_source_cd": "essential",
                                     "item_name": "블랙 로퍼",
-                                    "image_url": "/media/essential/21.png",
+                                    "image_url": "/media/essential/black-loafers.webp",
                                     "style_cds": ["classic"],
                                 },
                             ],
