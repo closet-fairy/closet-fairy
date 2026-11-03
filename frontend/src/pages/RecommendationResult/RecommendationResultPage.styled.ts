@@ -35,7 +35,7 @@ export const StatusPage = styled.div`
 
 export const Counter = styled.p`
   position: absolute;
-  top: calc(${spacing[20]} + ${SAFE_TOP});
+  top: calc(${spacing[14]} + ${SAFE_TOP});
   left: ${spacing[20]};
   z-index: ${zIndex.sticky};
   display: flex;
