@@ -34,7 +34,7 @@ FastAPI + MySQL 8.0 (최소 8.0.19). Python 3.12.
 
 ## 기존 DB에 새 마이그레이션 반영
 
-`migrate.sh`는 빈 DB 기준이라 DB가 이미 있으면 첫 단계에서 멈춘다. 새로 추가된 마이그레이션 파일만 실행한다.
+`migrate.sh`는 빈 DB 기준이라 DB가 이미 있으면 첫 단계에서 멈춘다. 새로 추가된 마이그레이션 파일만 골라 실행한다. 아래는 이번에 추가된 014 기준 예시이며, 이후에는 새로 추가된 파일명으로 바꿔 실행한다.
 
 ```bash
 docker exec -i closet-fairy-db mysql -uroot -pdev fashion --default-character-set=utf8mb4 < db/migrations/014_essential_images.sql

@@ -53,4 +53,5 @@ def test_images_are_transparent_webp():
         with Image.open(path) as image:
             assert image.format == "WEBP", path.name
             assert image.mode == "RGBA", path.name
+            assert image.getchannel("A").getextrema()[0] == 0, path.name
             assert max(image.size) <= 1200, path.name

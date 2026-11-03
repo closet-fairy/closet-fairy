@@ -13,9 +13,9 @@
 | `black-trench-coat.webp` | 블랙 트렌치코트 | H&M | 0755629003 |
 | `navy-blazer.webp` | 네이비 블레이저 | H&M | 0451290006 |
 | `charcoal-wool-coat.webp` | 차콜 울코트 | H&M | 0501406004 |
-| `navy-padded-jacket.webp` | 네이비 패딩 점퍼 | H&M | 0512725001 |
-| `navy-windbreaker.webp` | 네이비 바람막이 | H&M | 0495884004 |
-| `khaki-hood-zipup.webp` | 카키 후드집업 | H&M | 0495884006 |
+| `navy-padded-jacket.webp` | 네이비 패딩 점퍼 | H&M | 0635164003 |
+| `navy-windbreaker.webp` | 네이비 바람막이 | H&M | 0734994001 |
+| `khaki-hood-zipup.webp` | 카키 후드집업 | H&M | 0237347053 |
 | `white-basic-shirt.webp` | 화이트 베이직 셔츠 | H&M | 0392938001 |
 | `lightblue-oxford-shirt.webp` | 라이트블루 옥스포드 셔츠 | H&M | 0594999011 |
 | `white-short-sleeve-tshirt.webp` | 화이트 반팔 티셔츠 | H&M | 0525821001 |
@@ -32,7 +32,7 @@
 | `black-loafers.webp` | 블랙 로퍼 | H&M | 0479453001 |
 | `black-chelsea-boots.webp` | 블랙 첼시부츠 | H&M | 0911717001 |
 | `black-running-shoes.webp` | 블랙 러닝화 | H&M | 0447795001 |
-| `waterproof-ankle-boots.webp` | 방수 앵클부츠 | H&M | 0905889001 |
+| `waterproof-ankle-boots.webp` | 방수 앵클부츠 | H&M | 0658495001 |
 | `navy-pique-polo.webp` | 네이비 반팔 피케 폴로 | H&M | 0491532006 |
 | `beige-linen-short-sleeve-shirt.webp` | 베이지 린넨 반팔 셔츠 | H&M | 0568456017 |
 | `lightgray-linen-slacks.webp` | 라이트그레이 린넨 슬랙스 | H&M | 0631804005 |
