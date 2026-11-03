@@ -23,6 +23,8 @@ export const palette = {
   veil: 'rgba(255, 255, 255, 0.78)',
   frost: 'rgba(255, 255, 255, 0.55)',
   frostStrong: 'rgba(255, 255, 255, 0.75)',
+  fogDense: 'rgba(255, 255, 255, 0.92)',
+  fogSoft: 'rgba(255, 255, 255, 0.7)',
 
   kakaoYellow: '#fee500',
   kakaoLabel: 'rgba(0, 0, 0, 0.85)',

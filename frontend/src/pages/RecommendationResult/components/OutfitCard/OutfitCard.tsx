@@ -27,33 +27,35 @@ const OutfitCard = (props: OutfitCardProps) => {
   const styleCds = getOutfitStyleTags(items);
 
   return (
-    <S.Card>
-      <OutfitFloor
-        items={items}
-        seed={floorSeed}
-        isOverflowDisabled={isRegenerating}
-        onOverflowClick={onOverflowClick}
-        entrance={entrance}
-      />
-      {styleCds.length > 0 && (
-        <S.Tags>
-          {styleCds.map((styleCd) => (
-            <Tag key={styleCd} size="sm">
-              {getStyleLabel(styleCd)}
-            </Tag>
-          ))}
-        </S.Tags>
-      )}
+    <S.Container>
+      <S.Card>
+        <OutfitFloor
+          items={items}
+          seed={floorSeed}
+          isOverflowDisabled={isRegenerating}
+          onOverflowClick={onOverflowClick}
+          entrance={entrance}
+        />
+        {styleCds.length > 0 && (
+          <S.Tags>
+            {styleCds.map((styleCd) => (
+              <Tag key={styleCd} size="sm">
+                {getStyleLabel(styleCd)}
+              </Tag>
+            ))}
+          </S.Tags>
+        )}
+      </S.Card>
       {isRegenerating && (
-        <S.Cover role="status">
+        <S.Fog role="status">
           <S.Spinner>
             <Icon name="progress_activity" size="xl" />
           </S.Spinner>
-          <S.CoverTitle>요청을 반영하는 중이에요</S.CoverTitle>
-          <S.CoverDescription>길게는 3분까지 걸려요</S.CoverDescription>
-        </S.Cover>
+          <S.FogTitle>요청을 반영하는 중이에요</S.FogTitle>
+          <S.FogDescription>길게는 3분까지 걸려요</S.FogDescription>
+        </S.Fog>
       )}
-    </S.Card>
+    </S.Container>
   );
 };
 

@@ -23,6 +23,8 @@ const colorValues = {
   'bg-outside': palette.warmGray100,
   'bg-card-floating': palette.frost,
   'bg-card-floating-far': palette.frostStrong,
+  'bg-fog-dense': palette.fogDense,
+  'bg-fog-soft': palette.fogSoft,
   'bg-brand-kakao': palette.kakaoYellow,
 
   'border-neutral-strong': palette.gray900,
@@ -94,6 +96,10 @@ export const bg = {
   card: {
     floating: colorVar('bg-card-floating'),
     floatingFar: colorVar('bg-card-floating-far'),
+  },
+  fog: {
+    dense: colorVar('bg-fog-dense'),
+    soft: colorVar('bg-fog-soft'),
   },
   brand: {
     kakao: colorVar('bg-brand-kakao'),

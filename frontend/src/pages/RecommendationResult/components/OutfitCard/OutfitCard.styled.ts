@@ -3,11 +3,21 @@ import styled from '@emotion/styled';
 import { bg, fg, radius, spacing, typography } from '@/styles/tokens';
 
 const SPIN_DURATION = '1s';
+const FOG_SPREAD_TOP = 58;
+const FOG_SPREAD_SIDE = 14;
+const FOG_SPREAD_BOTTOM = 120;
+const FOG_CONTENT_RISE = 80;
+const FOG_SHAPE = 'ellipse 70% 45% at 50% 44%';
 
 const spin = keyframes`
   to {
     transform: rotate(360deg);
   }
+`;
+
+export const Container = styled.div`
+  position: relative;
+  height: 100%;
 `;
 
 export const Card = styled.div`
@@ -35,15 +45,21 @@ export const Tags = styled.div`
   pointer-events: none;
 `;
 
-export const Cover = styled.div`
+export const Fog = styled.div`
   position: absolute;
-  inset: 0;
+  inset: -${FOG_SPREAD_TOP}px -${FOG_SPREAD_SIDE}px -${FOG_SPREAD_BOTTOM}px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: ${spacing[12]};
-  background-color: ${bg.veil};
+  padding-bottom: ${FOG_CONTENT_RISE}px;
+  background: radial-gradient(
+    ${FOG_SHAPE},
+    ${bg.fog.dense} 0%,
+    ${bg.fog.soft} 55%,
+    transparent 100%
+  );
 `;
 
 export const Spinner = styled.span`
@@ -61,12 +77,12 @@ export const Spinner = styled.span`
   }
 `;
 
-export const CoverTitle = styled.p`
+export const FogTitle = styled.p`
   ${typography.body1Strong}
   color: ${fg.neutral.strong};
 `;
 
-export const CoverDescription = styled.p`
+export const FogDescription = styled.p`
   ${typography.label1}
   color: ${fg.neutral.light};
 `;
