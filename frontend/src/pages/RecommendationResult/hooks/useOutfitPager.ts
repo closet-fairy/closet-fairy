@@ -128,7 +128,7 @@ const useOutfitPager = (options: UseOutfitPagerOptions) => {
   const measureCardHeight = () => {
     const [layer] = layerElementsRef.current.values();
 
-    return layer?.offsetHeight ?? stackRef.current?.offsetHeight ?? 0;
+    return layer?.offsetHeight || stackRef.current?.offsetHeight || 0;
   };
 
   const getSpacing = (presence: number) =>
