@@ -1412,7 +1412,9 @@ describe('이전 코디', () => {
 
     await openPreviousOutfit(user);
 
-    expect(screen.getByText('1번째 추천 · 2장')).toBeInTheDocument();
+    expect(
+      screen.getByRole('group', { name: '1번째 추천, 전체 2장' }),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: '수정 요청하기' }),
     ).toBeDisabled();
@@ -1460,7 +1462,9 @@ describe('이전 코디', () => {
       screen.getByRole('button', { name: '최신 쪽으로 돌아가기' }),
     );
 
-    expect(screen.getByText('2번째 추천 · 2장')).toBeInTheDocument();
+    expect(
+      screen.getByRole('group', { name: '2번째 추천, 전체 2장' }),
+    ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '수정 요청하기' })).toBeEnabled();
   });
 
@@ -1486,7 +1490,9 @@ describe('이전 코디', () => {
     );
     await refetchAndRender(queryClient);
 
-    expect(screen.getByText('3번째 추천 · 3장')).toBeInTheDocument();
+    expect(
+      screen.getByRole('group', { name: '3번째 추천, 전체 3장' }),
+    ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '수정 요청하기' })).toBeEnabled();
   });
 });

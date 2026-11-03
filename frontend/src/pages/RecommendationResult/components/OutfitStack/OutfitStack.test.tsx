@@ -130,8 +130,8 @@ const flickCard = (target: Element, distance: number) => {
   wait(SETTLE_MS);
 };
 
-const getOrderBadge = (order: number, total: number) =>
-  screen.getByText(`${order}번째 추천 · ${total}장`);
+const getCurrentOutfit = (order: number, total: number) =>
+  screen.getByRole('group', { name: `${order}번째 추천, 전체 ${total}장` });
 
 beforeEach(() => {
   vi.useFakeTimers({
@@ -170,7 +170,7 @@ describe('겹침 표시', () => {
   test('보고 있는 코디의 순서와 전체 수를 배지에 담아야 한다.', () => {
     render(<ControlledStack previousCount={2} initialDepth={1} />);
 
-    expect(getOrderBadge(2, 3)).toBeInTheDocument();
+    expect(screen.getByText('2번째 추천 · 3장')).toBeInTheDocument();
   });
 
   test('보고 있는 코디가 몇 번째 추천인지 스크린리더에 알려야 한다.', async () => {
@@ -198,7 +198,7 @@ describe('겹침 표시', () => {
       <ControlledStack previousCount={1} onPresenceChange={onPresenceChange} />,
     );
 
-    const card = getOrderBadge(2, 2);
+    const card = getCurrentOutfit(2, 2);
 
     pressCard(card);
     moveCard(card, START_X, START_Y + OUTFIT_PAGER.REVEAL_DISTANCE_PX);
@@ -217,9 +217,9 @@ describe('카드 끌기', () => {
   test('넘어가는 거리 이상 끌어내리면 한 장 이전으로 넘어가야 한다.', () => {
     render(<ControlledStack previousCount={2} />);
 
-    dragCard(getOrderBadge(3, 3), COMMIT_DISTANCE);
+    dragCard(getCurrentOutfit(3, 3), COMMIT_DISTANCE);
 
-    expect(getOrderBadge(2, 3)).toBeInTheDocument();
+    expect(getCurrentOutfit(2, 3)).toBeInTheDocument();
   });
 
   test('넘어가는 거리에 못 미치면 제자리로 돌아와야 한다.', () => {
@@ -227,30 +227,30 @@ describe('카드 끌기', () => {
 
     render(<ControlledStack previousCount={2} onDepthChange={onDepthChange} />);
 
-    dragCard(getOrderBadge(3, 3), COMMIT_DISTANCE - 2);
+    dragCard(getCurrentOutfit(3, 3), COMMIT_DISTANCE - 2);
 
-    expect(getOrderBadge(3, 3)).toBeInTheDocument();
+    expect(getCurrentOutfit(3, 3)).toBeInTheDocument();
     expect(onDepthChange).not.toHaveBeenCalled();
   });
 
   test('빠르게 튕기면 짧게 끌어도 넘어가야 한다.', () => {
     render(<ControlledStack previousCount={2} />);
 
-    flickCard(getOrderBadge(3, 3), OUTFIT_PAGER.FLICK_MIN_DISTANCE_PX + 18);
+    flickCard(getCurrentOutfit(3, 3), OUTFIT_PAGER.FLICK_MIN_DISTANCE_PX + 18);
 
-    expect(getOrderBadge(2, 3)).toBeInTheDocument();
+    expect(getCurrentOutfit(2, 3)).toBeInTheDocument();
   });
 
   test('끌어올리면 한 장씩 최신 쪽으로 돌아와야 한다.', () => {
     render(<ControlledStack previousCount={2} initialDepth={2} />);
 
-    dragCard(getOrderBadge(1, 3), -COMMIT_DISTANCE);
+    dragCard(getCurrentOutfit(1, 3), -COMMIT_DISTANCE);
 
-    expect(getOrderBadge(2, 3)).toBeInTheDocument();
+    expect(getCurrentOutfit(2, 3)).toBeInTheDocument();
 
-    dragCard(getOrderBadge(2, 3), -COMMIT_DISTANCE);
+    dragCard(getCurrentOutfit(2, 3), -COMMIT_DISTANCE);
 
-    expect(getOrderBadge(3, 3)).toBeInTheDocument();
+    expect(getCurrentOutfit(3, 3)).toBeInTheDocument();
   });
 
   test('첫 번째 추천에서는 더 끌어내려도 넘어가지 않아야 한다.', () => {
@@ -264,9 +264,9 @@ describe('카드 끌기', () => {
       />,
     );
 
-    dragCard(getOrderBadge(1, 2), COMMIT_DISTANCE * 2);
+    dragCard(getCurrentOutfit(1, 2), COMMIT_DISTANCE * 2);
 
-    expect(getOrderBadge(1, 2)).toBeInTheDocument();
+    expect(getCurrentOutfit(1, 2)).toBeInTheDocument();
     expect(onDepthChange).not.toHaveBeenCalled();
   });
 
@@ -275,9 +275,9 @@ describe('카드 끌기', () => {
 
     render(<ControlledStack previousCount={1} onDepthChange={onDepthChange} />);
 
-    dragCard(getOrderBadge(2, 2), -COMMIT_DISTANCE * 2);
+    dragCard(getCurrentOutfit(2, 2), -COMMIT_DISTANCE * 2);
 
-    expect(getOrderBadge(2, 2)).toBeInTheDocument();
+    expect(getCurrentOutfit(2, 2)).toBeInTheDocument();
     expect(onDepthChange).not.toHaveBeenCalled();
   });
 
@@ -297,7 +297,7 @@ describe('카드 끌기', () => {
       </div>,
     );
 
-    dragCard(getOrderBadge(2, 2), COMMIT_DISTANCE);
+    dragCard(getCurrentOutfit(2, 2), COMMIT_DISTANCE);
 
     expect(onDepthChange).not.toHaveBeenCalled();
   });
@@ -316,9 +316,9 @@ describe('카드 끌기', () => {
       </div>,
     );
 
-    dragCard(getOrderBadge(2, 2), COMMIT_DISTANCE);
+    dragCard(getCurrentOutfit(2, 2), COMMIT_DISTANCE);
 
-    expect(getOrderBadge(1, 2)).toBeInTheDocument();
+    expect(getCurrentOutfit(1, 2)).toBeInTheDocument();
   });
 
   test('처음 움직인 방향이 가로면 세로로 끌어도 넘어가지 않아야 한다.', () => {
@@ -328,7 +328,7 @@ describe('카드 끌기', () => {
       <ControlledStack previousCount={1} onPresenceChange={onPresenceChange} />,
     );
 
-    const card = getOrderBadge(2, 2);
+    const card = getCurrentOutfit(2, 2);
 
     pressCard(card);
     moveCard(card, START_X + 20, START_Y);
@@ -337,7 +337,7 @@ describe('카드 끌기', () => {
     liftCard(card, START_X + 20, START_Y + COMMIT_DISTANCE);
     wait(SETTLE_MS);
 
-    expect(getOrderBadge(2, 2)).toBeInTheDocument();
+    expect(getCurrentOutfit(2, 2)).toBeInTheDocument();
     expect(onPresenceChange).not.toHaveBeenCalledWith(1);
   });
 
@@ -350,7 +350,7 @@ describe('카드 끌기', () => {
       </div>,
     );
 
-    const card = getOrderBadge(2, 2);
+    const card = getCurrentOutfit(2, 2);
 
     pressCard(card);
     fireEvent.touchMove(card);
@@ -370,7 +370,7 @@ describe('카드 끌기', () => {
       </div>,
     );
 
-    const card = getOrderBadge(2, 2);
+    const card = getCurrentOutfit(2, 2);
 
     pressCard(card);
     moveCard(card, START_X + 20, START_Y + 2);
@@ -382,7 +382,7 @@ describe('카드 끌기', () => {
   test('넘어가는 중에 다시 잡아 끌면 잡은 자리에서 이어 끌려야 한다.', () => {
     render(<ControlledStack previousCount={2} />);
 
-    const card = getOrderBadge(3, 3);
+    const card = getCurrentOutfit(3, 3);
 
     pressCard(card);
     moveCard(card, START_X, START_Y + COMMIT_DISTANCE);
@@ -391,13 +391,13 @@ describe('카드 끌기', () => {
     wait(FRAME_MS * 3);
     dragCard(card, Math.ceil(DRAGGING_SPACING));
 
-    expect(getOrderBadge(1, 3)).toBeInTheDocument();
+    expect(getCurrentOutfit(1, 3)).toBeInTheDocument();
   });
 
   test('넘어가는 중에 다시 잡아 조금만 움직이면 가던 자리로 마저 가야 한다.', () => {
     render(<ControlledStack previousCount={2} />);
 
-    const card = getOrderBadge(3, 3);
+    const card = getCurrentOutfit(3, 3);
 
     pressCard(card);
     moveCard(card, START_X, START_Y + COMMIT_DISTANCE);
@@ -406,13 +406,13 @@ describe('카드 끌기', () => {
     wait(FRAME_MS * 3);
     dragCard(card, -OUTFIT_PAGER.AXIS_LOCK_DISTANCE_PX);
 
-    expect(getOrderBadge(2, 3)).toBeInTheDocument();
+    expect(getCurrentOutfit(2, 3)).toBeInTheDocument();
   });
 
   test('넘어가는 중에 다시 잡아 되돌려 끌면 돌아와야 한다.', () => {
     render(<ControlledStack previousCount={2} />);
 
-    const card = getOrderBadge(3, 3);
+    const card = getCurrentOutfit(3, 3);
 
     pressCard(card);
     moveCard(card, START_X, START_Y + COMMIT_DISTANCE);
@@ -421,7 +421,7 @@ describe('카드 끌기', () => {
     wait(FRAME_MS * 3);
     dragCard(card, -Math.ceil(DRAGGING_SPACING));
 
-    expect(getOrderBadge(3, 3)).toBeInTheDocument();
+    expect(getCurrentOutfit(3, 3)).toBeInTheDocument();
   });
 
   test('자리에 거의 닿은 뒤의 가로 손짓은 좌우 넘김이 받아야 한다.', () => {
@@ -437,7 +437,7 @@ describe('카드 끌기', () => {
       </div>,
     );
 
-    const card = getOrderBadge(3, 3);
+    const card = getCurrentOutfit(3, 3);
     const getLastPresence = () =>
       Number(onPresenceChange.mock.lastCall?.[0] ?? 0);
 
@@ -473,7 +473,7 @@ describe('카드 끌기', () => {
       </div>
     );
     const { rerender } = render(renderStack(1));
-    const card = getOrderBadge(1, 2);
+    const card = getCurrentOutfit(1, 2);
 
     pressCard(card);
     moveCard(card, START_X, START_Y - COMMIT_DISTANCE);
@@ -489,7 +489,7 @@ describe('카드 끌기', () => {
     const { unmount } = render(
       <ControlledStack previousCount={1} onPresenceChange={onPresenceChange} />,
     );
-    const card = getOrderBadge(2, 2);
+    const card = getCurrentOutfit(2, 2);
 
     pressCard(card);
     moveCard(card, START_X, START_Y + OUTFIT_PAGER.REVEAL_DISTANCE_PX);
@@ -507,7 +507,7 @@ describe('카드 끌기', () => {
       </div>,
     );
 
-    const card = getOrderBadge(3, 3);
+    const card = getCurrentOutfit(3, 3);
 
     pressCard(card);
     moveCard(card, START_X, START_Y + COMMIT_DISTANCE);
@@ -526,14 +526,14 @@ describe('카드 끌기', () => {
 
     render(<ControlledStack previousCount={1} onDepthChange={onDepthChange} />);
 
-    const card = getOrderBadge(2, 2);
+    const card = getCurrentOutfit(2, 2);
 
     pressCard(card);
     moveCard(card, START_X, START_Y + COMMIT_DISTANCE);
     fireEvent.pointerCancel(card, { pointerId: POINTER_ID });
     wait(SETTLE_MS);
 
-    expect(getOrderBadge(2, 2)).toBeInTheDocument();
+    expect(getCurrentOutfit(2, 2)).toBeInTheDocument();
     expect(onDepthChange).not.toHaveBeenCalled();
   });
 
@@ -568,7 +568,7 @@ describe('카드 끌기', () => {
   test('이동과 놓기가 다시 그리기 전에 연달아 와도 넘어가야 한다.', async () => {
     render(<ControlledStack previousCount={1} />);
 
-    const card = getOrderBadge(2, 2);
+    const card = getCurrentOutfit(2, 2);
 
     pressCard(card);
     wait(PAUSE_BEFORE_RELEASE_MS);
@@ -596,7 +596,7 @@ describe('카드 끌기', () => {
     });
     wait(SETTLE_MS);
 
-    expect(getOrderBadge(1, 2)).toBeInTheDocument();
+    expect(getCurrentOutfit(1, 2)).toBeInTheDocument();
   });
 
   test('끄는 사이에 바깥에서 깊이를 바꾸면 그 깊이에 멈춰야 한다.', () => {
@@ -610,7 +610,7 @@ describe('카드 끌기', () => {
         onOverflowClick={vi.fn()}
       />,
     );
-    const card = getOrderBadge(1, 2);
+    const card = getCurrentOutfit(1, 2);
 
     pressCard(card);
     moveCard(card, START_X, START_Y - COMMIT_DISTANCE);
@@ -627,7 +627,7 @@ describe('카드 끌기', () => {
     wait(SETTLE_MS);
 
     expect(onDepthChange).not.toHaveBeenCalled();
-    expect(getOrderBadge(2, 2)).toBeInTheDocument();
+    expect(getCurrentOutfit(2, 2)).toBeInTheDocument();
   });
 
   test('끌던 중에 깊이가 바뀌어도 다음 끌기를 막지 않아야 한다.', () => {
@@ -641,7 +641,7 @@ describe('카드 끌기', () => {
         onOverflowClick={vi.fn()}
       />,
     );
-    const card = getOrderBadge(1, 2);
+    const card = getCurrentOutfit(1, 2);
 
     pressCard(card);
     moveCard(card, START_X, START_Y - COMMIT_DISTANCE);
@@ -655,7 +655,7 @@ describe('카드 끌기', () => {
     );
     liftCard(card, START_X, START_Y - COMMIT_DISTANCE);
     wait(SETTLE_MS);
-    dragCard(getOrderBadge(2, 2), COMMIT_DISTANCE);
+    dragCard(getCurrentOutfit(2, 2), COMMIT_DISTANCE);
 
     expect(onDepthChange).toHaveBeenCalledExactlyOnceWith(1);
   });
@@ -667,7 +667,7 @@ describe('카드 끌기', () => {
       <ControlledStack previousCount={1} onPresenceChange={onPresenceChange} />,
     );
 
-    const card = getOrderBadge(2, 2);
+    const card = getCurrentOutfit(2, 2);
 
     fireEvent.pointerDown(card, {
       pointerId: POINTER_ID,
@@ -697,14 +697,14 @@ describe('카드 끌기', () => {
       <ControlledStack previousCount={1} onPresenceChange={onPresenceChange} />,
     );
 
-    const card = getOrderBadge(2, 2);
+    const card = getCurrentOutfit(2, 2);
 
     pressCard(card);
     moveCard(card, START_X, START_Y + COMMIT_DISTANCE);
     wait(PAUSE_BEFORE_RELEASE_MS);
     liftCard(card, START_X, START_Y + COMMIT_DISTANCE);
 
-    expect(getOrderBadge(1, 2)).toBeInTheDocument();
+    expect(getCurrentOutfit(1, 2)).toBeInTheDocument();
     expect(onPresenceChange).toHaveBeenLastCalledWith(0);
   });
 });
@@ -731,13 +731,13 @@ describe('이동 버튼', () => {
 
     await user.click(screen.getByRole('button', { name: '이전 코디 보기' }));
 
-    expect(getOrderBadge(2, 3)).toBeInTheDocument();
+    expect(getCurrentOutfit(2, 3)).toBeInTheDocument();
 
     await user.click(
       screen.getByRole('button', { name: '최신 쪽으로 돌아가기' }),
     );
 
-    expect(getOrderBadge(3, 3)).toBeInTheDocument();
+    expect(getCurrentOutfit(3, 3)).toBeInTheDocument();
   });
 
   test('끝에 닿아 버튼이 사라지면 반대쪽 버튼으로 포커스를 옮겨야 한다.', async () => {
