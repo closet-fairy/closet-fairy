@@ -16,6 +16,10 @@ export const Card = styled.div`
   overflow: hidden;
   border-radius: ${radius.lg};
   container-type: size;
+
+  & > button {
+    opacity: calc(1 - var(--card-presence, 0));
+  }
 `;
 
 export const Tags = styled.div`

@@ -95,7 +95,6 @@ export const OverflowButton = styled.button`
   right: ${spacing[16]};
   bottom: ${spacing[14]};
   display: flex;
-  opacity: calc(1 - var(--card-presence, 0));
 
   &::before {
     content: '';

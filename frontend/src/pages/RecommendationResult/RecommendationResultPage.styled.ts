@@ -2,6 +2,7 @@ import { css } from '@emotion/react';
 import styled from '@emotion/styled';
 import waveBackgroundUrl from '@/assets/images/resultWaveBackground.jpg';
 import { bg, fg, spacing, typography, zIndex } from '@/styles/tokens';
+import { OUTFIT_PAGER } from './hooks/useOutfitPager.constants';
 
 const SAFE_TOP = 'env(safe-area-inset-top, 0px)';
 const SAFE_BOTTOM = 'env(safe-area-inset-bottom, 0px)';
@@ -83,11 +84,13 @@ export const Slide = styled.div`
     ${SLIDE_PADDING_BOTTOM}px;
 `;
 
-export const Chrome = styled.div`
+export const BottomControls = styled.div`
   position: relative;
   flex: none;
   opacity: calc(1 - var(--card-presence, 0));
-  transform: translateY(calc(var(--card-presence, 0) * ${spacing[16]}));
+  transform: translateY(
+    calc(var(--card-presence, 0) * ${OUTFIT_PAGER.CONTROLS_SHIFT_PX}px)
+  );
 
   [data-card-shown] > & {
     pointer-events: none;

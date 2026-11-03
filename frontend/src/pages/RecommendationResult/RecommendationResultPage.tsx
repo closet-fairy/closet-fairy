@@ -44,6 +44,7 @@ import OutfitActions from './components/OutfitActions';
 import { OUTFIT_ACTIONS_HEIGHT } from './components/OutfitActions/OutfitActions.styled';
 import OutfitInfoSheet from './components/OutfitInfoSheet';
 import OutfitStack from './components/OutfitStack';
+import { OUTFIT_PAGER } from './hooks/useOutfitPager.constants';
 import RatingDialog from './components/RatingDialog';
 import RegenerationRequestSheet from './components/RegenerationRequestSheet';
 import type { RegenerationScope } from './components/RegenerationRequestSheet/RegenerationRequestSheet';
@@ -590,7 +591,10 @@ const RecommendationResultPage = () => {
       '--card-presence',
       String(presence),
     );
-    containerRef.current?.toggleAttribute('data-card-shown', presence >= 0.5);
+    containerRef.current?.toggleAttribute(
+      'data-card-shown',
+      presence >= OUTFIT_PAGER.CONTROLS_BLOCK_PRESENCE,
+    );
   };
 
   return (
@@ -642,7 +646,7 @@ const RecommendationResultPage = () => {
           ))}
         </Carousel>
       </S.CarouselArea>
-      <S.Chrome>
+      <S.BottomControls>
         <OutfitActions
           infoButtonRef={infoButtonRef}
           adoptButtonRef={adoptButtonRef}
@@ -656,7 +660,7 @@ const RecommendationResultPage = () => {
           onAdoptClick={openRatingDialog}
           onRequestClick={openRequestSheet}
         />
-      </S.Chrome>
+      </S.BottomControls>
       <OutfitInfoSheet
         outfit={currentOutfit}
         weather={weather}

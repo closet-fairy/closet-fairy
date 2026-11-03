@@ -1,15 +1,16 @@
 import styled from '@emotion/styled';
 import { bg, blur, border, radius, shadow, spacing } from '@/styles/tokens';
+import { OUTFIT_PAGER } from '@/pages/RecommendationResult/hooks/useOutfitPager.constants';
 import { visuallyHidden } from '@/styles/visuallyHidden';
 
 const TOUCH_TARGET_SIZE = 44;
 const ORDER_BADGE_TOP = -36;
-const ORDER_BADGE_RISE = 8;
 const OVERLAY_Z_INDEX = 200;
 
 // 카드를 세로로 끌어야 하므로, 브라우저가 스크롤이나 당겨서 새로고침으로 가져가지 않게 한다.
 export const Stack = styled.div`
   position: relative;
+  isolation: isolate;
   height: 100%;
   touch-action: pinch-zoom;
   user-select: none;
@@ -24,7 +25,7 @@ export const OrderBadge = styled.div`
   opacity: var(--card-presence, 0);
   transform: translate(
     -50%,
-    calc((1 - var(--card-presence, 0)) * ${-ORDER_BADGE_RISE}px)
+    calc((1 - var(--card-presence, 0)) * ${-OUTFIT_PAGER.ORDER_BADGE_RISE_PX}px)
   );
   pointer-events: none;
 `;
