@@ -598,7 +598,7 @@ const RecommendationResultPage = () => {
   };
 
   return (
-    <S.Container ref={containerRef} $hasBackdrop>
+    <S.Container ref={containerRef}>
       {outfits.length > 1 && (
         <S.Counter>
           <S.CounterCurrent>{currentIndex + 1}</S.CounterCurrent>

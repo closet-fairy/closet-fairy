@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useArgs } from 'storybook/preview-api';
 import { fn } from 'storybook/test';
-import waveBackgroundUrl from '@/assets/images/resultWaveBackground.jpg';
+import waveBackgroundUrl from '@/assets/images/waveBackground.jpg';
 import type { OutfitItemResult, OutfitResult } from '@/generated/models';
 import cutoutUrl from '@/mocks/assets/clothing/cutout.webp';
 import OutfitStack from './OutfitStack';
