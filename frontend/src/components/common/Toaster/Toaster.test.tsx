@@ -119,6 +119,8 @@ describe('토스트 띄우기', () => {
     await user.click(await screen.findByRole('button', { name: '보기' }));
     window.removeEventListener('error', handleError);
 
+    expect(errors).toHaveLength(1);
+
     expect(
       screen.queryByRole('dialog', { name: '1번 코디가 새로 바뀌었어요' }),
     ).not.toBeInTheDocument();

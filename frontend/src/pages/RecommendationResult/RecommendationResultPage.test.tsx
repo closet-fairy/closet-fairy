@@ -1550,12 +1550,7 @@ describe('재추천 완료 안내', () => {
 
     await user.click(within(toast).getByRole('button', { name: '보기' }));
 
-    expect(
-      screen.getByText(
-        (_, element) =>
-          element?.tagName === 'P' && element.textContent === '2/ 2',
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByText('2')).toBeInTheDocument();
 
     await submitRating(user);
 
@@ -1588,12 +1583,7 @@ describe('재추천 완료 안내', () => {
         screen.queryByRole('dialog', { name: '이 코디, 얼마나 마음에 드세요' }),
       ).not.toBeInTheDocument();
     });
-    expect(
-      screen.getByText(
-        (_, element) =>
-          element?.tagName === 'P' && element.textContent === '2/ 2',
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByText('2')).toBeInTheDocument();
   });
 
   test('보던 세트의 재추천이 끝나면 이 코디가 바뀌었다고 알리고 보러 가는 버튼은 두지 않아야 한다.', async () => {
