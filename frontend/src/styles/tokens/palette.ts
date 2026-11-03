@@ -15,7 +15,6 @@ export const palette = {
   gray900: '#17171a',
 
   warmGray100: '#f2f1ef',
-  warmGray200: '#e7e5e1',
 
   red100: '#fdeceb',
   red500: '#e5484d',

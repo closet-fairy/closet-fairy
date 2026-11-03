@@ -21,7 +21,6 @@ const colorValues = {
   'bg-neutral-pale': palette.gray25,
   'bg-error-light': palette.red100,
   'bg-outside': palette.warmGray100,
-  'bg-floor': palette.warmGray200,
   'bg-card-floating': palette.frost,
   'bg-card-floating-far': palette.frostStrong,
   'bg-brand-kakao': palette.kakaoYellow,
@@ -92,7 +91,6 @@ export const bg = {
     light: colorVar('bg-error-light'),
   },
   outside: colorVar('bg-outside'),
-  floor: colorVar('bg-floor'),
   card: {
     floating: colorVar('bg-card-floating'),
     floatingFar: colorVar('bg-card-floating-far'),
