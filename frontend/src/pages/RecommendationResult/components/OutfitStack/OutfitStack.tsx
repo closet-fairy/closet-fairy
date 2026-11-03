@@ -77,12 +77,22 @@ const OutfitStack = (props: OutfitStackProps) => {
           return null;
         }
 
+        const isCurrent = layerDepth === depth;
+        const hasOrderLabel = isCurrent && layers.length > 1;
+
         return (
           <S.Layer
             key={layer.outfit_id}
             ref={registerLayer}
             data-layer-depth={layerDepth}
-            aria-hidden={layerDepth !== depth}
+            role={hasOrderLabel ? 'group' : undefined}
+            aria-label={
+              hasOrderLabel
+                ? `${getRecommendationOrder(layers.length, layerDepth)}번째 추천, 전체 ${layers.length}장`
+                : undefined
+            }
+            aria-hidden={!isCurrent}
+            inert={!isCurrent}
           >
             <S.Surface />
             <S.Content>

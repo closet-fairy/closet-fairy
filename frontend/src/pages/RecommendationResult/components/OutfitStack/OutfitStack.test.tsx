@@ -173,6 +173,24 @@ describe('겹침 표시', () => {
     expect(getOrderBadge(2, 3)).toBeInTheDocument();
   });
 
+  test('보고 있는 코디가 몇 번째 추천인지 스크린리더에 알려야 한다.', async () => {
+    vi.useRealTimers();
+
+    const user = userEvent.setup();
+
+    render(<ControlledStack previousCount={2} />);
+
+    expect(
+      screen.getByRole('group', { name: '3번째 추천, 전체 3장' }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '이전 코디 보기' }));
+
+    expect(
+      screen.getByRole('group', { name: '2번째 추천, 전체 3장' }),
+    ).toBeInTheDocument();
+  });
+
   test('끄는 동안에는 카드가 드러나고, 자리를 찾으면 다시 사라져야 한다.', () => {
     const onPresenceChange = vi.fn();
 
