@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useArgs } from 'storybook/preview-api';
 import { fn } from 'storybook/test';
+import waveBackgroundUrl from '@/assets/images/resultWaveBackground.jpg';
 import type { OutfitItemResult, OutfitResult } from '@/generated/models';
 import cutoutUrl from '@/mocks/assets/clothing/cutout.webp';
 import OutfitStack from './OutfitStack';
@@ -67,18 +68,20 @@ const meta = {
     outfit: createOutfit(0),
     depth: 0,
     onDepthChange: fn(),
+    onPresenceChange: fn(),
     onOverflowClick: fn(),
   },
   decorators: [
     (Story) => (
       <div
         style={{
-          width: CARD_WIDTH,
-          height: CARD_HEIGHT,
-          marginTop: ORDER_BADGE_SPACE,
+          paddingTop: ORDER_BADGE_SPACE,
+          background: `url(${waveBackgroundUrl}) center / cover`,
         }}
       >
-        <Story />
+        <div style={{ width: CARD_WIDTH, height: CARD_HEIGHT }}>
+          <Story />
+        </div>
       </div>
     ),
   ],
