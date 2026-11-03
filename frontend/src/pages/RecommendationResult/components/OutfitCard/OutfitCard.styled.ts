@@ -1,6 +1,6 @@
 import { keyframes } from '@emotion/react';
 import styled from '@emotion/styled';
-import { CARD_TOP } from '@/pages/RecommendationResult/RecommendationResultPage.styled';
+import { CARD_TOP } from '@/pages/RecommendationResult/constants';
 import { bg, fg, radius, spacing, typography } from '@/styles/tokens';
 
 const SPIN_DURATION = '1s';
