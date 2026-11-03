@@ -12,6 +12,7 @@ import StatusView from '@/components/common/StatusView';
 import {
   setToastBottomOffset,
   showToast,
+  toastManager,
 } from '@/components/common/ToastProvider/ToastProvider.toast';
 import TopBar from '@/components/common/TopBar';
 import OutfitLoading from '@/components/OutfitLoading';
@@ -67,6 +68,7 @@ const SESSION_ALREADY_SETTLED_CODE = 'SESSION_ALREADY_SETTLED';
 const SESSION_NOT_RATABLE_CODE = 'SESSION_NOT_RATABLE';
 const SESSION_ENDED_CODE = 'SESSION_ENDED';
 const REGENERATED_DESCRIPTION = '이전 코디는 위아래로 넘겨 볼 수 있어요';
+const REGENERATED_TOAST_ID = 'regenerated-outfit';
 
 const hasOutfitList = (
   value: unknown,
@@ -171,6 +173,26 @@ const RecommendationResultPage = () => {
   const latestRegeneration = result?.latest_regeneration ?? null;
   const isRegenerating = isRegenerationProcessing(latestRegeneration);
   const lastRegenerationRef = useRef(latestRegeneration);
+  const isLayerBusyRef = useRef(false);
+
+  useEffect(() => {
+    isLayerBusyRef.current = isSubmittingRating || isCanceling;
+  });
+
+  useEffect(
+    () => () => {
+      toastManager.close(REGENERATED_TOAST_ID);
+    },
+    [],
+  );
+
+  const viewRegeneratedOutfit = (targetIndex: number) => {
+    if (isLayerBusyRef.current) return;
+
+    setOpenLayer(null);
+    setIsLeaveDialogOpen(false);
+    setOutfitIndex(targetIndex);
+  };
 
   const openLeaveDialog = (target: LeaveTarget) => {
     setOpenLayer(null);
@@ -275,10 +297,14 @@ const RecommendationResultPage = () => {
     }
 
     showToast({
+      id: REGENERATED_TOAST_ID,
       tone: 'info',
       title: `${targetIndex + 1}번 코디가 새로 바뀌었어요`,
       description: REGENERATED_DESCRIPTION,
-      action: { label: '보기', onClick: () => setOutfitIndex(targetIndex) },
+      action: {
+        label: '보기',
+        onClick: () => viewRegeneratedOutfit(targetIndex),
+      },
     });
   });
 
@@ -294,7 +320,10 @@ const RecommendationResultPage = () => {
       return;
     }
 
-    if (latestRegeneration.target_outfit_id === null) {
+    if (
+      latestRegeneration.target_scope_cd === 'all' ||
+      latestRegeneration.target_outfit_id === null
+    ) {
       showToast({
         tone: 'info',
         title: '코디가 모두 새로 바뀌었어요',

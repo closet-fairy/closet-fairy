@@ -1549,11 +1549,51 @@ describe('재추천 완료 안내', () => {
     );
 
     await user.click(within(toast).getByRole('button', { name: '보기' }));
+
+    expect(
+      screen.getByText(
+        (_, element) =>
+          element?.tagName === 'P' && element.textContent === '2/ 2',
+      ),
+    ).toBeInTheDocument();
+
     await submitRating(user);
 
     await waitFor(() => {
       expect(requests).toEqual([{ outfit_id: 72, rating: 4 }]);
     });
+  });
+
+  test('별점 모달이 열린 동안 [보기]를 누르면 모달을 닫고 그 세트로 넘어가야 한다.', async () => {
+    const user = userEvent.setup();
+    useResult(
+      createResult({
+        latest_regeneration: createRegeneration({ target_outfit_id: 52 }),
+      }),
+    );
+    const { queryClient } = await renderResult();
+
+    await openRatingDialog(user);
+    useResult(createCompletedResult(2));
+    await refetchAndRender(queryClient);
+
+    const toast = await screen.findByRole('dialog', {
+      name: '2번 코디가 새로 바뀌었어요',
+    });
+
+    await user.click(within(toast).getByRole('button', { name: '보기' }));
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('dialog', { name: '이 코디, 얼마나 마음에 드세요' }),
+      ).not.toBeInTheDocument();
+    });
+    expect(
+      screen.getByText(
+        (_, element) =>
+          element?.tagName === 'P' && element.textContent === '2/ 2',
+      ),
+    ).toBeInTheDocument();
   });
 
   test('보던 세트의 재추천이 끝나면 이 코디가 바뀌었다고 알리고 보러 가는 버튼은 두지 않아야 한다.', async () => {
