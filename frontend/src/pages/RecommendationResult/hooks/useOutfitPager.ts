@@ -77,7 +77,7 @@ const getVelocity = (
 };
 
 const isCarouselMoving = (stack: HTMLElement) => {
-  const carousel = stack.closest('[aria-roledescription="캐러셀"]');
+  const carousel = stack.closest('[data-carousel]');
 
   if (carousel === null) return false;
 

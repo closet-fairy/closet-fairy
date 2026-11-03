@@ -263,6 +263,46 @@ describe('카드 끌기', () => {
     expect(onDepthChange).not.toHaveBeenCalled();
   });
 
+  test('세트가 좌우로 넘어가는 중에 손을 대면 세로 끌기를 시작하지 않아야 한다.', () => {
+    const onDepthChange = vi.fn();
+
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(
+      function (this: HTMLElement) {
+        return this.hasAttribute('data-carousel')
+          ? new DOMRect(0, CARD_TOP, 400, CARD_HEIGHT)
+          : new DOMRect(60, CARD_TOP, 360, CARD_HEIGHT);
+      },
+    );
+    render(
+      <div data-carousel>
+        <ControlledStack previousCount={1} onDepthChange={onDepthChange} />
+      </div>,
+    );
+
+    dragCard(getOrderBadge(2, 2), COMMIT_DISTANCE);
+
+    expect(onDepthChange).not.toHaveBeenCalled();
+  });
+
+  test('세트가 제자리에 있으면 캐러셀 안에서도 세로로 끌 수 있어야 한다.', () => {
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(
+      function (this: HTMLElement) {
+        return this.hasAttribute('data-carousel')
+          ? new DOMRect(0, CARD_TOP, 400, CARD_HEIGHT)
+          : new DOMRect(20, CARD_TOP, 360, CARD_HEIGHT);
+      },
+    );
+    render(
+      <div data-carousel>
+        <ControlledStack previousCount={1} />
+      </div>,
+    );
+
+    dragCard(getOrderBadge(2, 2), COMMIT_DISTANCE);
+
+    expect(getOrderBadge(1, 2)).toBeInTheDocument();
+  });
+
   test('처음 움직인 방향이 가로면 세로로 끌어도 넘어가지 않아야 한다.', () => {
     const onPresenceChange = vi.fn();
 

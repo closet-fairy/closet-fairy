@@ -188,6 +188,7 @@ const Carousel = (props: CarouselProps) => {
 
   return (
     <S.Root
+      data-carousel
       aria-roledescription="캐러셀"
       aria-label={ariaLabel}
       onKeyDown={handleKeyDown}
