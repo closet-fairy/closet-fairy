@@ -25,6 +25,7 @@ const EXPANDED_GAP = spacing[8];
 // 아이콘을 제목 첫 줄(body3Strong, 14px × 1.5)의 가운데에 맞춘다.
 const TITLE_LINE_HEIGHT = 21;
 const ACTION_HEIGHT = 36;
+const ACTION_PRESSED_SCALE = 0.98;
 const TOUCH_TARGET_SIZE = 44;
 
 export const Viewport = styled(Toast.Viewport, transientOptions)<{
@@ -167,6 +168,11 @@ export const Action = styled(Toast.Action, transientOptions)`
   box-shadow: inset 0 0 0 1px ${border.neutral.default};
   ${typography.label1Strong}
   color: ${fg.neutral.strong};
+  transition: transform ${duration.fast} ${easing.standard};
+
+  &:active {
+    transform: scale(${ACTION_PRESSED_SCALE});
+  }
 
   &::before {
     content: '';

@@ -1,4 +1,10 @@
-import { act, render, renderHook, screen } from '@testing-library/react';
+import {
+  act,
+  render,
+  renderHook,
+  screen,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import ToastProvider from '@/components/common/ToastProvider';
@@ -85,6 +91,39 @@ describe('토스트 띄우기', () => {
     ).not.toBeInTheDocument();
   });
 
+  test('버튼이 할 일에서 실패해도 토스트는 닫아야 한다.', async () => {
+    const user = userEvent.setup();
+
+    renderToaster();
+
+    act(() => {
+      showToast({
+        tone: 'info',
+        title: '1번 코디가 새로 바뀌었어요',
+        action: {
+          label: '보기',
+          onClick: () => {
+            throw new Error('이동 실패');
+          },
+        },
+      });
+    });
+
+    const errors: unknown[] = [];
+    const handleError = (event: ErrorEvent) => {
+      errors.push(event.error);
+      event.preventDefault();
+    };
+
+    window.addEventListener('error', handleError);
+    await user.click(await screen.findByRole('button', { name: '보기' }));
+    window.removeEventListener('error', handleError);
+
+    expect(
+      screen.queryByRole('dialog', { name: '1번 코디가 새로 바뀌었어요' }),
+    ).not.toBeInTheDocument();
+  });
+
   test('버튼을 주지 않으면 토스트에 버튼을 두지 않아야 한다.', async () => {
     renderToaster();
 
@@ -92,8 +131,11 @@ describe('토스트 띄우기', () => {
       showToast({ tone: 'info', title: '옷을 찾을 수 없어요' });
     });
 
-    await screen.findByRole('dialog', { name: '옷을 찾을 수 없어요' });
-    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    const toast = await screen.findByRole('dialog', {
+      name: '옷을 찾을 수 없어요',
+    });
+
+    expect(within(toast).queryByRole('button')).not.toBeInTheDocument();
   });
 
   test('여러 번 띄우면 띄운 토스트가 모두 남아 있어야 한다.', async () => {

@@ -2,7 +2,7 @@ import { Toast } from '@base-ui/react/toast';
 
 export type ToastTone = 'success' | 'info' | 'error';
 
-export interface ToastAction {
+export interface ToastActionOptions {
   label: string;
   onClick: () => void;
 }
@@ -11,7 +11,7 @@ interface ShowToastOptions {
   tone: ToastTone;
   title: string;
   description?: string;
-  action?: ToastAction;
+  action?: ToastActionOptions;
   id?: string;
   timeout?: number;
 }
@@ -41,8 +41,11 @@ const addToast = (options: ShowToastOptions) => {
     actionProps: action && {
       children: action.label,
       onClick: () => {
-        action.onClick();
-        toastManager.close(toastId);
+        try {
+          action.onClick();
+        } finally {
+          toastManager.close(toastId);
+        }
       },
     },
   });
