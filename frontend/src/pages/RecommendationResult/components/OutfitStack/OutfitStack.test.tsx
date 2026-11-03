@@ -763,6 +763,33 @@ describe('이동 버튼', () => {
   });
 });
 
+describe('재추천 결과가 도착할 때', () => {
+  test('새 코디가 앞에 오고 이전 코디는 화면에서 숨겨져야 한다.', () => {
+    const createStack = (outfit: OutfitResult) => (
+      <OutfitStack
+        outfit={outfit}
+        depth={0}
+        onDepthChange={vi.fn()}
+        onOverflowClick={vi.fn()}
+      />
+    );
+    const regenerated: OutfitResult = {
+      ...createPreviousOutfit(101),
+      items: [createItem('101번 상의')],
+      previous_outfits: [createPreviousOutfit(100)],
+    };
+    const { rerender } = render(createStack(createOutfit(0)));
+
+    rerender(createStack(regenerated));
+    screen.getAllByRole('img', { hidden: true }).forEach((image) => {
+      fireEvent.load(image);
+    });
+
+    expect(screen.getByAltText('101번 상의')).toBeVisible();
+    expect(screen.getByAltText('100번 상의')).not.toBeVisible();
+  });
+});
+
 describe('등장 애니메이션', () => {
   const loadImages = () => {
     screen.getAllByRole('img', { hidden: true }).forEach((image) => {

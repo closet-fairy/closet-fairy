@@ -37,7 +37,7 @@ const OutfitStack = (props: OutfitStackProps) => {
   const [playedOutfitIds, setPlayedOutfitIds] = useState<readonly number[]>([]);
   const olderButtonRef = useRef<HTMLButtonElement>(null);
   const newerButtonRef = useRef<HTMLButtonElement>(null);
-  const { stackRef, registerLayer, nearest, range, dragHandlers } =
+  const { stackRef, registerLayerAt, nearest, range, dragHandlers } =
     useOutfitPager({
       layerCount: layers.length,
       depth,
@@ -83,8 +83,7 @@ const OutfitStack = (props: OutfitStackProps) => {
         return (
           <S.Layer
             key={layer.outfit_id}
-            ref={registerLayer}
-            data-layer-depth={layerDepth}
+            ref={registerLayerAt(layerDepth)}
             role={hasOrderLabel ? 'group' : undefined}
             aria-label={
               hasOrderLabel

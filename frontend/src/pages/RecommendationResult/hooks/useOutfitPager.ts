@@ -97,6 +97,9 @@ const useOutfitPager = (options: UseOutfitPagerOptions) => {
     options;
   const stackRef = useRef<HTMLDivElement>(null);
   const layerElementsRef = useRef(new Map<number, HTMLElement>());
+  const layerRefCallbacksRef = useRef(
+    new Map<number, (element: HTMLElement | null) => void>(),
+  );
   const posRef = useRef(depth);
   const presenceRef = useRef(0);
   const velocityRef = useRef(0);
@@ -538,23 +541,31 @@ const useOutfitPager = (options: UseOutfitPagerOptions) => {
     }
   };
 
-  const registerLayer = useCallback((element: HTMLElement | null) => {
-    if (element === null) return;
+  const registerLayerAt = useCallback((layerDepth: number) => {
+    const cached = layerRefCallbacksRef.current.get(layerDepth);
 
-    const layerDepth = Number(element.dataset.layerDepth);
+    if (cached) return cached;
 
-    layerElementsRef.current.set(layerDepth, element);
+    const register = (element: HTMLElement | null) => {
+      if (element === null) return;
 
-    return () => {
-      if (layerElementsRef.current.get(layerDepth) === element) {
-        layerElementsRef.current.delete(layerDepth);
-      }
+      layerElementsRef.current.set(layerDepth, element);
+
+      return () => {
+        if (layerElementsRef.current.get(layerDepth) === element) {
+          layerElementsRef.current.delete(layerDepth);
+        }
+      };
     };
+
+    layerRefCallbacksRef.current.set(layerDepth, register);
+
+    return register;
   }, []);
 
   return {
     stackRef,
-    registerLayer,
+    registerLayerAt,
     nearest,
     range: isMoving ? movingRange : ([depth - 1, depth + 1] as const),
     dragHandlers: {
