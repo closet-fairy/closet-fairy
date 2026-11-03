@@ -24,6 +24,8 @@ const colorValues = {
   'bg-floor': palette.warmGray200,
   'bg-card-previous': palette.beige100,
   'bg-card-stacked': palette.beige200,
+  'bg-card-floating': palette.frost,
+  'bg-card-floating-far': palette.frostStrong,
   'bg-brand-kakao': palette.kakaoYellow,
 
   'border-neutral-strong': palette.gray900,
@@ -96,6 +98,8 @@ export const bg = {
   card: {
     previous: colorVar('bg-card-previous'),
     stacked: colorVar('bg-card-stacked'),
+    floating: colorVar('bg-card-floating'),
+    floatingFar: colorVar('bg-card-floating-far'),
   },
   brand: {
     kakao: colorVar('bg-brand-kakao'),

@@ -24,6 +24,8 @@ export const palette = {
 
   dim: 'rgba(20, 20, 22, 0.4)',
   veil: 'rgba(255, 255, 255, 0.78)',
+  frost: 'rgba(255, 255, 255, 0.55)',
+  frostStrong: 'rgba(255, 255, 255, 0.75)',
 
   kakaoYellow: '#fee500',
   kakaoLabel: 'rgba(0, 0, 0, 0.85)',

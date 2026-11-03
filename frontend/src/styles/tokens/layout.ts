@@ -44,6 +44,10 @@ export const shadow = {
   app: '0 10px 40px rgba(0, 0, 0, 0.08)',
 } as const;
 
+export const blur = {
+  card: '6px',
+} as const;
+
 export const opacity = {
   disabled: 0.4,
   muted: 0.55,

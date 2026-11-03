@@ -1,6 +1,7 @@
 export { bg, border, colorVariables, fg, swatch } from './colors';
 export {
   appFrame,
+  blur,
   opacity,
   radius,
   shadow,
