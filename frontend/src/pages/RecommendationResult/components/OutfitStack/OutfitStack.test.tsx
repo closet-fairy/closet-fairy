@@ -366,6 +366,80 @@ describe('카드 끌기', () => {
     expect(getOrderBadge(3, 3)).toBeInTheDocument();
   });
 
+  test('자리에 거의 닿은 뒤의 가로 손짓은 좌우 넘김이 받아야 한다.', () => {
+    const onCarouselTouchMove = vi.fn();
+    const onPresenceChange = vi.fn();
+
+    render(
+      <div onTouchMove={onCarouselTouchMove}>
+        <ControlledStack
+          previousCount={2}
+          onPresenceChange={onPresenceChange}
+        />
+      </div>,
+    );
+
+    const card = getOrderBadge(3, 3);
+    const getLastPresence = () =>
+      Number(onPresenceChange.mock.lastCall?.[0] ?? 0);
+
+    pressCard(card);
+    moveCard(card, START_X, START_Y + COMMIT_DISTANCE);
+    wait(PAUSE_BEFORE_RELEASE_MS);
+    liftCard(card, START_X, START_Y + COMMIT_DISTANCE);
+
+    while (getLastPresence() >= 0.005) {
+      wait(FRAME_MS);
+    }
+
+    expect(getLastPresence()).toBeGreaterThan(0);
+
+    pressCard(card);
+    moveCard(card, START_X + 20, START_Y + 2);
+    fireEvent.touchMove(card);
+
+    expect(onCarouselTouchMove).toHaveBeenCalled();
+  });
+
+  test('끄는 사이에 바깥에서 깊이가 바뀌어도 남은 손 움직임을 좌우 넘김에 넘기지 않아야 한다.', () => {
+    const onCarouselTouchMove = vi.fn();
+    const outfit = createOutfit(1);
+    const renderStack = (depth: number) => (
+      <div onTouchMove={onCarouselTouchMove}>
+        <OutfitStack
+          outfit={outfit}
+          depth={depth}
+          onDepthChange={vi.fn()}
+          onOverflowClick={vi.fn()}
+        />
+      </div>
+    );
+    const { rerender } = render(renderStack(1));
+    const card = getOrderBadge(1, 2);
+
+    pressCard(card);
+    moveCard(card, START_X, START_Y - COMMIT_DISTANCE);
+    rerender(renderStack(0));
+    moveCard(card, START_X + 80, START_Y - COMMIT_DISTANCE);
+    fireEvent.touchMove(card);
+
+    expect(onCarouselTouchMove).not.toHaveBeenCalled();
+  });
+
+  test('끄는 도중에 사라지면 카드가 드러난 정도를 0으로 돌려야 한다.', () => {
+    const onPresenceChange = vi.fn();
+    const { unmount } = render(
+      <ControlledStack previousCount={1} onPresenceChange={onPresenceChange} />,
+    );
+    const card = getOrderBadge(2, 2);
+
+    pressCard(card);
+    moveCard(card, START_X, START_Y + OUTFIT_PAGER.REVEAL_DISTANCE_PX);
+    unmount();
+
+    expect(onPresenceChange).toHaveBeenLastCalledWith(0);
+  });
+
   test('넘어가는 중에 다시 잡으면 가로로 움직여도 세로로 이어져야 한다.', () => {
     const onCarouselTouchMove = vi.fn();
 

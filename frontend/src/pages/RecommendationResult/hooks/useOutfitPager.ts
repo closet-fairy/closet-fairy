@@ -1,4 +1,10 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import type { PointerEvent } from 'react';
 import isReducedMotion from '@/utils/isReducedMotion';
 import { OUTFIT_PAGER } from './useOutfitPager.constants';
@@ -20,6 +26,7 @@ interface PagerGesture {
   origin: number;
   samples: PointerSample[];
   isCatching: boolean;
+  isAbandoned: boolean;
 }
 
 interface PagerSettle {
@@ -102,7 +109,7 @@ const useOutfitPager = (options: UseOutfitPagerOptions) => {
   const frameRef = useRef<number | null>(null);
   const layerCountRef = useRef(layerCount);
   const onPresenceChangeRef = useRef(onPresenceChange);
-  const reportedPresenceRef = useRef<number | null>(null);
+  const reportedPresenceRef = useRef(0);
   const [nearest, setNearest] = useState(depth);
   const [movingRange, setMovingRange] = useState<readonly [number, number]>([
     depth - 1,
@@ -290,7 +297,11 @@ const useOutfitPager = (options: UseOutfitPagerOptions) => {
     if (depth === committedRef.current) return;
 
     committedRef.current = depth;
-    gestureRef.current = null;
+
+    if (gestureRef.current !== null) {
+      gestureRef.current.isAbandoned = true;
+    }
+
     snapTo(depth);
   });
 
@@ -298,7 +309,16 @@ const useOutfitPager = (options: UseOutfitPagerOptions) => {
     apply();
   });
 
-  useEffect(() => stopFrame, []);
+  useEffect(
+    () => () => {
+      stopFrame();
+
+      if (reportedPresenceRef.current > 0) {
+        onPresenceChangeRef.current?.(0);
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     const stack = stackRef.current;
@@ -353,23 +373,34 @@ const useOutfitPager = (options: UseOutfitPagerOptions) => {
     apply();
   };
 
+  const catchSettle = () => {
+    stopFrame();
+    settleRef.current = null;
+    phaseRef.current = 'drag';
+    velocityRef.current = 0;
+  };
+
   const handlePointerDown = (event: PointerEvent<HTMLElement>) => {
     if (!isEnabled || layerCount < 2 || !event.isPrimary) return;
     if (event.pointerType === 'mouse' && event.button !== 0) return;
 
-    const isCatching = phaseRef.current === 'settle';
+    const isSettling = phaseRef.current === 'settle';
 
-    if (!isCatching && isCarouselMoving(event.currentTarget)) return;
+    if (!isSettling && isCarouselMoving(event.currentTarget)) return;
+
+    heightRef.current = event.currentTarget.getBoundingClientRect().height;
+
+    const isCatching =
+      isSettling &&
+      Math.abs(posRef.current - targetRef.current) *
+        getSpacing(presenceRef.current) >
+        OUTFIT_PAGER.CATCH_DISTANCE_PX;
 
     if (isCatching) {
-      stopFrame();
-      settleRef.current = null;
-      phaseRef.current = 'drag';
-      velocityRef.current = 0;
+      catchSettle();
       event.currentTarget.setPointerCapture(event.pointerId);
     }
 
-    heightRef.current = event.currentTarget.getBoundingClientRect().height;
     gestureRef.current = {
       pointerId: event.pointerId,
       startX: event.clientX,
@@ -380,13 +411,14 @@ const useOutfitPager = (options: UseOutfitPagerOptions) => {
       origin: isCatching ? targetRef.current : Math.round(posRef.current),
       samples: [{ time: event.timeStamp, y: event.clientY }],
       isCatching,
+      isAbandoned: false,
     };
   };
 
   const handlePointerMove = (event: PointerEvent<HTMLElement>) => {
     const gesture = gestureRef.current;
 
-    if (gesture?.pointerId !== event.pointerId) return;
+    if (gesture?.pointerId !== event.pointerId || gesture.isAbandoned) return;
 
     if (
       gesture.axis === null &&
@@ -408,6 +440,15 @@ const useOutfitPager = (options: UseOutfitPagerOptions) => {
       if (gesture.axis === 'x') {
         gestureRef.current = null;
         return;
+      }
+
+      if (phaseRef.current === 'settle') {
+        catchSettle();
+        gesture.startY = event.clientY;
+        gesture.startPos = posRef.current;
+        gesture.startPresence = presenceRef.current;
+        gesture.origin = targetRef.current;
+        gesture.isCatching = true;
       }
 
       event.currentTarget.setPointerCapture(event.pointerId);
@@ -466,18 +507,20 @@ const useOutfitPager = (options: UseOutfitPagerOptions) => {
 
     gestureRef.current = null;
 
-    if (gesture.axis !== 'y') return;
+    if (gesture.axis !== 'y' || gesture.isAbandoned) return;
 
     followPointer(gesture, event.clientY);
 
+    const max = layerCountRef.current - 1;
     const velocity = getVelocity(gesture.samples, event.timeStamp);
-    const target = clamp(
-      getReleaseTarget(gesture, velocity),
-      0,
-      layerCountRef.current - 1,
-    );
+    const target = clamp(getReleaseTarget(gesture, velocity), 0, max);
+    const isPullingPastEdge =
+      (posRef.current < 0 && velocity < 0) ||
+      (posRef.current > max && velocity > 0);
 
-    velocityRef.current = velocity / getSpacing(presenceRef.current);
+    velocityRef.current = isPullingPastEdge
+      ? 0
+      : velocity / getSpacing(presenceRef.current);
     commit(target);
   };
 
@@ -488,13 +531,13 @@ const useOutfitPager = (options: UseOutfitPagerOptions) => {
 
     gestureRef.current = null;
 
-    if (gesture.axis === 'y') {
+    if (gesture.axis === 'y' && !gesture.isAbandoned) {
       velocityRef.current = 0;
       commit(clamp(gesture.origin, 0, layerCountRef.current - 1));
     }
   };
 
-  const registerLayer = (element: HTMLElement | null) => {
+  const registerLayer = useCallback((element: HTMLElement | null) => {
     if (element === null) return;
 
     const layerDepth = Number(element.dataset.layerDepth);
@@ -506,7 +549,7 @@ const useOutfitPager = (options: UseOutfitPagerOptions) => {
         layerElementsRef.current.delete(layerDepth);
       }
     };
-  };
+  }, []);
 
   return {
     stackRef,
