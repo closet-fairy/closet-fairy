@@ -1,5 +1,14 @@
 import styled from '@emotion/styled';
-import { bg, blur, border, radius, shadow, spacing } from '@/styles/tokens';
+import { FLOOR_CARD } from '@/domains/recommendation/floorLayout.constants';
+import {
+  appFrame,
+  bg,
+  blur,
+  border,
+  radius,
+  shadow,
+  spacing,
+} from '@/styles/tokens';
 import { OUTFIT_PAGER } from '@/pages/RecommendationResult/hooks/useOutfitPager.constants';
 import { visuallyHidden } from '@/styles/visuallyHidden';
 
@@ -14,6 +23,22 @@ export const Stack = styled.div`
   height: 100%;
   touch-action: pinch-zoom;
   user-select: none;
+  container-type: size;
+`;
+
+// 카드는 옷 배치와 같은 크기로, 끌기 영역의 위에 붙여 가운데에 둔다.
+export const Frame = styled.div`
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  width: min(
+    100cqw,
+    calc(100cqh * ${FLOOR_CARD.width} / ${FLOOR_CARD.height}),
+    ${appFrame.maxWidth}
+  );
+  aspect-ratio: ${FLOOR_CARD.width} / ${FLOOR_CARD.height};
+  margin: 0 auto;
 `;
 
 export const OrderBadge = styled.div`

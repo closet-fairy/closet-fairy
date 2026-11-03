@@ -64,91 +64,94 @@ const OutfitStack = (props: OutfitStackProps) => {
 
   return (
     <S.Stack ref={stackRef} {...dragHandlers}>
-      {layers.length > 1 && (
-        <S.OrderBadge aria-hidden>
-          <Tag variant="white" size="sm" icon="layers">
-            {getRecommendationOrder(layers.length, nearest)}번째 추천 ·{' '}
-            {layers.length}장
-          </Tag>
-        </S.OrderBadge>
-      )}
-      {layers.map((layer, layerDepth) => {
-        if (layerDepth < low || layerDepth > high) {
-          return null;
-        }
+      <S.Frame>
+        {layers.length > 1 && (
+          <S.OrderBadge aria-hidden>
+            <Tag variant="white" size="sm" icon="layers">
+              {getRecommendationOrder(layers.length, nearest)}번째 추천 ·{' '}
+              {layers.length}장
+            </Tag>
+          </S.OrderBadge>
+        )}
+        {layers.map((layer, layerDepth) => {
+          if (layerDepth < low || layerDepth > high) {
+            return null;
+          }
 
-        const isCurrent = layerDepth === depth;
-        const hasOrderLabel = isCurrent && layers.length > 1;
+          const isCurrent = layerDepth === depth;
+          const hasOrderLabel = isCurrent && layers.length > 1;
 
-        return (
-          <S.Layer
-            key={layer.outfit_id}
-            ref={registerLayerAt(layerDepth)}
-            role={hasOrderLabel ? 'group' : undefined}
-            aria-label={
-              hasOrderLabel
-                ? `${getRecommendationOrder(layers.length, layerDepth)}번째 추천, 전체 ${layers.length}장`
-                : undefined
-            }
-            aria-hidden={!isCurrent}
-            inert={!isCurrent}
-          >
-            <S.Surface />
-            <S.Content>
-              <OutfitCard
-                items={layer.items}
-                floorSeed={{ order: layer.outfit_seq, id: layer.outfit_id }}
-                isRegenerating={isRegenerating && layerDepth === depth}
-                onOverflowClick={onOverflowClick}
-                entrance={
-                  layerDepth === 0 && !playedOutfitIds.includes(layer.outfit_id)
-                    ? {
-                        isActive: isActive && depth === 0,
-                        onPlay: () =>
-                          setPlayedOutfitIds((ids) => [
-                            ...ids,
-                            layer.outfit_id,
-                          ]),
-                      }
-                    : undefined
-                }
-              />
-            </S.Content>
-          </S.Layer>
-        );
-      })}
-      {!isRegenerating && hasOlder && (
-        <S.HistoryButton>
-          <Button
-            ref={olderButtonRef}
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              moveByButton(
-                depth + 1,
-                depth + 1 === layers.length - 1,
-                newerButtonRef,
-              );
-            }}
-          >
-            이전 코디 보기
-          </Button>
-        </S.HistoryButton>
-      )}
-      {!isRegenerating && hasNewer && (
-        <S.HistoryButton>
-          <Button
-            ref={newerButtonRef}
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              moveByButton(depth - 1, depth === 1, olderButtonRef);
-            }}
-          >
-            최신 쪽으로 돌아가기
-          </Button>
-        </S.HistoryButton>
-      )}
+          return (
+            <S.Layer
+              key={layer.outfit_id}
+              ref={registerLayerAt(layerDepth)}
+              role={hasOrderLabel ? 'group' : undefined}
+              aria-label={
+                hasOrderLabel
+                  ? `${getRecommendationOrder(layers.length, layerDepth)}번째 추천, 전체 ${layers.length}장`
+                  : undefined
+              }
+              aria-hidden={!isCurrent}
+              inert={!isCurrent}
+            >
+              <S.Surface />
+              <S.Content>
+                <OutfitCard
+                  items={layer.items}
+                  floorSeed={{ order: layer.outfit_seq, id: layer.outfit_id }}
+                  isRegenerating={isRegenerating && layerDepth === depth}
+                  onOverflowClick={onOverflowClick}
+                  entrance={
+                    layerDepth === 0 &&
+                    !playedOutfitIds.includes(layer.outfit_id)
+                      ? {
+                          isActive: isActive && depth === 0,
+                          onPlay: () =>
+                            setPlayedOutfitIds((ids) => [
+                              ...ids,
+                              layer.outfit_id,
+                            ]),
+                        }
+                      : undefined
+                  }
+                />
+              </S.Content>
+            </S.Layer>
+          );
+        })}
+        {!isRegenerating && hasOlder && (
+          <S.HistoryButton>
+            <Button
+              ref={olderButtonRef}
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                moveByButton(
+                  depth + 1,
+                  depth + 1 === layers.length - 1,
+                  newerButtonRef,
+                );
+              }}
+            >
+              이전 코디 보기
+            </Button>
+          </S.HistoryButton>
+        )}
+        {!isRegenerating && hasNewer && (
+          <S.HistoryButton>
+            <Button
+              ref={newerButtonRef}
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                moveByButton(depth - 1, depth === 1, olderButtonRef);
+              }}
+            >
+              최신 쪽으로 돌아가기
+            </Button>
+          </S.HistoryButton>
+        )}
+      </S.Frame>
     </S.Stack>
   );
 };

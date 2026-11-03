@@ -125,12 +125,18 @@ const useOutfitPager = (options: UseOutfitPagerOptions) => {
     onPresenceChangeRef.current = onPresenceChange;
   });
 
+  const measureCardHeight = () => {
+    const [layer] = layerElementsRef.current.values();
+
+    return layer?.offsetHeight ?? stackRef.current?.offsetHeight ?? 0;
+  };
+
   const getSpacing = (presence: number) =>
     heightRef.current * getScale(presence) + OUTFIT_PAGER.CARD_GAP_PX;
 
   const apply = () => {
-    if (heightRef.current === 0 && stackRef.current) {
-      heightRef.current = stackRef.current.offsetHeight;
+    if (heightRef.current === 0) {
+      heightRef.current = measureCardHeight();
     }
 
     const pos = posRef.current;
@@ -392,7 +398,8 @@ const useOutfitPager = (options: UseOutfitPagerOptions) => {
 
     if (!isSettling && isCarouselMoving(event.currentTarget)) return;
 
-    heightRef.current = event.currentTarget.getBoundingClientRect().height;
+    heightRef.current =
+      measureCardHeight() || event.currentTarget.getBoundingClientRect().height;
 
     const isCatching =
       isSettling &&
