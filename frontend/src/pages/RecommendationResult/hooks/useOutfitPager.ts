@@ -147,6 +147,10 @@ const useOutfitPager = (options: UseOutfitPagerOptions) => {
 
     stackRef.current?.style.setProperty('--card-presence', String(presence));
     stackRef.current?.toggleAttribute('data-revealed', presence > 0);
+    stackRef.current?.toggleAttribute(
+      'data-card-shown',
+      presence >= OUTFIT_PAGER.CONTROLS_BLOCK_PRESENCE,
+    );
 
     layerElementsRef.current.forEach((element, layerDepth) => {
       const distance = Math.abs(pos - layerDepth);
