@@ -1,5 +1,6 @@
 import styled from '@emotion/styled';
 import { FLOOR_CARD } from '@/domains/recommendation/floorLayout.constants';
+import { OUTFIT_PAGER } from '@/pages/RecommendationResult/hooks/useOutfitPager.constants';
 import {
   appFrame,
   bg,
@@ -9,7 +10,6 @@ import {
   shadow,
   spacing,
 } from '@/styles/tokens';
-import { OUTFIT_PAGER } from '@/pages/RecommendationResult/hooks/useOutfitPager.constants';
 import { visuallyHidden } from '@/styles/visuallyHidden';
 
 const TOUCH_TARGET_SIZE = 44;

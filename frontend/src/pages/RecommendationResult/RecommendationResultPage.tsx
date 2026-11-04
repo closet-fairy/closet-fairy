@@ -45,10 +45,10 @@ import OutfitActions from './components/OutfitActions';
 import { OUTFIT_ACTIONS_HEIGHT } from './components/OutfitActions/OutfitActions.styled';
 import OutfitInfoSheet from './components/OutfitInfoSheet';
 import OutfitStack from './components/OutfitStack';
-import { OUTFIT_PAGER } from './hooks/useOutfitPager.constants';
 import RatingDialog from './components/RatingDialog';
 import RegenerationRequestSheet from './components/RegenerationRequestSheet';
 import type { RegenerationScope } from './components/RegenerationRequestSheet/RegenerationRequestSheet';
+import { OUTFIT_PAGER } from './hooks/useOutfitPager.constants';
 import * as S from './RecommendationResultPage.styled';
 
 type OpenLayer = 'info' | 'rating' | 'request' | null;
