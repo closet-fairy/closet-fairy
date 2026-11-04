@@ -3,7 +3,10 @@ import { useEffect } from 'react';
 import StoryStack from '../../../../.storybook/StoryStack';
 import Button from '@/components/common/Button';
 import ToastProvider from '@/components/common/ToastProvider';
-import type { ToastTone } from '@/components/common/ToastProvider/ToastProvider.toast';
+import type {
+  ToastActionOptions,
+  ToastTone,
+} from '@/components/common/ToastProvider/ToastProvider.toast';
 import {
   showToast,
   toastManager,
@@ -14,6 +17,7 @@ interface StoryToast {
   tone: ToastTone;
   title: string;
   description?: string;
+  action?: ToastActionOptions;
 }
 
 const SUCCESS_TOASTS: StoryToast[] = [
@@ -30,6 +34,36 @@ const ERROR_TOASTS: StoryToast[] = [
 
 const INFO_TOASTS: StoryToast[] = [
   { tone: 'info', title: '옷을 찾을 수 없어요' },
+];
+
+const ACTION_TOASTS: StoryToast[] = [
+  {
+    tone: 'info',
+    title: '1번 코디가 새로 바뀌었어요',
+    description: '이전 코디는 위아래로 넘겨 볼 수 있어요',
+    action: { label: '보기', onClick: () => {} },
+  },
+];
+
+const LONG_ACTION_TOASTS: StoryToast[] = [
+  {
+    tone: 'info',
+    title:
+      '2번 코디가 새로 바뀌었어요. 요청하신 대로 겉옷을 가벼운 것으로 바꿨어요',
+    description:
+      '이전 코디는 위아래로 넘겨 볼 수 있어요. 마음에 들지 않으면 다시 수정을 요청할 수 있어요',
+    action: { label: '보기', onClick: () => {} },
+  },
+];
+
+const STACKED_ACTION_TOASTS: StoryToast[] = [
+  { tone: 'success', title: '옷을 삭제했어요' },
+  {
+    tone: 'info',
+    title: '1번 코디가 새로 바뀌었어요',
+    description: '이전 코디는 위아래로 넘겨 볼 수 있어요',
+    action: { label: '보기', onClick: () => {} },
+  },
 ];
 
 const STACKED_TOASTS: StoryToast[] = [
@@ -135,6 +169,30 @@ export const Success: Story = {
 export const ErrorToast: Story = {
   render: function Render(args) {
     useStaticToasts(ERROR_TOASTS);
+
+    return <Toaster {...args} />;
+  },
+};
+
+export const WithAction: Story = {
+  render: function Render(args) {
+    useStaticToasts(ACTION_TOASTS);
+
+    return <Toaster {...args} />;
+  },
+};
+
+export const WithLongTextAndAction: Story = {
+  render: function Render(args) {
+    useStaticToasts(LONG_ACTION_TOASTS);
+
+    return <Toaster {...args} />;
+  },
+};
+
+export const StackedWithAction: Story = {
+  render: function Render(args) {
+    useStaticToasts(STACKED_ACTION_TOASTS);
 
     return <Toaster {...args} />;
   },

@@ -12,9 +12,6 @@ interface OutfitCardProps {
   items: readonly OutfitItemResult[];
   floorSeed: FloorSeed;
   isRegenerating?: boolean;
-  isLifted?: boolean;
-  previousCount?: number;
-  recommendationOrder?: number;
   onOverflowClick?: () => void;
   entrance?: FloorEntranceOption;
 }
@@ -24,57 +21,41 @@ const OutfitCard = (props: OutfitCardProps) => {
     items,
     floorSeed,
     isRegenerating = false,
-    isLifted = false,
-    previousCount = 0,
-    recommendationOrder,
     onOverflowClick,
     entrance,
   } = props;
   const styleCds = getOutfitStyleTags(items);
-  const isPrevious = recommendationOrder !== undefined;
 
   return (
-    <S.Card $isPrevious={isPrevious} $isLifted={isLifted}>
-      <OutfitFloor
-        items={items}
-        seed={floorSeed}
-        isOverflowDisabled={isRegenerating}
-        onOverflowClick={onOverflowClick}
-        entrance={entrance}
-      />
-      {isPrevious && (
-        <S.Badge>
-          <Tag variant="inverse" size="sm" icon="layers">
-            {recommendationOrder}번째 추천
-          </Tag>
-        </S.Badge>
-      )}
-      {!isPrevious && previousCount > 0 && (
-        <S.Badge>
-          <Tag variant="white" size="sm" icon="layers">
-            이전 코디 {previousCount}
-          </Tag>
-        </S.Badge>
-      )}
-      {styleCds.length > 0 && (
-        <S.Tags>
-          {styleCds.map((styleCd) => (
-            <Tag key={styleCd} size="sm">
-              {getStyleLabel(styleCd)}
-            </Tag>
-          ))}
-        </S.Tags>
-      )}
+    <S.Container>
+      <S.Card>
+        <OutfitFloor
+          items={items}
+          seed={floorSeed}
+          isOverflowDisabled={isRegenerating}
+          onOverflowClick={onOverflowClick}
+          entrance={entrance}
+        />
+        {styleCds.length > 0 && (
+          <S.Tags>
+            {styleCds.map((styleCd) => (
+              <Tag key={styleCd} size="sm">
+                {getStyleLabel(styleCd)}
+              </Tag>
+            ))}
+          </S.Tags>
+        )}
+      </S.Card>
       {isRegenerating && (
-        <S.Cover role="status">
+        <S.Fog role="status">
           <S.Spinner>
             <Icon name="progress_activity" size="xl" />
           </S.Spinner>
-          <S.CoverTitle>요청을 반영하는 중이에요</S.CoverTitle>
-          <S.CoverDescription>길게는 3분까지 걸려요</S.CoverDescription>
-        </S.Cover>
+          <S.FogTitle>요청을 반영하는 중이에요</S.FogTitle>
+          <S.FogDescription>길게는 3분까지 걸려요</S.FogDescription>
+        </S.Fog>
       )}
-    </S.Card>
+    </S.Container>
   );
 };
 

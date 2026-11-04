@@ -21,9 +21,10 @@ const colorValues = {
   'bg-neutral-pale': palette.gray25,
   'bg-error-light': palette.red100,
   'bg-outside': palette.warmGray100,
-  'bg-floor': palette.warmGray200,
-  'bg-card-previous': palette.beige100,
-  'bg-card-stacked': palette.beige200,
+  'bg-card-floating': palette.frost,
+  'bg-card-floating-far': palette.frostStrong,
+  'bg-fog-dense': palette.fogDense,
+  'bg-fog-soft': palette.fogSoft,
   'bg-brand-kakao': palette.kakaoYellow,
 
   'border-neutral-strong': palette.gray900,
@@ -92,10 +93,13 @@ export const bg = {
     light: colorVar('bg-error-light'),
   },
   outside: colorVar('bg-outside'),
-  floor: colorVar('bg-floor'),
   card: {
-    previous: colorVar('bg-card-previous'),
-    stacked: colorVar('bg-card-stacked'),
+    floating: colorVar('bg-card-floating'),
+    floatingFar: colorVar('bg-card-floating-far'),
+  },
+  fog: {
+    dense: colorVar('bg-fog-dense'),
+    soft: colorVar('bg-fog-soft'),
   },
   brand: {
     kakao: colorVar('bg-brand-kakao'),

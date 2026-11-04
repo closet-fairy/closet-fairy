@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { fn } from 'storybook/test';
+import waveBackgroundUrl from '@/assets/images/waveBackground.jpg';
 import type { OutfitItemResult } from '@/generated/models';
 import cutoutUrl from '@/mocks/assets/clothing/cutout.webp';
 import OutfitCard from './OutfitCard';
@@ -41,28 +42,16 @@ const meta = {
       description: '재추천을 만드는 동안 카드에 덮개를 씌웁니다.',
       control: 'boolean',
     },
-    isLifted: {
-      description: '끌고 있는 카드에 진한 그림자를 줍니다.',
-      control: 'boolean',
-    },
-    previousCount: {
-      description:
-        '최신 카드에 쌓인 이전 코디의 수입니다. 1 이상이면 흰 배지로 보여 줍니다.',
-      control: 'number',
-    },
-    recommendationOrder: {
-      description:
-        '이전 코디가 몇 번째 추천인지 나타냅니다. 값이 있으면 이전 코디 카드로 그려 베이지 바탕에 검은 배지를 붙입니다.',
-      control: 'number',
-    },
     onOverflowClick: {
       description: '넘친 아이템의 수 버튼을 누를 때 호출합니다.',
     },
   },
   decorators: [
     (Story) => (
-      <div style={{ width: CARD_WIDTH, height: CARD_HEIGHT }}>
-        <Story />
+      <div style={{ background: `url(${waveBackgroundUrl}) center / cover` }}>
+        <div style={{ width: CARD_WIDTH, height: CARD_HEIGHT }}>
+          <Story />
+        </div>
       </div>
     ),
   ],
@@ -82,20 +71,6 @@ export const Regenerating: Story = {
   args: {
     items: [createItem('top'), createItem('bottom'), createItem('shoes')],
     isRegenerating: true,
-  },
-};
-
-export const HasPreviousOutfits: Story = {
-  args: {
-    items: [createItem('top'), createItem('bottom'), createItem('shoes')],
-    previousCount: 2,
-  },
-};
-
-export const PreviousOutfit: Story = {
-  args: {
-    items: [createItem('top'), createItem('bottom'), createItem('shoes')],
-    recommendationOrder: 2,
   },
 };
 

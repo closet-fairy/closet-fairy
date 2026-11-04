@@ -7,6 +7,7 @@ import {
   typography,
   zIndex,
 } from '@/styles/tokens';
+import { waveBackdrop } from '@/styles/waveBackdrop';
 
 const HEADER_BOTTOM = `calc(${topBarHeight}px + env(safe-area-inset-top, 0px))`;
 const HEADER_FADE_START = '70%';
@@ -23,7 +24,7 @@ export const Container = styled.div`
   display: flex;
   flex: 1;
   flex-direction: column;
-  background-color: ${bg.floor};
+  ${waveBackdrop}
 `;
 
 // 시안대로 바닥색이 아래쪽에서 투명하게 풀린다. 지금 배치는 옷이 영역 안에 머물러 겹치지 않지만, 배치가 바뀌어 옷이 바에 닿아도 경계가 보이지 않게 둔다.
@@ -38,7 +39,7 @@ export const Header = styled.header`
   gap: ${spacing[4]};
   height: ${HEADER_BOTTOM};
   padding: env(safe-area-inset-top, 0px) ${spacing[20]} 0 ${spacing[8]};
-  background: linear-gradient(${bg.floor} ${HEADER_FADE_START}, transparent);
+  background: linear-gradient(${bg.white} ${HEADER_FADE_START}, transparent);
 `;
 
 export const Heading = styled.div`

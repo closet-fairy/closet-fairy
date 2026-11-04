@@ -1,8 +1,12 @@
 import { keyframes } from '@emotion/react';
 import styled from '@emotion/styled';
-import { bg, fg, radius, shadow, spacing, typography } from '@/styles/tokens';
+import { CARD_TOP } from '@/pages/RecommendationResult/constants';
+import { bg, fg, radius, spacing, typography } from '@/styles/tokens';
 
 const SPIN_DURATION = '1s';
+const FOG_SPREAD_BOTTOM = 120;
+const FOG_CONTENT_RISE = 80;
+const FOG_SHAPE = 'ellipse 70% 45% at 50% 44%';
 
 const spin = keyframes`
   to {
@@ -10,22 +14,25 @@ const spin = keyframes`
   }
 `;
 
-export const Card = styled.div<{ $isPrevious: boolean; $isLifted: boolean }>`
+export const Container = styled.div`
+  position: relative;
+  height: 100%;
+`;
+
+export const Card = styled.div`
   position: relative;
   height: 100%;
   overflow: hidden;
   border-radius: ${radius.lg};
-  background-color: ${({ $isPrevious }) =>
-    $isPrevious ? bg.card.previous : bg.white};
-  box-shadow: ${({ $isLifted }) => ($isLifted ? shadow.lifted : shadow.card)};
   container-type: size;
-`;
 
-export const Badge = styled.div`
-  position: absolute;
-  top: ${spacing[14]};
-  left: ${spacing[14]};
-  display: flex;
+  & > button {
+    opacity: calc(1 - var(--card-presence, 0));
+  }
+
+  [data-card-shown] & > button {
+    pointer-events: none;
+  }
 `;
 
 export const Tags = styled.div`
@@ -37,18 +44,26 @@ export const Tags = styled.div`
   align-items: center;
   gap: ${spacing[6]};
   padding: ${spacing[14]} ${spacing[16]};
+  opacity: calc(1 - var(--card-presence, 0));
   pointer-events: none;
 `;
 
-export const Cover = styled.div`
+export const Fog = styled.div`
   position: absolute;
-  inset: 0;
+  inset: -${CARD_TOP}px calc(${spacing[14]} * -1) -${FOG_SPREAD_BOTTOM}px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: ${spacing[12]};
-  background-color: ${bg.veil};
+  padding-bottom: ${FOG_CONTENT_RISE}px;
+  pointer-events: none;
+  background: radial-gradient(
+    ${FOG_SHAPE},
+    ${bg.fog.dense} 0%,
+    ${bg.fog.soft} 55%,
+    transparent 100%
+  );
 `;
 
 export const Spinner = styled.span`
@@ -66,12 +81,12 @@ export const Spinner = styled.span`
   }
 `;
 
-export const CoverTitle = styled.p`
+export const FogTitle = styled.p`
   ${typography.body1Strong}
   color: ${fg.neutral.strong};
 `;
 
-export const CoverDescription = styled.p`
+export const FogDescription = styled.p`
   ${typography.label1}
   color: ${fg.neutral.light};
 `;

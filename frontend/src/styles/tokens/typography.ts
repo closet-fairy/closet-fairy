@@ -10,6 +10,15 @@ const textStyle = (
   font-weight: ${fontWeight};
 `;
 
+const COUNTER_FONT_FAMILY = "'JeonjuCraftMyungjo', serif";
+
+const counterStyle = (fontSize: number, fontWeight: 300 | 700) => css`
+  font-family: ${COUNTER_FONT_FAMILY};
+  font-size: ${fontSize}px;
+  line-height: 1;
+  font-weight: ${fontWeight};
+`;
+
 export const typography = {
   title1: textStyle(21, 1.4, 600),
   title2: textStyle(18, 1.4, 600),
@@ -30,4 +39,7 @@ export const typography = {
   caption1Strong: textStyle(12, 1.4, 600),
   caption2: textStyle(11, 1.3, 400),
   caption2Strong: textStyle(11, 1.3, 600),
+
+  counterCurrent: counterStyle(28, 700),
+  counterTotal: counterStyle(18, 300),
 } as const;

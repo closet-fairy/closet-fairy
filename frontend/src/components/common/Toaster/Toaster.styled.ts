@@ -24,6 +24,9 @@ const STACK_INSET = spacing[6];
 const EXPANDED_GAP = spacing[8];
 // 아이콘을 제목 첫 줄(body3Strong, 14px × 1.5)의 가운데에 맞춘다.
 const TITLE_LINE_HEIGHT = 21;
+const ACTION_HEIGHT = 36;
+const ACTION_PRESSED_SCALE = 0.98;
+const TOUCH_TARGET_SIZE = 44;
 
 export const Viewport = styled(Toast.Viewport, transientOptions)<{
   $bottomOffset: number;
@@ -153,4 +156,37 @@ export const Description = styled(Toast.Description, transientOptions)`
   ${typography.label1}
   margin: 0;
   color: ${fg.neutral.soft};
+`;
+
+export const Action = styled(Toast.Action, transientOptions)`
+  position: relative;
+  flex: none;
+  align-self: center;
+  height: ${ACTION_HEIGHT}px;
+  padding: 0 ${spacing[12]};
+  border-radius: ${radius.sm};
+  box-shadow: inset 0 0 0 1px ${border.neutral.default};
+  ${typography.label1Strong}
+  color: ${fg.neutral.strong};
+  transition: transform ${duration.fast} ${easing.standard};
+
+  &:active {
+    transform: scale(${ACTION_PRESSED_SCALE});
+  }
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 100%;
+    min-width: ${TOUCH_TARGET_SIZE}px;
+    height: ${TOUCH_TARGET_SIZE}px;
+    transform: translate(-50%, -50%);
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${border.neutral.strong};
+    outline-offset: 2px;
+  }
 `;

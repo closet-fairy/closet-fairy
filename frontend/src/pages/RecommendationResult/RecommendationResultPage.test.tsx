@@ -1401,7 +1401,7 @@ describe('이전 코디', () => {
     user: ReturnType<typeof userEvent.setup>,
   ) => {
     await user.click(
-      await screen.findByRole('button', { name: '이전 코디 보기' }),
+      await screen.findByRole('button', { name: '이전 코디 보기 · 총 2장' }),
     );
   };
 
@@ -1412,7 +1412,9 @@ describe('이전 코디', () => {
 
     await openPreviousOutfit(user);
 
-    expect(screen.getByText('1번째 추천')).toBeVisible();
+    expect(
+      screen.getByRole('group', { name: '1번째 추천, 총 2장' }),
+    ).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: '수정 요청하기' }),
     ).toBeDisabled();
@@ -1457,10 +1459,12 @@ describe('이전 코디', () => {
 
     await openPreviousOutfit(user);
     await user.click(
-      screen.getByRole('button', { name: '최신 쪽으로 돌아가기' }),
+      screen.getByRole('button', { name: '최신 코디로 돌아가기' }),
     );
 
-    expect(screen.getByText('이전 코디 1')).toBeVisible();
+    expect(
+      screen.getByRole('group', { name: '2번째 추천, 총 2장' }),
+    ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '수정 요청하기' })).toBeEnabled();
   });
 
@@ -1486,12 +1490,14 @@ describe('이전 코디', () => {
     );
     await refetchAndRender(queryClient);
 
-    expect(screen.getByText('이전 코디 2')).toBeVisible();
+    expect(
+      screen.getByRole('group', { name: '3번째 추천, 총 3장' }),
+    ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '수정 요청하기' })).toBeEnabled();
   });
 });
 
-describe('다른 세트의 재추천 완료 안내', () => {
+describe('재추천 완료 안내', () => {
   const createCompletedResult = (targetSeq: number) => {
     const targetOutfitId = 50 + targetSeq;
 
@@ -1520,7 +1526,9 @@ describe('다른 세트의 재추천 완료 안내', () => {
     });
   };
 
-  test('다른 세트를 보던 중 끝나면 몇 번째 코디인지 알려야 한다.', async () => {
+  test('다른 세트를 보던 중 끝나면 몇 번 코디가 바뀌었는지 알리고 보러 갈 수 있어야 한다.', async () => {
+    const user = userEvent.setup();
+    const requests = useRatingSuccess();
     useResult(
       createResult({
         latest_regeneration: createRegeneration({ target_outfit_id: 52 }),
@@ -1532,12 +1540,53 @@ describe('다른 세트의 재추천 완료 안내', () => {
     useResult(createCompletedResult(2));
     await refetchAndRender(queryClient);
 
-    expect(
-      await screen.findByText('2번째 코디에 요청을 반영했어요'),
-    ).toBeInTheDocument();
+    const toast = await screen.findByRole('dialog', {
+      name: '2번 코디가 새로 바뀌었어요',
+    });
+
+    expect(toast).toHaveAccessibleDescription(
+      '이전 코디는 위아래로 넘겨 볼 수 있어요',
+    );
+
+    await user.click(within(toast).getByRole('button', { name: '보기' }));
+
+    expect(screen.getByText('2')).toBeInTheDocument();
+
+    await submitRating(user);
+
+    await waitFor(() => {
+      expect(requests).toEqual([{ outfit_id: 72, rating: 4 }]);
+    });
   });
 
-  test('보던 세트의 재추천이 끝나면 안내하지 않아야 한다.', async () => {
+  test('별점 모달이 열린 동안 [보기]를 누르면 모달을 닫고 그 세트로 넘어가야 한다.', async () => {
+    const user = userEvent.setup();
+    useResult(
+      createResult({
+        latest_regeneration: createRegeneration({ target_outfit_id: 52 }),
+      }),
+    );
+    const { queryClient } = await renderResult();
+
+    await openRatingDialog(user);
+    useResult(createCompletedResult(2));
+    await refetchAndRender(queryClient);
+
+    const toast = await screen.findByRole('dialog', {
+      name: '2번 코디가 새로 바뀌었어요',
+    });
+
+    await user.click(within(toast).getByRole('button', { name: '보기' }));
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('dialog', { name: '이 코디, 얼마나 마음에 드세요' }),
+      ).not.toBeInTheDocument();
+    });
+    expect(screen.getByText('2')).toBeInTheDocument();
+  });
+
+  test('보던 세트의 재추천이 끝나면 이 코디가 바뀌었다고 알리고 보러 가는 버튼은 두지 않아야 한다.', async () => {
     useResult(createResult({ latest_regeneration: createRegeneration() }));
     const { queryClient } = await renderResult();
 
@@ -1545,8 +1594,12 @@ describe('다른 세트의 재추천 완료 안내', () => {
     useResult(createCompletedResult(1));
     await refetchAndRender(queryClient);
 
+    const toast = await screen.findByRole('dialog', {
+      name: '이 코디가 새로 바뀌었어요',
+    });
+
     expect(
-      screen.queryByText(/코디에 요청을 반영했어요/),
+      within(toast).queryByRole('button', { name: '보기' }),
     ).not.toBeInTheDocument();
   });
 
@@ -1557,11 +1610,11 @@ describe('다른 세트의 재추천 완료 안내', () => {
     await screen.findByRole('button', { name: '채택하기' });
 
     expect(
-      screen.queryByText(/코디에 요청을 반영했어요/),
+      screen.queryByText(/코디가 새로 바뀌었어요/),
     ).not.toBeInTheDocument();
   });
 
-  test('전체 재추천이 끝나면 안내하지 않아야 한다.', async () => {
+  test('전체 재추천이 끝나면 모두 바뀌었다고 알리고 보러 가는 버튼은 두지 않아야 한다.', async () => {
     useResult(
       createResult({
         latest_regeneration: createRegeneration({
@@ -1584,8 +1637,12 @@ describe('다른 세트의 재추천 완료 안내', () => {
     );
     await refetchAndRender(queryClient);
 
+    const toast = await screen.findByRole('dialog', {
+      name: '코디가 모두 새로 바뀌었어요',
+    });
+
     expect(
-      screen.queryByText(/코디에 요청을 반영했어요/),
+      within(toast).queryByRole('button', { name: '보기' }),
     ).not.toBeInTheDocument();
   });
 });

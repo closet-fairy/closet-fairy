@@ -2,10 +2,16 @@ import { Toast } from '@base-ui/react/toast';
 
 export type ToastTone = 'success' | 'info' | 'error';
 
+export interface ToastActionOptions {
+  label: string;
+  onClick: () => void;
+}
+
 interface ShowToastOptions {
   tone: ToastTone;
   title: string;
   description?: string;
+  action?: ToastActionOptions;
   id?: string;
   timeout?: number;
 }
@@ -23,15 +29,25 @@ let isReady = false;
 const pendingToasts: ShowToastOptions[] = [];
 
 const addToast = (options: ShowToastOptions) => {
-  const { tone, title, description, id, timeout } = options;
+  const { tone, title, description, action, id, timeout } = options;
 
-  toastManager.add({
+  const toastId = toastManager.add({
     id,
     type: tone,
     title,
     description,
     timeout,
     priority: tone === 'error' ? 'high' : 'low',
+    actionProps: action && {
+      children: action.label,
+      onClick: () => {
+        try {
+          action.onClick();
+        } finally {
+          toastManager.close(toastId);
+        }
+      },
+    },
   });
 };
 
