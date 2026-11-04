@@ -29,6 +29,10 @@ export const Card = styled.div`
   & > button {
     opacity: calc(1 - var(--card-presence, 0));
   }
+
+  [data-card-shown] & > button {
+    pointer-events: none;
+  }
 `;
 
 export const Tags = styled.div`
