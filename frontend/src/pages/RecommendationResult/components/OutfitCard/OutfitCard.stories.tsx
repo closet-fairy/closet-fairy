@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { fn } from 'storybook/test';
+import waveBackgroundUrl from '@/assets/images/waveBackground.jpg';
 import type { OutfitItemResult } from '@/generated/models';
 import cutoutUrl from '@/mocks/assets/clothing/cutout.webp';
 import OutfitCard from './OutfitCard';
@@ -47,8 +48,10 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <div style={{ width: CARD_WIDTH, height: CARD_HEIGHT }}>
-        <Story />
+      <div style={{ background: `url(${waveBackgroundUrl}) center / cover` }}>
+        <div style={{ width: CARD_WIDTH, height: CARD_HEIGHT }}>
+          <Story />
+        </div>
       </div>
     ),
   ],
