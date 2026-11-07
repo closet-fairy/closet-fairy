@@ -21,6 +21,9 @@ import { routeTree } from '@/routeTree.gen';
 
 const SESSION_ID = 5;
 const NEXT_SESSION_ID = 6;
+// 그만두기 버튼은 3초 뒤에 나타나기 시작하므로 그보다 넉넉히 기다린다.
+const CANCEL_BUTTON_TIMEOUT_MS = 4000;
+const LONG_TEST_TIMEOUT_MS = 10000;
 const PROGRESS_PATH = `/recommendation/sessions/${SESSION_ID}`;
 
 const form = {
@@ -249,72 +252,84 @@ describe('진행 화면에서 이동', () => {
 });
 
 describe('진행 중 그만두기', () => {
-  test('그만두기 버튼은 1초 뒤에 나타나고, 확인하면 세션을 취소한 뒤 입력값을 남긴 채 입력 화면으로 돌아가야 한다.', async () => {
-    const user = userEvent.setup();
-    savePending();
-    respondResult(createResult('processing'));
-    const cancelRequests = countCancelRequests();
-    const { history } = await renderAt(['/recommendation', PROGRESS_PATH]);
+  test(
+    '그만두기 버튼은 3초 뒤에 나타나고, 확인하면 세션을 취소한 뒤 입력값을 남긴 채 입력 화면으로 돌아가야 한다.',
+    async () => {
+      const user = userEvent.setup();
+      savePending();
+      respondResult(createResult('processing'));
+      const cancelRequests = countCancelRequests();
+      const { history } = await renderAt(['/recommendation', PROGRESS_PATH]);
 
-    expect(await screen.findByText('코디를 만들고 있어요')).toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: '추천 그만두기' }),
-    ).not.toBeInTheDocument();
+      expect(
+        await screen.findByText('코디를 만들고 있어요'),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: '추천 그만두기' }),
+      ).not.toBeInTheDocument();
 
-    await user.click(
-      await screen.findByRole(
-        'button',
-        { name: '추천 그만두기' },
-        { timeout: 2000 },
-      ),
-    );
-    const dialog = await screen.findByRole('dialog', {
-      name: '추천을 그만둘까요?',
-    });
-    await user.click(within(dialog).getByRole('button', { name: '그만두기' }));
+      await user.click(
+        await screen.findByRole(
+          'button',
+          { name: '추천 그만두기' },
+          { timeout: CANCEL_BUTTON_TIMEOUT_MS },
+        ),
+      );
+      const dialog = await screen.findByRole('dialog', {
+        name: '추천을 그만둘까요?',
+      });
+      await user.click(
+        within(dialog).getByRole('button', { name: '그만두기' }),
+      );
 
-    await waitFor(() => {
-      expect(history.location.pathname).toBe('/recommendation');
-    });
-    expect(cancelRequests.count).toBe(1);
-    expect(
-      await screen.findByRole('button', { name: /^위치 서울 성동구/ }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '출근' })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
-    expect(
-      sessionStorage.getItem(RECOMMENDATION_FORM_DRAFT_STORAGE_KEY),
-    ).toBeNull();
-  });
+      await waitFor(() => {
+        expect(history.location.pathname).toBe('/recommendation');
+      });
+      expect(cancelRequests.count).toBe(1);
+      expect(
+        await screen.findByRole('button', { name: /^위치 서울 성동구/ }),
+      ).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: '출근' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      );
+      expect(
+        sessionStorage.getItem(RECOMMENDATION_FORM_DRAFT_STORAGE_KEY),
+      ).toBeNull();
+    },
+    LONG_TEST_TIMEOUT_MS,
+  );
 
-  test('계속 기다리기를 고르면 취소하지 않고 진행 화면에 남아야 한다.', async () => {
-    const user = userEvent.setup();
-    respondResult(createResult('processing'));
-    const cancelRequests = countCancelRequests();
-    const { history } = await renderAt(['/recommendation', PROGRESS_PATH]);
+  test(
+    '계속 기다리기를 고르면 취소하지 않고 진행 화면에 남아야 한다.',
+    async () => {
+      const user = userEvent.setup();
+      respondResult(createResult('processing'));
+      const cancelRequests = countCancelRequests();
+      const { history } = await renderAt(['/recommendation', PROGRESS_PATH]);
 
-    await user.click(
-      await screen.findByRole(
-        'button',
-        { name: '추천 그만두기' },
-        { timeout: 2000 },
-      ),
-    );
-    const dialog = await screen.findByRole('dialog', {
-      name: '추천을 그만둘까요?',
-    });
-    await user.click(
-      within(dialog).getByRole('button', { name: '계속 기다리기' }),
-    );
+      await user.click(
+        await screen.findByRole(
+          'button',
+          { name: '추천 그만두기' },
+          { timeout: CANCEL_BUTTON_TIMEOUT_MS },
+        ),
+      );
+      const dialog = await screen.findByRole('dialog', {
+        name: '추천을 그만둘까요?',
+      });
+      await user.click(
+        within(dialog).getByRole('button', { name: '계속 기다리기' }),
+      );
 
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    });
-    expect(history.location.pathname).toBe(PROGRESS_PATH);
-    expect(cancelRequests.count).toBe(0);
-  });
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      });
+      expect(history.location.pathname).toBe(PROGRESS_PATH);
+      expect(cancelRequests.count).toBe(0);
+    },
+    LONG_TEST_TIMEOUT_MS,
+  );
 });
 
 describe('추천 실패', () => {
@@ -738,46 +753,50 @@ describe('뒤로 가기', () => {
     });
   });
 
-  test('취소를 요청하는 중에 뒤로 가기를 눌러도 입력 화면에서 멈춰야 한다.', async () => {
-    const user = userEvent.setup();
-    savePending(0);
-    respondResult(createResult('processing'));
-    let cancelRequestCount = 0;
-    server.use(
-      http.post(
-        `/api/recommendation-sessions/${SESSION_ID}/cancel`,
-        async () => {
-          cancelRequestCount += 1;
-          await wait(300);
+  test(
+    '취소를 요청하는 중에 뒤로 가기를 눌러도 입력 화면에서 멈춰야 한다.',
+    async () => {
+      const user = userEvent.setup();
+      savePending(0);
+      respondResult(createResult('processing'));
+      let cancelRequestCount = 0;
+      server.use(
+        http.post(
+          `/api/recommendation-sessions/${SESSION_ID}/cancel`,
+          async () => {
+            cancelRequestCount += 1;
+            await wait(300);
 
-          return HttpResponse.json({
-            recommendation_session_id: SESSION_ID,
-            session_status_cd: 'canceled',
-          });
-        },
-      ),
-    );
-    await renderWithBrowserHistory();
+            return HttpResponse.json({
+              recommendation_session_id: SESSION_ID,
+              session_status_cd: 'canceled',
+            });
+          },
+        ),
+      );
+      await renderWithBrowserHistory();
 
-    await user.click(
-      await screen.findByRole(
-        'button',
-        { name: '추천 그만두기' },
-        { timeout: 2000 },
-      ),
-    );
-    await user.click(
-      within(await findDialog()).getByRole('button', { name: '그만두기' }),
-    );
-    window.history.back();
+      await user.click(
+        await screen.findByRole(
+          'button',
+          { name: '추천 그만두기' },
+          { timeout: CANCEL_BUTTON_TIMEOUT_MS },
+        ),
+      );
+      await user.click(
+        within(await findDialog()).getByRole('button', { name: '그만두기' }),
+      );
+      window.history.back();
 
-    expect(
-      await screen.findByRole('button', { name: /^위치 서울 성동구/ }),
-    ).toBeInTheDocument();
-    await wait(500);
-    expect(window.location.pathname).toBe('/recommendation');
-    expect(cancelRequestCount).toBe(1);
-  });
+      expect(
+        await screen.findByRole('button', { name: /^위치 서울 성동구/ }),
+      ).toBeInTheDocument();
+      await wait(500);
+      expect(window.location.pathname).toBe('/recommendation');
+      expect(cancelRequestCount).toBe(1);
+    },
+    LONG_TEST_TIMEOUT_MS,
+  );
 
   test('실패 안내가 떠 있을 때 뒤로 가기를 누르면 묻지 않고 세션을 취소한 뒤 입력 화면으로 돌아가야 한다.', async () => {
     savePending(Date.now() - 5000);
@@ -798,37 +817,41 @@ describe('뒤로 가기', () => {
     expect(cancelRequests.count).toBe(1);
   });
 
-  test('추천 그만두기 버튼으로 그만두면 진행 화면 기록을 지나 입력 화면으로 돌아가야 한다.', async () => {
-    const user = userEvent.setup();
-    savePending(0);
-    respondResult(createResult('processing'));
-    const cancelRequests = countCancelRequests();
-    await renderWithBrowserHistory();
+  test(
+    '추천 그만두기 버튼으로 그만두면 진행 화면 기록을 지나 입력 화면으로 돌아가야 한다.',
+    async () => {
+      const user = userEvent.setup();
+      savePending(0);
+      respondResult(createResult('processing'));
+      const cancelRequests = countCancelRequests();
+      await renderWithBrowserHistory();
 
-    await user.click(
-      await screen.findByRole(
-        'button',
-        { name: '추천 그만두기' },
-        { timeout: 2000 },
-      ),
-    );
-    await user.click(
-      within(await findDialog()).getByRole('button', { name: '그만두기' }),
-    );
+      await user.click(
+        await screen.findByRole(
+          'button',
+          { name: '추천 그만두기' },
+          { timeout: CANCEL_BUTTON_TIMEOUT_MS },
+        ),
+      );
+      await user.click(
+        within(await findDialog()).getByRole('button', { name: '그만두기' }),
+      );
 
-    expect(
-      await screen.findByRole('button', { name: /^위치 서울 성동구/ }),
-    ).toBeInTheDocument();
-    expect(window.location.pathname).toBe('/recommendation');
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(cancelRequests.count).toBe(1);
+      expect(
+        await screen.findByRole('button', { name: /^위치 서울 성동구/ }),
+      ).toBeInTheDocument();
+      expect(window.location.pathname).toBe('/recommendation');
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(cancelRequests.count).toBe(1);
 
-    window.history.back();
+      window.history.back();
 
-    await waitFor(() => {
-      expect(window.location.pathname).toBe('/my-info');
-    });
-  });
+      await waitFor(() => {
+        expect(window.location.pathname).toBe('/my-info');
+      });
+    },
+    LONG_TEST_TIMEOUT_MS,
+  );
 
   test('확인 창이 떠 있는 동안 앞으로 가기로 돌아오면 창을 닫고 계속 기다려야 한다.', async () => {
     respondResult(createResult('processing'));
