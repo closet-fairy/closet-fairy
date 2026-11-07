@@ -10,8 +10,8 @@ interface IconButtonProps {
   icon: IconName;
   'aria-label': string;
   variant?: IconButtonVariant;
-  // 48px 아이콘은 44px 버튼 영역을 넘어서 받지 않는다.
-  iconSize?: Exclude<IconSize, '2xl'>;
+  // 48px, 80px 아이콘은 44px 버튼 영역을 넘어서 받지 않는다.
+  iconSize?: Exclude<IconSize, '2xl' | '3xl'>;
   isDisabled?: boolean;
   onClick?: MouseEventHandler<HTMLButtonElement>;
   ref?: Ref<HTMLButtonElement>;
