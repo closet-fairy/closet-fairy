@@ -21,7 +21,7 @@ frontend/src/
 ├─ generated/     orval 생성물
 ├─ mocks/         MSW 핸들러
 ├─ styles/        디자인 토큰, 전역 스타일, 스타일 헬퍼
-├─ assets/        icons/, images/
+├─ assets/        icons/, images/, videos/
 ├─ constants/     두 화면 이상에서 쓰는 상수
 ├─ types/         두 화면 이상에서 쓰는 타입
 └─ utils/         도메인과 무관한 범용 함수

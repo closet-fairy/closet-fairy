@@ -30,6 +30,20 @@ vi.stubGlobal(
 // 라우터의 스크롤 복원이 부르는 window.scrollTo를 jsdom은 구현하지 않아 경고만 남기므로 막아 둔다.
 window.scrollTo = () => {};
 
+HTMLMediaElement.prototype.load = () => {};
+HTMLMediaElement.prototype.pause = () => {};
+HTMLMediaElement.prototype.play = () => Promise.resolve();
+window.matchMedia = (query: string) => ({
+  matches: false,
+  media: query,
+  onchange: null,
+  addEventListener: () => {},
+  removeEventListener: () => {},
+  addListener: () => {},
+  removeListener: () => {},
+  dispatchEvent: () => false,
+});
+
 // jsdom은 URL.createObjectURL을 구현하지 않아, 고른 사진의 미리보기 주소를 흉내 낸다.
 let objectUrlCount = 0;
 URL.createObjectURL = () => {
