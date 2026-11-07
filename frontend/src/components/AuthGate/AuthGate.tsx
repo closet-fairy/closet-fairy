@@ -7,10 +7,10 @@ import StatusView from '@/components/common/StatusView';
 import SplashBackground from '@/components/SplashBackground';
 import SplashScreen from '@/components/SplashScreen';
 import { LOAD_ERROR_MESSAGE } from '@/constants/loadErrorMessage';
-import useRouteStaticDataFlag from '@/hooks/useRouteStaticDataFlag';
 import type { AuthStatus } from '@/domains/auth/resolveAuthRedirect';
 import { resolveAuthRedirect } from '@/domains/auth/resolveAuthRedirect';
 import { useGetMeMembersMeGet } from '@/generated/endpoints/member/member';
+import useRouteStaticDataFlag from '@/hooks/useRouteStaticDataFlag';
 import * as S from './AuthGate.styled';
 
 interface AuthGateProps {

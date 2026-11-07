@@ -15,8 +15,6 @@ import {
   typography,
 } from '@/styles/tokens';
 
-const HEIGHT = SOCIAL_LOGIN_BUTTON_HEIGHT;
-
 const PRESSED_SCALE = 0.98;
 
 const LOGO_SIZE: Record<ProviderCd, number> = {
@@ -43,7 +41,7 @@ export const Button = styled.button<{ $provider: ProviderCd }>`
   align-items: center;
   justify-content: center;
   width: 100%;
-  min-height: ${HEIGHT}px;
+  min-height: ${SOCIAL_LOGIN_BUTTON_HEIGHT}px;
   padding: ${spacing[8]} ${spacing[20]};
   border-radius: ${radius.md};
   text-align: center;
