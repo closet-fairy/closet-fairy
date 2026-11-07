@@ -306,6 +306,10 @@ writeFileSync(
  *   wand: ${WAND_SIZE}px 요술봉 상자의 left, top (좌우 반전 전 상자 기준)
  *   tip: 좌우 반전한 요술봉의 별 끝 좌표
  */
+export const LAYOUT_BOX_SIZE = ${BOX_SIZE};
+export const LAYOUT_CLOTHES_SIZE = ${CLOTHES_SIZE};
+export const LAYOUT_WAND_SIZE = ${WAND_SIZE};
+
 export const CLOTHES_WAND_LAYOUTS = {
 ${body}
 } as const;

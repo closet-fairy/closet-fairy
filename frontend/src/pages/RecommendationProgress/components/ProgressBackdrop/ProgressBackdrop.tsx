@@ -24,7 +24,7 @@ const ProgressBackdrop = (props: ProgressBackdropProps) => {
   useEffect(() => {
     const video = videoRef.current;
 
-    if (video === null) {
+    if (!shouldPlayVideo || video === null) {
       return;
     }
 
@@ -63,7 +63,9 @@ const ProgressBackdrop = (props: ProgressBackdropProps) => {
             muted
             playsInline
             preload="auto"
+            tabIndex={-1}
             disablePictureInPicture
+            disableRemotePlayback
             onError={() => setIsVideoFailed(true)}
           />
         ) : (

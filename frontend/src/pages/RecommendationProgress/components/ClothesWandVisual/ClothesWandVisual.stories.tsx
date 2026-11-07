@@ -5,6 +5,7 @@ const meta = {
   component: ClothesWandVisual,
   parameters: {
     layout: 'centered',
+    docs: { story: { inline: false, height: '240px' } },
   },
 } satisfies Meta<typeof ClothesWandVisual>;
 

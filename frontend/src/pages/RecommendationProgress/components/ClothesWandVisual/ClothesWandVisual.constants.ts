@@ -1,4 +1,9 @@
 import type { IconName } from '@/assets/icons';
+import {
+  LAYOUT_BOX_SIZE,
+  LAYOUT_CLOTHES_SIZE,
+  LAYOUT_WAND_SIZE,
+} from './ClothesWandVisual.layout';
 
 export const CLOTHES_NAMES = [
   'apparel',
@@ -9,9 +14,10 @@ export const CLOTHES_NAMES = [
   'watch',
 ] as const satisfies readonly IconName[];
 
-export const VISUAL_BOX_SIZE = 190;
-export const CLOTHES_ICON_SIZE = 80;
-export const WAND_ICON_SIZE = 36;
+// 위치 표를 만들 때 쓴 크기이다. 바꾸려면 스크립트의 크기를 고치고 표를 다시 만든다.
+export const VISUAL_BOX_SIZE = LAYOUT_BOX_SIZE;
+export const CLOTHES_ICON_SIZE = LAYOUT_CLOTHES_SIZE;
+export const WAND_ICON_SIZE = LAYOUT_WAND_SIZE;
 // 요술봉 손잡이 끝. 좌우 반전 전 상자 기준이다.
 export const WAND_PIVOT = '12% 88%';
 

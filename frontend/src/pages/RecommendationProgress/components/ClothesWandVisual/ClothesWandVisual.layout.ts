@@ -5,6 +5,10 @@
  *   wand: 36px 요술봉 상자의 left, top (좌우 반전 전 상자 기준)
  *   tip: 좌우 반전한 요술봉의 별 끝 좌표
  */
+export const LAYOUT_BOX_SIZE = 190;
+export const LAYOUT_CLOTHES_SIZE = 80;
+export const LAYOUT_WAND_SIZE = 36;
+
 export const CLOTHES_WAND_LAYOUTS = {
   apparel: {
     clothes: { left: 48.85, top: 40.9 },
