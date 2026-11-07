@@ -1,5 +1,6 @@
 import Add from '@material-symbols/svg-400/outlined/add.svg?react';
 import AddAPhoto from '@material-symbols/svg-400/outlined/add_a_photo.svg?react';
+import Apparel from '@material-symbols/svg-400/outlined/apparel.svg?react';
 import ArrowBack from '@material-symbols/svg-400/outlined/arrow_back.svg?react';
 import ArrowForward from '@material-symbols/svg-400/outlined/arrow_forward.svg?react';
 import Block from '@material-symbols/svg-400/outlined/block.svg?react';
@@ -15,12 +16,14 @@ import ChevronRight from '@material-symbols/svg-400/outlined/chevron_right.svg?r
 import Close from '@material-symbols/svg-400/outlined/close.svg?react';
 import Cloud from '@material-symbols/svg-400/outlined/cloud.svg?react';
 import Delete from '@material-symbols/svg-400/outlined/delete.svg?react';
+import DryCleaning from '@material-symbols/svg-400/outlined/dry_cleaning.svg?react';
 import Edit from '@material-symbols/svg-400/outlined/edit.svg?react';
 import EditLocationAlt from '@material-symbols/svg-400/outlined/edit_location_alt.svg?react';
 import ErrorIcon from '@material-symbols/svg-400/outlined/error.svg?react';
 import ErrorFill from '@material-symbols/svg-400/outlined/error-fill.svg?react';
 import Event from '@material-symbols/svg-400/outlined/event.svg?react';
 import Exposure from '@material-symbols/svg-400/outlined/exposure.svg?react';
+import Eyeglasses from '@material-symbols/svg-400/outlined/eyeglasses.svg?react';
 import FitScreen from '@material-symbols/svg-400/outlined/fit_screen.svg?react';
 import HideImage from '@material-symbols/svg-400/outlined/hide_image.svg?react';
 import History from '@material-symbols/svg-400/outlined/history.svg?react';
@@ -52,14 +55,18 @@ import RotateRight from '@material-symbols/svg-400/outlined/rotate_right.svg?rea
 import Schedule from '@material-symbols/svg-400/outlined/schedule.svg?react';
 import Search from '@material-symbols/svg-400/outlined/search.svg?react';
 import SearchOff from '@material-symbols/svg-400/outlined/search_off.svg?react';
+import ShoppingBag from '@material-symbols/svg-400/outlined/shopping_bag.svg?react';
 import Star from '@material-symbols/svg-400/outlined/star.svg?react';
 import StarFill from '@material-symbols/svg-400/outlined/star-fill.svg?react';
 import StarShine from '@material-symbols/svg-400/outlined/star_shine.svg?react';
 import StarShineFill from '@material-symbols/svg-400/outlined/star_shine-fill.svg?react';
+import Steps from '@material-symbols/svg-400/outlined/steps.svg?react';
 import Styler from '@material-symbols/svg-400/outlined/styler.svg?react';
 import Sunny from '@material-symbols/svg-400/outlined/sunny.svg?react';
 import SyncProblem from '@material-symbols/svg-400/outlined/sync_problem.svg?react';
 import Undo from '@material-symbols/svg-400/outlined/undo.svg?react';
+import WandStars from '@material-symbols/svg-400/outlined/wand_stars.svg?react';
+import Watch from '@material-symbols/svg-400/outlined/watch.svg?react';
 import WeatherMix from '@material-symbols/svg-400/outlined/weather_mix.svg?react';
 import WeatherSnowy from '@material-symbols/svg-400/outlined/weather_snowy.svg?react';
 import ScrollText from './scroll_text.svg?react';
@@ -67,6 +74,7 @@ import ScrollText from './scroll_text.svg?react';
 export const icons = {
   add: Add,
   add_a_photo: AddAPhoto,
+  apparel: Apparel,
   arrow_back: ArrowBack,
   arrow_forward: ArrowForward,
   block: Block,
@@ -82,12 +90,14 @@ export const icons = {
   close: Close,
   cloud: Cloud,
   delete: Delete,
+  dry_cleaning: DryCleaning,
   edit: Edit,
   edit_location_alt: EditLocationAlt,
   error: ErrorIcon,
   'error-fill': ErrorFill,
   event: Event,
   exposure: Exposure,
+  eyeglasses: Eyeglasses,
   fit_screen: FitScreen,
   hide_image: HideImage,
   history: History,
@@ -120,14 +130,18 @@ export const icons = {
   scroll_text: ScrollText,
   search: Search,
   search_off: SearchOff,
+  shopping_bag: ShoppingBag,
   star: Star,
   'star-fill': StarFill,
   star_shine: StarShine,
   'star_shine-fill': StarShineFill,
+  steps: Steps,
   styler: Styler,
   sunny: Sunny,
   sync_problem: SyncProblem,
   undo: Undo,
+  wand_stars: WandStars,
+  watch: Watch,
   weather_mix: WeatherMix,
   weather_snowy: WeatherSnowy,
 } as const;

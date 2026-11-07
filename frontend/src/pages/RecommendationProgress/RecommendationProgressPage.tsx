@@ -36,31 +36,20 @@ import {
   writeSessionJson,
 } from '@/utils/sessionStorageJson';
 import waitForPopState from '@/utils/waitForPopState';
+import ClothesWandVisual from './components/ClothesWandVisual';
+import ProgressBackdrop from './components/ProgressBackdrop';
 import * as S from './RecommendationProgressPage.styled';
 
 type LeaveState = 'none' | 'canceling' | 'retrying' | 'leaving';
 
 const POLLING_INTERVAL_MS = 2000;
 const MIN_DISPLAY_MS = 1000;
-const CANCEL_BUTTON_DELAY_MS = 1000;
+const CANCEL_BUTTON_DELAY_MS = 3000;
 const POP_STATE_SETTLE_MS = 200;
 const POP_STATE_SETTLE_POLL_MS = 16;
 const DATE_CHANGED_MESSAGE = '날짜가 바뀌어 외출 시간을 다시 골라 주세요.';
 const NOT_FOUND_STATUS = 404;
 const INPUT_PATH = '/recommendation';
-
-const progressVisual = (
-  <svg width={190} height={190} viewBox="0 0 190 190" aria-hidden>
-    <circle
-      cx={95}
-      cy={95}
-      r={94}
-      fill="none"
-      stroke="currentColor"
-      strokeDasharray="4 4"
-    />
-  </svg>
-);
 
 const RecommendationProgressPage = () => {
   const { sessionId } = useParams({
@@ -455,31 +444,33 @@ const RecommendationProgressPage = () => {
 
     return (
       <>
-        <StatusView
-          title="추천 상태를 확인하지 못했어요"
-          description={isUnauthorizedError(error) ? undefined : error.message}
-          actions={
-            <>
-              {!isNotFound && (
+        <ProgressBackdrop>
+          <StatusView
+            title="추천 상태를 확인하지 못했어요"
+            description={isUnauthorizedError(error) ? undefined : error.message}
+            actions={
+              <>
+                {!isNotFound && (
+                  <Button
+                    isFullWidth
+                    isLoading={isFetching}
+                    onClick={() => void refetch()}
+                  >
+                    다시 시도
+                  </Button>
+                )}
                 <Button
+                  variant={isNotFound ? 'primary' : 'text'}
+                  size={isNotFound ? 'lg' : 'md'}
                   isFullWidth
-                  isLoading={isFetching}
-                  onClick={() => void refetch()}
+                  onClick={() => returnToInput()}
                 >
-                  다시 시도
+                  돌아가기
                 </Button>
-              )}
-              <Button
-                variant={isNotFound ? 'primary' : 'text'}
-                size={isNotFound ? 'lg' : 'md'}
-                isFullWidth
-                onClick={() => returnToInput()}
-              >
-                돌아가기
-              </Button>
-            </>
-          }
-        />
+              </>
+            }
+          />
+        </ProgressBackdrop>
         {cancelDialog}
       </>
     );
@@ -487,26 +478,28 @@ const RecommendationProgressPage = () => {
 
   return (
     <>
-      <StatusView
-        visual={progressVisual}
-        visualPlacement="bottom"
-        title="코디를 만들고 있어요"
-        description="잠시만 기다려 주세요..."
-        actions={
-          <S.CancelAction $isVisible={isCancelButtonVisible}>
-            <Button
-              ref={cancelButtonRef}
-              variant="text"
-              size="md"
-              isFullWidth
-              isDisabled={leaveState !== 'none'}
-              onClick={() => setIsCancelDialogOpen(true)}
-            >
-              추천 그만두기
-            </Button>
-          </S.CancelAction>
-        }
-      />
+      <ProgressBackdrop>
+        <StatusView
+          visual={<ClothesWandVisual />}
+          visualPlacement="bottom"
+          title="코디를 만들고 있어요"
+          description="잠시만 기다려 주세요..."
+          actions={
+            <S.CancelAction $isVisible={isCancelButtonVisible}>
+              <Button
+                ref={cancelButtonRef}
+                variant="text"
+                size="md"
+                isFullWidth
+                isDisabled={leaveState !== 'none'}
+                onClick={() => setIsCancelDialogOpen(true)}
+              >
+                추천 그만두기
+              </Button>
+            </S.CancelAction>
+          }
+        />
+      </ProgressBackdrop>
       {cancelDialog}
       <Dialog
         isOpen={isFailureDialogOpen}
