@@ -9,6 +9,6 @@ const searchSchema = z.object({
 
 export const Route = createFileRoute('/login')({
   validateSearch: searchSchema,
-  staticData: { isFullScreen: true },
+  staticData: { isFullScreen: true, hasSplashBackground: true },
   component: LoginPage,
 });

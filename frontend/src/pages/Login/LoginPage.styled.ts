@@ -1,5 +1,10 @@
 import styled from '@emotion/styled';
-import { bg, spacing } from '@/styles/tokens';
+import {
+  LOGIN_ACTIONS_BOTTOM_PADDING,
+  LOGIN_ACTIONS_GAP,
+  LOGIN_ACTIONS_HEIGHT,
+} from '@/constants/loginActions';
+import { spacing } from '@/styles/tokens';
 
 export const Container = styled.div`
   position: relative;
@@ -9,7 +14,6 @@ export const Container = styled.div`
   min-height: 100dvh;
   padding-top: env(safe-area-inset-top, 0px);
   padding-bottom: env(safe-area-inset-bottom, 0px);
-  background-color: ${bg.white};
 `;
 
 export const Banner = styled.div`
@@ -31,6 +35,7 @@ export const Actions = styled.div`
   display: flex;
   flex: none;
   flex-direction: column;
-  gap: ${spacing[10]};
-  padding: 0 ${spacing[24]} ${spacing[32]};
+  gap: ${LOGIN_ACTIONS_GAP};
+  min-height: ${LOGIN_ACTIONS_HEIGHT};
+  padding: 0 ${spacing[24]} ${LOGIN_ACTIONS_BOTTOM_PADDING};
 `;

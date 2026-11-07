@@ -15,11 +15,13 @@ export const palette = {
   gray900: '#17171a',
 
   warmGray100: '#f2f1ef',
+  warmGray200: '#e9e6e1',
 
   red100: '#fdeceb',
   red500: '#e5484d',
 
   dim: 'rgba(20, 20, 22, 0.4)',
+  dimSplash: 'rgba(20, 20, 22, 0.3)',
   veil: 'rgba(255, 255, 255, 0.78)',
   frost: 'rgba(255, 255, 255, 0.55)',
   frostStrong: 'rgba(255, 255, 255, 0.75)',

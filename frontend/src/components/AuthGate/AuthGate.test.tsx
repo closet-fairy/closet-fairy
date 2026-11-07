@@ -45,6 +45,29 @@ describe('로그인·온보딩 상태에 따른 이동', () => {
     expect(history.location.pathname).toBe('/login');
   });
 
+  test('로딩에서 로그인 화면으로 넘어가도 배경 영상이 다시 시작되지 않아야 한다.', async () => {
+    setMockMemberStatus('signedOut');
+    await renderAt('/closet');
+
+    const [loadingVideo] = await screen.findAllByTestId('splash-video');
+
+    await screen.findByRole('button', { name: 'Google로 로그인' });
+
+    expect(screen.getAllByTestId('splash-video')[0]).toBe(loadingVideo);
+  });
+
+  test('온보딩 화면으로 보낼 때도 로딩 배경이 유지되다가 온보딩에서는 사라져야 한다.', async () => {
+    setMockMemberStatus('needsOnboarding');
+    await renderAt('/closet');
+
+    const [loadingVideo] = await screen.findAllByTestId('splash-video');
+
+    await screen.findByRole('heading', { name: '출생연도를 알려 주세요' });
+
+    expect(loadingVideo).not.toBeInTheDocument();
+    expect(screen.queryByTestId('splash-video')).not.toBeInTheDocument();
+  });
+
   test('처음부터 로그인하지 않았으면 세션 만료 안내를 띄우지 않아야 한다.', async () => {
     setMockMemberStatus('signedOut');
     await renderAt('/my-info');

@@ -1,6 +1,7 @@
 import { css } from '@emotion/react';
 import type { SerializedStyles } from '@emotion/react';
 import styled from '@emotion/styled';
+import { SOCIAL_LOGIN_BUTTON_HEIGHT } from '@/constants/loginActions';
 import type { ProviderCd } from '@/domains/member/memberSettingOptions';
 import {
   bg,
@@ -13,8 +14,6 @@ import {
   spacing,
   typography,
 } from '@/styles/tokens';
-
-const HEIGHT = 54;
 
 const PRESSED_SCALE = 0.98;
 
@@ -42,7 +41,7 @@ export const Button = styled.button<{ $provider: ProviderCd }>`
   align-items: center;
   justify-content: center;
   width: 100%;
-  min-height: ${HEIGHT}px;
+  min-height: ${SOCIAL_LOGIN_BUTTON_HEIGHT}px;
   padding: ${spacing[8]} ${spacing[20]};
   border-radius: ${radius.md};
   text-align: center;

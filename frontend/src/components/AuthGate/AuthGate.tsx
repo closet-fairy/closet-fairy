@@ -4,11 +4,13 @@ import type { ReactNode } from 'react';
 import { isUnauthorizedError, markSessionActive } from '@/apis/authSession';
 import Button from '@/components/common/Button';
 import StatusView from '@/components/common/StatusView';
+import SplashBackground from '@/components/SplashBackground';
 import SplashScreen from '@/components/SplashScreen';
 import { LOAD_ERROR_MESSAGE } from '@/constants/loadErrorMessage';
 import type { AuthStatus } from '@/domains/auth/resolveAuthRedirect';
 import { resolveAuthRedirect } from '@/domains/auth/resolveAuthRedirect';
 import { useGetMeMembersMeGet } from '@/generated/endpoints/member/member';
+import useRouteStaticDataFlag from '@/hooks/useRouteStaticDataFlag';
 import * as S from './AuthGate.styled';
 
 interface AuthGateProps {
@@ -21,6 +23,7 @@ const AuthGate = (props: AuthGateProps) => {
   const renderedPathname = useRouterState({
     select: (state) => (state.resolvedLocation ?? state.location).pathname,
   });
+  const hasSplashBackground = useRouteStaticDataFlag('hasSplashBackground');
   const { data: me, error, refetch, isFetching } = useGetMeMembersMeGet();
 
   useEffect(() => {
@@ -30,7 +33,11 @@ const AuthGate = (props: AuthGateProps) => {
   }, [me]);
 
   if (me === undefined && error === null) {
-    return <SplashScreen />;
+    return (
+      <SplashBackground>
+        <SplashScreen />
+      </SplashBackground>
+    );
   }
 
   if (me === undefined && !isUnauthorizedError(error)) {
@@ -62,15 +69,28 @@ const AuthGate = (props: AuthGateProps) => {
   const redirectPath = resolveAuthRedirect(pathname, status);
 
   if (redirectPath !== null) {
-    return <Navigate to={redirectPath} replace />;
+    return (
+      <SplashBackground>
+        <SplashScreen />
+        <Navigate to={redirectPath} replace />
+      </SplashBackground>
+    );
   }
 
   // 이동이 끝날 때까지 화면에는 이전 주소의 라우트가 남아 있어, 그대로 열면 볼 수 없는 화면이 잠깐 보인다.
   if (resolveAuthRedirect(renderedPathname, status) !== null) {
-    return <SplashScreen />;
+    return (
+      <SplashBackground>
+        <SplashScreen />
+      </SplashBackground>
+    );
   }
 
-  return children;
+  return hasSplashBackground ? (
+    <SplashBackground>{children}</SplashBackground>
+  ) : (
+    children
+  );
 };
 
 export default AuthGate;

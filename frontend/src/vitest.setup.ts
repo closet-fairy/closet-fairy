@@ -30,6 +30,22 @@ vi.stubGlobal(
 // 라우터의 스크롤 복원이 부르는 window.scrollTo를 jsdom은 구현하지 않아 경고만 남기므로 막아 둔다.
 window.scrollTo = () => {};
 
+// jsdom은 미디어 재생을 구현하지 않아 load와 pause는 비워 두고 play는 항상 성공하게 한다. playing, ended 같은 이벤트는 오지 않으므로 필요한 테스트가 직접 보낸다.
+HTMLMediaElement.prototype.load = () => {};
+HTMLMediaElement.prototype.pause = () => {};
+HTMLMediaElement.prototype.play = () => Promise.resolve();
+// jsdom에는 matchMedia가 없어서, 어떤 조건에도 일치하지 않는다고 답하는 구현을 둔다.
+window.matchMedia = (query: string) => ({
+  matches: false,
+  media: query,
+  onchange: null,
+  addEventListener: () => {},
+  removeEventListener: () => {},
+  addListener: () => {},
+  removeListener: () => {},
+  dispatchEvent: () => false,
+});
+
 // jsdom은 URL.createObjectURL을 구현하지 않아, 고른 사진의 미리보기 주소를 흉내 낸다.
 let objectUrlCount = 0;
 URL.createObjectURL = () => {
