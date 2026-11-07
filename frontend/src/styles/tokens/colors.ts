@@ -13,6 +13,7 @@ const colorValues = {
 
   'bg-white': palette.white,
   'bg-dim': palette.dim,
+  'bg-dim-splash': palette.dimSplash,
   'bg-veil': palette.veil,
   'bg-neutral-strong': palette.gray900,
   'bg-neutral-default': palette.gray150,
@@ -21,6 +22,7 @@ const colorValues = {
   'bg-neutral-pale': palette.gray25,
   'bg-error-light': palette.red100,
   'bg-outside': palette.warmGray100,
+  'bg-splash-fallback': palette.warmGray200,
   'bg-card-floating': palette.frost,
   'bg-card-floating-far': palette.frostStrong,
   'bg-fog-dense': palette.fogDense,
@@ -81,6 +83,7 @@ export const fg = {
 export const bg = {
   white: colorVar('bg-white'),
   dim: colorVar('bg-dim'),
+  dimSplash: colorVar('bg-dim-splash'),
   veil: colorVar('bg-veil'),
   neutral: {
     strong: colorVar('bg-neutral-strong'),
@@ -93,6 +96,7 @@ export const bg = {
     light: colorVar('bg-error-light'),
   },
   outside: colorVar('bg-outside'),
+  splashFallback: colorVar('bg-splash-fallback'),
   card: {
     floating: colorVar('bg-card-floating'),
     floatingFar: colorVar('bg-card-floating-far'),
