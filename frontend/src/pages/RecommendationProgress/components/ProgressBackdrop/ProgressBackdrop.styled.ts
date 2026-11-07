@@ -32,7 +32,7 @@ export const Media = styled.div<{ $isPaused: boolean }>`
   z-index: 0;
   overflow: hidden;
   pointer-events: none;
-  animation: ${fadeIn} ${duration.verySlow} ${easing.enter}
+  animation: ${fadeIn} ${duration.verySlow} ${easing.inOut}
     ${VIDEO_FADE_DELAY_MS}ms both;
   animation-play-state: ${({ $isPaused }) =>
     $isPaused ? 'paused' : 'running'};
