@@ -1,5 +1,9 @@
 import styled from '@emotion/styled';
-import { LOGIN_ACTIONS_HEIGHT } from '@/constants/loginActionsHeight';
+import {
+  LOGIN_ACTIONS_BOTTOM_PADDING,
+  LOGIN_ACTIONS_GAP,
+  LOGIN_ACTIONS_HEIGHT,
+} from '@/constants/loginActions';
 import { spacing } from '@/styles/tokens';
 
 export const Container = styled.div`
@@ -31,7 +35,7 @@ export const Actions = styled.div`
   display: flex;
   flex: none;
   flex-direction: column;
-  gap: ${spacing[10]};
-  min-height: ${LOGIN_ACTIONS_HEIGHT}px;
-  padding: 0 ${spacing[24]} ${spacing[32]};
+  gap: ${LOGIN_ACTIONS_GAP};
+  min-height: ${LOGIN_ACTIONS_HEIGHT};
+  padding: 0 ${spacing[24]} ${LOGIN_ACTIONS_BOTTOM_PADDING};
 `;

@@ -1,9 +1,4 @@
-import {
-  Navigate,
-  useLocation,
-  useMatches,
-  useRouterState,
-} from '@tanstack/react-router';
+import { Navigate, useLocation, useRouterState } from '@tanstack/react-router';
 import { useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { isUnauthorizedError, markSessionActive } from '@/apis/authSession';
@@ -12,6 +7,7 @@ import StatusView from '@/components/common/StatusView';
 import SplashBackground from '@/components/SplashBackground';
 import SplashScreen from '@/components/SplashScreen';
 import { LOAD_ERROR_MESSAGE } from '@/constants/loadErrorMessage';
+import useRouteStaticDataFlag from '@/hooks/useRouteStaticDataFlag';
 import type { AuthStatus } from '@/domains/auth/resolveAuthRedirect';
 import { resolveAuthRedirect } from '@/domains/auth/resolveAuthRedirect';
 import { useGetMeMembersMeGet } from '@/generated/endpoints/member/member';
@@ -27,13 +23,7 @@ const AuthGate = (props: AuthGateProps) => {
   const renderedPathname = useRouterState({
     select: (state) => (state.resolvedLocation ?? state.location).pathname,
   });
-  const hasSplashBackground = useMatches({
-    select: (matches) =>
-      !matches.some(
-        (match) => match._notFound === true || match.paramsError !== undefined,
-      ) &&
-      matches.some((match) => match.staticData.hasSplashBackground === true),
-  });
+  const hasSplashBackground = useRouteStaticDataFlag('hasSplashBackground');
   const { data: me, error, refetch, isFetching } = useGetMeMembersMeGet();
 
   useEffect(() => {

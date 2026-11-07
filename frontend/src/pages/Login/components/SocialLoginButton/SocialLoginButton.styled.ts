@@ -1,6 +1,7 @@
 import { css } from '@emotion/react';
 import type { SerializedStyles } from '@emotion/react';
 import styled from '@emotion/styled';
+import { SOCIAL_LOGIN_BUTTON_HEIGHT } from '@/constants/loginActions';
 import type { ProviderCd } from '@/domains/member/memberSettingOptions';
 import {
   bg,
@@ -14,7 +15,7 @@ import {
   typography,
 } from '@/styles/tokens';
 
-const HEIGHT = 54;
+const HEIGHT = SOCIAL_LOGIN_BUTTON_HEIGHT;
 
 const PRESSED_SCALE = 0.98;
 

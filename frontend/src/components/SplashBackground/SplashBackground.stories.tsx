@@ -28,15 +28,20 @@ export const Default: Story = {};
 
 export const ReducedMotion: Story = {
   beforeEach: () => {
-    const originalMatchMedia = window.matchMedia.bind(window);
+    const original = Object.getOwnPropertyDescriptor(
+      MediaQueryList.prototype,
+      'matches',
+    );
 
-    window.matchMedia = (query: string) => ({
-      ...originalMatchMedia(query),
-      matches: true,
+    Object.defineProperty(MediaQueryList.prototype, 'matches', {
+      get: () => true,
+      configurable: true,
     });
 
     return () => {
-      window.matchMedia = originalMatchMedia;
+      if (original !== undefined) {
+        Object.defineProperty(MediaQueryList.prototype, 'matches', original);
+      }
     };
   },
 };
