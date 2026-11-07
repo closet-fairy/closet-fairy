@@ -9,8 +9,6 @@ export const CLOTHES_NAMES = [
   'watch',
 ] as const satisfies readonly IconName[];
 
-export type ClothesName = (typeof CLOTHES_NAMES)[number];
-
 export const VISUAL_BOX_SIZE = 190;
 export const CLOTHES_ICON_SIZE = 80;
 export const WAND_ICON_SIZE = 36;
@@ -43,5 +41,5 @@ export const DOT_NEAR_DISTANCE = 18;
 export const DOT_FAR_DISTANCE = 24;
 export const DOT_END_SCALE = 0.4;
 
-// 한 프레임이 이보다 오래 걸렸다면 멈춰 있던 시간으로 보고 애니메이션 시계에 더하지 않는다.
+// 한 프레임이 이보다 오래 걸렸다면 멈춰 있던 것으로 보고 이 값까지만 애니메이션 시계에 더한다.
 export const MAX_FRAME_GAP_MS = 100;

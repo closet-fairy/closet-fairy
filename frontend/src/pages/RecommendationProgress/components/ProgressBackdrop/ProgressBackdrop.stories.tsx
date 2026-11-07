@@ -5,9 +5,6 @@ import ProgressBackdrop from './ProgressBackdrop';
 
 const meta = {
   component: ProgressBackdrop,
-  parameters: {
-    layout: 'fullscreen',
-  },
   argTypes: {
     children: {
       description:
@@ -15,13 +12,6 @@ const meta = {
       control: false,
     },
   },
-} satisfies Meta<typeof ProgressBackdrop>;
-
-export default meta;
-
-type Story = StoryObj<typeof meta>;
-
-export const Default: Story = {
   args: {
     children: (
       <StatusView
@@ -31,5 +21,70 @@ export const Default: Story = {
         description="잠시만 기다려 주세요..."
       />
     ),
+  },
+  parameters: {
+    layout: 'fullscreen',
+    docs: { story: { inline: false, height: '600px' } },
+  },
+} satisfies Meta<typeof ProgressBackdrop>;
+
+export default meta;
+
+type Story = StoryObj<typeof meta>;
+
+export const Default: Story = {};
+
+export const ReducedMotion: Story = {
+  beforeEach: () => {
+    const original = Object.getOwnPropertyDescriptor(
+      MediaQueryList.prototype,
+      'matches',
+    );
+
+    Object.defineProperty(MediaQueryList.prototype, 'matches', {
+      get: () => true,
+      configurable: true,
+    });
+
+    return () => {
+      if (original !== undefined) {
+        Object.defineProperty(MediaQueryList.prototype, 'matches', original);
+      }
+    };
+  },
+};
+
+export const DataSaver: Story = {
+  beforeEach: () => {
+    Object.defineProperty(navigator, 'connection', {
+      value: { saveData: true },
+      configurable: true,
+    });
+
+    return () => {
+      Reflect.deleteProperty(navigator, 'connection');
+    };
+  },
+};
+
+export const AutoplayBlocked: Story = {
+  beforeEach: () => {
+    const original = Object.getOwnPropertyDescriptor(
+      HTMLMediaElement.prototype,
+      'play',
+    );
+
+    Object.defineProperty(HTMLMediaElement.prototype, 'play', {
+      value: () =>
+        Promise.reject(new DOMException('blocked', 'NotAllowedError')),
+      configurable: true,
+      writable: true,
+    });
+
+    return () => {
+      if (original !== undefined) {
+        Object.defineProperty(HTMLMediaElement.prototype, 'play', original);
+      }
+    };
   },
 };
