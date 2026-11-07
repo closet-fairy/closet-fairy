@@ -51,6 +51,7 @@ export const opacity = {
   disabled: 0.4,
   muted: 0.55,
   faint: 0.25,
+  progressVideo: 0.7,
 } as const;
 
 export const zIndex = {

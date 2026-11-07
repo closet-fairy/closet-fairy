@@ -2,6 +2,7 @@ export const duration = {
   fast: '150ms',
   normal: '200ms',
   slow: '300ms',
+  verySlow: '1000ms',
 } as const;
 
 export const easing = {
