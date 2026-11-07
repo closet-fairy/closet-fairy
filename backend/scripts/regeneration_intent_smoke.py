@@ -21,8 +21,11 @@ from app.core.config import get_settings  # noqa: E402
 from app.core.logging import setup_logging  # noqa: E402
 from app.services.llm import create_llm_client  # noqa: E402
 from app.services.prompt import regeneration_intent as intent_prompt  # noqa: E402
-from app.services.prompt.regeneration_intent import RegenerationIntentOutput  # noqa: E402
-from app.services.regeneration_intent import parse_regeneration_intent  # noqa: E402
+from app.services.regeneration_intent import (  # noqa: E402
+    build_ok_intent,
+    find_unclear_reason,
+    parse_regeneration_intent,
+)
 
 SCENARIOS: list[tuple[str, dict]] = [
     ("좀 더 캐주얼하게", {"status": "ok", "preferred_styles": ["casual"]}),
@@ -57,29 +60,18 @@ SCENARIOS: list[tuple[str, dict]] = [
     ("좀 내추럴하게", {"status": "ok"}),
     ("꾸안꾸 느낌으로", {"status": "ok"}),
     ("너무 차려입은 것 같아", {"status": "ok", "avoided_styles": []}),
-    ("격식 있게", {"status": "ok"}),
-    ("단정한 느낌으로", {"status": "ok"}),
+    ("격식 있게", {"status": "ok", "avoided_styles": []}),
+    ("단정한 느낌으로", {"status": "ok", "avoided_styles": []}),
     ("알아서 예쁘게", {"status": "unclear"}),
     ("더 좋게", {"status": "unclear"}),
     ("내일 날씨 어때?", {"status": "unclear"}),
 ]
 
 
-def describe_unclear_cause(raw: RegenerationIntentOutput) -> str:
-    if not (
-        raw.preferred_styles
-        or raw.avoided_styles
-        or raw.preferred_colors
-        or raw.avoided_colors
-        or raw.replace_items
-        or raw.clothing_warmth
-    ):
-        return "칸이 모두 비어 unclear로 바뀜"
-    if set(raw.preferred_styles) & set(raw.avoided_styles) or set(raw.preferred_colors) & set(
-        raw.avoided_colors
-    ):
-        return "같은 값이 선호·기피에 함께 있어 unclear로 바뀜"
-    return "unclear로 바뀜"
+UNCLEAR_REASON_TEXT = {
+    "empty": "칸이 모두 비어 unclear로 바뀜",
+    "contradictory": "같은 값이 선호·기피에 함께 있어 unclear로 바뀜",
+}
 
 
 async def main(prompt_version: str | None) -> int:
@@ -109,8 +101,10 @@ async def main(prompt_version: str | None) -> int:
             if diff:
                 print(f"  기대: {json.dumps(expected, ensure_ascii=False)}")
             raw = raw_outputs[-1]
-            if raw.status != result["status"]:
-                print(f"  LLM status: {raw.status} ({describe_unclear_cause(raw)})")
+            if raw.status == "ok" and result["status"] == "unclear":
+                reason = find_unclear_reason(build_ok_intent(raw))
+                cause = UNCLEAR_REASON_TEXT.get(reason, f"unclear로 바뀜: {reason}")
+                print(f"  LLM status: ok ({cause})")
             dropped = [
                 item.item_name
                 for item in raw.replace_items
