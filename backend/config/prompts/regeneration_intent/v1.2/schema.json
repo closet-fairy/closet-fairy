@@ -1,0 +1,177 @@
+{
+  "$defs": {
+    "ReplaceItem": {
+      "type": "object",
+      "title": "ReplaceItem",
+      "properties": {
+        "slot": {
+          "type": "string",
+          "enum": [
+            "outer",
+            "top",
+            "bottom",
+            "shoes",
+            "socks",
+            "accessories"
+          ],
+          "title": "Slot"
+        },
+        "item_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Item Name"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "slot",
+        "item_name"
+      ]
+    }
+  },
+  "type": "object",
+  "title": "RegenerationIntentOutput",
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": [
+        "ok",
+        "unclear",
+        "harmful"
+      ],
+      "title": "Status"
+    },
+    "preferred_styles": {
+      "type": "array",
+      "title": "Preferred Styles",
+      "items": {
+        "type": "string",
+        "enum": [
+          "minimal",
+          "casual",
+          "street",
+          "classic",
+          "formal",
+          "sporty",
+          "romantic",
+          "vintage",
+          "bohemian",
+          "preppy",
+          "chic",
+          "unique",
+          "feminine"
+        ]
+      }
+    },
+    "avoided_styles": {
+      "type": "array",
+      "title": "Avoided Styles",
+      "items": {
+        "type": "string",
+        "enum": [
+          "minimal",
+          "casual",
+          "street",
+          "classic",
+          "formal",
+          "sporty",
+          "romantic",
+          "vintage",
+          "bohemian",
+          "preppy",
+          "chic",
+          "unique",
+          "feminine"
+        ]
+      }
+    },
+    "preferred_colors": {
+      "type": "array",
+      "title": "Preferred Colors",
+      "items": {
+        "type": "string",
+        "enum": [
+          "black",
+          "white",
+          "gray",
+          "beige",
+          "brown",
+          "navy",
+          "blue",
+          "sky_blue",
+          "green",
+          "khaki",
+          "yellow",
+          "orange",
+          "red",
+          "pink",
+          "burgundy",
+          "purple"
+        ]
+      }
+    },
+    "avoided_colors": {
+      "type": "array",
+      "title": "Avoided Colors",
+      "items": {
+        "type": "string",
+        "enum": [
+          "black",
+          "white",
+          "gray",
+          "beige",
+          "brown",
+          "navy",
+          "blue",
+          "sky_blue",
+          "green",
+          "khaki",
+          "yellow",
+          "orange",
+          "red",
+          "pink",
+          "burgundy",
+          "purple"
+        ]
+      }
+    },
+    "replace_items": {
+      "type": "array",
+      "title": "Replace Items",
+      "items": {
+        "$ref": "#/$defs/ReplaceItem"
+      }
+    },
+    "clothing_warmth": {
+      "anyOf": [
+        {
+          "type": "string",
+          "enum": [
+            "lighter",
+            "warmer"
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Clothing Warmth"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "status",
+    "preferred_styles",
+    "avoided_styles",
+    "preferred_colors",
+    "avoided_colors",
+    "replace_items",
+    "clothing_warmth"
+  ]
+}

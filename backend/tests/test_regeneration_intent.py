@@ -14,6 +14,7 @@ from app.services.prompt.regeneration_intent import (
 from app.services.regeneration_intent import (
     RegenerationIntent,
     clean_item_name,
+    find_unclear_reason,
     parse_regeneration_intent,
     to_regeneration_intent,
 )
@@ -75,6 +76,23 @@ def test_empty_ok_output_is_unclear():
 )
 def test_same_value_in_preferred_and_avoided_is_unclear(fields):
     assert to_regeneration_intent(output(**fields)) == RegenerationIntent(status="unclear")
+
+
+@pytest.mark.parametrize(
+    ("intent", "expected"),
+    [
+        (RegenerationIntent(status="ok"), "empty"),
+        (
+            RegenerationIntent(
+                status="ok", preferred_styles=("casual",), avoided_styles=("casual",)
+            ),
+            "contradictory",
+        ),
+        (RegenerationIntent(status="ok", preferred_styles=("casual",)), None),
+    ],
+)
+def test_find_unclear_reason(intent, expected):
+    assert find_unclear_reason(intent) == expected
 
 
 @pytest.mark.parametrize("status", ["unclear", "harmful"])
@@ -211,7 +229,7 @@ async def test_call_config_and_prompt_are_passed():
     kwargs = llm.call_structured.await_args.kwargs
     config: LLMCallConfig = llm.call_structured.await_args.args[0]
     assert config.call_name == "regeneration_intent"
-    assert config.prompt_version == "regeneration_intent/v1.1"
+    assert config.prompt_version == "regeneration_intent/v1.2"
     assert config.temperature == 0.0
     assert config.model == get_settings().LLM_INTENT_MODEL
     assert config.timeout_s == get_settings().REGENERATION_INTENT_TIMEOUT_S

@@ -2,12 +2,14 @@
 
 backend/ 폴더에서 실행한다:
     python scripts/regeneration_intent_smoke.py
+    python scripts/regeneration_intent_smoke.py --prompt-version v1.1  # 이전 버전과 비교
 .env의 ANTHROPIC_API_KEY가 필요하다.
 기대한 값과 다르면 exit 1로 끝난다. 기대에 적지 않은 칸은 비교하지 않는다.
 """
 
 from __future__ import annotations
 
+import argparse
 import asyncio
 import json
 import sys
@@ -18,7 +20,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from app.core.config import get_settings  # noqa: E402
 from app.core.logging import setup_logging  # noqa: E402
 from app.services.llm import create_llm_client  # noqa: E402
-from app.services.regeneration_intent import parse_regeneration_intent  # noqa: E402
+from app.services.prompt import regeneration_intent as intent_prompt  # noqa: E402
+from app.services.regeneration_intent import (  # noqa: E402
+    build_ok_intent,
+    find_unclear_reason,
+    parse_regeneration_intent,
+)
 
 SCENARIOS: list[tuple[str, dict]] = [
     ("좀 더 캐주얼하게", {"status": "ok", "preferred_styles": ["casual"]}),
@@ -44,12 +51,35 @@ SCENARIOS: list[tuple[str, dict]] = [
     ("깔끔하게", {"status": "ok"}),
     ("더 편하게", {"status": "ok", "preferred_styles": ["casual"]}),
     ("더 밝게", {"status": "ok", "avoided_colors": []}),
+    ("좀 더 자연스럽게", {"status": "ok", "avoided_styles": []}),
+    ("편안한 느낌으로", {"status": "ok", "preferred_styles": ["casual"]}),
+    (
+        "덜 차려입은 느낌으로",
+        {"status": "ok", "preferred_styles": ["casual"], "avoided_styles": []},
+    ),
+    ("좀 내추럴하게", {"status": "ok"}),
+    ("꾸안꾸 느낌으로", {"status": "ok"}),
+    ("너무 차려입은 것 같아", {"status": "ok", "avoided_styles": []}),
+    ("격식 있게", {"status": "ok", "avoided_styles": []}),
+    ("단정한 느낌으로", {"status": "ok", "avoided_styles": []}),
+    ("알아서 예쁘게", {"status": "unclear"}),
+    ("더 좋게", {"status": "unclear"}),
+    ("내일 날씨 어때?", {"status": "unclear"}),
 ]
 
 
-async def main() -> int:
+UNCLEAR_REASON_TEXT = {
+    "empty": "칸이 모두 비어 unclear로 바뀜",
+    "contradictory": "같은 값이 선호·기피에 함께 있어 unclear로 바뀜",
+}
+
+
+async def main(prompt_version: str | None) -> int:
     setup_logging()
+    if prompt_version:
+        intent_prompt.PROMPT_VERSION = prompt_version
     print(f"model: {get_settings().LLM_INTENT_MODEL}")
+    print(f"prompt: {intent_prompt.PROMPT_NAME}/{intent_prompt.PROMPT_VERSION}")
     llm = create_llm_client(get_settings())
     raw_outputs = []
     call_structured = llm.call_structured
@@ -70,9 +100,14 @@ async def main() -> int:
             print(f"  결과: {json.dumps(result, ensure_ascii=False)}")
             if diff:
                 print(f"  기대: {json.dumps(expected, ensure_ascii=False)}")
+            raw = raw_outputs[-1]
+            if raw.status == "ok" and result["status"] == "unclear":
+                reason = find_unclear_reason(build_ok_intent(raw))
+                cause = UNCLEAR_REASON_TEXT.get(reason, f"unclear로 바뀜: {reason}")
+                print(f"  LLM status: ok ({cause})")
             dropped = [
                 item.item_name
-                for item in raw_outputs[-1].replace_items
+                for item in raw.replace_items
                 if item.item_name is not None and result["replace_items"].get(item.slot) is None
             ]
             if dropped:
@@ -84,4 +119,7 @@ async def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(asyncio.run(main()))
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--prompt-version", help="예: v1.1. 생략하면 코드의 PROMPT_VERSION")
+    args = parser.parse_args()
+    sys.exit(asyncio.run(main(args.prompt_version)))

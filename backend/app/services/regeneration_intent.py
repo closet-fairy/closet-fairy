@@ -1,7 +1,7 @@
 """재추천 요청 문장을 선호·기피·슬롯 교체·체감 방향으로 구조화한다 (#83, FR-REF-04~06)."""
 
 import re
-from typing import Any
+from typing import Any, Literal
 
 import pydantic
 
@@ -73,7 +73,13 @@ async def parse_regeneration_intent(llm: LLMClient, request_text: str) -> Regene
 def to_regeneration_intent(output: RegenerationIntentOutput) -> RegenerationIntent:
     if output.status != "ok":
         return RegenerationIntent(status=output.status)
+    intent = build_ok_intent(output)
+    if find_unclear_reason(intent) is not None:
+        return RegenerationIntent(status="unclear")
+    return intent
 
+
+def build_ok_intent(output: RegenerationIntentOutput) -> RegenerationIntent:
     replace_items: dict[CategoryCd, str | None] = {}
     for item in output.replace_items:
         name = clean_item_name(item.item_name)
@@ -81,7 +87,7 @@ def to_regeneration_intent(output: RegenerationIntentOutput) -> RegenerationInte
             continue
         replace_items[item.slot] = name
 
-    intent = RegenerationIntent(
+    return RegenerationIntent(
         status="ok",
         preferred_styles=tuple(dict.fromkeys(output.preferred_styles)),
         avoided_styles=tuple(dict.fromkeys(output.avoided_styles)),
@@ -90,9 +96,14 @@ def to_regeneration_intent(output: RegenerationIntentOutput) -> RegenerationInte
         replace_items=replace_items,
         clothing_warmth=output.clothing_warmth,
     )
-    if _is_empty(intent) or _is_contradictory(intent):
-        return RegenerationIntent(status="unclear")
-    return intent
+
+
+def find_unclear_reason(intent: RegenerationIntent) -> Literal["empty", "contradictory"] | None:
+    if _is_empty(intent):
+        return "empty"
+    if _is_contradictory(intent):
+        return "contradictory"
+    return None
 
 
 def clean_item_name(value: str | None) -> str | None:
