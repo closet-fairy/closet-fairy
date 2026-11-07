@@ -30,6 +30,10 @@ afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
   Reflect.deleteProperty(navigator, 'connection');
+  Reflect.deleteProperty(
+    HTMLVideoElement.prototype,
+    'requestVideoFrameCallback',
+  );
 });
 
 describe('영상 배경', () => {
@@ -155,6 +159,39 @@ describe('영상 배경', () => {
 
     expect(play).toHaveBeenCalledTimes(2);
     expect(play.mock.contexts[1]).toBe(first);
+  });
+
+  test('다음 영상 준비가 밀린 채 영상이 끝나도 그 자리에서 다음 영상을 받아 재생해야 한다.', () => {
+    Object.defineProperty(
+      HTMLVideoElement.prototype,
+      'requestVideoFrameCallback',
+      {
+        value: () => 0,
+        configurable: true,
+      },
+    );
+    const { first, second } = renderBackground();
+
+    fire(first, 'playing');
+
+    expect(second).not.toHaveAttribute('src');
+
+    fire(first, 'ended');
+
+    expect(second).toHaveAttribute('src', SPLASH_VIDEO_URLS[1]);
+  });
+
+  test('미리 받던 영상이 실패하면 비워 두었다가 차례가 올 때 다시 받아야 한다.', () => {
+    const { first, second } = renderBackground();
+
+    fire(first, 'playing');
+    fire(second, 'error');
+
+    expect(second).not.toHaveAttribute('src');
+
+    fire(first, 'ended');
+
+    expect(second).toHaveAttribute('src', SPLASH_VIDEO_URLS[1]);
   });
 
   test('재생 중인 영상을 불러오지 못하면 영상이 보이지 않아야 한다.', () => {

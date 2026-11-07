@@ -90,8 +90,15 @@ const useSplashVideoLoop = (sources: readonly string[], isEnabled: boolean) => {
     const handleEnded = (slot: number) => {
       if (slot !== activeSlot) return;
 
-      activeSlot = 1 - slot;
-      activeClip = getClipAfter(activeClip);
+      const nextSlot = 1 - slot;
+      const nextClip = getClipAfter(activeClip);
+
+      if (videos[nextSlot].getAttribute('src') !== sources[nextClip]) {
+        prepare(nextSlot, nextClip);
+      }
+
+      activeSlot = nextSlot;
+      activeClip = nextClip;
       isNextPrepared = false;
       play(activeSlot);
     };
@@ -99,7 +106,11 @@ const useSplashVideoLoop = (sources: readonly string[], isEnabled: boolean) => {
     const handleError = (slot: number) => {
       if (slot === activeSlot) {
         release();
+        return;
       }
+
+      videos[slot].removeAttribute('src');
+      videos[slot].load();
     };
 
     const handleVisibilityChange = () => {
