@@ -7,4 +7,5 @@ export const ICON_SIZE: Record<IconSize, number> = {
   lg: 24,
   xl: 36,
   '2xl': 48,
+  '3xl': 80,
 };

@@ -6,6 +6,6 @@ export const CancelAction = styled.div<{ $isVisible: boolean }>`
   opacity: ${({ $isVisible }) => ($isVisible ? 1 : 0)};
   visibility: ${({ $isVisible }) => ($isVisible ? 'visible' : 'hidden')};
   transition:
-    opacity ${duration.slow} ${easing.enter},
+    opacity ${duration.verySlow} ${easing.enter},
     visibility 0s;
 `;
