@@ -19,6 +19,19 @@ const counterStyle = (fontSize: number, fontWeight: 300 | 700) => css`
   font-weight: ${fontWeight};
 `;
 
+const BRAND_TITLE_FONT_FAMILY = "'BusanDandiMyeongjo', serif";
+
+const brandTitleStyle = (
+  fontSize: number,
+  lineHeight: number,
+  fontWeight: 700,
+) => css`
+  font-family: ${BRAND_TITLE_FONT_FAMILY};
+  font-size: ${fontSize}px;
+  line-height: ${lineHeight};
+  font-weight: ${fontWeight};
+`;
+
 export const typography = {
   title1: textStyle(21, 1.4, 600),
   title2: textStyle(18, 1.4, 600),
@@ -42,4 +55,6 @@ export const typography = {
 
   counterCurrent: counterStyle(28, 700),
   counterTotal: counterStyle(18, 300),
+
+  brandTitle: brandTitleStyle(30, 1.3, 700),
 } as const;

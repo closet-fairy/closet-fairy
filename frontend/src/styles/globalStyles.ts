@@ -12,6 +12,11 @@ const COUNTER_FONT_BASE_URL =
   'https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2310@1.0';
 const COUNTER_FONT_RANGE = 'U+0030-0039, U+002F';
 
+const BRAND_TITLE_FONT_BASE_URL =
+  'https://cdn.jsdelivr.net/gh/Project-Noonnu/2610132210@l-2/l';
+const BRAND_TITLE_FONT_FILE = '부산단디명조B.woff2';
+const BRAND_TITLE_FONT_RANGE = 'U+AC00-D7A3';
+
 export const globalStyles = css`
   @font-face {
     font-family: 'JeonjuCraftMyungjo';
@@ -27,6 +32,15 @@ export const globalStyles = css`
     font-weight: 700;
     font-display: swap;
     unicode-range: ${COUNTER_FONT_RANGE};
+  }
+
+  @font-face {
+    font-family: 'BusanDandiMyeongjo';
+    src: url('${BRAND_TITLE_FONT_BASE_URL}/${encodeURIComponent(BRAND_TITLE_FONT_FILE)}')
+      format('woff2');
+    font-weight: 700;
+    font-display: swap;
+    unicode-range: ${BRAND_TITLE_FONT_RANGE};
   }
 
   *,
