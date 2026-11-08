@@ -2,7 +2,7 @@
 
 backend/ 폴더에서 실행한다:
     python scripts/regeneration_intent_smoke.py
-    python scripts/regeneration_intent_smoke.py --prompt-version v1.1  # 이전 버전과 비교
+    python scripts/regeneration_intent_smoke.py --prompt-version v1.2  # 다른 버전의 문구로 실행
 --prompt-version은 프롬프트 문구만 바꾸고 출력 스키마는 지금 코드의 모델로 보낸다.
 출력 칸이 다른 버전(v1.x)의 실제 동작은 그 버전의 코드에서 돌려야 한다.
 .env의 ANTHROPIC_API_KEY가 필요하다.
