@@ -4,11 +4,18 @@ import random
 from collections.abc import Sequence
 from dataclasses import replace
 from decimal import Decimal
+from typing import NamedTuple
 
 from app.core.config import Settings
 from app.repositories.preference_score import PreferenceRow
 from app.services.preference_score import ClassificationResult, select_exploration_style
 from app.services.regeneration_intent import RegenerationIntent
+
+
+class _Change(NamedTuple):
+    preferred: Sequence[str]
+    inferred: Sequence[str]
+    avoided: Sequence[str]
 
 
 # intents는 request_seq 오름차순(오래된 요청 먼저)으로 넘긴다.
@@ -21,11 +28,25 @@ def merge_session_preferences(
     _require_ok(intents)
     merged_style = _merge(
         style_result,
-        [(i.preferred_styles, i.inferred_preferred_styles, i.avoided_styles) for i in intents],
+        [
+            _Change(
+                preferred=i.preferred_styles,
+                inferred=i.inferred_preferred_styles,
+                avoided=i.avoided_styles,
+            )
+            for i in intents
+        ],
     )
     merged_color = _merge(
         color_result,
-        [(i.preferred_colors, i.inferred_preferred_colors, i.avoided_colors) for i in intents],
+        [
+            _Change(
+                preferred=i.preferred_colors,
+                inferred=i.inferred_preferred_colors,
+                avoided=i.avoided_colors,
+            )
+            for i in intents
+        ],
     )
     return merged_style, merged_color
 
@@ -66,7 +87,7 @@ def _require_ok(intents: Sequence[RegenerationIntent]) -> None:
 
 def _merge(
     result: ClassificationResult,
-    changes: Sequence[tuple[Sequence[str], Sequence[str], Sequence[str]]],
+    changes: Sequence[_Change],
 ) -> ClassificationResult:
     session_preferred: list[str] = []
     session_avoided: list[str] = []
