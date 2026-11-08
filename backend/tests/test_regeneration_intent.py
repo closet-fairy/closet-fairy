@@ -27,6 +27,8 @@ def output(**fields) -> RegenerationIntentOutput:
         "avoided_styles": [],
         "preferred_colors": [],
         "avoided_colors": [],
+        "inferred_preferred_styles": [],
+        "inferred_preferred_colors": [],
         "replace_items": [],
         "clothing_warmth": None,
     }
@@ -89,10 +91,38 @@ def test_same_value_in_preferred_and_avoided_is_unclear(fields):
             "contradictory",
         ),
         (RegenerationIntent(status="ok", preferred_styles=("casual",)), None),
+        (RegenerationIntent(status="ok", inferred_preferred_colors=("navy",)), None),
     ],
 )
 def test_find_unclear_reason(intent, expected):
     assert find_unclear_reason(intent) == expected
+
+
+def test_inferred_only_output_is_ok():
+    intent = to_regeneration_intent(output(inferred_preferred_colors=["black", "navy", "gray"]))
+
+    assert intent == RegenerationIntent(
+        status="ok", inferred_preferred_colors=("black", "navy", "gray")
+    )
+
+
+def test_inferred_value_avoided_in_same_request_is_dropped():
+    intent = to_regeneration_intent(
+        output(avoided_colors=["black"], inferred_preferred_colors=["black", "navy", "gray"])
+    )
+
+    assert intent == RegenerationIntent(
+        status="ok", avoided_colors=("black",), inferred_preferred_colors=("navy", "gray")
+    )
+
+
+def test_inferred_value_stated_as_preferred_is_dropped():
+    intent = to_regeneration_intent(
+        output(preferred_styles=["casual"], inferred_preferred_styles=["casual", "minimal"])
+    )
+
+    assert intent.preferred_styles == ("casual",)
+    assert intent.inferred_preferred_styles == ("minimal",)
 
 
 @pytest.mark.parametrize("status", ["unclear", "harmful"])
@@ -199,9 +229,29 @@ def test_intent_round_trips_through_json():
         "avoided_styles": [],
         "preferred_colors": [],
         "avoided_colors": ["black", "white"],
+        "inferred_preferred_styles": [],
+        "inferred_preferred_colors": [],
         "replace_items": {"bottom": "청바지", "shoes": None},
         "clothing_warmth": "warmer",
     }
+
+
+def test_stored_intent_without_inferred_fields_is_read_as_stated():
+    stored = {
+        "status": "ok",
+        "preferred_styles": [],
+        "avoided_styles": [],
+        "preferred_colors": ["black"],
+        "avoided_colors": [],
+        "replace_items": {},
+        "clothing_warmth": None,
+    }
+
+    intent = RegenerationIntent.from_dict(stored)
+
+    assert intent.preferred_colors == ("black",)
+    assert intent.inferred_preferred_colors == ()
+    assert intent.inferred_preferred_styles == ()
 
 
 @pytest.mark.parametrize(
@@ -229,7 +279,7 @@ async def test_call_config_and_prompt_are_passed():
     kwargs = llm.call_structured.await_args.kwargs
     config: LLMCallConfig = llm.call_structured.await_args.args[0]
     assert config.call_name == "regeneration_intent"
-    assert config.prompt_version == "regeneration_intent/v1.2"
+    assert config.prompt_version == "regeneration_intent/v2.0"
     assert config.temperature == 0.0
     assert config.model == get_settings().LLM_INTENT_MODEL
     assert config.timeout_s == get_settings().REGENERATION_INTENT_TIMEOUT_S

@@ -156,6 +156,63 @@ def test_new_member_gets_only_session_preference_injected():
     assert "black" not in color.neutral
 
 
+TONE_DOWN = intent(inferred_preferred_colors=("black", "navy", "gray"))
+NO_BLACK = intent(avoided_colors=("black",))
+BLACK = intent(preferred_colors=("black",))
+
+
+@pytest.mark.parametrize(
+    "intents",
+    [
+        [NO_BLACK, TONE_DOWN],
+        [TONE_DOWN, NO_BLACK],
+        [intent(avoided_colors=("black",), inferred_preferred_colors=("navy", "gray"))],
+        [intent(avoided_colors=("black",), inferred_preferred_colors=("black", "navy", "gray"))],
+    ],
+)
+def test_inferred_preferred_does_not_override_session_avoided(intents):
+    _, color = merge_session_preferences(NEW_MEMBER_STYLE, NEW_MEMBER_COLOR, intents)
+
+    assert color.avoided == ["black"]
+    assert color.preferred == ["navy", "gray"]
+    assert partition(color) == sorted(COLORS)
+
+
+def test_stated_preferred_overrides_session_avoided():
+    _, color = merge_session_preferences(NEW_MEMBER_STYLE, NEW_MEMBER_COLOR, [NO_BLACK, BLACK])
+
+    assert color.avoided == []
+    assert color.preferred == ["black"]
+    assert partition(color) == sorted(COLORS)
+
+
+def test_inferred_preferred_does_not_override_cumulative_avoided():
+    _, color = merge_session_preferences(STYLE_RESULT, COLOR_RESULT, [TONE_DOWN])
+
+    assert "black" in color.avoided
+    assert "black" not in color.preferred
+    assert color.preferred[:2] == ["navy", "gray"]
+    assert partition(color) == sorted(COLORS)
+
+
+def test_inferred_preferred_keeps_value_already_stated_as_preferred():
+    _, color = merge_session_preferences(STYLE_RESULT, COLOR_RESULT, [BLACK, TONE_DOWN])
+
+    assert "black" in color.preferred
+    assert "black" not in color.avoided
+    assert partition(color) == sorted(COLORS)
+
+
+def test_inferred_preferred_style_does_not_override_cumulative_avoided():
+    style, _ = merge_session_preferences(
+        STYLE_RESULT, COLOR_RESULT, [intent(inferred_preferred_styles=("sporty", "street"))]
+    )
+
+    assert style.avoided == ["sporty"]
+    assert style.preferred[0] == "street"
+    assert partition(style) == sorted(STYLES)
+
+
 def test_non_ok_intent_is_rejected():
     with pytest.raises(ValueError):
         merge_session_preferences(

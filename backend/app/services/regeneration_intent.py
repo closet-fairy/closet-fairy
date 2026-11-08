@@ -1,6 +1,7 @@
 """재추천 요청 문장을 선호·기피·슬롯 교체·체감 방향으로 구조화한다 (#83, FR-REF-04~06)."""
 
 import re
+from collections.abc import Sequence
 from typing import Any, Literal
 
 import pydantic
@@ -34,6 +35,8 @@ class RegenerationIntent(pydantic.BaseModel):
     avoided_styles: tuple[StyleCd, ...] = ()
     preferred_colors: tuple[ColorCd, ...] = ()
     avoided_colors: tuple[ColorCd, ...] = ()
+    inferred_preferred_styles: tuple[StyleCd, ...] = ()
+    inferred_preferred_colors: tuple[ColorCd, ...] = ()
     replace_items: dict[CategoryCd, str | None] = {}
     clothing_warmth: ClothingWarmth | None = None
 
@@ -93,9 +96,22 @@ def build_ok_intent(output: RegenerationIntentOutput) -> RegenerationIntent:
         avoided_styles=tuple(dict.fromkeys(output.avoided_styles)),
         preferred_colors=tuple(dict.fromkeys(output.preferred_colors)),
         avoided_colors=tuple(dict.fromkeys(output.avoided_colors)),
+        inferred_preferred_styles=_inferred_only(
+            output.inferred_preferred_styles, output.preferred_styles, output.avoided_styles
+        ),
+        inferred_preferred_colors=_inferred_only(
+            output.inferred_preferred_colors, output.preferred_colors, output.avoided_colors
+        ),
         replace_items=replace_items,
         clothing_warmth=output.clothing_warmth,
     )
+
+
+def _inferred_only(
+    inferred: Sequence[str], preferred: Sequence[str], avoided: Sequence[str]
+) -> tuple[str, ...]:
+    stated = set(preferred) | set(avoided)
+    return tuple(v for v in dict.fromkeys(inferred) if v not in stated)
 
 
 def find_unclear_reason(intent: RegenerationIntent) -> Literal["empty", "contradictory"] | None:
@@ -127,6 +143,8 @@ def _is_empty(intent: RegenerationIntent) -> bool:
         or intent.avoided_styles
         or intent.preferred_colors
         or intent.avoided_colors
+        or intent.inferred_preferred_styles
+        or intent.inferred_preferred_colors
         or intent.replace_items
         or intent.clothing_warmth
     )

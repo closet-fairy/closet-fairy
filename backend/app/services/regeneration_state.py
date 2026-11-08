@@ -11,15 +11,22 @@ from app.services.preference_score import ClassificationResult, select_explorati
 from app.services.regeneration_intent import RegenerationIntent
 
 
-# intents는 request_seq 오름차순(오래된 요청 먼저)으로 넘긴다. 뒤 요청이 앞 요청을 덮는다
+# intents는 request_seq 오름차순(오래된 요청 먼저)으로 넘긴다.
+# 직접 말한 값은 뒤 요청이 앞 요청을 덮고, 풀어서 채운 선호는 앞 요청과 누적의 기피를 덮지 않는다
 def merge_session_preferences(
     style_result: ClassificationResult,
     color_result: ClassificationResult,
     intents: Sequence[RegenerationIntent],
 ) -> tuple[ClassificationResult, ClassificationResult]:
     _require_ok(intents)
-    merged_style = _merge(style_result, [(i.preferred_styles, i.avoided_styles) for i in intents])
-    merged_color = _merge(color_result, [(i.preferred_colors, i.avoided_colors) for i in intents])
+    merged_style = _merge(
+        style_result,
+        [(i.preferred_styles, i.inferred_preferred_styles, i.avoided_styles) for i in intents],
+    )
+    merged_color = _merge(
+        color_result,
+        [(i.preferred_colors, i.inferred_preferred_colors, i.avoided_colors) for i in intents],
+    )
     return merged_style, merged_color
 
 
@@ -59,13 +66,18 @@ def _require_ok(intents: Sequence[RegenerationIntent]) -> None:
 
 def _merge(
     result: ClassificationResult,
-    changes: Sequence[tuple[Sequence[str], Sequence[str]]],
+    changes: Sequence[tuple[Sequence[str], Sequence[str], Sequence[str]]],
 ) -> ClassificationResult:
     session_preferred: list[str] = []
     session_avoided: list[str] = []
-    for preferred, avoided in changes:
-        changed = set(preferred) | set(avoided)
-        session_preferred = [*preferred, *(v for v in session_preferred if v not in changed)]
+    for preferred, inferred, avoided in changes:
+        # 풀어서 채운 선호는 기피를 덮지 않는다 (FR-REF-08 예외)
+        blocked = (
+            set(session_avoided) | set(avoided) | (set(result.avoided) - set(session_preferred))
+        )
+        requested = list(dict.fromkeys([*preferred, *(v for v in inferred if v not in blocked)]))
+        changed = set(requested) | set(avoided)
+        session_preferred = [*requested, *(v for v in session_preferred if v not in changed)]
         session_avoided = [*avoided, *(v for v in session_avoided if v not in changed)]
     if not session_preferred and not session_avoided:
         return result

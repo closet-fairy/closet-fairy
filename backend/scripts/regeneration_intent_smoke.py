@@ -3,8 +3,11 @@
 backend/ 폴더에서 실행한다:
     python scripts/regeneration_intent_smoke.py
     python scripts/regeneration_intent_smoke.py --prompt-version v1.1  # 이전 버전과 비교
+--prompt-version은 프롬프트 문구만 바꾸고 출력 스키마는 지금 코드의 모델로 보낸다.
+출력 칸이 다른 버전(v1.x)의 실제 동작은 그 버전의 코드에서 돌려야 한다.
 .env의 ANTHROPIC_API_KEY가 필요하다.
 기대한 값과 다르면 exit 1로 끝난다. 기대에 적지 않은 칸은 비교하지 않는다.
+함수로 적은 기대는 결과 전체를 받아 참이면 통과다.
 """
 
 from __future__ import annotations
@@ -27,9 +30,23 @@ from app.services.regeneration_intent import (  # noqa: E402
     parse_regeneration_intent,
 )
 
+NO_PREFERRED_STYLES = {"preferred_styles": [], "inferred_preferred_styles": []}
+NO_PREFERRED_COLORS = {"preferred_colors": [], "inferred_preferred_colors": []}
+
 SCENARIOS: list[tuple[str, dict]] = [
-    ("좀 더 캐주얼하게", {"status": "ok", "preferred_styles": ["casual"]}),
-    ("검정색 옷 비율 줄여 줘", {"status": "ok", "avoided_colors": ["black"]}),
+    (
+        "좀 더 캐주얼하게",
+        {"status": "ok", "preferred_styles": ["casual"], "inferred_preferred_styles": []},
+    ),
+    (
+        "검정색 옷 비율 줄여 줘",
+        {
+            "status": "ok",
+            "avoided_colors": ["black"],
+            "preferred_colors": [],
+            "inferred_preferred_colors": [],
+        },
+    ),
     ("덜 더워 보이게", {"status": "ok", "clothing_warmth": "lighter"}),
     (
         "하의만 청바지로",
@@ -49,22 +66,102 @@ SCENARIOS: list[tuple[str, dict]] = [
     ("컬러풀하게 바꿔 주세요", {"status": "ok"}),
     ("칙칙하지 않게", {"status": "ok"}),
     ("깔끔하게", {"status": "ok"}),
-    ("더 편하게", {"status": "ok", "preferred_styles": ["casual"]}),
-    ("더 밝게", {"status": "ok", "avoided_colors": []}),
+    (
+        "더 편하게",
+        {"status": "ok", "preferred_styles": [], "inferred_preferred_styles": ["casual"]},
+    ),
+    ("더 밝게", {"status": "ok", "avoided_colors": [], "preferred_colors": []}),
     ("좀 더 자연스럽게", {"status": "ok", "avoided_styles": []}),
-    ("편안한 느낌으로", {"status": "ok", "preferred_styles": ["casual"]}),
+    (
+        "편안한 느낌으로",
+        {"status": "ok", "preferred_styles": [], "inferred_preferred_styles": ["casual"]},
+    ),
     (
         "덜 차려입은 느낌으로",
-        {"status": "ok", "preferred_styles": ["casual"], "avoided_styles": []},
+        {
+            "status": "ok",
+            "preferred_styles": [],
+            "inferred_preferred_styles": ["casual"],
+            "avoided_styles": [],
+        },
     ),
     ("좀 내추럴하게", {"status": "ok"}),
     ("꾸안꾸 느낌으로", {"status": "ok"}),
     ("너무 차려입은 것 같아", {"status": "ok", "avoided_styles": []}),
-    ("격식 있게", {"status": "ok", "avoided_styles": []}),
+    (
+        "격식 있게",
+        {
+            "status": "ok",
+            "preferred_styles": lambda r: "formal" in r["preferred_styles"],
+            "avoided_styles": [],
+        },
+    ),
     ("단정한 느낌으로", {"status": "ok", "avoided_styles": []}),
     ("알아서 예쁘게", {"status": "unclear"}),
     ("더 좋게", {"status": "unclear"}),
     ("내일 날씨 어때?", {"status": "unclear"}),
+    ("톤다운으로", {"status": "ok", "preferred_colors": [], "avoided_colors": []}),
+    (
+        "블랙으로 바꿔 줘",
+        {"status": "ok", "preferred_colors": ["black"], "inferred_preferred_colors": []},
+    ),
+    (
+        "블랙 말고 톤다운으로",
+        {"status": "ok", "avoided_colors": ["black"], "preferred_colors": []},
+    ),
+    (
+        "네이비 위주로",
+        {"status": "ok", "preferred_colors": ["navy"], "inferred_preferred_colors": []},
+    ),
+    (
+        "까만 옷 위주로",
+        {"status": "ok", "preferred_colors": ["black"], "inferred_preferred_colors": []},
+    ),
+    (
+        "그레이로 맞춰 줘",
+        {"status": "ok", "preferred_colors": ["gray"], "inferred_preferred_colors": []},
+    ),
+    (
+        "스트리트 패션으로",
+        {"status": "ok", "preferred_styles": ["street"], "inferred_preferred_styles": []},
+    ),
+    (
+        "레트로하게",
+        {
+            "status": "ok",
+            "preferred_styles 또는 inferred_preferred_styles": lambda r: (
+                "vintage" in r["preferred_styles"] + r["inferred_preferred_styles"]
+            ),
+        },
+    ),
+    *(
+        (text, {"status": "ok", "avoided_styles": [style], **NO_PREFERRED_STYLES})
+        for text, style in [
+            ("격식 빼고", "formal"),
+            ("스포티하지 않게", "sporty"),
+            ("페미닌하지 않게", "feminine"),
+        ]
+    ),
+    (
+        "격식 없게 입고 싶어",
+        {
+            "status": "ok",
+            "avoided_styles에 formal 또는 preferred_styles에 casual": lambda r: (
+                "formal" in r["avoided_styles"] or "casual" in r["preferred_styles"]
+            ),
+        },
+    ),
+    *(
+        (text, {"status": "ok", "avoided_colors": [color], **NO_PREFERRED_COLORS})
+        for text, color in [
+            ("까맣지 않게", "black"),
+            ("하얗지 않게", "white"),
+            ("네이비는 피하고 싶어", "navy"),
+        ]
+    ),
+    ("차분한 느낌으로", {"status": "ok", "preferred_styles": [], "preferred_colors": []}),
+    ("좀 더 화사하게", {"status": "ok", "preferred_styles": [], "preferred_colors": []}),
+    ("세련되게", {"status": "ok", "preferred_styles": [], "preferred_colors": []}),
 ]
 
 
@@ -94,12 +191,17 @@ async def main(prompt_version: str | None) -> int:
     try:
         for text, expected in SCENARIOS:
             result = (await parse_regeneration_intent(llm, text)).to_dict()
-            diff = {k: v for k, v in expected.items() if result[k] != v}
+            diff = {
+                k: v
+                for k, v in expected.items()
+                if not (v(result) if callable(v) else result[k] == v)
+            }
             ok = ok and not diff
             print(f"\n{'OK' if not diff else 'NG'} [{text}]")
             print(f"  결과: {json.dumps(result, ensure_ascii=False)}")
             if diff:
-                print(f"  기대: {json.dumps(expected, ensure_ascii=False)}")
+                shown = json.dumps(expected, ensure_ascii=False, default=lambda _: "조건")
+                print(f"  기대: {shown}")
             raw = raw_outputs[-1]
             if raw.status == "ok" and result["status"] == "unclear":
                 reason = find_unclear_reason(build_ok_intent(raw))
@@ -112,6 +214,14 @@ async def main(prompt_version: str | None) -> int:
             ]
             if dropped:
                 print(f"  버려진 물건 이름: {json.dumps(dropped, ensure_ascii=False)}")
+            dropped_inferred = [
+                v
+                for name in ("inferred_preferred_styles", "inferred_preferred_colors")
+                for v in getattr(raw, name)
+                if result["status"] == "ok" and v not in result[name]
+            ]
+            if dropped_inferred:
+                print(f"  빠진 풀어서 채운 값: {json.dumps(dropped_inferred, ensure_ascii=False)}")
     finally:
         await llm.aclose()
     print("\n결과:", "기대와 일치" if ok else "기대와 다름")

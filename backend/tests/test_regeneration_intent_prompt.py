@@ -86,7 +86,14 @@ def test_system_prompt_lists_every_allowed_code():
     schema = anthropic.transform_schema(RegenerationIntentOutput)
     props = schema["properties"]
     codes = props["status"]["enum"] + props["clothing_warmth"]["anyOf"][0]["enum"]
-    for name in ("preferred_styles", "avoided_styles", "preferred_colors", "avoided_colors"):
+    for name in (
+        "preferred_styles",
+        "avoided_styles",
+        "preferred_colors",
+        "avoided_colors",
+        "inferred_preferred_styles",
+        "inferred_preferred_colors",
+    ):
         codes += props[name]["items"]["enum"]
     codes += schema["$defs"]["ReplaceItem"]["properties"]["slot"]["enum"]
 
@@ -98,6 +105,7 @@ def test_system_prompt_lists_every_allowed_code():
     [
         ("preferred_styles", ["denim"]),
         ("avoided_colors", ["ivory"]),
+        ("inferred_preferred_colors", ["ivory"]),
         ("replace_items", [{"slot": "pants", "item_name": "청바지"}]),
         ("clothing_warmth", "cooler"),
         ("status", "maybe"),
@@ -110,6 +118,8 @@ def test_output_model_rejects_codes_outside_lists(field, value):
         "avoided_styles": [],
         "preferred_colors": [],
         "avoided_colors": [],
+        "inferred_preferred_styles": [],
+        "inferred_preferred_colors": [],
         "replace_items": [],
         "clothing_warmth": None,
         field: value,
