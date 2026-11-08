@@ -3,7 +3,6 @@ import { BOTTOM_TAB_BAR_HEIGHT } from '@/components/BottomTabBar/BottomTabBar.st
 import {
   appFrame,
   bg,
-  border,
   duration,
   easing,
   fg,
@@ -14,11 +13,13 @@ import {
   zIndex,
 } from '@/styles/tokens';
 import { visuallyHidden } from '@/styles/visuallyHidden';
-import { GRID_COLUMN_COUNT } from './constants';
+import {
+  GRID_COLUMN_COUNT,
+  GRID_COLUMN_GAP,
+  REGISTER_PRESSED_SCALE,
+} from './constants';
 
 const FAB_SIZE = 56;
-const FAB_PRESSED_SCALE = 0.94;
-const EMPTY_VISUAL_SIZE = 88;
 
 export const Container = styled.div`
   display: flex;
@@ -30,7 +31,7 @@ export const Container = styled.div`
 export const Grid = styled.ul`
   display: grid;
   grid-template-columns: repeat(${GRID_COLUMN_COUNT}, minmax(0, 1fr));
-  gap: ${spacing[14]} ${spacing[8]};
+  gap: ${spacing[14]} ${GRID_COLUMN_GAP};
   padding: ${spacing[8]} ${spacing[20]} 0;
 `;
 
@@ -54,18 +55,6 @@ export const ListEndMessage = styled.p`
 
 export const LoadingMessage = styled.p`
   ${visuallyHidden}
-`;
-
-export const EmptyVisual = styled.span`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: ${EMPTY_VISUAL_SIZE}px;
-  height: ${EMPTY_VISUAL_SIZE}px;
-  border: 1px dashed ${border.neutral.dashed};
-  border-radius: ${radius.xl};
-  background-color: ${bg.neutral.pale};
-  color: ${fg.neutral.pale};
 `;
 
 // 토스트가 떠 있으면 앱 폭을 가로지르는 토스트에 가리지 않도록 그 위로 올라간다.
@@ -95,7 +84,7 @@ export const Fab = styled.button<{ $toastStackHeight: string | null }>`
   color: ${fg.white};
 
   &:active {
-    transform: scale(${FAB_PRESSED_SCALE});
+    transform: scale(${REGISTER_PRESSED_SCALE});
   }
 
   @media (prefers-reduced-motion: reduce) {

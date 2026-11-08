@@ -222,6 +222,9 @@ describe('스켈레톤', () => {
       'status',
     );
     expect(countSkeletonCells()).toBe(FIRST_LOAD_SKELETON_COUNT);
+    expect(
+      screen.queryByRole('button', { name: '옷 등록하기' }),
+    ).not.toBeInTheDocument();
   });
 
   test('다음 묶음을 불러오는 동안에는 마지막 줄의 빈칸부터 채워 두 줄 분량을 이어 붙여야 한다.', async () => {
@@ -243,13 +246,47 @@ describe('스켈레톤', () => {
 });
 
 describe('빈 옷장과 불러오기 실패', () => {
-  test('옷이 하나도 없으면 빈 옷장 안내와 등록 버튼을 보여야 한다.', async () => {
+  test('옷이 하나도 없으면 빈 줄 띠의 안내 문구와 등록 FAB을 보여야 한다.', async () => {
     server.use(http.get('/api/clothing', () => HttpResponse.json(emptyPage)));
     await renderCloset();
 
     expect(await screen.findByText('옷장이 비어 있어요')).toBeInTheDocument();
     expect(
+      screen.getByText('+를 눌러 첫 옷을 등록해 보세요'),
+    ).toBeInTheDocument();
+    expect(
       screen.getByRole('button', { name: '옷 등록하기' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('옷을 등록하면 그 옷으로 코디를 추천받을 수 있어요.'),
+    ).not.toBeInTheDocument();
+  });
+
+  test('빈 줄 띠는 보이는 글을 이름으로 하는 대화상자 여는 버튼이어야 한다.', async () => {
+    server.use(http.get('/api/clothing', () => HttpResponse.json(emptyPage)));
+    await renderCloset();
+
+    const band = await screen.findByRole('button', {
+      name: /옷장이 비어 있어요.*\+를 눌러 첫 옷을 등록해 보세요/,
+    });
+
+    expect(band).toHaveAttribute('type', 'button');
+    expect(band).toHaveAttribute('aria-haspopup', 'dialog');
+  });
+
+  test('빈 줄 띠를 누르면 등록 방법 시트를 열어야 한다.', async () => {
+    const user = userEvent.setup();
+    server.use(http.get('/api/clothing', () => HttpResponse.json(emptyPage)));
+    await renderCloset();
+
+    await user.click(
+      await screen.findByRole('button', {
+        name: /옷장이 비어 있어요.*\+를 눌러 첫 옷을 등록해 보세요/,
+      }),
+    );
+
+    expect(
+      await screen.findByRole('dialog', { name: '옷 등록' }),
     ).toBeInTheDocument();
   });
 
@@ -271,6 +308,9 @@ describe('빈 옷장과 불러오기 실패', () => {
     expect(
       screen.getByText('처리 중 오류가 발생했습니다.'),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: '옷 등록하기' }),
+    ).not.toBeInTheDocument();
 
     server.resetHandlers();
     await user.click(screen.getByRole('button', { name: '다시 시도' }));
@@ -302,6 +342,9 @@ describe('빈 옷장과 불러오기 실패', () => {
     expect(screen.getByText('옷장을 불러오는 중이에요')).toBeInTheDocument();
     expect(
       screen.queryByText('옷장을 불러오지 못했어요'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: '옷 등록하기' }),
     ).not.toBeInTheDocument();
   });
 });
@@ -610,6 +653,48 @@ describe('옷장에서 옷 삭제', () => {
     });
     expect(screen.getAllByRole('listitem')).toHaveLength(cardCount - 1);
     expect(deletedIds).toHaveLength(1);
+  });
+
+  test('마지막 옷을 지우면 빈 줄 띠와 등록 FAB을 보여야 한다.', async () => {
+    const user = userEvent.setup();
+    const failedCard: ClothingCard = {
+      ...toProgress(1, {
+        processing_status_cd: 'failed',
+        failure_reason: '배경 제거에 실패했습니다.',
+      }),
+      is_new: false,
+      category_cd: null,
+      item_name: null,
+      created_at: '2026-10-29T10:00:00+09:00',
+    };
+    server.use(
+      http.get('/api/clothing', () =>
+        HttpResponse.json<ClothingPage>({
+          items: [failedCard],
+          next_cursor: null,
+          total_count: 1,
+        }),
+      ),
+    );
+    recordDeletes();
+    await renderCloset();
+
+    const dialog = await openDeleteDialog(
+      user,
+      '등록에 실패한 옷',
+      '등록하지 못했어요',
+    );
+    await user.click(within(dialog).getByRole('button', { name: '삭제' }));
+
+    expect(await screen.findByText('옷장이 비어 있어요')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: '옷 등록하기' }),
+    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('dialog', { name: '이 옷을 삭제할까요?' }),
+      ).not.toBeInTheDocument();
+    });
   });
 
   test('지우는 요청을 보내는 동안에는 모달을 닫을 수 없어야 한다.', async () => {
@@ -1154,6 +1239,35 @@ describe('사진으로 옷 등록', () => {
     expect(screen.queryByText('올리기 실패')).not.toBeInTheDocument();
   });
 
+  test('올리기 실패 카드가 있으면 빈 줄 띠를 숨기고, 모두 치우면 다시 보여야 한다.', async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.get('/api/clothing', () => HttpResponse.json(emptyPage)),
+      http.post('/api/clothing', () =>
+        HttpResponse.json(
+          { code: 'INTERNAL_ERROR', message: '처리 중 오류가 발생했습니다.' },
+          { status: 500 },
+        ),
+      ),
+    );
+    await startClothingUpload(new QueryClient(), [
+      { file: photoFile('IMG_0001.JPG'), previewUrl: 'blob:test/up' },
+    ]);
+    await renderCloset();
+
+    expect(await screen.findByText('올리기 실패')).toBeInTheDocument();
+    expect(
+      await screen.findByRole('button', { name: '옷 등록하기' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('옷장이 비어 있어요')).not.toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole('button', { name: 'IMG_0001.JPG 치우기' }),
+    );
+
+    expect(await screen.findByText('옷장이 비어 있어요')).toBeInTheDocument();
+  });
+
   test('세션이 끝나면 남아 있던 올리기 실패 카드를 비워야 한다.', async () => {
     const user = userEvent.setup();
     server.use(
@@ -1214,7 +1328,7 @@ describe('사진으로 옷 등록', () => {
     ).toBeInTheDocument();
   });
 
-  test('빈 옷장의 옷 등록하기를 누르면 등록 방법 시트를 열어야 한다.', async () => {
+  test('빈 옷장의 FAB을 누르면 등록 방법 시트를 열어야 한다.', async () => {
     const user = userEvent.setup();
     server.use(http.get('/api/clothing', () => HttpResponse.json(emptyPage)));
     await renderCloset();
