@@ -1,7 +1,11 @@
 import styled from '@emotion/styled';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { spacing } from '@/styles/tokens';
-import { FIRST_LOAD_SKELETON_COUNT, GRID_COLUMN_COUNT } from '../../constants';
+import {
+  FIRST_LOAD_SKELETON_COUNT,
+  GRID_COLUMN_COUNT,
+  GRID_COLUMN_GAP,
+} from '../../constants';
 import ClothingCardSkeleton from './ClothingCardSkeleton';
 
 const CARD_WIDTH = 112;
@@ -62,5 +66,5 @@ export const Grid: Story = {
 const GridList = styled.ul`
   display: grid;
   grid-template-columns: repeat(${GRID_COLUMN_COUNT}, ${CARD_WIDTH}px);
-  gap: ${spacing[14]} ${spacing[8]};
+  gap: ${spacing[14]} ${GRID_COLUMN_GAP};
 `;

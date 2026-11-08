@@ -18,6 +18,7 @@ import ClothingCard from './components/ClothingCard';
 import ClothingCardSkeleton from './components/ClothingCardSkeleton';
 import ClothingRegistration from './components/ClothingRegistration';
 import ClothingStatusDialog from './components/ClothingStatusDialog';
+import EmptyClosetBand from './components/EmptyClosetBand';
 import UploadCard from './components/UploadCard';
 import {
   FIRST_LOAD_SKELETON_COUNT,
@@ -213,25 +214,9 @@ const ClosetPage = () => {
 
     if (clothings.length === 0 && uploads.length === 0) {
       return (
-        <StatusView
-          visual={
-            <S.EmptyVisual>
-              <Icon name="checkroom" size="xl" />
-            </S.EmptyVisual>
-          }
-          title="옷장이 비어 있어요"
-          description="옷을 등록하면 그 옷으로 코디를 추천받을 수 있어요."
-          actions={
-            <Button
-              icon="add_a_photo"
-              isFullWidth
-              aria-haspopup="dialog"
-              onClick={openRegisterSheet}
-            >
-              옷 등록하기
-            </Button>
-          }
-        />
+        <S.Grid as="div">
+          <EmptyClosetBand onClick={openRegisterSheet} />
+        </S.Grid>
       );
     }
 
@@ -290,15 +275,6 @@ const ClosetPage = () => {
             </>
           )}
         </S.ListEnd>
-        <S.Fab
-          type="button"
-          aria-label="옷 등록하기"
-          aria-haspopup="dialog"
-          $toastStackHeight={toastStackHeight}
-          onClick={openRegisterSheet}
-        >
-          <Icon name="add" size="lg" />
-        </S.Fab>
         {statusDialog !== null && (
           <ClothingStatusDialog
             isOpen={statusDialog.isOpen}
@@ -325,6 +301,17 @@ const ClosetPage = () => {
     <S.Container>
       <TopBar title="옷장" />
       {renderBody()}
+      {listQuery.data !== undefined && (
+        <S.Fab
+          type="button"
+          aria-label="옷 등록하기"
+          aria-haspopup="dialog"
+          $toastStackHeight={toastStackHeight}
+          onClick={openRegisterSheet}
+        >
+          <Icon name="add" size="lg" />
+        </S.Fab>
+      )}
       {/* 마지막 옷을 지워 본문이 빈 화면으로 바뀌어도 모달이 닫히는 모습을 마저 보여 주도록 본문 밖에 둔다. */}
       {deleteDialog !== null && (
         <DeleteClothingDialog
