@@ -46,6 +46,8 @@ OK_OUTPUT = {
     "avoided_styles": [],
     "preferred_colors": [],
     "avoided_colors": [],
+    "inferred_preferred_styles": [],
+    "inferred_preferred_colors": [],
     "replace_items": [{"slot": "bottom", "item_name": "청바지"}],
     "clothing_warmth": None,
 }

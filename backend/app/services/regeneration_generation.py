@@ -455,7 +455,7 @@ def choose_exploration_style(
     *,
     locked_avoided: bool = False,
 ) -> str | None:
-    if current_intent.preferred_styles:
+    if current_intent.preferred_styles or current_intent.inferred_preferred_styles:
         return None
     if plan.scope == "all":
         return selected

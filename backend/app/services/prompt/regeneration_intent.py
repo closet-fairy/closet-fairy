@@ -9,7 +9,7 @@ from app.services.prompt.outfit_generation import AssembledPrompt, sanitize_inli
 from app.services.prompt.template import load_prompt_template, render
 
 PROMPT_NAME = "regeneration_intent"
-PROMPT_VERSION = "v1.2"
+PROMPT_VERSION = "v2.0"
 ITEM_NAME_MAX_LENGTH = 20
 
 IntentStatus = Literal["ok", "unclear", "harmful"]
@@ -27,6 +27,8 @@ class RegenerationIntentOutput(pydantic.BaseModel):
     avoided_styles: list[StyleCd]
     preferred_colors: list[ColorCd]
     avoided_colors: list[ColorCd]
+    inferred_preferred_styles: list[StyleCd]
+    inferred_preferred_colors: list[ColorCd]
     # 결과(RegenerationIntent.replace_items)는 슬롯 dict인데 LLM 출력은 목록으로 받는다.
     # 구조화 출력 스키마에서 슬롯 코드를 dict 키로 쓰기 어려워서다
     replace_items: list[ReplaceItem]

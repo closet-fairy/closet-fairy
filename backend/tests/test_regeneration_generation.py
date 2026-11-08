@@ -1017,6 +1017,7 @@ def _plan(scope="single", target_type="exploratory") -> RegenerationPlan:
     [
         (_plan(), _intent(preferred_styles=("casual",)), None),
         (_plan(scope="all"), _intent(preferred_styles=("casual",)), None),
+        (_plan(), _intent(inferred_preferred_styles=("casual",)), None),
         (_plan(), _intent(avoided_styles=("street",)), "chic"),
         (_plan(), _intent(replace_items={"top": "캐주얼한 셔츠"}), "chic"),
         (_plan(), _intent(avoided_colors=("black",)), "chic"),
