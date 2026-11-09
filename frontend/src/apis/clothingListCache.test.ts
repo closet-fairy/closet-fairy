@@ -37,7 +37,7 @@ const setUpCache = () => {
   return { queryClient, readTotalCounts };
 };
 
-describe('removeClothingCard', () => {
+describe('지운 옷의 총 개수 반영', () => {
   test('카드를 뺀 경우 받아 둔 모든 페이지의 총 개수를 1 줄여야 한다.', () => {
     const { queryClient, readTotalCounts } = setUpCache();
 
@@ -57,9 +57,12 @@ describe('removeClothingCard', () => {
 
   test('받아 둔 목록에 없는 카드는 총 개수를 건드리지 않아야 한다.', () => {
     const { queryClient, readTotalCounts } = setUpCache();
+    const queryKey = getListClothingClothingGetInfiniteQueryKey();
+    const before = queryClient.getQueryData(queryKey);
 
     removeClothingCard(queryClient, 99);
 
     expect(readTotalCounts()).toEqual([3, 4]);
+    expect(queryClient.getQueryData(queryKey)).toBe(before);
   });
 });

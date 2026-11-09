@@ -107,17 +107,21 @@ export const removeClothingCard = (
         return data;
       }
 
-      // 이미 빠진 카드로 다시 불려도 개수를 두 번 줄이지 않도록, 카드가 있을 때만 줄인다.
       const hasCard = data.pages.some((page) =>
         page.items.some((card) => card.clothing_id === clothingId),
       );
+
+      // 이미 빠진 카드로 다시 불려도 개수를 두 번 줄이지 않도록, 카드가 없으면 그대로 돌려준다.
+      if (!hasCard) {
+        return data;
+      }
 
       return {
         ...data,
         pages: data.pages.map((page) => ({
           ...page,
           items: page.items.filter((card) => card.clothing_id !== clothingId),
-          total_count: hasCard ? page.total_count - 1 : page.total_count,
+          total_count: page.total_count - 1,
         })),
       };
     },
