@@ -466,6 +466,16 @@ def test_first_essential_outer_stays_first_after_category_sort():
     assert picked == [_essential_key(wool_coat), _essential_key(hoodie)]
 
 
+def test_rainy_day_reorders_picked_essential_outers_by_waterproof():
+    trench = _essential(1, "outer", style_cd="minimal", is_waterproof=True, formality_level=3)
+    hoodie = _essential(2, "outer", formality_level=1)
+    blazer = _essential(3, "outer", style_cd="classic", is_waterproof=True, formality_level=4)
+
+    picked = _picked_outer_keys([trench, hoodie, blazer], _mild(), precipitation_expected=True)
+
+    assert picked == [_essential_key(e) for e in (trench, blazer, hoodie)]
+
+
 async def test_custom_wedding_tpo_without_outer_gets_outers_of_different_formality(monkeypatch):
     seed = [
         _essential(1, "outer", style_cd="casual", formality_level=1),

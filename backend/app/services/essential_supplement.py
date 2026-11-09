@@ -140,8 +140,7 @@ def _sort_essential_outers(
 ) -> list[SupplementedCandidate]:
     """방수 우선(비 예보 때) > 체감온도에 맞는 두께 순으로 정렬한다.
 
-    items는 _sort_candidates를 거친 목록이다. 안정 정렬이라 같은 순위 안에서는
-    선호 스타일·격식·번호 순서가 유지된다.
+    안정 정렬이라 같은 순위 안에서는 들어온 순서가 유지된다.
     """
     return sorted(
         items,
@@ -246,7 +245,11 @@ def supplement_essentials(
             _essentials_for("outer"), precipitation_expected, min_feels_like_temperature
         )
         if essentials:
-            by_category["outer"] = _pick_essential_outers(essentials)
+            by_category["outer"] = _sort_essential_outers(
+                _pick_essential_outers(essentials),
+                precipitation_expected,
+                min_feels_like_temperature,
+            )
             keeps_order.add("outer")
         else:
             # 보유·에센셜 모두 쓸 아우터가 없으면 필수를 지킬 수 없다.
