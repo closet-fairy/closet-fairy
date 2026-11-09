@@ -11,11 +11,8 @@ const meta = {
     },
   },
   args: { count: 12 },
-  decorators: [
-    (Story, context) => (
-      <TopBar title="옷장" trailing={<Story {...context} />} />
-    ),
-  ],
+  parameters: { layout: 'fullscreen' },
+  decorators: [(Story) => <TopBar title="옷장" trailing={<Story />} />],
 } satisfies Meta<typeof ClothingTotalCount>;
 
 export default meta;

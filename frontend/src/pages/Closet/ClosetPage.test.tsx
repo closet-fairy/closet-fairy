@@ -352,13 +352,31 @@ describe('빈 옷장과 불러오기 실패', () => {
 describe('옷 개수 표시', () => {
   const countLabel = /^총 .*벌$/;
 
+  // 브라우저는 main 안의 header를 banner로 알리지 않으므로 역할 대신 제목이 든 header를 찾는다. 전역 다이얼로그가 열려 뒤쪽이 숨겨진 때도 찾도록 숨은 요소를 포함한다.
+  const getTopBar = () => {
+    const topBar = screen
+      .getByRole('heading', { name: '옷장', hidden: true })
+      // eslint-disable-next-line testing-library/no-node-access
+      .closest('header');
+
+    if (topBar === null) {
+      throw new Error('상단 바를 찾을 수 없다.');
+    }
+
+    return topBar;
+  };
+
+  // 스켈레톤은 글자도 역할도 없고 화면 읽기 프로그램에서 숨겨지므로, 상단 바 안의 숨김 요소로 있는지 본다.
+  const queryTopBarSkeleton = () =>
+    // eslint-disable-next-line testing-library/no-node-access
+    getTopBar().querySelector('[aria-hidden="true"]');
+
   test('서버에 등록된 옷의 전체 개수를 상단 바 오른쪽에 보여야 한다.', async () => {
     await renderCloset();
 
-    const topBar = await screen.findByRole('banner');
+    const count = await screen.findByText('총 41벌');
 
-    expect(await within(topBar).findByText('총 41벌')).toBeInTheDocument();
-    expect(within(topBar).getByRole('heading', { name: '옷장' })).toBeVisible();
+    expect(getTopBar()).toContainElement(count);
   });
 
   test('1,000벌이 넘으면 천 단위 쉼표를 찍어야 한다.', async () => {
@@ -397,10 +415,12 @@ describe('옷 개수 표시', () => {
       await screen.findByText('옷장을 불러오는 중이에요'),
     ).toBeInTheDocument();
     expect(screen.queryByText(countLabel)).not.toBeInTheDocument();
+    expect(queryTopBarSkeleton()).toBeInTheDocument();
 
     releaseList();
 
     expect(await screen.findByText('총 7벌')).toBeInTheDocument();
+    expect(queryTopBarSkeleton()).not.toBeInTheDocument();
   });
 
   test('불러오기에 실패하면 숨겨야 한다.', async () => {
@@ -418,6 +438,8 @@ describe('옷 개수 표시', () => {
       await screen.findByText('옷장을 불러오지 못했어요'),
     ).toBeInTheDocument();
     expect(screen.queryByText(countLabel)).not.toBeInTheDocument();
+    expect(queryTopBarSkeleton()).not.toBeInTheDocument();
+    expect(getTopBar()).toHaveTextContent(/^옷장$/);
   });
 
   test('로그인이 만료되어 로딩 화면이 유지되는 동안에는 숫자를 보여 주지 않아야 한다.', async () => {
@@ -442,6 +464,7 @@ describe('옷 개수 표시', () => {
 
     expect(screen.getByText('옷장을 불러오는 중이에요')).toBeInTheDocument();
     expect(screen.queryByText(countLabel)).not.toBeInTheDocument();
+    expect(queryTopBarSkeleton()).toBeInTheDocument();
   });
 
   test('다음 묶음을 받으면 가장 최근에 받은 응답의 개수를 따라야 한다.', async () => {
@@ -761,6 +784,7 @@ describe('옷장에서 옷 삭제', () => {
     await renderCloset();
     await screen.findAllByRole('button', { name: '처리 중인 옷' });
     const cardCount = screen.getAllByRole('listitem').length;
+    expect(screen.getByText('총 41벌')).toBeInTheDocument();
 
     const dialog = await openDeleteDialog(
       user,
@@ -789,6 +813,7 @@ describe('옷장에서 옷 삭제', () => {
     });
     expect(screen.getAllByRole('listitem')).toHaveLength(cardCount - 1);
     expect(deletedIds).toHaveLength(1);
+    expect(screen.getByText('총 40벌')).toBeInTheDocument();
   });
 
   test('마지막 옷을 지우면 빈 줄 띠와 등록 FAB을 보여야 한다.', async () => {
@@ -823,6 +848,7 @@ describe('옷장에서 옷 삭제', () => {
     await user.click(within(dialog).getByRole('button', { name: '삭제' }));
 
     expect(await screen.findByText('옷장이 비어 있어요')).toBeInTheDocument();
+    expect(screen.getByText('총 0벌')).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: '옷 등록하기' }),
     ).toBeInTheDocument();
@@ -1046,6 +1072,7 @@ describe('사진으로 옷 등록', () => {
     const firstCard = within(grid).getAllByRole('listitem')[0];
     expect(within(firstCard).getByText('처리 중')).toBeInTheDocument();
     expect(within(firstCard).queryByRole('button')).not.toBeInTheDocument();
+    expect(screen.getByText('총 41벌')).toBeInTheDocument();
 
     releaseUpload();
     /*
@@ -1058,6 +1085,7 @@ describe('사진으로 옷 등록', () => {
       ).toHaveLength(3);
     });
     expect(screen.getAllByText('처리 중')).toHaveLength(3);
+    expect(await screen.findByText('총 42벌')).toBeInTheDocument();
   });
 
   test('20장보다 많이 고르면 안내한 뒤 앞의 20장만 고른 채로 사진 확인을 열어야 한다.', async () => {

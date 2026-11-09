@@ -102,14 +102,25 @@ export const removeClothingCard = (
 
   queryClient.setQueriesData<InfiniteData<ClothingPage>>(
     { queryKey: listQueryKey },
-    (data) =>
-      data && {
+    (data) => {
+      if (data === undefined) {
+        return data;
+      }
+
+      // 이미 빠진 카드로 다시 불려도 개수를 두 번 줄이지 않도록, 카드가 있을 때만 줄인다.
+      const hasCard = data.pages.some((page) =>
+        page.items.some((card) => card.clothing_id === clothingId),
+      );
+
+      return {
         ...data,
         pages: data.pages.map((page) => ({
           ...page,
           items: page.items.filter((card) => card.clothing_id !== clothingId),
+          total_count: hasCard ? page.total_count - 1 : page.total_count,
         })),
-      },
+      };
+    },
   );
 
   // 지우기 전에 보낸 목록 요청이 늦게 오면 지운 카드를 되살린다.
