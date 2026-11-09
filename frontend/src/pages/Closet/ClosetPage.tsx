@@ -18,6 +18,7 @@ import ClothingCard from './components/ClothingCard';
 import ClothingCardSkeleton from './components/ClothingCardSkeleton';
 import ClothingRegistration from './components/ClothingRegistration';
 import ClothingStatusDialog from './components/ClothingStatusDialog';
+import ClothingTotalCount from './components/ClothingTotalCount';
 import EmptyClosetBand from './components/EmptyClosetBand';
 import UploadCard from './components/UploadCard';
 import {
@@ -84,6 +85,11 @@ const renderSkeletonCells = (startIndex: number, count: number) =>
 const ClosetPage = () => {
   const listQuery = useClosetClothingList();
   const clothings = listQuery.data?.pages.flatMap((page) => page.items) ?? [];
+  const totalCount = listQuery.data?.pages.at(-1)?.total_count;
+  // 로그인이 만료되면 전역 다이얼로그가 안내하므로, 그 뒤에 실패 화면을 겹치지 않고 로딩 화면을 둔다.
+  const isFirstLoading =
+    listQuery.isPending ||
+    (listQuery.data === undefined && isUnauthorizedError(listQuery.error));
   const [statusDialog, setStatusDialog] = useState<StatusDialogState | null>(
     null,
   );
@@ -170,11 +176,7 @@ const ClosetPage = () => {
   );
 
   const renderBody = () => {
-    // 로그인이 만료되면 전역 다이얼로그가 안내하므로, 그 뒤에 실패 화면을 겹치지 않고 로딩 화면을 둔다.
-    if (
-      listQuery.isPending ||
-      (listQuery.data === undefined && isUnauthorizedError(listQuery.error))
-    ) {
+    if (isFirstLoading) {
       return (
         <>
           <S.Grid>
@@ -299,7 +301,14 @@ const ClosetPage = () => {
   // 상태가 바뀌어 본문이 바뀌어도 등록 흐름은 그대로 남도록 본문과 따로 둔다.
   return (
     <S.Container>
-      <TopBar title="옷장" />
+      <TopBar
+        title="옷장"
+        trailing={
+          isFirstLoading || totalCount !== undefined ? (
+            <ClothingTotalCount count={totalCount ?? null} />
+          ) : undefined
+        }
+      />
       {renderBody()}
       {listQuery.data !== undefined && (
         <S.Fab
