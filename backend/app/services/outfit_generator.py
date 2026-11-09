@@ -64,7 +64,9 @@ class GenerationResult:
 
 HardRuleCheck = Callable[[Sequence[DraftOutfit], Sequence[KeptOutfit]], list[OutfitValidation]]
 ReviewCheck = Callable[[Sequence[DraftOutfit]], Awaitable[list[OutfitValidation]]]
-FallbackBuilder = Callable[[Sequence[int], Sequence[Sequence[str]]], list[DraftOutfit]]
+FallbackBuilder = Callable[
+    [Sequence[int], Sequence[Sequence[str]], frozenset[str]], list[DraftOutfit]
+]
 
 
 async def generate_outfits(
@@ -98,6 +100,7 @@ async def generate_outfits(
     target = min(target, len(_free_seqs(kept, (), outfit_seqs)))
     accepted: list[DraftOutfit] = []
     rejected: set[frozenset[str]] = set()
+    review_rejected_keys: set[str] = set()
     failure_reasons: list[FailureReason] = []
     hard_retries = reviewer_retries = shortfall_retries = rounds = 0
     exploration_requested = False
@@ -148,6 +151,12 @@ async def generate_outfits(
             review_failed = []
         review_failed_seqs = {v.outfit_seq for v in review_failed}
         accepted += [d for d in survivors if d.outfit_seq not in review_failed_seqs]
+        # 리뷰어는 아이템을 짚지 않아 탈락 코디의 아이템을 모두 모은다.
+        # 통과 코디에도 있는 아이템은 폴백에서 빼지 않는다.
+        # 1차 탈락은 조합 문제가 대부분이라 넣지 않는다.
+        review_rejected_keys.update(
+            key for d in survivors if d.outfit_seq in review_failed_seqs for key in d.item_keys
+        )
         rejected |= {
             frozenset(d.item_keys)
             for d in drafts
@@ -191,7 +200,8 @@ async def generate_outfits(
     if remaining > 0:
         seqs = _free_seqs(kept, accepted, outfit_seqs)[:remaining]
         existing = [k.item_keys for k in kept] + [a.item_keys for a in accepted]
-        fallback_outfits = fallback(seqs, existing)
+        survived = {key for keys in existing for key in keys}
+        fallback_outfits = fallback(seqs, existing, frozenset(review_rejected_keys - survived))
         logger.info(
             "outfit fallback",
             extra={
@@ -387,9 +397,13 @@ def make_basic_outfit_fallback(
     쓰므로 없는 옷이 섞일 일이 없다.
     """
 
-    def build(seqs: Sequence[int], existing: Sequence[Sequence[str]]) -> list[DraftOutfit]:
+    def build(
+        seqs: Sequence[int], existing: Sequence[Sequence[str]], excluded_keys: frozenset[str]
+    ) -> list[DraftOutfit]:
         taken = {frozenset(keys) for keys in existing}
-        combos = compose_basic_outfits(candidates, is_outer_required, taken, len(seqs))
+        combos = compose_basic_outfits(
+            candidates, is_outer_required, taken, len(seqs), excluded_keys
+        )
         return [
             DraftOutfit(seq, "preferred", combo, FALLBACK_REASON, is_fallback=True)
             for seq, combo in zip(seqs, combos, strict=False)
@@ -403,14 +417,19 @@ def compose_basic_outfits(
     is_outer_required: bool,
     taken: set[frozenset[str]],
     count: int,
+    excluded: frozenset[str] = frozenset(),
 ) -> list[tuple[str, ...]]:
-    """기존 세트와 겹치지 않는 기본 조합을 최대 count개 만든다. 순수 함수."""
+    """기존 세트와 겹치지 않는 기본 조합을 최대 count개 만든다. 순수 함수.
+
+    excluded(리뷰어 탈락 아이템)는 빼되, 빼서 비는 카테고리는 원래 목록을 쓴다.
+    """
     taken = set(taken)
 
     def by_category(category_cd: str) -> list[str]:
         items = [c for c in candidates if c.category_cd == category_cd]
         items.sort(key=lambda c: c.source != "essential")
-        return [c.key for c in items]
+        keys = [c.key for c in items]
+        return [k for k in keys if k not in excluded] or keys
 
     tops, bottoms, shoes = by_category("top"), by_category("bottom"), by_category("shoes")
     outers = by_category("outer") if is_outer_required else []

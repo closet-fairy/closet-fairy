@@ -10,10 +10,12 @@ from app.repositories import essential_item as essential_item_repo
 from app.repositories.clothing import ClothingCandidate
 from app.repositories.essential_item import EssentialItemCandidate
 from app.schemas.recommendation_session import TpoCd
+from app.services import essential_supplement
 from app.services.essential_supplement import (
     DEFAULT_FORMALITY_RANGE,
     FORMALITY_RANGE_BY_TPO,
     _fetch_essential_items,
+    collect_essential_candidates,
     formality_range_for_tpo,
     supplement_essentials,
 )
@@ -50,6 +52,7 @@ def _essential(
     style_cd: str = "casual",
     thickness_cd: str | None = "medium",
     is_waterproof: bool = False,
+    formality_level: int = 1,
 ) -> EssentialItemCandidate:
     return EssentialItemCandidate(
         essential_item_id=essential_item_id,
@@ -60,7 +63,7 @@ def _essential(
         color_cd="black",
         thickness_cd=thickness_cd,
         is_waterproof=is_waterproof,
-        formality_level=1,
+        formality_level=formality_level,
         gender_cd="unisex",
     )
 
@@ -139,7 +142,7 @@ def test_empty_closet_fills_two_of_each_required_category():
         assert all(c.source_cd == "essential" for c in items)
 
 
-def test_outer_required_and_missing_adds_one_essential_outer():
+def test_outer_required_and_missing_adds_the_only_essential_outer():
     essentials_by_category = {"outer": [_essential(201, "outer")]}
 
     result = supplement_essentials(
@@ -274,12 +277,12 @@ def _essential_key(item: EssentialItemCandidate) -> str:
     return candidate_key("essential", item.essential_item_id)
 
 
-def _picked_outer_key(
+def _picked_outer_keys(
     essentials: list[EssentialItemCandidate],
     min_feels_like: float,
     preferred_styles: list[str] | None = None,
     precipitation_expected: bool = False,
-) -> str:
+) -> list[str]:
     result = supplement_essentials(
         _filter_result(
             _full_basics(),
@@ -290,9 +293,18 @@ def _picked_outer_key(
         {"outer": essentials},
         min_feels_like_temperature=min_feels_like,
     )
-    outers = [c for c in result.candidates if c.category_cd == "outer"]
-    assert len(outers) == 1
-    return outers[0].key
+    return [c.key for c in result.candidates if c.category_cd == "outer"]
+
+
+def _picked_outer_key(
+    essentials: list[EssentialItemCandidate],
+    min_feels_like: float,
+    preferred_styles: list[str] | None = None,
+    precipitation_expected: bool = False,
+) -> str:
+    return _picked_outer_keys(essentials, min_feels_like, preferred_styles, precipitation_expected)[
+        0
+    ]
 
 
 def test_cold_day_picks_thick_essential_outer_over_formality_order():
@@ -416,6 +428,107 @@ def test_only_thick_outers_still_fill_required_outer_on_mild_day():
     ]
 
     assert _picked_outer_key(thick_outers, _mild()) == _essential_key(thick_outers[0])
+
+
+def test_essential_outers_add_farthest_formality_then_sorted_order_on_tie():
+    hoodie = _essential(1, "outer", style_cd="casual", formality_level=1)
+    cardigan = _essential(2, "outer", style_cd="casual", thickness_cd="thin", formality_level=2)
+    trench = _essential(3, "outer", style_cd="minimal", formality_level=3)
+    blazer = _essential(4, "outer", style_cd="classic", formality_level=4)
+
+    picked = _picked_outer_keys([hoodie, cardigan, trench, blazer], _mild(), ["casual"])
+
+    assert picked == [_essential_key(e) for e in (hoodie, blazer, trench)]
+
+
+def test_essential_outers_stop_when_no_other_formality_is_left():
+    casual = _essential(1, "outer", formality_level=1)
+    blazer = _essential(2, "outer", formality_level=4)
+    wool_coat = _essential(3, "outer", formality_level=4)
+
+    picked = _picked_outer_keys([casual, blazer, wool_coat], _mild())
+
+    assert picked == [_essential_key(casual), _essential_key(blazer)]
+
+
+def test_same_formality_essential_outers_fill_up_to_two_in_sorted_order():
+    outers = [_essential(i, "outer", formality_level=4) for i in (1, 2, 3)]
+
+    assert _picked_outer_keys(outers, _mild()) == [_essential_key(e) for e in outers[:2]]
+
+
+def test_first_essential_outer_stays_first_after_category_sort():
+    wool_coat = _essential(1, "outer", style_cd="classic", thickness_cd="thick", formality_level=4)
+    hoodie = _essential(2, "outer", style_cd="casual", formality_level=1)
+
+    picked = _picked_outer_keys([wool_coat, hoodie], _cold(), ["casual"])
+
+    assert picked == [_essential_key(wool_coat), _essential_key(hoodie)]
+
+
+def test_rainy_day_reorders_picked_essential_outers_by_waterproof():
+    trench = _essential(1, "outer", style_cd="minimal", is_waterproof=True, formality_level=3)
+    hoodie = _essential(2, "outer", formality_level=1)
+    blazer = _essential(3, "outer", style_cd="classic", is_waterproof=True, formality_level=4)
+
+    picked = _picked_outer_keys([trench, hoodie, blazer], _mild(), precipitation_expected=True)
+
+    assert picked == [_essential_key(e) for e in (trench, blazer, hoodie)]
+
+
+async def test_custom_wedding_tpo_without_outer_gets_outers_of_different_formality(monkeypatch):
+    seed = [
+        _essential(1, "outer", style_cd="casual", formality_level=1),
+        _essential(2, "outer", style_cd="sporty", thickness_cd="thin", formality_level=1),
+        _essential(3, "outer", style_cd="casual", thickness_cd="thin", formality_level=2),
+        _essential(4, "outer", style_cd="minimal", formality_level=3),
+        _essential(5, "outer", style_cd="classic", formality_level=4),
+        _essential(6, "outer", style_cd="classic", thickness_cd="thick", formality_level=4),
+        _essential(11, "top"),
+        _essential(12, "top"),
+        _essential(13, "bottom"),
+        _essential(14, "bottom"),
+        _essential(15, "shoes"),
+        _essential(16, "shoes"),
+    ]
+
+    async def fake_get_essential_items(
+        db, category_cd, season_cd, gender_cd, min_formality, max_formality
+    ):
+        return [
+            e
+            for e in seed
+            if e.category_cd == category_cd and min_formality <= e.formality_level <= max_formality
+        ]
+
+    class _NoSession:
+        async def __aenter__(self):
+            return None
+
+        async def __aexit__(self, *exc):
+            return False
+
+    monkeypatch.setattr(essential_item_repo, "get_essential_items", fake_get_essential_items)
+    monkeypatch.setattr(essential_supplement, "AsyncSessionLocal", _NoSession)
+    context = SimpleNamespace(
+        tpo_cd="custom",
+        tpo_input_type_cd="custom",
+        tpo_text="결혼식",
+        season_cd="fall",
+        gender_cd="male",
+        preferred_styles=["casual"],
+        weather=SimpleNamespace(min_feels_like_temperature=_mild()),
+    )
+    filter_result = _filter_result([_owned(1, "top")], outer_requirement="required")
+
+    result = await collect_essential_candidates(context, filter_result)
+
+    outers = [c for c in result.candidates if c.category_cd == "outer"]
+    levels = [c.formality_level for c in outers]
+    assert result.is_clothing_shortage is True
+    assert len(outers) >= 2
+    assert len(set(levels)) == len(levels)
+    assert 4 in levels
 
 
 @pytest.mark.parametrize("category_cd", ["top", "bottom", "shoes"])

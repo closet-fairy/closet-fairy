@@ -943,7 +943,9 @@ def _outfit_count(plan: RegenerationPlan) -> int:
     return MAX_OUTFITS if plan.scope == "all" else 1
 
 
-def _no_fallback(seqs: Sequence[int], existing: Sequence[Sequence[str]]) -> list[DraftOutfit]:
+def _no_fallback(
+    seqs: Sequence[int], existing: Sequence[Sequence[str]], excluded_keys: frozenset[str]
+) -> list[DraftOutfit]:
     return []
 
 

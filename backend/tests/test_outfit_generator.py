@@ -80,12 +80,12 @@ def reviewer(*fail_keys: str) -> AsyncMock:
     return AsyncMock(side_effect=review)
 
 
-def no_fallback(seqs, existing) -> list[DraftOutfit]:
+def no_fallback(seqs, existing, excluded_keys) -> list[DraftOutfit]:
     return []
 
 
 def recording_fallback(calls: list):
-    def build(seqs, existing) -> list[DraftOutfit]:
+    def build(seqs, existing, excluded_keys) -> list[DraftOutfit]:
         calls.append(list(seqs))
         return [DraftOutfit(s, "preferred", ("e1", "e2", "e3"), "기본", True) for s in seqs]
 
@@ -532,7 +532,7 @@ def test_compose_returns_empty_without_required_category():
 def test_fallback_builder_marks_outfits_as_fallback():
     build = make_basic_outfit_fallback(POOL, is_outer_required=False)
 
-    outfits = build([2, 3], [("e1", "e2", "e3")])
+    outfits = build([2, 3], [("e1", "e2", "e3")], frozenset())
 
     assert [o.outfit_seq for o in outfits] == [2, 3]
     assert all(o.is_fallback and o.reason == FALLBACK_REASON for o in outfits)
@@ -546,6 +546,131 @@ def test_two_of_each_category_guarantees_minimum_outfits(count):
     assert (
         len(compose_basic_outfits(pool, is_outer_required=False, taken=set(), count=count)) == count
     )
+
+
+# ---------- 폴백에서 리뷰어 탈락 아이템 제외 ----------
+
+HOODIE = CandidateItem("essential", 4, "outer", "카키 후드집업", "khaki", ["casual"], "medium")
+BLAZER = CandidateItem("essential", 5, "outer", "네이비 블레이저", "navy", ["classic"], "medium")
+TWO_OUTER_POOL = (*POOL[:5], HOODIE, BLAZER)
+
+
+def test_compose_skips_excluded_items():
+    combos = compose_basic_outfits(
+        TWO_OUTER_POOL, is_outer_required=True, taken=set(), count=2, excluded=frozenset({"e4"})
+    )
+
+    assert combos
+    assert all("e4" not in combo for combo in combos)
+    assert all("e5" in combo for combo in combos)
+
+
+def test_compose_reuses_excluded_items_when_category_would_be_empty():
+    combos = compose_basic_outfits(
+        POOL, is_outer_required=False, taken=set(), count=1, excluded=frozenset({"e3"})
+    )
+
+    assert combos == [("e1", "e2", "e3")]
+
+
+def test_fallback_reuses_rejected_outer_when_every_outer_was_rejected():
+    combos = compose_basic_outfits(
+        TWO_OUTER_POOL,
+        is_outer_required=True,
+        taken=set(),
+        count=1,
+        excluded=frozenset({"e4", "e5"}),
+    )
+
+    assert combos == [("e4", "e1", "e2", "e3")]
+
+
+async def test_fallback_does_not_use_items_from_reviewer_rejected_outfits():
+    hoodie_outfit = ["e4", "e1", "e2", "e3"]
+    always_hoodie = generation(*[("preferred", hoodie_outfit)] * 4)
+    llm = fake_llm(always_hoodie, always_hoodie, always_hoodie)
+
+    result = await run(
+        llm,
+        candidates=TWO_OUTER_POOL,
+        is_outer_required=True,
+        exploration_style=None,
+        review=reviewer("e4"),
+        fallback=make_basic_outfit_fallback(TWO_OUTER_POOL, is_outer_required=True),
+    )
+
+    assert result.reviewer_retries == 2
+    assert result.outfits
+    assert all(o.is_fallback for o in result.outfits)
+    assert all("e4" not in o.item_keys for o in result.outfits)
+    assert all("e5" in o.item_keys for o in result.outfits)
+
+
+async def test_fallback_keeps_items_that_also_passed_review():
+    passed = ("preferred", ["e5", "e1", "e2", "e3"])
+    rejected = [
+        ("preferred", ["e5", "o10", "e2", "e3"]),
+        ("preferred", ["e4", "e1", "e2", "e3"]),
+    ]
+    llm = fake_llm(generation(passed, *rejected), generation(*rejected), generation(*rejected))
+
+    result = await run(
+        llm,
+        candidates=TWO_OUTER_POOL,
+        is_outer_required=True,
+        exploration_style=None,
+        review=reviewer("e4", "o10"),
+        fallback=make_basic_outfit_fallback(TWO_OUTER_POOL, is_outer_required=True),
+    )
+
+    fallback_outfits = [o for o in result.outfits if o.is_fallback]
+    assert fallback_outfits
+    assert all("e4" not in o.item_keys for o in fallback_outfits)
+    assert all("e5" in o.item_keys for o in fallback_outfits)
+
+
+async def test_fallback_builds_nothing_when_only_rejected_items_differ_from_accepted():
+    pool = (POOL[0], POOL[1], POOL[2], POOL[4])
+    llm = fake_llm(
+        generation(("preferred", ["e1", "e2", "e3"]), ("preferred", ["o10", "e2", "e3"]))
+    )
+
+    result = await run(
+        llm,
+        candidates=pool,
+        is_outer_required=False,
+        exploration_style=None,
+        review=reviewer("o10"),
+        fallback=make_basic_outfit_fallback(pool, is_outer_required=False),
+    )
+
+    assert [o.item_keys for o in result.outfits] == [("e1", "e2", "e3")]
+    assert result.fallback_count == 0
+
+
+async def test_fallback_excludes_only_reviewer_rejected_items():
+    excluded: list[frozenset[str]] = []
+
+    def capturing_fallback(seqs, existing, excluded_keys) -> list[DraftOutfit]:
+        excluded.append(excluded_keys)
+        return []
+
+    llm = fake_llm(
+        generation(
+            ("preferred", BAD), ("preferred", ["e7"]), ("preferred", GOOD), ("exploratory", GOOD)
+        ),
+        generation(("preferred", BAD), ("preferred", ["e7"])),
+        generation(("preferred", BAD), ("preferred", ["e7"])),
+    )
+
+    await run(
+        llm,
+        hard_rule=rule_rejects("o9999"),
+        review=reviewer("e7"),
+        fallback=capturing_fallback,
+    )
+
+    assert excluded == [frozenset({"e7"})]
 
 
 # ---------- 가능한 조합 수 ----------
