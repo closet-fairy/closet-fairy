@@ -151,7 +151,8 @@ async def generate_outfits(
             review_failed = []
         review_failed_seqs = {v.outfit_seq for v in review_failed}
         accepted += [d for d in survivors if d.outfit_seq not in review_failed_seqs]
-        # 리뷰어는 아이템을 짚지 않아 탈락 코디의 아이템 전부를 뺀다.
+        # 리뷰어는 아이템을 짚지 않아 탈락 코디의 아이템을 모두 모은다.
+        # 통과 코디에도 있는 아이템은 폴백에서 빼지 않는다.
         # 1차 탈락은 조합 문제가 대부분이라 넣지 않는다.
         review_rejected_keys.update(
             key for d in survivors if d.outfit_seq in review_failed_seqs for key in d.item_keys
@@ -199,7 +200,8 @@ async def generate_outfits(
     if remaining > 0:
         seqs = _free_seqs(kept, accepted, outfit_seqs)[:remaining]
         existing = [k.item_keys for k in kept] + [a.item_keys for a in accepted]
-        fallback_outfits = fallback(seqs, existing, frozenset(review_rejected_keys))
+        survived = {key for keys in existing for key in keys}
+        fallback_outfits = fallback(seqs, existing, frozenset(review_rejected_keys - survived))
         logger.info(
             "outfit fallback",
             extra={

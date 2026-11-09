@@ -606,6 +606,29 @@ async def test_fallback_does_not_use_items_from_reviewer_rejected_outfits():
     assert all("e5" in o.item_keys for o in result.outfits)
 
 
+async def test_fallback_keeps_items_that_also_passed_review():
+    passed = ("preferred", ["e5", "e1", "e2", "e3"])
+    rejected = [
+        ("preferred", ["e5", "o10", "e2", "e3"]),
+        ("preferred", ["e4", "e1", "e2", "e3"]),
+    ]
+    llm = fake_llm(generation(passed, *rejected), generation(*rejected), generation(*rejected))
+
+    result = await run(
+        llm,
+        candidates=TWO_OUTER_POOL,
+        is_outer_required=True,
+        exploration_style=None,
+        review=reviewer("e4", "o10"),
+        fallback=make_basic_outfit_fallback(TWO_OUTER_POOL, is_outer_required=True),
+    )
+
+    fallback_outfits = [o for o in result.outfits if o.is_fallback]
+    assert fallback_outfits
+    assert all("e4" not in o.item_keys for o in fallback_outfits)
+    assert all("e5" in o.item_keys for o in fallback_outfits)
+
+
 async def test_fallback_builds_nothing_when_only_rejected_items_differ_from_accepted():
     pool = (POOL[0], POOL[1], POOL[2], POOL[4])
     llm = fake_llm(
