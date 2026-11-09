@@ -25,6 +25,8 @@ from app.services.recommend_context import RecommendContext
 from app.services.rule_filter import FilterResult, OuterRequirement, thickness_matches
 
 MAX_CANDIDATES_PER_CATEGORY = 8  # 악세서리는 종류(accessory_type_cd)별로 따로 적용
+MAX_ESSENTIAL_OUTERS = 3
+MIN_ESSENTIAL_OUTERS = 2
 
 # TPO 프리셋별 에센셜 formality_level 허용 구간 (2026-10-03 팀 확정, date는 #125에서 추가).
 # 자유 입력(custom)은 formality_range_for_tpo()에서 전체 구간을 쓰므로 표에 없다.
@@ -54,6 +56,7 @@ class SupplementedCandidate:
     thickness_cd: str | None
     is_waterproof: bool | None
     seasons: list[str]
+    formality_level: int | None = None
 
     @property
     def key(self) -> str:
@@ -101,6 +104,7 @@ def _from_essential(item: EssentialItemCandidate) -> SupplementedCandidate:
         thickness_cd=item.thickness_cd,
         is_waterproof=item.is_waterproof,
         seasons=[],
+        formality_level=item.formality_level,
     )
 
 
@@ -148,6 +152,29 @@ def _sort_essential_outers(
     )
 
 
+def _pick_essential_outers(items: list[SupplementedCandidate]) -> list[SupplementedCandidate]:
+    """정렬 순서대로 격식이 다른 것을 고르면 격식 1~3만 뽑혀 격식 높은 아우터가 빠질 수 있어,
+    이미 고른 것과 격식 차이가 큰 것부터 고른다."""
+    if not items:
+        return []
+    picked = [items[0]]
+    rest = items[1:]
+    while len(picked) < MAX_ESSENTIAL_OUTERS:
+        levels = {c.formality_level or 0 for c in picked}
+        distinct = [c for c in rest if (c.formality_level or 0) not in levels]
+        if not distinct:
+            break
+        farthest = max(
+            distinct,
+            key=lambda c: min(abs((c.formality_level or 0) - level) for level in levels),
+        )
+        picked.append(farthest)
+        rest = [c for c in rest if c is not farthest]
+    if len(picked) < MIN_ESSENTIAL_OUTERS and rest:
+        picked.append(rest[0])
+    return picked
+
+
 def _cap_groups(
     category_cd: str, items: list[SupplementedCandidate]
 ) -> list[list[SupplementedCandidate]]:
@@ -193,6 +220,7 @@ def supplement_essentials(
     is_clothing_shortage = False
     precipitation_expected = filter_result.precipitation_expected
     outer_requirement = filter_result.outer_requirement
+    keeps_order: set[str] = set()
 
     def _essentials_for(category_cd: str) -> list[SupplementedCandidate]:
         # 에센셜도 REC-08과 같은 두께·체감온도 규칙을 통과해야 한다.
@@ -218,7 +246,8 @@ def supplement_essentials(
             _essentials_for("outer"), precipitation_expected, min_feels_like_temperature
         )
         if essentials:
-            by_category["outer"] = [essentials[0]]
+            by_category["outer"] = _pick_essential_outers(essentials)
+            keeps_order.add("outer")
         else:
             # 보유·에센셜 모두 쓸 아우터가 없으면 필수를 지킬 수 없다.
             # 이후 검증에서 코디 전체가 탈락하지 않도록 선택으로 낮추고 부족으로 표시한다.
@@ -227,6 +256,11 @@ def supplement_essentials(
 
     final_candidates: list[SupplementedCandidate] = []
     for category_cd, items in by_category.items():
+        if category_cd in keeps_order:
+            # 다시 정렬하면 추운 날 1순위 두꺼운 아우터가 선호 스타일 아우터에 밀려
+            # 폴백 첫 코디에서 빠진다.
+            final_candidates.extend(items)
+            continue
         for group in _cap_groups(category_cd, items):
             final_candidates.extend(
                 _sort_candidates(group, preferred_styles, precipitation_expected)[
