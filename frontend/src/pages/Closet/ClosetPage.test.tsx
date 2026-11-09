@@ -349,6 +349,142 @@ describe('빈 옷장과 불러오기 실패', () => {
   });
 });
 
+describe('옷 개수 표시', () => {
+  const countLabel = /^총 .*벌$/;
+
+  test('서버에 등록된 옷의 전체 개수를 상단 바 오른쪽에 보여야 한다.', async () => {
+    await renderCloset();
+
+    const topBar = await screen.findByRole('banner');
+
+    expect(await within(topBar).findByText('총 41벌')).toBeInTheDocument();
+    expect(within(topBar).getByRole('heading', { name: '옷장' })).toBeVisible();
+  });
+
+  test('1,000벌이 넘으면 천 단위 쉼표를 찍어야 한다.', async () => {
+    server.use(
+      http.get('/api/clothing', () =>
+        HttpResponse.json({ ...emptyPage, total_count: 1234 }),
+      ),
+    );
+    await renderCloset();
+
+    expect(await screen.findByText('총 1,234벌')).toBeInTheDocument();
+  });
+
+  test('옷이 하나도 없으면 총 0벌을 보여야 한다.', async () => {
+    server.use(http.get('/api/clothing', () => HttpResponse.json(emptyPage)));
+    await renderCloset();
+
+    expect(await screen.findByText('총 0벌')).toBeInTheDocument();
+    expect(await screen.findByText('옷장이 비어 있어요')).toBeInTheDocument();
+  });
+
+  test('처음 불러오는 동안에는 숫자를 보여 주지 않고, 불러오면 숫자로 바뀌어야 한다.', async () => {
+    let releaseList = () => {};
+    const listGate = new Promise<void>((resolve) => {
+      releaseList = resolve;
+    });
+    server.use(
+      http.get('/api/clothing', async () => {
+        await listGate;
+        return HttpResponse.json({ ...emptyPage, total_count: 7 });
+      }),
+    );
+    await renderCloset();
+
+    expect(
+      await screen.findByText('옷장을 불러오는 중이에요'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(countLabel)).not.toBeInTheDocument();
+
+    releaseList();
+
+    expect(await screen.findByText('총 7벌')).toBeInTheDocument();
+  });
+
+  test('불러오기에 실패하면 숨겨야 한다.', async () => {
+    server.use(
+      http.get('/api/clothing', () =>
+        HttpResponse.json(
+          { code: 'INTERNAL_ERROR', message: '처리 중 오류가 발생했습니다.' },
+          { status: 500 },
+        ),
+      ),
+    );
+    await renderCloset();
+
+    expect(
+      await screen.findByText('옷장을 불러오지 못했어요'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(countLabel)).not.toBeInTheDocument();
+  });
+
+  test('로그인이 만료되어 로딩 화면이 유지되는 동안에는 숫자를 보여 주지 않아야 한다.', async () => {
+    server.use(
+      http.get('/api/clothing', () =>
+        HttpResponse.json(
+          { code: 'UNAUTHORIZED', message: '로그인이 필요합니다.' },
+          { status: 401 },
+        ),
+      ),
+    );
+    const { queryClient } = await renderCloset();
+
+    await waitFor(() => {
+      expect(
+        queryClient.getQueryState(
+          getListClothingClothingGetInfiniteQueryKey(CLOSET_LIST_PARAMS),
+        )?.status,
+      ).toBe('error');
+    });
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+
+    expect(screen.getByText('옷장을 불러오는 중이에요')).toBeInTheDocument();
+    expect(screen.queryByText(countLabel)).not.toBeInTheDocument();
+  });
+
+  test('다음 묶음을 받으면 가장 최근에 받은 응답의 개수를 따라야 한다.', async () => {
+    await renderCloset();
+    await screen.findByText('총 41벌');
+
+    server.use(
+      http.get('/api/clothing', ({ request }) =>
+        new URL(request.url).searchParams.has('cursor')
+          ? HttpResponse.json({ ...emptyPage, total_count: 43 })
+          : undefined,
+      ),
+    );
+    scrollToListEnd();
+
+    expect(await screen.findByText('총 43벌')).toBeInTheDocument();
+    expect(screen.queryByText('총 41벌')).not.toBeInTheDocument();
+  });
+
+  test('다음 묶음을 불러오지 못해도 이미 받은 개수는 그대로 보여야 한다.', async () => {
+    await renderCloset();
+    await screen.findByText('총 41벌');
+
+    server.use(
+      http.get('/api/clothing', ({ request }) =>
+        new URL(request.url).searchParams.has('cursor')
+          ? HttpResponse.json(
+              {
+                code: 'INTERNAL_ERROR',
+                message: '처리 중 오류가 발생했습니다.',
+              },
+              { status: 500 },
+            )
+          : undefined,
+      ),
+    );
+    scrollToListEnd();
+
+    expect(await screen.findByText('더 불러오지 못했어요')).toBeInTheDocument();
+    expect(screen.getByText('총 41벌')).toBeInTheDocument();
+  });
+});
+
 const LIST_REFETCH_DELAY_MS = 1500;
 
 const readStatusIds = (request: Request) =>
@@ -1266,6 +1402,26 @@ describe('사진으로 옷 등록', () => {
     );
 
     expect(await screen.findByText('옷장이 비어 있어요')).toBeInTheDocument();
+  });
+
+  test('올리기 실패 카드는 총 개수에 들어가지 않아야 한다.', async () => {
+    server.use(
+      http.get('/api/clothing', () => HttpResponse.json(emptyPage)),
+      http.post('/api/clothing', () =>
+        HttpResponse.json(
+          { code: 'INTERNAL_ERROR', message: '처리 중 오류가 발생했습니다.' },
+          { status: 500 },
+        ),
+      ),
+    );
+    await startClothingUpload(new QueryClient(), [
+      { file: photoFile('IMG_0001.JPG'), previewUrl: 'blob:test/up' },
+    ]);
+    await renderCloset();
+
+    expect(await screen.findByText('올리기 실패')).toBeInTheDocument();
+    expect(await screen.findByText('총 0벌')).toBeInTheDocument();
+    expect(screen.queryByText('총 1벌')).not.toBeInTheDocument();
   });
 
   test('세션이 끝나면 남아 있던 올리기 실패 카드를 비워야 한다.', async () => {
