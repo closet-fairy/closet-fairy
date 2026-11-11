@@ -340,6 +340,10 @@ def test_style_formality_config_keeps_classic_neutral():
             {**VALID_SIGNALS, "avoided": {"less_formal": ["casual"], "more_formal": []}},
             "반대쪽",
         ),
+        (
+            {"preferred": VALID_SIGNALS["preferred"]},
+            "avoided: 설정 형식이 올바르지 않습니다",
+        ),
     ],
 )
 def test_style_formality_config_rejects_invalid(tmp_path, data, message):

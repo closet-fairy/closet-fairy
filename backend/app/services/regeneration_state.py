@@ -126,8 +126,11 @@ def load_style_formality(path: Path = STYLE_FORMALITY_PATH) -> StyleFormality:
 
 
 def _load_signals(data: dict, section: str) -> FormalitySignals:
-    less = frozenset(data[section]["less_formal"])
-    more = frozenset(data[section]["more_formal"])
+    try:
+        less = frozenset(data[section]["less_formal"])
+        more = frozenset(data[section]["more_formal"])
+    except (KeyError, TypeError) as e:
+        raise StyleFormalityConfigError(f"{section}: 설정 형식이 올바르지 않습니다.") from e
     unknown = sorted((less | more) - set(get_args(StyleCd)))
     if unknown:
         raise StyleFormalityConfigError(f"{section}: 알 수 없는 스타일 코드입니다: {unknown}")
