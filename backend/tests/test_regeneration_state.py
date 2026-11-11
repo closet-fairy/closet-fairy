@@ -1,3 +1,4 @@
+import json
 import random
 from decimal import Decimal
 
@@ -7,7 +8,11 @@ from app.core.config import Settings
 from app.services.preference_score import ClassificationResult, classify
 from app.services.regeneration_intent import RegenerationIntent
 from app.services.regeneration_state import (
+    FormalityDirection,
+    StyleFormalityConfigError,
     feels_like_offset,
+    formality_direction,
+    load_style_formality,
     merge_session_preferences,
     select_session_exploration_style,
 )
@@ -300,3 +305,117 @@ def test_feels_like_offset_follows_settings():
     )
 
     assert feels_like_offset([intent(clothing_warmth="lighter")] * 3, settings) == Decimal("2")
+
+
+CASUAL = RegenerationIntent(status="ok", preferred_styles=("casual",))
+LESS_NOW = FormalityDirection("less", is_current=True)
+LESS_CARRIED = FormalityDirection("less", is_current=False)
+MORE_NOW = FormalityDirection("more", is_current=True)
+VALID_SIGNALS = {
+    "preferred": {"less_formal": ["casual"], "more_formal": ["formal"]},
+    "avoided": {"less_formal": ["formal"], "more_formal": ["casual"]},
+}
+
+
+def test_style_formality_config_keeps_classic_neutral():
+    table = load_style_formality()
+    assert table.preferred.less_formal == {"casual", "sporty", "street"}
+    assert table.preferred.more_formal == {"formal"}
+    assert table.avoided.less_formal == {"formal"}
+    assert table.avoided.more_formal == {"casual"}
+
+
+@pytest.mark.parametrize(
+    ("data", "message"),
+    [
+        (
+            {**VALID_SIGNALS, "avoided": {"less_formal": ["comfy"], "more_formal": []}},
+            "avoided: 알 수 없는",
+        ),
+        (
+            {**VALID_SIGNALS, "preferred": {"less_formal": ["formal"], "more_formal": ["formal"]}},
+            "preferred: 격식 쪽과 덜 격식 쪽에 함께",
+        ),
+        (
+            {**VALID_SIGNALS, "avoided": {"less_formal": ["casual"], "more_formal": []}},
+            "반대쪽",
+        ),
+    ],
+)
+def test_style_formality_config_rejects_invalid(tmp_path, data, message):
+    path = tmp_path / "style_formality.json"
+    path.write_text(json.dumps(data), encoding="utf-8")
+    with pytest.raises(StyleFormalityConfigError, match=message):
+        load_style_formality(path)
+
+
+@pytest.mark.parametrize(
+    ("intents", "expected"),
+    [
+        pytest.param([], None, id="no-request"),
+        pytest.param([intent(preferred_styles=("casual",))], LESS_NOW, id="direct-casual"),
+        pytest.param(
+            [intent(inferred_preferred_styles=("casual",))], LESS_NOW, id="inferred-casual"
+        ),
+        pytest.param([intent(preferred_styles=("formal",))], MORE_NOW, id="direct-formal"),
+        pytest.param([intent(avoided_styles=("formal",))], LESS_NOW, id="avoid-formal"),
+        pytest.param([intent(avoided_styles=("casual",))], MORE_NOW, id="avoid-casual"),
+        pytest.param([intent(avoided_styles=("sporty",))], None, id="avoid-sporty-no-signal"),
+        pytest.param([intent(avoided_styles=("street",))], None, id="avoid-street-no-signal"),
+        pytest.param(
+            [intent(inferred_preferred_styles=("minimal", "classic"))],
+            None,
+            id="classic-is-neutral",
+        ),
+        pytest.param(
+            [intent(preferred_styles=("casual",), avoided_styles=("sporty",))],
+            LESS_NOW,
+            id="preferred-before-avoided",
+        ),
+        pytest.param(
+            [intent(inferred_preferred_styles=("street",), avoided_styles=("casual",))],
+            LESS_NOW,
+            id="preferred-beats-avoided",
+        ),
+        pytest.param([intent(preferred_styles=("formal", "casual"))], None, id="mixed-preferred"),
+        pytest.param([CASUAL, intent(preferred_styles=("formal",))], MORE_NOW, id="latest-wins"),
+        pytest.param(
+            [CASUAL, intent(inferred_preferred_colors=("yellow", "pink"))],
+            LESS_CARRIED,
+            id="carried-over-color-only",
+        ),
+        pytest.param(
+            [CASUAL, intent(inferred_preferred_styles=("minimal", "classic"))],
+            LESS_CARRIED,
+            id="carried-over-neat",
+        ),
+        pytest.param(
+            [CASUAL, intent(clothing_warmth="lighter")],
+            LESS_CARRIED,
+            id="carried-over-warmth-only",
+        ),
+        pytest.param(
+            [CASUAL, intent(replace_items={"bottom": "청바지"})],
+            LESS_CARRIED,
+            id="carried-over-item-name",
+        ),
+        pytest.param(
+            [CASUAL, intent(preferred_styles=("formal", "casual"))], None, id="mixed-resets"
+        ),
+        pytest.param(
+            [
+                intent(preferred_styles=("casual", "minimal")),
+                intent(inferred_preferred_styles=("casual",)),
+            ],
+            LESS_NOW,
+            id="session-707",
+        ),
+    ],
+)
+def test_formality_direction(intents, expected):
+    assert formality_direction(intents) == expected
+
+
+def test_formality_direction_rejects_non_ok_intent():
+    with pytest.raises(ValueError):
+        formality_direction([RegenerationIntent(status="unclear")])

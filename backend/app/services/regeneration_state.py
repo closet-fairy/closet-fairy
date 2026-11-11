@@ -1,21 +1,51 @@
 """재추천 요청들을 누적 선호 분류 결과에 세션 우선으로 병합한다 (#83, FR-REF-08~11)."""
 
+import json
 import random
 from collections.abc import Sequence
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from decimal import Decimal
-from typing import NamedTuple
+from functools import lru_cache
+from pathlib import Path
+from typing import Literal, NamedTuple, get_args
 
 from app.core.config import Settings
 from app.repositories.preference_score import PreferenceRow
+from app.schemas.codes import StyleCd
 from app.services.preference_score import ClassificationResult, select_exploration_style
 from app.services.regeneration_intent import RegenerationIntent
+
+STYLE_FORMALITY_PATH = Path(__file__).resolve().parents[2] / "config" / "style_formality.json"
+
+FormalityDirectionCd = Literal["more", "less"]
 
 
 class _Change(NamedTuple):
     preferred: Sequence[str]
     inferred: Sequence[str]
     avoided: Sequence[str]
+
+
+class StyleFormalityConfigError(RuntimeError):
+    pass
+
+
+@dataclass(frozen=True)
+class FormalitySignals:
+    less_formal: frozenset[str]
+    more_formal: frozenset[str]
+
+
+@dataclass(frozen=True)
+class StyleFormality:
+    preferred: FormalitySignals
+    avoided: FormalitySignals
+
+
+@dataclass(frozen=True)
+class FormalityDirection:
+    direction: FormalityDirectionCd
+    is_current: bool
 
 
 # intents는 request_seq 오름차순(오래된 요청 먼저)으로 넘긴다.
@@ -64,6 +94,51 @@ def feels_like_offset(intents: Sequence[RegenerationIntent], settings: Settings)
     return settings.REGENERATION_FEELS_LIKE_STEP * steps
 
 
+def formality_direction(intents: Sequence[RegenerationIntent]) -> FormalityDirection | None:
+    _require_ok(intents)
+    table = load_style_formality()
+    direction: FormalityDirectionCd | None = None
+    is_current = False
+    for index, intent in enumerate(intents):
+        signal = _formality_signal(intent, table)
+        if signal is None:
+            continue
+        # 두 방향이 섞인 요청도 격식 요청으로 쳐서, 앞 요청의 방향을 이어 쓰지 않는다
+        direction = None if signal == "mixed" else signal
+        is_current = index == len(intents) - 1
+    if direction is None:
+        return None
+    return FormalityDirection(direction, is_current)
+
+
+@lru_cache
+def load_style_formality(path: Path = STYLE_FORMALITY_PATH) -> StyleFormality:
+    data = json.loads(path.read_text(encoding="utf-8"))
+    table = StyleFormality(
+        preferred=_load_signals(data, "preferred"), avoided=_load_signals(data, "avoided")
+    )
+    if not (
+        table.avoided.less_formal <= table.preferred.more_formal
+        and table.avoided.more_formal <= table.preferred.less_formal
+    ):
+        raise StyleFormalityConfigError("기피 신호는 선호 신호와 반대쪽 스타일이어야 합니다.")
+    return table
+
+
+def _load_signals(data: dict, section: str) -> FormalitySignals:
+    less = frozenset(data[section]["less_formal"])
+    more = frozenset(data[section]["more_formal"])
+    unknown = sorted((less | more) - set(get_args(StyleCd)))
+    if unknown:
+        raise StyleFormalityConfigError(f"{section}: 알 수 없는 스타일 코드입니다: {unknown}")
+    overlap = sorted(less & more)
+    if overlap:
+        raise StyleFormalityConfigError(
+            f"{section}: 격식 쪽과 덜 격식 쪽에 함께 있는 스타일입니다: {overlap}"
+        )
+    return FormalitySignals(less_formal=less, more_formal=more)
+
+
 def select_session_exploration_style(
     base_style_result: ClassificationResult,
     merged_style_result: ClassificationResult,
@@ -83,6 +158,31 @@ def _require_ok(intents: Sequence[RegenerationIntent]) -> None:
     statuses = sorted({i.status for i in intents} - {"ok"})
     if statuses:
         raise ValueError(f"병합할 수 없는 의도가 있습니다: {statuses}")
+
+
+# 선호 칸에 신호가 있으면 기피 칸은 보지 않는다. "스포티 말고 캐주얼하게"가 방향 없음이 되지 않게
+def _formality_signal(
+    intent: RegenerationIntent, table: StyleFormality
+) -> FormalityDirectionCd | Literal["mixed"] | None:
+    preferred = {*intent.preferred_styles, *intent.inferred_preferred_styles}
+    signal = _signal(preferred, table.preferred)
+    if signal is not None:
+        return signal
+    return _signal(set(intent.avoided_styles), table.avoided)
+
+
+def _signal(
+    styles: set[str], signals: FormalitySignals
+) -> FormalityDirectionCd | Literal["mixed"] | None:
+    less = styles & signals.less_formal
+    more = styles & signals.more_formal
+    if less and more:
+        return "mixed"
+    if less:
+        return "less"
+    if more:
+        return "more"
+    return None
 
 
 def _merge(

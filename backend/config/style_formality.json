@@ -1,0 +1,10 @@
+{
+  "preferred": {
+    "less_formal": ["casual", "sporty", "street"],
+    "more_formal": ["formal"]
+  },
+  "avoided": {
+    "less_formal": ["formal"],
+    "more_formal": ["casual"]
+  }
+}

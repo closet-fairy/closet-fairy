@@ -52,7 +52,12 @@ from app.services.recommendation_result import latest_deck_rows
 from app.services.recommendation_save import CATEGORY_LABELS
 from app.services.recommendation_session import from_db_utc
 from app.services.regeneration_intent import RegenerationIntent
-from app.services.regeneration_state import feels_like_offset
+from app.services.regeneration_state import (
+    FormalityDirection,
+    FormalityDirectionCd,
+    feels_like_offset,
+    formality_direction,
+)
 from app.services.rule_filter import filter_clothing
 from app.services.weather.weather_service import HourlyWeather, WeatherResult, min_feels_like
 
@@ -509,6 +514,7 @@ def build_regeneration_instructions(
     intent: RegenerationIntent,
     offset: Decimal,
     *,
+    formality: FormalityDirection | None = None,
     locked_avoided: bool = False,
     avoided_accessory_keys: frozenset[str] = frozenset(),
 ) -> list[RegenerationInstruction]:
@@ -540,6 +546,7 @@ def build_regeneration_instructions(
             avoided_accessory_keys=avoided_accessory_keys,
         )
         texts += _name_texts(intent, all_outfits=False)
+    texts += _formality_texts(formality)
     texts += _warmth_texts(offset)
     return [RegenerationInstruction(seq, text) for seq, text in enumerate(texts, start=1)]
 
@@ -630,6 +637,31 @@ def _name_texts(intent: RegenerationIntent, *, all_outfits: bool) -> list[str]:
             subject = f"{prefix}{_slot_text(slot)}{_eun_neun(slot)}"
         texts.append(f'{subject} 이름이 "{name}"에 가장 가까운 후보로 고른다.')
     return texts
+
+
+_FORMALITY_DIRECTION_TEXTS: dict[FormalityDirectionCd, str] = {
+    "less": "덜 격식 있게",
+    "more": "더 격식 있게",
+}
+_FORMALITY_SHIFT_TEXTS: dict[FormalityDirectionCd, tuple[str, str, str]] = {
+    "less": ("낮춘다", "높이지", "크게 캐주얼하게"),
+    "more": ("높인다", "낮추지", "크게 차려입게"),
+}
+
+
+def _formality_texts(formality: FormalityDirection | None) -> list[str]:
+    if formality is None:
+        return []
+    wish = _FORMALITY_DIRECTION_TEXTS[formality.direction]
+    shift, not_reversed, too_far = _FORMALITY_SHIFT_TEXTS[formality.direction]
+    if formality.is_current:
+        return [
+            f"회원이 지금보다 {wish} 입기를 원한다. "
+            f"[TPO]에 맞는 범위에서 이전 코디보다 격식을 한 단계만 {shift}. "
+            f"옷 한두 개만 바꾸고, 한꺼번에 {too_far} 바꾸지 않는다."
+        ]
+    # 이어진 방향에 "낮춘다"를 다시 넣으면 색만 바꾸는 요청에서도 격식이 또 내려간다
+    return [f"회원이 앞서 {wish} 입기를 원했다. 이전 코디보다 격식을 {not_reversed} 않는다."]
 
 
 def _warmth_texts(offset: Decimal) -> list[str]:
@@ -854,6 +886,7 @@ async def regenerate_outfits(
     session_id = context.recommendation_session_id
     current = ctx.request.parsed_intent
     offset = feels_like_offset(ctx.intents, settings)
+    formality = formality_direction(ctx.intents)
 
     adjusted = replace(context, weather=apply_feels_like_offset(context.weather, offset))
     supplement = await collect_essential_candidates(adjusted, filter_clothing(adjusted))
@@ -904,6 +937,7 @@ async def regenerate_outfits(
                 plan,
                 current,
                 offset,
+                formality=formality,
                 locked_avoided=locked_avoided,
                 avoided_accessory_keys=avoided_accessory_keys,
             )
