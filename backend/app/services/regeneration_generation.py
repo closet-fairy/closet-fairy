@@ -650,6 +650,8 @@ _FORMALITY_SHIFT_TEXTS: dict[FormalityDirectionCd, tuple[str, str, str]] = {
 
 
 def _formality_texts(formality: FormalityDirection | None, *, named: bool) -> list[str]:
+    # 이름 요청과 "격식을 높이지 않는다"가 부딪치면
+    # 1차 검증이 이름을 보지 않아 회원 요청이 조용히 빠진다
     if formality is None or (named and not formality.is_current):
         return []
     wish = _FORMALITY_DIRECTION_TEXTS[formality.direction]
