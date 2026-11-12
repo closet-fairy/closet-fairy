@@ -1123,6 +1123,16 @@ async def test_color_only_request_after_less_formal_keeps_formality_without_lowe
     assert LESS_NOW_TEXT not in _prompt(llm)
 
 
+async def test_item_name_request_after_less_formal_drops_carried_formality(wired):
+    request = _request(slot="shoes", intent=_intent(replace_items={"bottom": "청바지"}))
+    llm = _llm(_output(("preferred", ["o3", "o4", "o6"])))
+
+    await _run(_ctx(request, earlier=[_intent(inferred_preferred_styles=("casual",))]), llm)
+
+    assert '하의(bottom)는 이름이 "청바지"에 가장 가까운 후보로 고른다.' in _prompt(llm)
+    assert "격식 있게 입기를" not in _prompt(llm)
+
+
 async def test_request_without_formality_signal_adds_no_formality_text(wired):
     request = _request(intent=_intent(inferred_preferred_colors=("yellow",)))
     llm = _llm(_output(("preferred", ["o2", "o4", "o7"])))

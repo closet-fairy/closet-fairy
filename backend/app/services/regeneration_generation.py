@@ -546,7 +546,7 @@ def build_regeneration_instructions(
             avoided_accessory_keys=avoided_accessory_keys,
         )
         texts += _name_texts(intent, all_outfits=False)
-    texts += _formality_texts(formality)
+    texts += _formality_texts(formality, named=_has_name(intent))
     texts += _warmth_texts(offset)
     return [RegenerationInstruction(seq, text) for seq, text in enumerate(texts, start=1)]
 
@@ -649,8 +649,8 @@ _FORMALITY_SHIFT_TEXTS: dict[FormalityDirectionCd, tuple[str, str, str]] = {
 }
 
 
-def _formality_texts(formality: FormalityDirection | None) -> list[str]:
-    if formality is None:
+def _formality_texts(formality: FormalityDirection | None, *, named: bool) -> list[str]:
+    if formality is None or (named and not formality.is_current):
         return []
     wish = _FORMALITY_DIRECTION_TEXTS[formality.direction]
     shift, not_reversed, too_far = _FORMALITY_SHIFT_TEXTS[formality.direction]
@@ -662,6 +662,10 @@ def _formality_texts(formality: FormalityDirection | None) -> list[str]:
         ]
     # 이어진 방향에 "낮춘다"를 다시 넣으면 색만 바꾸는 요청에서도 격식이 또 내려간다
     return [f"회원이 앞서 {wish} 입기를 원했다. 이전 코디보다 격식을 {not_reversed} 않는다."]
+
+
+def _has_name(intent: RegenerationIntent) -> bool:
+    return any(name is not None for name in intent.replace_items.values())
 
 
 def _warmth_texts(offset: Decimal) -> list[str]:
