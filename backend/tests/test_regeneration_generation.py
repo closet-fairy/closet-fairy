@@ -330,6 +330,28 @@ def _socks_screen() -> list[ScreenOutfit]:
     return [socks_outfit if o.outfit_id == 102 else o for o in _screen()]
 
 
+async def test_parts_result_differing_from_kept_only_in_socks_is_rejected(wired):
+    kept_with_socks = ScreenOutfit(
+        104,
+        4,
+        "preferred",
+        (_item("top", "o3"), _item("bottom", "o4"), _item("shoes", "o7"), _item("socks", "o8")),
+    )
+    screen = [kept_with_socks if o.outfit_id == 104 else o for o in _screen()]
+    llm = _llm(
+        _output(("preferred", ["o3", "o4", "o7"])),
+        _output(("preferred", ["o3", "o13", "o7"])),
+    )
+
+    outcome = await _run(_ctx(_request(outfit_id=102, slot="bottom"), screen=screen), llm)
+
+    assert outcome.generation.rounds == 2
+    assert (
+        "이미 정해진 세트 4와 아이템 조합이 같다(o3, o4, o7). 이 중 하나 이상을 다른 후보로 바꾼다."
+    ) in _prompt(llm, 1)
+    assert outcome.generation.outfits[0].item_keys == ("o3", "o13", "o7")
+
+
 async def test_target_with_only_socks_changed_is_rejected(wired):
     llm = _llm(
         _output(("preferred", ["o3", "o5", "o7", "o8"])),
@@ -973,7 +995,7 @@ def test_accessory_is_added_when_outfit_had_none(keys, removed, expected):
     assert _swap_reasons(_draft(keys, removed), parts) == expected
 
 
-def test_only_removed_accessory_id_failure_is_fixable_without_items():
+def _parts_check():
     plan = regen.RegenerationPlan(
         scope="single",
         target_type="preferred",
@@ -981,8 +1003,8 @@ def test_only_removed_accessory_id_failure_is_fixable_without_items():
         replaced_combos=(),
         parts=_parts(),
         target_seq=1,
-        socks_distinct=True,
     )
+    categories = {**CATEGORY_BY_KEY, "o3": "top", "o8": "socks"}
     accessory_types = {"o9": "watch", "o10": "bag", "o11": "hat", "o12": "belt"}
     candidates = tuple(
         CandidateItem(
@@ -995,18 +1017,36 @@ def test_only_removed_accessory_id_failure_is_fixable_without_items():
             None,
             accessory_type_cd=accessory_types.get(key),
         )
-        for key, category in CATEGORY_BY_KEY.items()
+        for key, category in categories.items()
     )
     prompt_input = make_input(
         candidates=candidates, outfit_count=1, exploration_style=None, is_outer_required=False
     )
-    check = regen.make_regeneration_hard_rule_check(prompt_input, plan)
+    return regen.make_regeneration_hard_rule_check(prompt_input, plan)
+
+
+def test_only_removed_accessory_id_failure_is_fixable_without_items():
+    check = _parts_check()
 
     [claim_only] = check([_draft(["o2", "o4", "o6", "o9", "o11"], "o9")], ())
     [count_too] = check([_draft(["o2", "o4", "o6", "o11"], "o9")], ())
 
     assert not claim_only.passed and claim_only.fixable_without_items
     assert not count_too.passed and not count_too.fixable_without_items
+
+
+def test_locked_violation_of_socks_only_is_fixable_without_items():
+    [result] = _parts_check()([_draft(["o2", "o4", "o6", "o8", "o9", "o11"], "o10")], ())
+
+    assert result.reasons == ("그대로 두기로 한 아이템이 바뀌었다: o8 추가.",)
+    assert result.fixable_without_items
+
+
+def test_locked_violation_of_clothing_is_not_fixable_without_items():
+    [result] = _parts_check()([_draft(["o3", "o4", "o6", "o8", "o9", "o11"], "o10")], ())
+
+    assert result.reasons == ("그대로 두기로 한 아이템이 바뀌었다: o2 빠짐, o3 추가, o8 추가.",)
+    assert not result.fixable_without_items
 
 
 async def test_accessory_swap_flows_failure_to_next_round_and_logs_passed_id(wired, caplog):

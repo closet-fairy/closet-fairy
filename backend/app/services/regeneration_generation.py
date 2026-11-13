@@ -332,9 +332,9 @@ def plan_regeneration(
         if replace_slots
         else None
     )
-    # 부분 교체는 자리별로 고정·교체를 검사해 양말도 구분한다.
-    # 양말을 빼고 비교하면 양말만 바꾸는 요청이 늘 같은 조합으로 탈락한다
-    socks_distinct = parts is not None
+    # 양말을 바꿔 달라는 요청은 양말도 구분해 비교한다.
+    # 양말을 빼고 비교하면 이 요청이 늘 이전 코디와 같은 조합으로 탈락한다
+    socks_distinct = "socks" in replace_slots
     return RegenerationPlan(
         scope="single",
         target_type=target.outfit_type,
@@ -711,18 +711,25 @@ def make_regeneration_hard_rule_check(
         for result in base(drafts, kept_outfits):
             draft = drafts_by_seq[result.outfit_seq]
             added: list[str] = []
-            claim_reasons: list[str] = []
+            combo_failed = False
             combo = combo_key(draft.item_keys, category_by_key, socks_distinct=plan.socks_distinct)
             if combo in replaced:
                 added.append(_replaced_reason(combo, plan))
+                combo_failed = True
             if any(_is_near_combo(draft, c, category_by_key) for c in plan.near_combos):
                 added.append("이전 코디에서 지운 옷 자리만 채워 이전 코디와 사실상 같은 조합이다.")
+                combo_failed = True
             if plan.parts is not None and draft.outfit_seq == plan.parts.target_seq:
-                added += check_locked_parts(draft, plan.parts, category_by_key)
+                locked = check_locked_parts(draft, plan.parts, category_by_key)
+                added += locked
+                if locked and not _only_socks_changed(draft, plan.parts, category_by_key):
+                    combo_failed = True
                 if ACCESSORIES in plan.parts.replace_slots:
-                    added += accessory_count_reasons(draft, plan.parts, category_by_key)
-                    claim_reasons = accessory_claim_reasons(draft, plan.parts, category_by_key)
-            reasons = (*result.reasons, *added, *claim_reasons)
+                    count_reasons = accessory_count_reasons(draft, plan.parts, category_by_key)
+                    added += count_reasons
+                    combo_failed = combo_failed or bool(count_reasons)
+                    added += accessory_claim_reasons(draft, plan.parts, category_by_key)
+            reasons = (*result.reasons, *added)
             results.append(
                 OutfitValidation(
                     result.outfit_seq,
@@ -730,12 +737,21 @@ def make_regeneration_hard_rule_check(
                     reasons=reasons,
                     fixable_without_items=bool(reasons)
                     and (result.passed or result.fixable_without_items)
-                    and not added,
+                    and not combo_failed,
                 )
             )
         return results
 
     return check
+
+
+def _only_socks_changed(
+    draft: DraftOutfit, parts: PartsPlan, category_by_key: Mapping[str, str]
+) -> bool:
+    keys = [k for k in draft.item_keys if category_by_key.get(k) != "socks"]
+    keys += sorted(parts.locked_by_slot.get("socks", ()))
+    restored = replace(draft, item_keys=tuple(keys))
+    return not check_locked_parts(restored, parts, category_by_key)
 
 
 def _replaced_reason(combo: frozenset[str], plan: RegenerationPlan) -> str:
