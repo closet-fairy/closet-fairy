@@ -102,10 +102,12 @@ async def generate_outfits(
     def countable(item_keys: Collection[str]) -> bool:
         return _in_combo_space(item_keys, category_by_key, prompt_input.is_outer_required)
 
-    def key_of(item_keys: Collection[str]) -> frozenset[str]:
-        return combo_key(item_keys, category_by_key, socks_distinct=socks_distinct)
+    def key_of(item_keys: Collection[str], socks_keys: Collection[str] = ()) -> frozenset[str]:
+        return combo_key(
+            item_keys, category_by_key, socks_distinct=socks_distinct, socks_keys=socks_keys
+        )
 
-    kept_combos = {key_of(k.item_keys) for k in kept if countable(k.item_keys)}
+    kept_combos = {key_of(k.item_keys, k.socks_keys) for k in kept if countable(k.item_keys)}
     excluded = {key_of(c) for c in excluded_combos if countable(c)}
     possible = count_possible_combos(
         prompt_input.candidates, prompt_input.is_outer_required, socks_distinct=socks_distinct
@@ -152,7 +154,8 @@ async def generate_outfits(
             break
 
         missing_count = len(seqs) - len(drafts)
-        flagged_elsewhere = {key_of(k.item_keys) for k in data.kept_outfits} | excluded
+        flagged_elsewhere = {key_of(k.item_keys, k.socks_keys) for k in data.kept_outfits}
+        flagged_elsewhere |= excluded
         blocked = rejected.keys() - flagged_elsewhere
         hard_results = _flag_rejected(hard_rule(drafts, data.kept_outfits), drafts, key_of, blocked)
         hard_failed = [v for v in hard_results if not v.passed]

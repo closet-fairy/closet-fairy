@@ -282,7 +282,12 @@ def _to_screen_item(row: OutfitItemResultRow) -> ScreenItem:
 
 def to_kept_outfits(screen: Sequence[ScreenOutfit], target_seqs: Sequence[int]) -> list[KeptOutfit]:
     return [
-        KeptOutfit(o.outfit_seq, list(o.keys), o.outfit_type)
+        KeptOutfit(
+            o.outfit_seq,
+            list(o.keys),
+            o.outfit_type,
+            socks_keys=frozenset(i.key for i in o.items if i.slot_cd == "socks" and i.key),
+        )
         for o in screen
         if o.outfit_seq not in target_seqs and o.keys
     ]

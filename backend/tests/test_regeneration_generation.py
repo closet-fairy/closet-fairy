@@ -352,6 +352,36 @@ async def test_parts_result_differing_from_kept_only_in_socks_is_rejected(wired)
     assert outcome.generation.outfits[0].item_keys == ("o3", "o13", "o7")
 
 
+async def test_kept_socks_outside_candidates_are_ignored_in_same_combo_check(wired):
+    kept_with_missing_socks = ScreenOutfit(
+        104,
+        4,
+        "preferred",
+        (_item("top", "o3"), _item("bottom", "o4"), _item("shoes", "o7"), _item("socks", "o99")),
+    )
+    screen = [kept_with_missing_socks if o.outfit_id == 104 else o for o in _screen()]
+    llm = _llm(
+        _output(("preferred", ["o3", "o4", "o7"])),
+        _output(("preferred", ["o3", "o13", "o7"])),
+    )
+
+    outcome = await _run(_ctx(_request(outfit_id=102, slot="bottom"), screen=screen), llm)
+
+    assert "o99" not in {c.key for c in outcome.prompt_input.candidates}
+    assert outcome.generation.rounds == 2
+    assert "이미 정해진 세트 4와 아이템 조합이 같다(o3, o4, o7)." in _prompt(llm, 1)
+
+
+def test_kept_outfits_carry_socks_keys():
+    kept = regen.to_kept_outfits(_socks_screen(), (1,))
+
+    assert {k.outfit_seq: k.socks_keys for k in kept} == {
+        2: frozenset({"o8"}),
+        3: frozenset(),
+        4: frozenset(),
+    }
+
+
 async def test_target_with_only_socks_changed_is_rejected(wired):
     llm = _llm(
         _output(("preferred", ["o3", "o5", "o7", "o8"])),

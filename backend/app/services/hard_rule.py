@@ -36,10 +36,13 @@ def combo_key(
     category_by_key: Mapping[str, str],
     *,
     socks_distinct: bool = False,
+    socks_keys: Collection[str] = (),
 ) -> frozenset[str]:
     if socks_distinct:
         return frozenset(item_keys)
-    return frozenset(key for key in item_keys if category_by_key.get(key) != "socks")
+    return frozenset(
+        key for key in item_keys if category_by_key.get(key) != "socks" and key not in socks_keys
+    )
 
 
 def same_combo_reason(subject: str, combo: Collection[str]) -> str:
@@ -86,8 +89,10 @@ def validate_hard_rules(
     by_key = {c.key: c for c in candidates}
     category_by_key = {c.key: c.category_cd for c in candidates}
 
-    def key_of(item_keys: Collection[str]) -> frozenset[str]:
-        return combo_key(item_keys, category_by_key, socks_distinct=socks_distinct)
+    def key_of(item_keys: Collection[str], socks_keys: Collection[str] = ()) -> frozenset[str]:
+        return combo_key(
+            item_keys, category_by_key, socks_distinct=socks_distinct, socks_keys=socks_keys
+        )
 
     ordered = sorted(drafts, key=lambda d: d.outfit_seq)
     checked = {
@@ -104,7 +109,7 @@ def validate_hard_rules(
     }
 
     taken = [
-        (key_of(k.item_keys), f"이미 정해진 세트 {_SEQ_WITH_PARTICLE[k.outfit_seq]}")
+        (key_of(k.item_keys, k.socks_keys), f"이미 정해진 세트 {_SEQ_WITH_PARTICLE[k.outfit_seq]}")
         for k in sorted(kept_outfits, key=lambda k: k.outfit_seq)
     ]
     same_reasons: dict[int, list[str]] = {}

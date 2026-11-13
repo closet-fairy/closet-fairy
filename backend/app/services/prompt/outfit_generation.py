@@ -102,6 +102,7 @@ class KeptOutfit:
     outfit_seq: int
     item_keys: Sequence[str]
     outfit_type: OutfitType
+    socks_keys: frozenset[str] = frozenset()
 
 
 @dataclass(frozen=True)
