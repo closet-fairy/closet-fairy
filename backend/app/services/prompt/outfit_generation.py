@@ -12,7 +12,7 @@ from app.services.prompt.template import load_prompt_template, render
 from app.services.weather.base_time import KST
 
 PROMPT_NAME = "outfit_generation"
-PROMPT_VERSION = "v2.0"
+PROMPT_VERSION = "v3.0"
 
 ItemSource = Literal["owned", "essential"]
 OutfitType = Literal["preferred", "exploratory"]
@@ -136,6 +136,7 @@ class OutfitPromptInput:
     kept_outfits: Sequence[KeptOutfit] = ()
     regeneration_instructions: Sequence[RegenerationInstruction] = ()
     failure_reasons: Sequence[FailureReason] = ()
+    rejected_combos: Sequence[Sequence[str]] = ()
     is_going_out_tomorrow: bool = False
     ignores_current_weather: bool = False
 
@@ -240,6 +241,7 @@ def assemble_outfit_generation_prompt(data: OutfitPromptInput) -> AssembledPromp
         ),
         "kept_outfits": _format_kept_outfits(data.kept_outfits),
         "regeneration_instructions": _format_instructions(data.regeneration_instructions),
+        "rejected_combos": _format_rejected_combos(data.rejected_combos),
         "failure_reasons": _format_failure_reasons(data.failure_reasons),
         "outfit_composition": _format_composition(data.outfit_count, data.exploration_style),
     }
@@ -415,6 +417,16 @@ def _format_instructions(instructions: Sequence[RegenerationInstruction]) -> str
             f"- {_required_inline(i.text)}" for i in sorted(instructions, key=lambda i: i.seq)
         )
     )
+
+
+def _format_rejected_combos(combos: Sequence[Sequence[str]]) -> str | None:
+    for combo in combos:
+        if not combo:
+            raise ValueError("탈락한 조합에 아이템이 없습니다.")
+        invalid = [key for key in combo if not _ITEM_KEY.fullmatch(key)]
+        if invalid:
+            raise ValueError(f"탈락한 조합의 아이템 키 형식이 올바르지 않습니다: {invalid}")
+    return _text_or_none("\n".join(f"- {', '.join(sorted(combo))}" for combo in combos))
 
 
 def _format_failure_reasons(reasons: Sequence[FailureReason]) -> str | None:

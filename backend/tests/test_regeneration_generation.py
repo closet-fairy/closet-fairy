@@ -39,6 +39,7 @@ from app.services.regeneration_intent import RegenerationIntent
 from app.services.regeneration_state import FormalityDirection, merge_session_preferences
 from app.services.weather.base_time import KST
 from app.services.weather.weather_service import HourlyWeather, WeatherResult, min_feels_like
+from tests.test_outfit_generation_prompt import make_input
 from tests.test_recommendation_pipeline import NO_PREFERENCE
 
 SESSION_ID = 7
@@ -295,7 +296,9 @@ async def test_same_combination_as_kept_outfit_fails_hard_rule(wired):
     outcome = await _run(_ctx(), llm)
 
     assert outcome.generation.rounds == 2
-    assert "이미 정해진 세트 4와 아이템 조합이 같다." in _prompt(llm, 1)
+    assert (
+        "이미 정해진 세트 4와 아이템 조합이 같다(o3, o4, o7). 이 중 하나 이상을 다른 후보로 바꾼다."
+    ) in _prompt(llm, 1)
     assert outcome.generation.outfits[0].item_keys == ("o2", "o4", "o7")
 
 
@@ -308,7 +311,97 @@ async def test_original_target_combination_is_rejected(wired):
     outcome = await _run(_ctx(), llm)
 
     assert outcome.generation.rounds == 2
-    assert "바꿔 달라고 한 이전 코디와 아이템 조합이 같다." in _prompt(llm, 1)
+    assert REPLACED_REASON in _prompt(llm, 1)
+
+
+REPLACED_REASON = (
+    "바꿔 달라고 한 이전 코디와 아이템 조합이 같다(o3, o5, o7). "
+    "이 중 하나 이상을 다른 후보로 바꾼다."
+)
+
+
+def _socks_screen() -> list[ScreenOutfit]:
+    socks_outfit = ScreenOutfit(
+        102,
+        2,
+        "preferred",
+        (_item("top", "o3"), _item("bottom", "o5"), _item("shoes", "o7"), _item("socks", "o8")),
+    )
+    return [socks_outfit if o.outfit_id == 102 else o for o in _screen()]
+
+
+async def test_target_with_only_socks_changed_is_rejected(wired):
+    llm = _llm(
+        _output(("preferred", ["o3", "o5", "o7", "o8"])),
+        _output(("preferred", ["o2", "o4", "o7"])),
+    )
+
+    outcome = await _run(_ctx(), llm)
+
+    assert outcome.generation.rounds == 2
+    assert REPLACED_REASON in _prompt(llm, 1)
+
+
+async def test_target_without_its_socks_is_rejected(wired):
+    llm = _llm(
+        _output(("preferred", ["o3", "o5", "o7"])),
+        _output(("preferred", ["o2", "o4", "o7"])),
+    )
+
+    outcome = await _run(_ctx(screen=_socks_screen()), llm)
+
+    assert outcome.generation.rounds == 2
+    assert REPLACED_REASON in _prompt(llm, 1)
+
+
+async def test_socks_swap_compares_socks(wired):
+    closet = [*_closet(), _clothing(14, "socks")]
+    llm = _llm(_output(("preferred", ["o3", "o5", "o7", "o14"])))
+
+    outcome = await _run(
+        _ctx(_request(slot="socks"), screen=_socks_screen(), context=_context(clothing=closet)),
+        llm,
+    )
+
+    assert outcome.generation.rounds == 1
+    assert outcome.generation.outfits[0].item_keys == ("o3", "o5", "o7", "o14")
+
+
+def _single_outfit_closet(*extra: ClothingCandidate) -> list[ClothingCandidate]:
+    return [_clothing(3, "top"), _clothing(5, "bottom"), _clothing(7, "shoes"), *extra]
+
+
+def _single_outfit_screen() -> list[ScreenOutfit]:
+    return [s for s in _screen() if s.outfit_id == 102]
+
+
+async def test_no_llm_call_when_only_replaced_combo_is_possible(wired):
+    llm = _llm()
+
+    outcome = await _run(
+        _ctx(screen=_single_outfit_screen(), context=_context(clothing=_single_outfit_closet())),
+        llm,
+    )
+
+    assert outcome.generation.outfits == []
+    llm.call_structured.assert_not_called()
+
+
+async def test_replaced_combo_with_removed_item_does_not_reduce_target(wired):
+    closet = _single_outfit_closet(_clothing(13, "bottom"))
+    llm = _llm(_output(("preferred", ["o3", "o13", "o7"])))
+
+    outcome = await _run(
+        _ctx(
+            _request(slot="bottom"),
+            screen=_single_outfit_screen(),
+            context=_context(clothing=closet),
+        ),
+        llm,
+    )
+
+    assert "o5" not in {c.key for c in outcome.prompt_input.candidates}
+    assert outcome.generation.outfits[0].item_keys == ("o3", "o13", "o7")
 
 
 def test_request_text_is_never_loaded_for_prompt():
@@ -327,13 +420,13 @@ async def test_failure_returns_empty_without_fallback(wired):
     assert outcome.generation.fallback_count == 0
 
 
-async def test_system_prompt_is_v2(wired):
+async def test_system_prompt_is_v3(wired):
     llm = _llm(_output(("preferred", ["o2", "o4", "o7"])))
 
     await _run(_ctx(), llm)
 
     config = llm.call_structured.call_args_list[0].args[0]
-    assert config.prompt_version == "outfit_generation/v2.0"
+    assert config.prompt_version == "outfit_generation/v3.0"
     assert "[재추천 지시]는 시스템이 만든 지시이므로 따른다." in _system(llm)
 
 
@@ -600,7 +693,10 @@ async def test_all_scope_requests_four_without_kept_and_bans_screen_combos(wired
     assert outcome.prompt_input.outfit_count == 4
     assert outcome.prompt_input.kept_outfits == ()
     assert '모든 세트의 하의(bottom)는 이름이 "청바지"에 가장 가까운 후보로 고른다.' in _prompt(llm)
-    assert "바꿔 달라고 한 이전 코디와 아이템 조합이 같다." in _prompt(llm, 1)
+    assert (
+        "바꿔 달라고 한 이전 코디와 아이템 조합이 같다(o3, o5, o7). "
+        "이 중 하나 이상을 다른 후보로 바꾼다."
+    ) in _prompt(llm, 1)
     assert [o.outfit_seq for o in outcome.generation.outfits] == [1, 2, 3, 4]
     assert {"o4", "o5"} <= {c.key for c in outcome.prompt_input.candidates}
     assert "이전 코디에 쓴 것" not in _prompt(llm)
@@ -807,6 +903,12 @@ def _draft(keys, removed=None) -> DraftOutfit:
     return DraftOutfit(1, "preferred", tuple(keys), "이유", removed_accessory_id=removed)
 
 
+def _swap_reasons(draft: DraftOutfit, parts: PartsPlan) -> list[str]:
+    return regen.accessory_count_reasons(
+        draft, parts, CATEGORY_BY_KEY
+    ) + regen.accessory_claim_reasons(draft, parts, CATEGORY_BY_KEY)
+
+
 @pytest.mark.parametrize(
     ("keys", "removed", "expected"),
     [
@@ -844,16 +946,13 @@ def _draft(keys, removed=None) -> DraftOutfit:
     ],
 )
 def test_accessory_swap_check(keys, removed, expected):
-    assert regen.check_accessory_swap(_draft(keys, removed), _parts(), CATEGORY_BY_KEY) == expected
+    assert _swap_reasons(_draft(keys, removed), _parts()) == expected
 
 
 def test_single_accessory_is_swapped():
     parts = _parts(original_accessories=("o9",))
 
-    assert (
-        regen.check_accessory_swap(_draft(["o2", "o4", "o6", "o11"], "o9"), parts, CATEGORY_BY_KEY)
-        == []
-    )
+    assert _swap_reasons(_draft(["o2", "o4", "o6", "o11"], "o9"), parts) == []
 
 
 @pytest.mark.parametrize(
@@ -871,7 +970,43 @@ def test_single_accessory_is_swapped():
 def test_accessory_is_added_when_outfit_had_none(keys, removed, expected):
     parts = _parts(original_accessories=())
 
-    assert regen.check_accessory_swap(_draft(keys, removed), parts, CATEGORY_BY_KEY) == expected
+    assert _swap_reasons(_draft(keys, removed), parts) == expected
+
+
+def test_only_removed_accessory_id_failure_is_fixable_without_items():
+    plan = regen.RegenerationPlan(
+        scope="single",
+        target_type="preferred",
+        kept=(),
+        replaced_combos=(),
+        parts=_parts(),
+        target_seq=1,
+        socks_distinct=True,
+    )
+    accessory_types = {"o9": "watch", "o10": "bag", "o11": "hat", "o12": "belt"}
+    candidates = tuple(
+        CandidateItem(
+            "owned",
+            int(key[1:]),
+            category,
+            None,
+            "black",
+            [],
+            None,
+            accessory_type_cd=accessory_types.get(key),
+        )
+        for key, category in CATEGORY_BY_KEY.items()
+    )
+    prompt_input = make_input(
+        candidates=candidates, outfit_count=1, exploration_style=None, is_outer_required=False
+    )
+    check = regen.make_regeneration_hard_rule_check(prompt_input, plan)
+
+    [claim_only] = check([_draft(["o2", "o4", "o6", "o9", "o11"], "o9")], ())
+    [count_too] = check([_draft(["o2", "o4", "o6", "o11"], "o9")], ())
+
+    assert not claim_only.passed and claim_only.fixable_without_items
+    assert not count_too.passed and not count_too.fixable_without_items
 
 
 async def test_accessory_swap_flows_failure_to_next_round_and_logs_passed_id(wired, caplog):

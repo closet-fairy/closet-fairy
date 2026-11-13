@@ -9,6 +9,9 @@ class OutfitValidation:
     outfit_seq: int
     passed: bool
     reasons: tuple[str, ...] = ()
+    # 아이템을 그대로 두고 코디 유형·removed_accessory_id·양말만 고치면 풀리는 탈락.
+    # 이런 조합은 탈락 조합으로 누적하지 않는다
+    fixable_without_items: bool = False
 
     def __post_init__(self) -> None:
         if self.passed and self.reasons:

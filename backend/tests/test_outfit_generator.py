@@ -400,6 +400,7 @@ def test_hard_rule_check_passes_prompt_input_fields(monkeypatch):
         "season_cd": prompt_input.season_cd,
         "avoided_styles": prompt_input.style_result.avoided,
         "avoided_colors": prompt_input.color_result.avoided,
+        "socks_distinct": False,
     }
 
 
@@ -422,7 +423,10 @@ async def test_hard_rule_rejects_combination_passed_in_earlier_round():
 
     assert [list(o.item_keys) for o in result.outfits] == [GOOD, OTHER]
     assert result.hard_rule_retries == 2
-    assert "- 세트 2: 이미 정해진 세트 1과 아이템 조합이 같다." in prompt_data(llm, 2)
+    assert (
+        "- 세트 2: 이미 정해진 세트 1과 아이템 조합이 같다(o2001, o3001, o4001). "
+        "이 중 하나 이상을 다른 후보로 바꾼다."
+    ) in prompt_data(llm, 2)
 
 
 async def test_hard_rule_rejects_combination_of_kept_outfit():
@@ -444,7 +448,193 @@ async def test_hard_rule_rejects_combination_of_kept_outfit():
     )
 
     assert [(o.outfit_seq, list(o.item_keys)) for o in result.outfits] == [(2, OTHER)]
-    assert "- 세트 2: 이미 정해진 세트 1과 아이템 조합이 같다." in prompt_data(llm, 1)
+    assert (
+        "- 세트 2: 이미 정해진 세트 1과 아이템 조합이 같다(o2001, o3001, o4001). "
+        "이 중 하나 이상을 다른 후보로 바꾼다."
+    ) in prompt_data(llm, 1)
+
+
+# ---------- 탈락 조합 누적 (#258) ----------
+
+SOCKS = CandidateItem("essential", 8, "socks", "양말", "black", [], "thin")
+OTHER_SOCKS = CandidateItem("essential", 9, "socks", "양말", "white", [], "thin")
+COMBO_A, COMBO_B, COMBO_C = ["e1", "e2", "e3"], ["o10", "e2", "e3"], ["e1", "o20", "e3"]
+REJECTED_HEADER = "## 이번 요청에서 탈락한 조합\n아래 조합은 다시 만들지 않는다.\n"
+
+
+def combo_reviewer(*fail_combos: Sequence[str]) -> AsyncMock:
+    failing = {frozenset(c) for c in fail_combos}
+
+    async def review(drafts: Sequence[DraftOutfit]) -> list[OutfitValidation]:
+        return [
+            OutfitValidation(d.outfit_seq, passed=False, reasons=("TPO에 안 맞음",))
+            if frozenset(d.item_keys) in failing
+            else OutfitValidation(d.outfit_seq, passed=True)
+            for d in drafts
+        ]
+
+    return AsyncMock(side_effect=review)
+
+
+async def run_single(llm, *, review, hard_rule=None, candidates=None, **kw):
+    prompt_input = make_input(
+        candidates=candidates or POOL,
+        outfit_count=1,
+        exploration_style=None,
+        is_outer_required=False,
+    )
+    return await generate_outfits(
+        llm,
+        prompt_input,
+        hard_rule=hard_rule or make_hard_rule_check(prompt_input),
+        review=review,
+        fallback=no_fallback,
+        max_retry_per_stage=2,
+        **kw,
+    )
+
+
+async def test_rejected_combos_accumulate_into_prompt():
+    llm = fake_llm(
+        generation(("preferred", COMBO_A)),
+        generation(("preferred", COMBO_B)),
+        generation(("preferred", COMBO_C)),
+    )
+
+    result = await run_single(llm, review=combo_reviewer(COMBO_A, COMBO_B))
+
+    assert [list(o.item_keys) for o in result.outfits] == [COMBO_C]
+    assert "## 이번 요청에서 탈락한 조합" not in prompt_data(llm, 0)
+    assert REJECTED_HEADER + "- e1, e2, e3\n\n" in prompt_data(llm, 1)
+    assert REJECTED_HEADER + "- e1, e2, e3\n- e2, e3, o10\n\n" in prompt_data(llm, 2)
+
+
+async def test_repeated_rejected_combo_fails_hard_rule_before_review():
+    review = combo_reviewer(COMBO_A)
+    llm = fake_llm(
+        generation(("preferred", COMBO_A)),
+        generation(("preferred", [*COMBO_A, "e8"])),
+        generation(("preferred", COMBO_C)),
+    )
+
+    result = await run_single(llm, review=review, candidates=(*POOL, SOCKS))
+
+    assert [list(o.item_keys) for o in result.outfits] == [COMBO_C]
+    assert result.hard_rule_retries == 1
+    assert result.reviewer_retries == 1
+    assert [len(call.args[0]) for call in review.call_args_list] == [1, 1]
+    assert (
+        "- 세트 1: 이번 요청에서 이미 탈락한 조합과 아이템 조합이 같다(e1, e2, e3). "
+        "이 중 하나 이상을 다른 후보로 바꾼다."
+    ) in prompt_data(llm, 2)
+
+
+async def test_combo_failed_for_fixable_reason_is_not_blocked():
+    calls = []
+
+    def fail_first_round(drafts, kept_outfits):
+        calls.append(drafts)
+        if len(calls) > 1:
+            return [OutfitValidation(d.outfit_seq, passed=True) for d in drafts]
+        return [
+            OutfitValidation(
+                d.outfit_seq, passed=False, reasons=("고칠 수 있음",), fixable_without_items=True
+            )
+            for d in drafts
+        ]
+
+    llm = fake_llm(generation(("preferred", COMBO_A)), generation(("preferred", COMBO_A)))
+
+    result = await run_single(llm, review=reviewer(), hard_rule=fail_first_round)
+
+    assert [list(o.item_keys) for o in result.outfits] == [COMBO_A]
+    assert "## 이번 요청에서 탈락한 조합" not in prompt_data(llm, 1)
+
+
+async def test_draft_with_two_socks_does_not_block_its_combo():
+    llm = fake_llm(
+        generation(("preferred", [*COMBO_A, "e8", "e9"])),
+        generation(("preferred", COMBO_A)),
+    )
+
+    result = await run_single(llm, review=reviewer(), candidates=(*POOL, SOCKS, OTHER_SOCKS))
+
+    assert [list(o.item_keys) for o in result.outfits] == [COMBO_A]
+    assert "## 이번 요청에서 탈락한 조합" not in prompt_data(llm, 1)
+
+
+async def test_accepted_combo_is_not_listed_as_rejected():
+    prompt_input = make_input(
+        candidates=POOL, outfit_count=2, exploration_style=None, is_outer_required=False
+    )
+    llm = fake_llm(
+        generation(("preferred", COMBO_A), ("preferred", COMBO_A)),
+        generation(("preferred", COMBO_B)),
+    )
+
+    result = await generate_outfits(
+        llm,
+        prompt_input,
+        hard_rule=make_hard_rule_check(prompt_input),
+        review=reviewer(),
+        fallback=no_fallback,
+        max_retry_per_stage=2,
+    )
+
+    assert [list(o.item_keys) for o in result.outfits] == [COMBO_A, COMBO_B]
+    assert "## 이번 요청에서 탈락한 조합" not in prompt_data(llm, 1)
+
+
+# ---------- 미리 뺄 조합 (#258) ----------
+
+
+async def test_excluded_combos_reduce_target():
+    llm = fake_llm(generation(("preferred", FEW_COMBOS[1])))
+
+    result = await generate_outfits(
+        llm,
+        make_input(candidates=FEW, outfit_count=2, exploration_style=None, is_outer_required=False),
+        hard_rule=all_pass_rule,
+        review=reviewer(),
+        fallback=no_fallback,
+        excluded_combos=[FEW_COMBOS[0]],
+    )
+
+    assert [list(o.item_keys) for o in result.outfits] == [FEW_COMBOS[1]]
+    assert "코디 세트 1벌을 만든다." in prompt_data(llm, 0)
+
+
+async def test_no_llm_call_when_excluded_combos_use_up_all_combos():
+    llm = fake_llm()
+
+    result = await generate_outfits(
+        llm,
+        make_input(candidates=FEW, outfit_count=1, exploration_style=None, is_outer_required=False),
+        hard_rule=all_pass_rule,
+        review=reviewer(),
+        fallback=no_fallback,
+        excluded_combos=list(FEW_COMBOS),
+    )
+
+    assert result.outfits == []
+    assert result.rounds == 0
+    llm.call_structured.assert_not_called()
+
+
+async def test_excluded_combo_with_item_outside_candidates_is_not_counted():
+    llm = fake_llm(generation(("preferred", FEW_COMBOS[0]), ("preferred", FEW_COMBOS[1])))
+
+    result = await generate_outfits(
+        llm,
+        make_input(candidates=FEW, outfit_count=2, exploration_style=None, is_outer_required=False),
+        hard_rule=all_pass_rule,
+        review=reviewer(),
+        fallback=no_fallback,
+        excluded_combos=[["o77", "e2", "e3"]],
+    )
+
+    assert len(result.outfits) == 2
+    assert "코디 세트 2벌을 만든다." in prompt_data(llm, 0)
 
 
 # ---------- 2차 검증 연결 ----------
@@ -588,7 +778,7 @@ def test_fallback_reuses_rejected_outer_when_every_outer_was_rejected():
 async def test_fallback_does_not_use_items_from_reviewer_rejected_outfits():
     hoodie_outfit = ["e4", "e1", "e2", "e3"]
     always_hoodie = generation(*[("preferred", hoodie_outfit)] * 4)
-    llm = fake_llm(always_hoodie, always_hoodie, always_hoodie)
+    llm = fake_llm(always_hoodie, always_hoodie, always_hoodie, always_hoodie)
 
     result = await run(
         llm,
@@ -599,7 +789,8 @@ async def test_fallback_does_not_use_items_from_reviewer_rejected_outfits():
         fallback=make_basic_outfit_fallback(TWO_OUTER_POOL, is_outer_required=True),
     )
 
-    assert result.reviewer_retries == 2
+    assert result.reviewer_retries == 1
+    assert result.hard_rule_retries == 2
     assert result.outfits
     assert all(o.is_fallback for o in result.outfits)
     assert all("e4" not in o.item_keys for o in result.outfits)
@@ -691,6 +882,21 @@ def test_count_possible_combos():
     assert count_possible_combos(FEW[:2], is_outer_required=False) == 0
 
 
+def test_count_possible_combos_ignores_socks_unless_distinct():
+    pool = (*POOL, SOCKS, OTHER_SOCKS)
+
+    assert count_possible_combos(pool, is_outer_required=False) == 8
+    assert count_possible_combos(pool, is_outer_required=False, socks_distinct=True) == 32
+
+
+def test_fallback_treats_existing_outfit_with_socks_as_taken():
+    build = make_basic_outfit_fallback((*FEW, SOCKS), is_outer_required=False)
+
+    outfits = build([1], [[*FEW_COMBOS[0], "e8"]], frozenset())
+
+    assert [list(o.item_keys) for o in outfits] == [FEW_COMBOS[1]]
+
+
 async def test_target_is_capped_by_possible_combos():
     llm = fake_llm(generation(("preferred", FEW_COMBOS[0]), ("exploratory", FEW_COMBOS[1])))
 
@@ -750,8 +956,10 @@ async def test_malformed_drafts_do_not_use_up_possible_combos():
 
 
 async def test_duplicate_item_draft_does_not_use_up_its_combo():
-    socks = CandidateItem("essential", 5, "socks", "양말", "black", ["minimal"], "thin")
-    without_socks, with_socks = ["e1", "e2", "e3"], ["e1", "e2", "e3", "e5"]
+    hat = CandidateItem(
+        "essential", 5, "accessories", "모자", "black", ["minimal"], None, accessory_type_cd="hat"
+    )
+    without_hat, with_hat = ["e1", "e2", "e3"], ["e1", "e2", "e3", "e5"]
 
     def reject_duplicates(drafts, kept_outfits):
         return [
@@ -762,15 +970,15 @@ async def test_duplicate_item_draft_does_not_use_up_its_combo():
         ]
 
     llm = fake_llm(
-        generation(("preferred", without_socks), ("exploratory", [*with_socks, "e5"])),
-        generation(("exploratory", with_socks)),
+        generation(("preferred", without_hat), ("exploratory", [*with_hat, "e5"])),
+        generation(("exploratory", with_hat)),
     )
 
     result = await run(
-        llm, candidates=(*FEW[:3], socks), is_outer_required=False, hard_rule=reject_duplicates
+        llm, candidates=(*FEW[:3], hat), is_outer_required=False, hard_rule=reject_duplicates
     )
 
-    assert [list(o.item_keys) for o in result.outfits] == [without_socks, with_socks]
+    assert [list(o.item_keys) for o in result.outfits] == [without_hat, with_hat]
     assert result.fallback_count == 0
 
 

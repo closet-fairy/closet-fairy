@@ -237,7 +237,13 @@ def test_same_combination_fails_only_later_outfit():
 
     assert result == [
         OutfitValidation(2, passed=True),
-        OutfitValidation(4, passed=False, reasons=("세트 2와 아이템 조합이 같다.",)),
+        OutfitValidation(
+            4,
+            passed=False,
+            reasons=(
+                "세트 2와 아이템 조합이 같다(o10, o20, o30). 이 중 하나 이상을 다른 후보로 바꾼다.",
+            ),
+        ),
     ]
 
 
@@ -245,7 +251,14 @@ def test_same_combination_as_kept_outfit_fails():
     result = check(draft(1, BASE), kept=[KeptOutfit(3, list(reversed(BASE)), "preferred")])
 
     assert result == [
-        OutfitValidation(1, passed=False, reasons=("이미 정해진 세트 3과 아이템 조합이 같다.",))
+        OutfitValidation(
+            1,
+            passed=False,
+            reasons=(
+                "이미 정해진 세트 3과 아이템 조합이 같다(o10, o20, o30). "
+                "이 중 하나 이상을 다른 후보로 바꾼다.",
+            ),
+        )
     ]
 
 
@@ -264,8 +277,69 @@ def test_same_combination_reason_is_added_to_other_reasons():
 
     assert result[1].reasons == (
         "탐색 코디에 기피 스타일 아이템을 썼다: o11(street).",
-        "세트 1과 아이템 조합이 같다.",
+        "세트 1과 아이템 조합이 같다(o11, o20, o30). 이 중 하나 이상을 다른 후보로 바꾼다.",
     )
+    assert not result[1].fixable_without_items
+
+
+def test_combination_differing_only_in_socks_is_same():
+    result = check(draft(1, [*BASE, "o40"]), draft(2, [*BASE, "o41"]), draft(3, BASE))
+
+    assert [r.passed for r in result] == [True, False, False]
+    assert result[1].reasons == (
+        "세트 1과 아이템 조합이 같다(o10, o20, o30). 이 중 하나 이상을 다른 후보로 바꾼다.",
+    )
+
+
+def test_combination_differing_in_accessory_is_different():
+    result = check(draft(1, BASE), draft(2, [*BASE, "o52"]))
+
+    assert [r.passed for r in result] == [True, True]
+
+
+def test_socks_are_compared_when_socks_distinct():
+    result = check(draft(1, [*BASE, "o40"]), draft(2, [*BASE, "o41"]), socks_distinct=True)
+
+    assert [r.passed for r in result] == [True, True]
+
+
+def test_kept_outfit_differing_only_in_socks_is_same():
+    result = check(draft(1, BASE), kept=[KeptOutfit(3, [*BASE, "o40"], "preferred")])
+
+    assert result[0].reasons == (
+        "이미 정해진 세트 3과 아이템 조합이 같다(o10, o20, o30). "
+        "이 중 하나 이상을 다른 후보로 바꾼다.",
+    )
+
+
+# ---------- 아이템을 바꾸지 않고 고칠 수 있는 탈락 ----------
+
+
+def test_exploratory_avoided_failure_is_fixable_without_items():
+    [result] = check(draft(1, ["o11", "o20", "o30"], "exploratory"))
+
+    assert not result.passed
+    assert result.fixable_without_items
+
+
+def test_item_failure_is_not_fixable_without_items():
+    [result] = check(draft(1, ["o11", "o20", "o30", "o50", "o51"], "exploratory"))
+
+    assert not result.fixable_without_items
+
+
+def test_off_season_socks_only_is_fixable_without_items():
+    socks = CandidateItem("owned", 42, "socks", "울 양말", "gray", [], "thick", seasons=["winter"])
+    candidates = (*CANDIDATES, socks)
+
+    [result] = check(draft(1, [*BASE, "o42"]), candidates=candidates)
+    [distinct] = check(draft(1, [*BASE, "o42"]), candidates=candidates, socks_distinct=True)
+    [other] = check(draft(1, ["o60", "o20", "o30", "o42"]), candidates=candidates)
+
+    assert result.reasons == ("이번 계절(fall)에 맞지 않는 아이템을 썼다: o42.",)
+    assert result.fixable_without_items
+    assert not distinct.fixable_without_items
+    assert not other.fixable_without_items
 
 
 # ---------- 결과 형식 ----------

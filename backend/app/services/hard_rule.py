@@ -31,6 +31,22 @@ _SEQ_WITH_PARTICLE = {1: "1과", 2: "2와", 3: "3과", 4: "4와"}
 DISPLAYABLE_KEY = re.compile(r"[A-Za-z0-9]{1,16}")
 
 
+def combo_key(
+    item_keys: Collection[str],
+    category_by_key: Mapping[str, str],
+    *,
+    socks_distinct: bool = False,
+) -> frozenset[str]:
+    if socks_distinct:
+        return frozenset(item_keys)
+    return frozenset(key for key in item_keys if category_by_key.get(key) != "socks")
+
+
+def same_combo_reason(subject: str, combo: Collection[str]) -> str:
+    keys = ", ".join(sorted(combo))
+    return f"{subject} 아이템 조합이 같다({keys}). 이 중 하나 이상을 다른 후보로 바꾼다."
+
+
 class HardRuleTarget(Protocol):
     @property
     def outfit_seq(self) -> int: ...
@@ -51,6 +67,7 @@ def validate_hard_rules(
     season_cd: str,
     avoided_styles: Collection[str],
     avoided_colors: Collection[str],
+    socks_distinct: bool = False,
 ) -> list[OutfitValidation]:
     draft_seqs = [d.outfit_seq for d in drafts]
     kept_seqs = [k.outfit_seq for k in kept_outfits]
@@ -67,9 +84,13 @@ def validate_hard_rules(
         raise ValueError("후보 목록이 비었습니다.")
     validate_candidates(candidates)
     by_key = {c.key: c for c in candidates}
+    category_by_key = {c.key: c.category_cd for c in candidates}
+
+    def key_of(item_keys: Collection[str]) -> frozenset[str]:
+        return combo_key(item_keys, category_by_key, socks_distinct=socks_distinct)
 
     ordered = sorted(drafts, key=lambda d: d.outfit_seq)
-    reasons_by_seq = {
+    checked = {
         draft.outfit_seq: _check_outfit(
             draft,
             by_key,
@@ -77,29 +98,40 @@ def validate_hard_rules(
             season_cd=season_cd,
             avoided_styles=set(avoided_styles),
             avoided_colors=set(avoided_colors),
+            socks_distinct=socks_distinct,
         )
         for draft in ordered
     }
 
     taken = [
-        (frozenset(k.item_keys), f"이미 정해진 세트 {_SEQ_WITH_PARTICLE[k.outfit_seq]}")
+        (key_of(k.item_keys), f"이미 정해진 세트 {_SEQ_WITH_PARTICLE[k.outfit_seq]}")
         for k in sorted(kept_outfits, key=lambda k: k.outfit_seq)
     ]
+    same_reasons: dict[int, list[str]] = {}
     for draft in ordered:
-        combo = frozenset(draft.item_keys)
-        reasons = reasons_by_seq[draft.outfit_seq]
+        combo = key_of(draft.item_keys)
+        reasons, fixable_reasons = checked[draft.outfit_seq]
         same = next((label for taken_combo, label in taken if taken_combo == combo), None)
         if same is not None:
-            reasons.append(f"{same} 아이템 조합이 같다.")
-        elif not reasons:
+            same_reasons[draft.outfit_seq] = [same_combo_reason(same, combo)]
+        elif not reasons and not fixable_reasons:
             # 다른 이유로 탈락한 앞 세트는 어차피 버려지므로 같은 조합 판정의 기준에서 뺀다
             # (재생성 기회 낭비 방지)
             taken.append((combo, f"세트 {_SEQ_WITH_PARTICLE[draft.outfit_seq]}"))
 
-    return [
-        OutfitValidation(seq, passed=not reasons, reasons=tuple(reasons))
-        for seq, reasons in reasons_by_seq.items()
-    ]
+    results = []
+    for seq, (reasons, fixable_reasons) in checked.items():
+        same = same_reasons.get(seq, [])
+        all_reasons = tuple(reasons + fixable_reasons + same)
+        results.append(
+            OutfitValidation(
+                seq,
+                passed=not all_reasons,
+                reasons=all_reasons,
+                fixable_without_items=bool(all_reasons) and not (reasons or same),
+            )
+        )
+    return results
 
 
 def _check_outfit(
@@ -110,7 +142,8 @@ def _check_outfit(
     season_cd: str,
     avoided_styles: set[str],
     avoided_colors: set[str],
-) -> list[str]:
+    socks_distinct: bool = False,
+) -> tuple[list[str], list[str]]:
     reasons: list[str] = []
 
     unknown = {key for key in draft.item_keys if key not in by_key}
@@ -159,10 +192,13 @@ def _check_outfit(
                 f"{', '.join(keys)}. 종류별로 세트당 1개까지다."
             )
 
-    off_season = [item.key for item in items if item.seasons and season_cd not in item.seasons]
+    fixable_reasons: list[str] = []
+    off_season = [item for item in items if item.seasons and season_cd not in item.seasons]
     if off_season:
-        reasons.append(
-            f"이번 계절({season_cd})에 맞지 않는 아이템을 썼다: {', '.join(off_season)}."
+        only_socks = not socks_distinct and all(i.category_cd == "socks" for i in off_season)
+        (fixable_reasons if only_socks else reasons).append(
+            f"이번 계절({season_cd})에 맞지 않는 아이템을 썼다: "
+            f"{', '.join(i.key for i in off_season)}."
         )
 
     if draft.outfit_type == "exploratory":
@@ -172,14 +208,14 @@ def _check_outfit(
             if hits:
                 styled.append(f"{item.key}({','.join(hits)})")
         if styled:
-            reasons.append(f"탐색 코디에 기피 스타일 아이템을 썼다: {', '.join(styled)}.")
+            fixable_reasons.append(f"탐색 코디에 기피 스타일 아이템을 썼다: {', '.join(styled)}.")
         colored = [
             f"{item.key}({item.color_cd})" for item in items if item.color_cd in avoided_colors
         ]
         if colored:
-            reasons.append(f"탐색 코디에 기피 색상 아이템을 썼다: {', '.join(colored)}.")
+            fixable_reasons.append(f"탐색 코디에 기피 색상 아이템을 썼다: {', '.join(colored)}.")
 
-    return reasons
+    return reasons, fixable_reasons
 
 
 def _unknown_reason(unknown: Collection[str]) -> str:

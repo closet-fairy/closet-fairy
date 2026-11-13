@@ -11,13 +11,13 @@ failure_reasons 슬롯에 넣는다. 검증 단계별 재생성 한도를 넘거
 
 import logging
 from collections import Counter
-from collections.abc import Awaitable, Callable, Sequence
+from collections.abc import Awaitable, Callable, Collection, Sequence
 from dataclasses import dataclass, replace
 from itertools import product
 
 from app.core.config import get_settings
 from app.core.logging import Event
-from app.services.hard_rule import validate_hard_rules
+from app.services.hard_rule import combo_key, same_combo_reason, validate_hard_rules
 from app.services.llm import LLMCallConfig, LLMClient, LLMError
 from app.services.outfit_validation import OutfitValidation, to_failure_reasons
 from app.services.prompt.outfit_generation import (
@@ -79,6 +79,8 @@ async def generate_outfits(
     max_retry_per_stage: int | None = None,
     session_id: int | None = None,
     outfit_seqs: Sequence[int] | None = None,
+    excluded_combos: Collection[Collection[str]] = (),
+    socks_distinct: bool = False,
 ) -> GenerationResult:
     """prompt_input.outfit_count만큼 세트를 채운다. 후보로 만들 수 있는 조합이 그보다 적으면
     그 수까지만 채우므로 더 적게(0벌일 수도 있다) 돌려줄 수 있다.
@@ -91,15 +93,21 @@ async def generate_outfits(
     kept = tuple(prompt_input.kept_outfits)
     category_by_key = {c.key: c.category_cd for c in prompt_input.candidates}
 
-    def countable(item_keys: Sequence[str]) -> bool:
+    def countable(item_keys: Collection[str]) -> bool:
         return _in_combo_space(item_keys, category_by_key, prompt_input.is_outer_required)
 
-    kept_combos = {frozenset(k.item_keys) for k in kept if countable(k.item_keys)}
-    possible = count_possible_combos(prompt_input.candidates, prompt_input.is_outer_required)
-    target = min(prompt_input.outfit_count, max(possible - len(kept_combos), 0))
+    def key_of(item_keys: Collection[str]) -> frozenset[str]:
+        return combo_key(item_keys, category_by_key, socks_distinct=socks_distinct)
+
+    kept_combos = {key_of(k.item_keys) for k in kept if countable(k.item_keys)}
+    excluded = {key_of(c) for c in excluded_combos if countable(c)}
+    possible = count_possible_combos(
+        prompt_input.candidates, prompt_input.is_outer_required, socks_distinct=socks_distinct
+    )
+    target = min(prompt_input.outfit_count, max(possible - len(kept_combos | excluded), 0))
     target = min(target, len(_free_seqs(kept, (), outfit_seqs)))
     accepted: list[DraftOutfit] = []
-    rejected: set[frozenset[str]] = set()
+    rejected: dict[frozenset[str], None] = {}
     review_rejected_keys: set[str] = set()
     failure_reasons: list[FailureReason] = []
     hard_retries = reviewer_retries = shortfall_retries = rounds = 0
@@ -126,6 +134,7 @@ async def generate_outfits(
             outfit_count=len(seqs),
             kept_outfits=kept + tuple(_as_kept(a) for a in accepted),
             failure_reasons=tuple(failure_reasons),
+            rejected_combos=tuple(tuple(sorted(c)) for c in rejected),
             exploration_style=_exploration_style(prompt_input, kept, accepted),
         )
         exploration_requested = exploration_requested or data.exploration_style is not None
@@ -137,7 +146,14 @@ async def generate_outfits(
             break
 
         missing_count = len(seqs) - len(drafts)
-        hard_failed = [v for v in hard_rule(drafts, data.kept_outfits) if not v.passed]
+        flagged_elsewhere = {key_of(k.item_keys) for k in data.kept_outfits} | excluded
+
+        def rejected_key(draft: DraftOutfit) -> frozenset[str] | None:
+            combo = key_of(draft.item_keys)
+            return combo if combo in rejected and combo not in flagged_elsewhere else None
+
+        hard_results = _flag_rejected(hard_rule(drafts, data.kept_outfits), drafts, rejected_key)
+        hard_failed = [v for v in hard_results if not v.passed]
         hard_failed_seqs = {v.outfit_seq for v in hard_failed}
         survivors = [d for d in drafts if d.outfit_seq not in hard_failed_seqs]
 
@@ -157,18 +173,24 @@ async def generate_outfits(
         review_rejected_keys.update(
             key for d in survivors if d.outfit_seq in review_failed_seqs for key in d.item_keys
         )
-        rejected |= {
-            frozenset(d.item_keys)
-            for d in drafts
-            if d.outfit_seq in hard_failed_seqs | review_failed_seqs and countable(d.item_keys)
+        combo_failed_seqs = {
+            v.outfit_seq for v in hard_failed + review_failed if not v.fixable_without_items
         }
+        accepted_combos = {key_of(a.item_keys) for a in accepted}
+        for d in drafts:
+            if d.outfit_seq in combo_failed_seqs and countable(d.item_keys):
+                combo = key_of(d.item_keys)
+                # 같은 라운드의 통과 세트와 겹쳐 떨어진 조합은 통과 세트 조합이라
+                # 탈락 목록에 넣지 않는다
+                if combo not in accepted_combos:
+                    rejected.setdefault(combo)
 
         _log_failures(Event.HARD_RULE_FAIL, "hard_rule", hard_failed, drafts, rounds, log_extra)
         _log_failures(Event.REVIEWER_FAIL, "reviewer", review_failed, drafts, rounds, log_extra)
 
         if len(accepted) >= target:
             break
-        used = kept_combos | rejected | {frozenset(a.item_keys) for a in accepted}
+        used = kept_combos | excluded | rejected.keys() | accepted_combos
         if len(used) >= possible:
             break
         if hard_failed:
@@ -289,6 +311,23 @@ def _exploration_style(
     return prompt_input.exploration_style
 
 
+def _flag_rejected(
+    results: Sequence[OutfitValidation],
+    drafts: Sequence[DraftOutfit],
+    rejected_key: Callable[[DraftOutfit], frozenset[str] | None],
+) -> list[OutfitValidation]:
+    by_seq = {r.outfit_seq: r for r in results}
+    for draft in drafts:
+        combo = rejected_key(draft)
+        if combo is None:
+            continue
+        reason = same_combo_reason("이번 요청에서 이미 탈락한 조합과", combo)
+        prior = by_seq.get(draft.outfit_seq)
+        reasons = (*prior.reasons, reason) if prior is not None else (reason,)
+        by_seq[draft.outfit_seq] = OutfitValidation(draft.outfit_seq, passed=False, reasons=reasons)
+    return list(by_seq.values())
+
+
 def _log_failures(
     event: str,
     stage_cd: str,
@@ -314,22 +353,26 @@ def _log_failures(
         )
 
 
-def count_possible_combos(candidates: Sequence[CandidateItem], is_outer_required: bool) -> int:
+def count_possible_combos(
+    candidates: Sequence[CandidateItem], is_outer_required: bool, *, socks_distinct: bool = False
+) -> int:
     """서로 다른 코디 조합 수의 상한. 정확한 개수가 아니다.
 
-    1차 검증의 같은 조합 판정(아이템 집합 비교)에 맞춰 상의·하의·신발 각 1개, 아우터는
-    필수면 1개·아니면 0~1개로 센다. 양말(1개 제한)·악세서리는 넣거나 뺄 수 있다고 보고
-    2ⁿ으로 넉넉하게 세고, 계절·악세서리 종류 제한은 반영하지 않는다.
+    1차 검증의 같은 조합 판정(양말을 뺀 아이템 집합 비교)에 맞춰 상의·하의·신발 각 1개,
+    아우터는 필수면 1개·아니면 0~1개로 센다. 악세서리는 넣거나 뺄 수 있다고 보고
+    2ⁿ으로 넉넉하게 세고, 계절·악세서리 종류 제한은 반영하지 않는다. 부분 교체
+    재추천(socks_distinct)에서는 양말도 구분하므로 1개 제한을 무시하고 2ⁿ으로 센다.
     상한이 실제보다 작으면 만들 수 있는 코디를 놓친다.
     """
     counts = Counter(c.category_cd for c in candidates)
     total = counts["top"] * counts["bottom"] * counts["shoes"]
     total *= counts["outer"] if is_outer_required else counts["outer"] + 1
-    return total * 2 ** (counts["socks"] + counts["accessories"])
+    toggles = counts["accessories"] + (counts["socks"] if socks_distinct else 0)
+    return total * 2**toggles
 
 
 def _in_combo_space(
-    item_keys: Sequence[str], category_by_key: dict[str, str], is_outer_required: bool
+    item_keys: Collection[str], category_by_key: dict[str, str], is_outer_required: bool
 ) -> bool:
     if len(set(item_keys)) != len(item_keys):
         return False
@@ -337,15 +380,19 @@ def _in_combo_space(
         return False
     counts = Counter(category_by_key[key] for key in item_keys)
     outer_counts = (1,) if is_outer_required else (0, 1)
-    return counts["top"] == counts["bottom"] == counts["shoes"] == 1 and (
-        counts["outer"] in outer_counts
+    return (
+        counts["top"] == counts["bottom"] == counts["shoes"] == 1
+        and counts["outer"] in outer_counts
+        and counts["socks"] <= 1
     )
 
 
 # ---------- 기본 주입 함수 ----------
 
 
-def make_hard_rule_check(prompt_input: OutfitPromptInput) -> HardRuleCheck:
+def make_hard_rule_check(
+    prompt_input: OutfitPromptInput, *, socks_distinct: bool = False
+) -> HardRuleCheck:
     def check(
         drafts: Sequence[DraftOutfit], kept_outfits: Sequence[KeptOutfit]
     ) -> list[OutfitValidation]:
@@ -357,6 +404,7 @@ def make_hard_rule_check(prompt_input: OutfitPromptInput) -> HardRuleCheck:
             season_cd=prompt_input.season_cd,
             avoided_styles=prompt_input.style_result.avoided,
             avoided_colors=prompt_input.color_result.avoided,
+            socks_distinct=socks_distinct,
         )
 
     return check
@@ -397,10 +445,12 @@ def make_basic_outfit_fallback(
     쓰므로 없는 옷이 섞일 일이 없다.
     """
 
+    category_by_key = {c.key: c.category_cd for c in candidates}
+
     def build(
         seqs: Sequence[int], existing: Sequence[Sequence[str]], excluded_keys: frozenset[str]
     ) -> list[DraftOutfit]:
-        taken = {frozenset(keys) for keys in existing}
+        taken = {combo_key(keys, category_by_key) for keys in existing}
         combos = compose_basic_outfits(
             candidates, is_outer_required, taken, len(seqs), excluded_keys
         )
