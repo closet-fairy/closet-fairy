@@ -300,8 +300,8 @@ def plan_regeneration(
     outer_cause: OuterCause = "weather",
 ) -> RegenerationPlan:
     request = ctx.request
-    replaced_combos = tuple(o.combo() for o in ctx.screen if o.is_complete)
     if request.target_scope_cd == "all":
+        replaced_combos = tuple(o.combo() for o in ctx.screen if o.is_complete)
         banned_by_slot = _ban_screen_items(ctx.screen, request.parsed_intent, candidates)
         return RegenerationPlan(
             scope="all",

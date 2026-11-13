@@ -87,6 +87,12 @@ async def generate_outfits(
 
     prompt_input.kept_outfits(재추천에서 유지하는 세트)는 고정으로 보고 프롬프트와
     1차 검증(같은 조합 검사)에 넘기며 결과에는 넣지 않는다. failure_reasons는 이 함수가 채운다.
+
+    excluded_combos(재추천에서 바꿔 달라고 한 코디)는 남은 조합 수에서만 빼고 막지는 않는다.
+    막는 검사는 hard_rule이 해야 하며, 사유가 겹치지 않게 탈락 조합 사유도 붙이지 않는다.
+    socks_distinct면 양말도 구분해 조합을 비교한다(부분 교체 재추천). hard_rule과 같은 기준이어야
+    한다. 다르면 남은 조합 수가 어긋나고, 탈락 조합 검사가 hard_rule이 허용하는 조합을 막거나
+    놓친다.
     """
     if max_retry_per_stage is None:
         max_retry_per_stage = get_settings().MAX_RETRY_PER_VALIDATION_STAGE
@@ -147,12 +153,8 @@ async def generate_outfits(
 
         missing_count = len(seqs) - len(drafts)
         flagged_elsewhere = {key_of(k.item_keys) for k in data.kept_outfits} | excluded
-
-        def rejected_key(draft: DraftOutfit) -> frozenset[str] | None:
-            combo = key_of(draft.item_keys)
-            return combo if combo in rejected and combo not in flagged_elsewhere else None
-
-        hard_results = _flag_rejected(hard_rule(drafts, data.kept_outfits), drafts, rejected_key)
+        blocked = rejected.keys() - flagged_elsewhere
+        hard_results = _flag_rejected(hard_rule(drafts, data.kept_outfits), drafts, key_of, blocked)
         hard_failed = [v for v in hard_results if not v.passed]
         hard_failed_seqs = {v.outfit_seq for v in hard_failed}
         survivors = [d for d in drafts if d.outfit_seq not in hard_failed_seqs]
@@ -314,12 +316,13 @@ def _exploration_style(
 def _flag_rejected(
     results: Sequence[OutfitValidation],
     drafts: Sequence[DraftOutfit],
-    rejected_key: Callable[[DraftOutfit], frozenset[str] | None],
+    key_of: Callable[[Collection[str]], frozenset[str]],
+    blocked: Collection[frozenset[str]],
 ) -> list[OutfitValidation]:
     by_seq = {r.outfit_seq: r for r in results}
     for draft in drafts:
-        combo = rejected_key(draft)
-        if combo is None:
+        combo = key_of(draft.item_keys)
+        if combo not in blocked:
             continue
         reason = same_combo_reason("이번 요청에서 이미 탈락한 조합과", combo)
         prior = by_seq.get(draft.outfit_seq)
