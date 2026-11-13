@@ -36,7 +36,7 @@ from app.services.regeneration_generation import (
     ScreenOutfit,
 )
 from app.services.regeneration_intent import RegenerationIntent
-from app.services.regeneration_state import merge_session_preferences
+from app.services.regeneration_state import FormalityDirection, merge_session_preferences
 from app.services.weather.base_time import KST
 from app.services.weather.weather_service import HourlyWeather, WeatherResult, min_feels_like
 from tests.test_recommendation_pipeline import NO_PREFERENCE
@@ -1093,6 +1093,96 @@ def test_lighter_instruction():
     texts = [i.text for i in regen.build_regeneration_instructions(plan, _intent(), Decimal("3.0"))]
 
     assert texts[-1] == "회원이 더 가볍게 입기를 원해 위 체감온도를 실제보다 3.0℃ 높게 적었다."
+
+
+LESS_NOW_TEXT = (
+    "회원이 지금보다 덜 격식 있게 입기를 원한다. "
+    "[TPO]에 맞는 범위에서 이전 코디보다 격식을 한 단계만 낮춘다. "
+    "옷 한두 개만 바꾸고, 한꺼번에 크게 캐주얼하게 바꾸지 않는다."
+)
+LESS_CARRIED_TEXT = "회원이 앞서 덜 격식 있게 입기를 원했다. 이전 코디보다 격식을 높이지 않는다."
+
+
+async def test_formality_request_reaches_instruction(wired):
+    request = _request(intent=_intent(inferred_preferred_styles=("casual",)))
+    llm = _llm(_output(("preferred", ["o2", "o4", "o7"])))
+
+    await _run(_ctx(request), llm)
+
+    assert LESS_NOW_TEXT in _prompt(llm)
+    assert LESS_CARRIED_TEXT not in _prompt(llm)
+
+
+async def test_color_only_request_after_less_formal_keeps_formality_without_lowering_again(wired):
+    request = _request(intent=_intent(inferred_preferred_colors=("yellow", "pink")))
+    llm = _llm(_output(("preferred", ["o2", "o4", "o7"])))
+
+    await _run(_ctx(request, earlier=[_intent(inferred_preferred_styles=("casual",))]), llm)
+
+    assert LESS_CARRIED_TEXT in _prompt(llm)
+    assert LESS_NOW_TEXT not in _prompt(llm)
+
+
+async def test_item_name_request_after_less_formal_drops_carried_formality(wired):
+    request = _request(slot="shoes", intent=_intent(replace_items={"bottom": "청바지"}))
+    llm = _llm(_output(("preferred", ["o3", "o4", "o6"])))
+
+    await _run(_ctx(request, earlier=[_intent(inferred_preferred_styles=("casual",))]), llm)
+
+    assert '하의(bottom)는 이름이 "청바지"에 가장 가까운 후보로 고른다.' in _prompt(llm)
+    assert "격식 있게 입기를" not in _prompt(llm)
+
+
+def test_item_name_request_keeps_current_formality():
+    plan = regen.plan_regeneration(_ctx(_request(slot="bottom")), [], lambda item: "unavailable")
+
+    instructions = regen.build_regeneration_instructions(
+        plan,
+        _intent(replace_items={"bottom": "청바지"}),
+        Decimal("0"),
+        formality=FormalityDirection("less", is_current=True),
+    )
+
+    assert LESS_NOW_TEXT in [i.text for i in instructions]
+
+
+async def test_request_without_formality_signal_adds_no_formality_text(wired):
+    request = _request(intent=_intent(inferred_preferred_colors=("yellow",)))
+    llm = _llm(_output(("preferred", ["o2", "o4", "o7"])))
+
+    await _run(_ctx(request), llm)
+
+    assert "격식 있게 입기를" not in _prompt(llm)
+
+
+@pytest.mark.parametrize(
+    ("formality", "expected"),
+    [
+        (FormalityDirection("less", is_current=True), LESS_NOW_TEXT),
+        (FormalityDirection("less", is_current=False), LESS_CARRIED_TEXT),
+        (
+            FormalityDirection("more", is_current=True),
+            "회원이 지금보다 더 격식 있게 입기를 원한다. "
+            "[TPO]에 맞는 범위에서 이전 코디보다 격식을 한 단계만 높인다. "
+            "옷 한두 개만 바꾸고, 한꺼번에 크게 차려입게 바꾸지 않는다.",
+        ),
+        (
+            FormalityDirection("more", is_current=False),
+            "회원이 앞서 더 격식 있게 입기를 원했다. 이전 코디보다 격식을 낮추지 않는다.",
+        ),
+    ],
+)
+def test_formality_instruction_comes_before_warmth(formality, expected):
+    plan = regen.plan_regeneration(_ctx(), [], lambda item: "unavailable")
+
+    instructions = regen.build_regeneration_instructions(
+        plan, _intent(), Decimal("3.0"), formality=formality
+    )
+
+    assert [i.text for i in instructions][-2:] == [
+        expected,
+        "회원이 더 가볍게 입기를 원해 위 체감온도를 실제보다 3.0℃ 높게 적었다.",
+    ]
 
 
 def test_instruction_seqs_are_unique():
