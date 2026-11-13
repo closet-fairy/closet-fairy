@@ -1133,6 +1133,19 @@ async def test_item_name_request_after_less_formal_drops_carried_formality(wired
     assert "격식 있게 입기를" not in _prompt(llm)
 
 
+def test_item_name_request_keeps_current_formality():
+    plan = regen.plan_regeneration(_ctx(_request(slot="bottom")), [], lambda item: "unavailable")
+
+    instructions = regen.build_regeneration_instructions(
+        plan,
+        _intent(replace_items={"bottom": "청바지"}),
+        Decimal("0"),
+        formality=FormalityDirection("less", is_current=True),
+    )
+
+    assert LESS_NOW_TEXT in [i.text for i in instructions]
+
+
 async def test_request_without_formality_signal_adds_no_formality_text(wired):
     request = _request(intent=_intent(inferred_preferred_colors=("yellow",)))
     llm = _llm(_output(("preferred", ["o2", "o4", "o7"])))

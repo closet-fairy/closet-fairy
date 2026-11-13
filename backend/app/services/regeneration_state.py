@@ -163,14 +163,14 @@ def _require_ok(intents: Sequence[RegenerationIntent]) -> None:
         raise ValueError(f"병합할 수 없는 의도가 있습니다: {statuses}")
 
 
-# 선호 칸에 신호가 있으면 기피 칸은 보지 않는다. "스포티 말고 캐주얼하게"가 방향 없음이 되지 않게
+# 선호 칸에 신호가 있으면 기피 칸은 보지 않는다. "캐주얼 말고 스트릿하게"가 방향 없음이 되지 않게
 def _formality_signal(
     intent: RegenerationIntent, table: StyleFormality
 ) -> FormalityDirectionCd | Literal["mixed"] | None:
-    preferred = {*intent.preferred_styles, *intent.inferred_preferred_styles}
-    signal = _signal(preferred, table.preferred)
-    if signal is not None:
-        return signal
+    for styles in (intent.preferred_styles, intent.inferred_preferred_styles):
+        signal = _signal(set(styles), table.preferred)
+        if signal is not None:
+            return signal
     return _signal(set(intent.avoided_styles), table.avoided)
 
 

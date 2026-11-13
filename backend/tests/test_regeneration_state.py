@@ -382,6 +382,11 @@ def test_style_formality_config_rejects_invalid(tmp_path, data, message):
             id="preferred-beats-avoided",
         ),
         pytest.param([intent(preferred_styles=("formal", "casual"))], None, id="mixed-preferred"),
+        pytest.param(
+            [intent(preferred_styles=("formal",), inferred_preferred_styles=("casual",))],
+            MORE_NOW,
+            id="direct-before-inferred",
+        ),
         pytest.param([CASUAL, intent(preferred_styles=("formal",))], MORE_NOW, id="latest-wins"),
         pytest.param(
             [CASUAL, intent(inferred_preferred_colors=("yellow", "pink"))],
