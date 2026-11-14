@@ -38,6 +38,11 @@ def combo_key(
     socks_distinct: bool = False,
     socks_keys: Collection[str] = (),
 ) -> frozenset[str]:
+    """같은 조합 판정에 쓰는 키. 기본은 양말을 뺀 아이템 집합이다.
+
+    유지 중인 세트의 양말은 이번 후보에 없을 수 있어 category_by_key로 가려낼 수 없다.
+    그런 쪽에서는 양말 키를 socks_keys로 따로 넘긴다. socks_distinct면 둘 다 쓰지 않는다.
+    """
     if socks_distinct:
         return frozenset(item_keys)
     return frozenset(
