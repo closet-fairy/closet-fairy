@@ -31,7 +31,12 @@ from app.services.weather.base_time import KST
 from app.services.weather.weather_service import condition_cd
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures" / "prompts"
-REGENERATION_HEADINGS = {"## 유지 중인 세트", "## 재추천 지시", "## 직전 생성의 검증 실패 사유"}
+REGENERATION_HEADINGS = {
+    "## 유지 중인 세트",
+    "## 재추천 지시",
+    "## 이번 요청에서 탈락한 조합",
+    "## 직전 생성의 검증 실패 사유",
+}
 
 
 def kst(hour: int, minute: int = 0, day: int = 2) -> datetime:
@@ -147,6 +152,7 @@ def regeneration_input(**overrides) -> OutfitPromptInput:
             FailureReason(4, "신발이 없다."),
             FailureReason(2, "상의가 두 개다."),
         ),
+        rejected_combos=(("o2002", "o3001", "o4001"), ("e12", "e21", "o2001", "o5001")),
     )
     return make_input(**{**fields, **overrides})
 
@@ -343,6 +349,22 @@ def test_invalid_kept_outfit_key_is_rejected(key):
 
     with pytest.raises(ValueError, match="아이템 키 형식"):
         assemble_outfit_generation_prompt(data)
+
+
+@pytest.mark.parametrize("combo", [(), ("o1042", "x7")])
+def test_invalid_rejected_combo_is_rejected(combo):
+    data = regeneration_input(rejected_combos=(combo,))
+
+    with pytest.raises(ValueError, match="탈락한 조합"):
+        assemble_outfit_generation_prompt(data)
+
+
+def test_rejected_combos_keep_given_order_and_sort_items():
+    data = make_input(rejected_combos=(("o4001", "o2002", "o3001"), ("e21", "e12", "o2001")))
+
+    user = assemble_outfit_generation_prompt(data).user
+
+    assert "\n- o2002, o3001, o4001\n- e12, e21, o2001\n" in user
 
 
 def test_failure_reason_without_outfit_comes_first():
@@ -773,7 +795,7 @@ def test_weather_service_codes_match_labeled_codes():
 def test_prompt_version_matches_template_folder():
     prompt = assemble_outfit_generation_prompt(make_input())
 
-    assert prompt.prompt_version == "outfit_generation/v2.0"
+    assert prompt.prompt_version == "outfit_generation/v3.0"
     assert prompt.prompt_version == f"{PROMPT_NAME}/{PROMPT_VERSION}"
     assert (PROMPTS_DIR / PROMPT_NAME / PROMPT_VERSION).is_dir()
 

@@ -20,7 +20,7 @@ from app.repositories.recommendation_result import OutfitItemResultRow
 from app.repositories.regeneration_request import RegenerationRequestRow
 from app.repositories.weather_snapshot import WeatherSnapshotRow
 from app.services.essential_supplement import SupplementResult, collect_essential_candidates
-from app.services.hard_rule import DISPLAYABLE_KEY
+from app.services.hard_rule import DISPLAYABLE_KEY, combo_key, same_combo_reason
 from app.services.llm import LLMClient
 from app.services.outfit_generator import (
     MAX_OUTFITS,
@@ -102,6 +102,13 @@ class ScreenOutfit:
     def is_complete(self) -> bool:
         return all(i.key is not None for i in self.items)
 
+    def combo(self, *, socks_distinct: bool = False) -> frozenset[str]:
+        return frozenset(
+            i.key
+            for i in self.items
+            if i.key is not None and (socks_distinct or i.slot_cd != "socks")
+        )
+
 
 @dataclass(frozen=True)
 class RegenerationContext:
@@ -155,6 +162,7 @@ class RegenerationPlan:
     banned_by_slot: Mapping[str, frozenset[str]] = field(default_factory=dict)
     near_combos: tuple[NearCombo, ...] = ()
     target_seq: int | None = None
+    socks_distinct: bool = False
 
 
 @dataclass(frozen=True)
@@ -274,7 +282,12 @@ def _to_screen_item(row: OutfitItemResultRow) -> ScreenItem:
 
 def to_kept_outfits(screen: Sequence[ScreenOutfit], target_seqs: Sequence[int]) -> list[KeptOutfit]:
     return [
-        KeptOutfit(o.outfit_seq, list(o.keys), o.outfit_type)
+        KeptOutfit(
+            o.outfit_seq,
+            list(o.keys),
+            o.outfit_type,
+            socks_keys=frozenset(i.key for i in o.items if i.slot_cd == "socks" and i.key),
+        )
         for o in screen
         if o.outfit_seq not in target_seqs and o.keys
     ]
@@ -292,8 +305,8 @@ def plan_regeneration(
     outer_cause: OuterCause = "weather",
 ) -> RegenerationPlan:
     request = ctx.request
-    replaced_combos = tuple(frozenset(o.keys) for o in ctx.screen if o.is_complete)
     if request.target_scope_cd == "all":
+        replaced_combos = tuple(o.combo() for o in ctx.screen if o.is_complete)
         banned_by_slot = _ban_screen_items(ctx.screen, request.parsed_intent, candidates)
         return RegenerationPlan(
             scope="all",
@@ -324,23 +337,30 @@ def plan_regeneration(
         if replace_slots
         else None
     )
+    # 양말을 바꿔 달라는 요청은 양말도 구분해 비교한다.
+    # 양말을 빼고 비교하면 이 요청이 늘 이전 코디와 같은 조합으로 탈락한다
+    socks_distinct = "socks" in replace_slots
     return RegenerationPlan(
         scope="single",
         target_type=target.outfit_type,
         kept=tuple(to_kept_outfits(ctx.screen, (target.outfit_seq,))),
-        replaced_combos=(frozenset(target.keys),) if target.is_complete else (),
+        replaced_combos=(
+            (target.combo(socks_distinct=socks_distinct),) if target.is_complete else ()
+        ),
         parts=parts,
         removed_keys=parts.removed_keys if parts is not None else frozenset(),
         near_combos=_near_combos_for_whole_outfit(target) if parts is None else (),
         target_seq=target.outfit_seq,
+        socks_distinct=socks_distinct,
     )
 
 
 def _near_combo(outfit: ScreenOutfit) -> NearCombo | None:
-    if outfit.is_complete or len(outfit.keys) < 2:
+    remaining = outfit.combo()
+    if outfit.is_complete or len(remaining) < 2:
         return None
     return NearCombo(
-        remaining=frozenset(outfit.keys),
+        remaining=remaining,
         deleted_slots=frozenset(i.slot_cd for i in outfit.items if i.key is None),
     )
 
@@ -684,7 +704,7 @@ def _warmth_texts(offset: Decimal) -> list[str]:
 def make_regeneration_hard_rule_check(
     prompt_input: OutfitPromptInput, plan: RegenerationPlan
 ) -> HardRuleCheck:
-    base = make_hard_rule_check(prompt_input)
+    base = make_hard_rule_check(prompt_input, socks_distinct=plan.socks_distinct)
     category_by_key = {c.key: c.category_cd for c in prompt_input.candidates}
     replaced = set(plan.replaced_combos)
 
@@ -695,29 +715,61 @@ def make_regeneration_hard_rule_check(
         results = []
         for result in base(drafts, kept_outfits):
             draft = drafts_by_seq[result.outfit_seq]
-            reasons = list(result.reasons)
-            if frozenset(draft.item_keys) in replaced:
-                reasons.append("바꿔 달라고 한 이전 코디와 아이템 조합이 같다.")
+            added: list[str] = []
+            combo_failed = False
+            combo = combo_key(draft.item_keys, category_by_key, socks_distinct=plan.socks_distinct)
+            if combo in replaced:
+                added.append(_replaced_reason(combo, plan))
+                combo_failed = True
             if any(_is_near_combo(draft, c, category_by_key) for c in plan.near_combos):
-                reasons.append(
-                    "이전 코디에서 지운 옷 자리만 채워 이전 코디와 사실상 같은 조합이다."
-                )
+                added.append("이전 코디에서 지운 옷 자리만 채워 이전 코디와 사실상 같은 조합이다.")
+                combo_failed = True
             if plan.parts is not None and draft.outfit_seq == plan.parts.target_seq:
-                reasons += check_locked_parts(draft, plan.parts, category_by_key)
+                locked = check_locked_parts(draft, plan.parts, category_by_key)
+                added += locked
+                if locked and not _only_socks_changed(draft, plan.parts, category_by_key):
+                    combo_failed = True
                 if ACCESSORIES in plan.parts.replace_slots:
-                    reasons += check_accessory_swap(draft, plan.parts, category_by_key)
+                    count_reasons = accessory_count_reasons(draft, plan.parts, category_by_key)
+                    added += count_reasons
+                    combo_failed = combo_failed or bool(count_reasons)
+                    added += accessory_claim_reasons(draft, plan.parts, category_by_key)
+            reasons = (*result.reasons, *added)
             results.append(
-                OutfitValidation(result.outfit_seq, passed=not reasons, reasons=tuple(reasons))
+                OutfitValidation(
+                    result.outfit_seq,
+                    passed=not reasons,
+                    reasons=reasons,
+                    fixable_without_items=bool(reasons)
+                    and (result.passed or result.fixable_without_items)
+                    and not combo_failed,
+                )
             )
         return results
 
     return check
 
 
+def _only_socks_changed(
+    draft: DraftOutfit, parts: PartsPlan, category_by_key: Mapping[str, str]
+) -> bool:
+    keys = [k for k in draft.item_keys if category_by_key.get(k) != "socks"]
+    keys += sorted(parts.locked_by_slot.get("socks", ()))
+    restored = replace(draft, item_keys=tuple(keys))
+    return not check_locked_parts(restored, parts, category_by_key)
+
+
+def _replaced_reason(combo: frozenset[str], plan: RegenerationPlan) -> str:
+    subject = "바꿔 달라고 한 이전 코디와"
+    if plan.parts is None:
+        return same_combo_reason(subject, combo)
+    return f"{subject} 아이템 조합이 같다({', '.join(sorted(combo))})."
+
+
 def _is_near_combo(
     draft: DraftOutfit, combo: NearCombo, category_by_key: Mapping[str, str]
 ) -> bool:
-    keys = set(draft.item_keys)
+    keys = set(combo_key(draft.item_keys, category_by_key))
     if not combo.remaining <= keys:
         return False
     return all(category_by_key.get(k) in combo.deleted_slots for k in keys - combo.remaining)
@@ -765,24 +817,20 @@ def check_locked_parts(
     return reasons
 
 
-def check_accessory_swap(
+def accessory_count_reasons(
     draft: DraftOutfit, parts: PartsPlan, category_by_key: Mapping[str, str]
 ) -> list[str]:
     original = set(parts.original_accessories)
     drafted = _keys_by_slot(draft, category_by_key).get(ACCESSORIES, set())
     removed = original - drafted
     added = drafted - original
-    claimed = draft.removed_accessory_id
-
-    if not original:
-        reasons = []
-        if len(added) != 1:
-            reasons.append(f"악세서리를 1개 더해야 하는데 {len(added)}개를 넣었다.")
-        if claimed is not None:
-            reasons.append("뺀 악세서리가 없으므로 removed_accessory_id는 null이어야 한다.")
-        return reasons
 
     reasons = []
+    if not original:
+        if len(added) != 1:
+            reasons.append(f"악세서리를 1개 더해야 하는데 {len(added)}개를 넣었다.")
+        return reasons
+
     listed = ", ".join(sorted(original))
     if len(removed) != 1:
         reasons.append(
@@ -790,15 +838,30 @@ def check_accessory_swap(
         )
     if len(added) != 1:
         reasons.append(f"새 악세서리를 1개 넣어야 하는데 {len(added)}개를 넣었다.")
-    if claimed is None:
-        reasons.append("뺀 악세서리 id를 removed_accessory_id에 적지 않았다.")
-    elif claimed not in original:
-        reasons.append(f"removed_accessory_id({_displayable(claimed)})는 원래 악세서리가 아니다.")
-    elif len(removed) == 1 and claimed not in removed:
-        reasons.append(
-            f"removed_accessory_id({claimed})가 실제로 뺀 악세서리({next(iter(removed))})와 다르다."
-        )
     return reasons
+
+
+def accessory_claim_reasons(
+    draft: DraftOutfit, parts: PartsPlan, category_by_key: Mapping[str, str]
+) -> list[str]:
+    original = set(parts.original_accessories)
+    drafted = _keys_by_slot(draft, category_by_key).get(ACCESSORIES, set())
+    removed = original - drafted
+    claimed = draft.removed_accessory_id
+
+    if not original:
+        if claimed is not None:
+            return ["뺀 악세서리가 없으므로 removed_accessory_id는 null이어야 한다."]
+        return []
+    if claimed is None:
+        return ["뺀 악세서리 id를 removed_accessory_id에 적지 않았다."]
+    if claimed not in original:
+        return [f"removed_accessory_id({_displayable(claimed)})는 원래 악세서리가 아니다."]
+    if len(removed) == 1 and claimed not in removed:
+        return [
+            f"removed_accessory_id({claimed})가 실제로 뺀 악세서리({next(iter(removed))})와 다르다."
+        ]
+    return []
 
 
 def _displayable(value: str) -> str:
@@ -970,6 +1033,8 @@ async def regenerate_outfits(
         fallback=_no_fallback,
         session_id=session_id,
         outfit_seqs=(plan.target_seq,) if plan.target_seq is not None else None,
+        excluded_combos=plan.replaced_combos,
+        socks_distinct=plan.socks_distinct,
     )
     category_by_key = {c.key: c.category_cd for c in prompt_input.candidates}
     generation = _clear_unrequested_removed_ids(generation, plan)
