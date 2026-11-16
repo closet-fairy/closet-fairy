@@ -1289,7 +1289,50 @@ def test_whole_outfit_instruction():
 
     texts = [i.text for i in regen.build_regeneration_instructions(plan, _intent(), Decimal("0"))]
 
-    assert texts == ["이전 코디(o3, o5, o7)를 대신할 세트를 만든다. 이 조합을 그대로 쓰지 않는다."]
+    assert texts == [
+        "이전 코디(o3, o5, o7)를 대신할 세트를 만든다. 이 조합을 그대로 쓰지 않는다.",
+        CLOTHES_FIRST_TEXT,
+        "바꿀 옷은 아우터·상의, 하의·신발 순서로 고른다.",
+    ]
+
+
+CLOTHES_FIRST_TEXT = (
+    "옷(아우터·상의·하의·신발)을 하나 이상 바꾼다. "
+    "이전 코디와 옷이 같고 악세서리나 양말만 다른 세트는 만들지 않는다."
+)
+
+
+def test_clothes_first_instruction_names_avoided_clothes_and_request_direction():
+    plan = regen.plan_regeneration(_ctx(), [], lambda item: "unavailable")
+    intent = _intent(
+        preferred_colors=("white",),
+        inferred_preferred_colors=("beige", "white"),
+        avoided_styles=("street",),
+    )
+
+    texts = [
+        i.text
+        for i in regen.build_regeneration_instructions(
+            plan, intent, Decimal("0"), avoided_clothes_keys=frozenset({"o5", "o3"})
+        )
+    ]
+
+    assert (
+        "바꿀 옷은 회원이 피하라고 한 색·스타일의 옷(o3, o5), 아우터·상의, 하의·신발 순서로 고른다."
+    ) in texts
+    assert (
+        "이번 요청에서 회원이 원한 방향은 선호 색상 white, beige / 기피 스타일 street이다. "
+        "옷을 바꿀 때 이 방향을 [선호 스타일]·[선호 색상]의 다른 값보다 먼저 따른다."
+    ) in texts
+
+
+def test_parts_swap_gets_no_clothes_first_instruction():
+    plan = regen.plan_regeneration(_ctx(_request(slot="shoes")), [], lambda item: "unavailable")
+
+    texts = [i.text for i in regen.build_regeneration_instructions(plan, _intent(), Decimal("0"))]
+
+    assert plan.replaced_clothes == ()
+    assert CLOTHES_FIRST_TEXT not in texts
 
 
 def test_lighter_instruction():
@@ -1580,7 +1623,7 @@ async def test_all_scope_slot_only_request_keeps_items_without_alternative(wired
         _output(
             ("preferred", ["o2", "o4", "o7"]),
             ("preferred", ["o3", "o5", "o6"]),
-            ("preferred", ["o1", "o2", "o4", "o6"]),
+            ("preferred", ["o1", "o3", "o4", "o6"]),
             ("exploratory", ["o1", "o3", "o5", "o7"]),
         )
     )
@@ -1589,6 +1632,120 @@ async def test_all_scope_slot_only_request_keeps_items_without_alternative(wired
 
     assert {"o4", "o5"} <= {c.key for c in outcome.prompt_input.candidates}
     assert "이전 코디에 쓴 것" not in _prompt(llm)
+
+
+async def test_all_scope_rejects_outfit_changing_only_accessories(wired):
+    llm = _llm(
+        _output(
+            ("preferred", ["o1", "o2", "o4", "o6", "o11"]),
+            ("preferred", ["o2", "o4", "o7"]),
+            ("preferred", ["o3", "o4", "o6"]),
+            ("exploratory", ["o3", "o5", "o6"]),
+        ),
+        _output(("preferred", ["o1", "o3", "o4", "o6", "o11"])),
+    )
+
+    outcome = await _run(_ctx(_request(scope="all")), llm)
+
+    assert outcome.generation.rounds == 2
+    assert CLOTHES_FIRST_TEXT in _prompt(llm)
+    assert (
+        "바꿔 달라고 한 이전 코디와 옷(아우터·상의·하의·신발)이 같고 "
+        "소품만 다르다(o1, o2, o4, o6). 이 중 하나 이상을 다른 후보로 바꾼다."
+    ) in _prompt(llm, 1)
+    assert len(outcome.generation.outfits) == 4
+    assert ("o1", "o3", "o4", "o6", "o11") in [o.item_keys for o in outcome.generation.outfits]
+
+
+async def test_all_scope_compares_clothes_with_every_screen_outfit(wired):
+    llm = _llm(
+        _output(
+            ("preferred", ["o3", "o4", "o7", "o9"]),
+            ("preferred", ["o2", "o4", "o7"]),
+            ("preferred", ["o3", "o4", "o6"]),
+            ("exploratory", ["o3", "o5", "o6"]),
+        ),
+        _output(("preferred", ["o2", "o13", "o7"])),
+    )
+
+    outcome = await _run(_ctx(_request(scope="all")), llm)
+
+    assert outcome.generation.rounds == 2
+    assert "소품만 다르다(o3, o4, o7)" in _prompt(llm, 1)
+
+
+async def test_whole_outfit_swap_rejects_same_clothes_with_added_accessory(wired):
+    llm = _llm(
+        _output(("preferred", ["o3", "o5", "o7", "o9"])),
+        _output(("preferred", ["o2", "o4", "o7"])),
+    )
+
+    outcome = await _run(_ctx(), llm)
+
+    assert outcome.generation.rounds == 2
+    assert "소품만 다르다(o3, o5, o7)" in _prompt(llm, 1)
+    assert outcome.generation.outfits[0].item_keys == ("o2", "o4", "o7")
+
+
+async def test_all_scope_small_items_only_request_keeps_clothes(wired):
+    request = _request(scope="all", intent=_intent(replace_items={"accessories": None}))
+    llm = _llm(
+        _output(
+            ("preferred", ["o1", "o2", "o4", "o6", "o11"]),
+            ("preferred", ["o3", "o5", "o7", "o12"]),
+            ("preferred", ["o2", "o5", "o6", "o11"]),
+            ("exploratory", ["o3", "o4", "o7", "o12"]),
+        )
+    )
+
+    outcome = await _run(_ctx(request), llm)
+
+    assert outcome.generation.rounds == 1
+    assert len(outcome.generation.outfits) == 4
+    assert CLOTHES_FIRST_TEXT not in _prompt(llm)
+
+
+async def test_previous_outfit_with_deleted_clothes_is_still_compared(wired):
+    screen = _screen()
+    screen[0] = ScreenOutfit(
+        101,
+        1,
+        "preferred",
+        (
+            _item("outer", None),
+            _item("top", "o2"),
+            _item("bottom", "o4"),
+            _item("shoes", "o6"),
+            _item("accessories", "o9"),
+        ),
+    )
+    llm = _llm(
+        _output(
+            ("preferred", ["o2", "o4", "o6", "o11"]),
+            ("preferred", ["o2", "o13", "o7"]),
+            ("preferred", ["o3", "o4", "o6"]),
+            ("exploratory", ["o3", "o5", "o6"]),
+        ),
+        _output(("preferred", ["o3", "o13", "o6"])),
+    )
+
+    outcome = await _run(_ctx(_request(scope="all"), screen=screen), llm)
+
+    assert outcome.generation.rounds == 2
+    assert "소품만 다르다(o2, o4, o6)" in _prompt(llm, 1)
+
+
+async def test_avoided_clothes_of_previous_outfit_reach_instruction(wired):
+    clothing = [
+        _clothing(3, "top", styles=["street"]) if c.clothing_id == 3 else c for c in _closet()
+    ]
+    request = _request(intent=_intent(avoided_styles=("street",)))
+    llm = _llm(_output(("preferred", ["o2", "o4", "o7"])))
+
+    await _run(_ctx(request, context=_context(clothing=clothing)), llm)
+
+    assert "회원이 피하라고 한 색·스타일의 옷(o3)" in _prompt(llm)
+    assert "이번 요청에서 회원이 원한 방향은 기피 스타일 street이다." in _prompt(llm)
 
 
 # ---------- 탐색 누락 로그 ----------

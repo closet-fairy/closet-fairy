@@ -64,6 +64,8 @@ from app.services.weather.weather_service import HourlyWeather, WeatherResult, m
 logger = logging.getLogger(__name__)
 
 ACCESSORIES = "accessories"
+CLOTHES_SLOTS = frozenset({"outer", "top", "bottom", "shoes"})
+SMALL_ITEM_SLOTS = frozenset({ACCESSORIES, "socks"})
 
 MissingCause = Literal["lighter", "warmer", "deleted", "unavailable"]
 OuterCause = Literal["warmer", "weather"]
@@ -107,6 +109,12 @@ class ScreenOutfit:
             i.key
             for i in self.items
             if i.key is not None and (socks_distinct or i.slot_cd != "socks")
+        )
+
+    @property
+    def clothes(self) -> frozenset[str]:
+        return frozenset(
+            i.key for i in self.items if i.key is not None and i.slot_cd in CLOTHES_SLOTS
         )
 
 
@@ -163,6 +171,7 @@ class RegenerationPlan:
     near_combos: tuple[NearCombo, ...] = ()
     target_seq: int | None = None
     socks_distinct: bool = False
+    replaced_clothes: tuple[frozenset[str], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -306,6 +315,10 @@ def plan_regeneration(
 ) -> RegenerationPlan:
     request = ctx.request
     if request.target_scope_cd == "all":
+        small_items_only = (
+            bool(request.parsed_intent.replace_slots)
+            and set(request.parsed_intent.replace_slots) <= SMALL_ITEM_SLOTS
+        )
         replaced_combos = tuple(o.combo() for o in ctx.screen if o.is_complete)
         banned_by_slot = _ban_screen_items(ctx.screen, request.parsed_intent, candidates)
         return RegenerationPlan(
@@ -317,6 +330,9 @@ def plan_regeneration(
             removed_keys=frozenset().union(*banned_by_slot.values()),
             banned_by_slot=banned_by_slot,
             near_combos=tuple(c for c in map(_near_combo, ctx.screen) if c is not None),
+            replaced_clothes=()
+            if small_items_only
+            else tuple(o.clothes for o in ctx.screen if o.clothes),
         )
 
     target = next((o for o in ctx.screen if o.outfit_id == request.target_outfit_id), None)
@@ -352,6 +368,7 @@ def plan_regeneration(
         near_combos=_near_combos_for_whole_outfit(target) if parts is None else (),
         target_seq=target.outfit_seq,
         socks_distinct=socks_distinct,
+        replaced_clothes=(target.clothes,) if parts is None and target.clothes else (),
     )
 
 
@@ -537,6 +554,7 @@ def build_regeneration_instructions(
     formality: FormalityDirection | None = None,
     locked_avoided: bool = False,
     avoided_accessory_keys: frozenset[str] = frozenset(),
+    avoided_clothes_keys: frozenset[str] = frozenset(),
 ) -> list[RegenerationInstruction]:
     texts: list[str] = []
     if plan.scope == "all":
@@ -544,6 +562,8 @@ def build_regeneration_instructions(
             combos = " / ".join(", ".join(sorted(c)) for c in plan.replaced_combos)
             texts.append(f"이전 코디({combos})와 같은 조합을 쓰지 않는다.")
         texts += [_near_combo_text(c) for c in plan.near_combos]
+        texts += _clothes_first_texts(plan, avoided_clothes_keys)
+        texts += _direction_texts(intent)
         for slot, keys in plan.banned_by_slot.items():
             texts.append(
                 f"모든 세트의 {_slot_text(slot)}{_eun_neun(slot)} 이전 코디에 쓴 것"
@@ -559,6 +579,8 @@ def build_regeneration_instructions(
         else:
             texts.append("이전 코디를 대신할 세트를 만든다.")
         texts += [_near_combo_text(c) for c in plan.near_combos]
+        texts += _clothes_first_texts(plan, avoided_clothes_keys)
+        texts += _direction_texts(intent)
     else:
         texts += _parts_texts(
             plan.parts,
@@ -576,6 +598,36 @@ def _near_combo_text(combo: NearCombo) -> str:
         f"이전 코디에서 남은 {', '.join(sorted(combo.remaining))}을 모두 그대로 쓰고 "
         "지운 옷 자리만 채운 조합은 만들지 않는다."
     )
+
+
+def _clothes_first_texts(plan: RegenerationPlan, avoided_clothes_keys: frozenset[str]) -> list[str]:
+    if not plan.replaced_clothes:
+        return []
+    order = "아우터·상의, 하의·신발 순서로 고른다."
+    if avoided_clothes_keys:
+        keys = ", ".join(sorted(avoided_clothes_keys))
+        order = f"회원이 피하라고 한 색·스타일의 옷({keys}), {order}"
+    return [
+        "옷(아우터·상의·하의·신발)을 하나 이상 바꾼다. "
+        "이전 코디와 옷이 같고 악세서리나 양말만 다른 세트는 만들지 않는다.",
+        f"바꿀 옷은 {order}",
+    ]
+
+
+def _direction_texts(intent: RegenerationIntent) -> list[str]:
+    wishes = [
+        ("선호 스타일", (*intent.preferred_styles, *intent.inferred_preferred_styles)),
+        ("선호 색상", (*intent.preferred_colors, *intent.inferred_preferred_colors)),
+        ("기피 스타일", intent.avoided_styles),
+        ("기피 색상", intent.avoided_colors),
+    ]
+    parts = [f"{label} {', '.join(dict.fromkeys(codes))}" for label, codes in wishes if codes]
+    if not parts:
+        return []
+    return [
+        f"이번 요청에서 회원이 원한 방향은 {' / '.join(parts)}이다. "
+        "옷을 바꿀 때 이 방향을 [선호 스타일]·[선호 색상]의 다른 값보다 먼저 따른다."
+    ]
 
 
 def _slot_text(slot: str) -> str:
@@ -707,6 +759,7 @@ def make_regeneration_hard_rule_check(
     base = make_hard_rule_check(prompt_input, socks_distinct=plan.socks_distinct)
     category_by_key = {c.key: c.category_cd for c in prompt_input.candidates}
     replaced = set(plan.replaced_combos)
+    replaced_clothes = set(plan.replaced_clothes)
 
     def check(
         drafts: Sequence[DraftOutfit], kept_outfits: Sequence[KeptOutfit]
@@ -723,6 +776,12 @@ def make_regeneration_hard_rule_check(
                 combo_failed = True
             if any(_is_near_combo(draft, c, category_by_key) for c in plan.near_combos):
                 added.append("이전 코디에서 지운 옷 자리만 채워 이전 코디와 사실상 같은 조합이다.")
+                combo_failed = True
+            clothes = frozenset(
+                k for k in draft.item_keys if category_by_key.get(k) in CLOTHES_SLOTS
+            )
+            if not combo_failed and clothes in replaced_clothes:
+                added.append(_same_clothes_reason(clothes))
                 combo_failed = True
             if plan.parts is not None and draft.outfit_seq == plan.parts.target_seq:
                 locked = check_locked_parts(draft, plan.parts, category_by_key)
@@ -764,6 +823,13 @@ def _replaced_reason(combo: frozenset[str], plan: RegenerationPlan) -> str:
     if plan.parts is None:
         return same_combo_reason(subject, combo)
     return f"{subject} 아이템 조합이 같다({', '.join(sorted(combo))})."
+
+
+def _same_clothes_reason(clothes: frozenset[str]) -> str:
+    return (
+        "바꿔 달라고 한 이전 코디와 옷(아우터·상의·하의·신발)이 같고 소품만 다르다"
+        f"({', '.join(sorted(clothes))}). 이 중 하나 이상을 다른 후보로 바꾼다."
+    )
 
 
 def _is_near_combo(
@@ -994,6 +1060,13 @@ async def regenerate_outfits(
         if plan.parts is not None
         else frozenset()
     )
+    avoided_clothes_keys = frozenset(
+        key
+        for clothes in plan.replaced_clothes
+        for key in clothes
+        if key in candidates_by_key
+        and _is_avoided(candidates_by_key[key], avoided_styles, avoided_colors)
+    )
     prompt_input = replace(
         build_prompt_input(adjusted, supplement, preferences, _outfit_count(plan)),
         candidates=candidates,
@@ -1009,6 +1082,7 @@ async def regenerate_outfits(
                 formality=formality,
                 locked_avoided=locked_avoided,
                 avoided_accessory_keys=avoided_accessory_keys,
+                avoided_clothes_keys=avoided_clothes_keys,
             )
         ),
     )
