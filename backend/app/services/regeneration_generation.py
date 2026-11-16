@@ -65,6 +65,7 @@ logger = logging.getLogger(__name__)
 
 ACCESSORIES = "accessories"
 CLOTHES_SLOTS = frozenset({"outer", "top", "bottom", "shoes"})
+SMALL_ITEM_SLOTS = frozenset({ACCESSORIES, "socks"})
 
 MissingCause = Literal["lighter", "warmer", "deleted", "unavailable"]
 OuterCause = Literal["warmer", "weather"]
@@ -114,12 +115,6 @@ class ScreenOutfit:
     def clothes(self) -> frozenset[str]:
         return frozenset(
             i.key for i in self.items if i.key is not None and i.slot_cd in CLOTHES_SLOTS
-        )
-
-    @property
-    def has_all_clothes(self) -> bool:
-        return bool(self.clothes) and all(
-            i.key is not None for i in self.items if i.slot_cd in CLOTHES_SLOTS
         )
 
 
@@ -320,6 +315,10 @@ def plan_regeneration(
 ) -> RegenerationPlan:
     request = ctx.request
     if request.target_scope_cd == "all":
+        small_items_only = (
+            bool(request.parsed_intent.replace_slots)
+            and set(request.parsed_intent.replace_slots) <= SMALL_ITEM_SLOTS
+        )
         replaced_combos = tuple(o.combo() for o in ctx.screen if o.is_complete)
         banned_by_slot = _ban_screen_items(ctx.screen, request.parsed_intent, candidates)
         return RegenerationPlan(
@@ -331,7 +330,9 @@ def plan_regeneration(
             removed_keys=frozenset().union(*banned_by_slot.values()),
             banned_by_slot=banned_by_slot,
             near_combos=tuple(c for c in map(_near_combo, ctx.screen) if c is not None),
-            replaced_clothes=tuple(o.clothes for o in ctx.screen if o.has_all_clothes),
+            replaced_clothes=()
+            if small_items_only
+            else tuple(o.clothes for o in ctx.screen if o.clothes),
         )
 
     target = next((o for o in ctx.screen if o.outfit_id == request.target_outfit_id), None)
@@ -367,7 +368,7 @@ def plan_regeneration(
         near_combos=_near_combos_for_whole_outfit(target) if parts is None else (),
         target_seq=target.outfit_seq,
         socks_distinct=socks_distinct,
-        replaced_clothes=(target.clothes,) if parts is None and target.has_all_clothes else (),
+        replaced_clothes=(target.clothes,) if parts is None and target.clothes else (),
     )
 
 

@@ -1687,6 +1687,54 @@ async def test_whole_outfit_swap_rejects_same_clothes_with_added_accessory(wired
     assert outcome.generation.outfits[0].item_keys == ("o2", "o4", "o7")
 
 
+async def test_all_scope_small_items_only_request_keeps_clothes(wired):
+    request = _request(scope="all", intent=_intent(replace_items={"accessories": None}))
+    llm = _llm(
+        _output(
+            ("preferred", ["o1", "o2", "o4", "o6", "o11"]),
+            ("preferred", ["o3", "o5", "o7", "o12"]),
+            ("preferred", ["o2", "o5", "o6", "o11"]),
+            ("exploratory", ["o3", "o4", "o7", "o12"]),
+        )
+    )
+
+    outcome = await _run(_ctx(request), llm)
+
+    assert outcome.generation.rounds == 1
+    assert len(outcome.generation.outfits) == 4
+    assert CLOTHES_FIRST_TEXT not in _prompt(llm)
+
+
+async def test_previous_outfit_with_deleted_clothes_is_still_compared(wired):
+    screen = _screen()
+    screen[0] = ScreenOutfit(
+        101,
+        1,
+        "preferred",
+        (
+            _item("outer", None),
+            _item("top", "o2"),
+            _item("bottom", "o4"),
+            _item("shoes", "o6"),
+            _item("accessories", "o9"),
+        ),
+    )
+    llm = _llm(
+        _output(
+            ("preferred", ["o2", "o4", "o6", "o11"]),
+            ("preferred", ["o2", "o13", "o7"]),
+            ("preferred", ["o3", "o4", "o6"]),
+            ("exploratory", ["o3", "o5", "o6"]),
+        ),
+        _output(("preferred", ["o3", "o13", "o6"])),
+    )
+
+    outcome = await _run(_ctx(_request(scope="all"), screen=screen), llm)
+
+    assert outcome.generation.rounds == 2
+    assert "소품만 다르다(o2, o4, o6)" in _prompt(llm, 1)
+
+
 async def test_avoided_clothes_of_previous_outfit_reach_instruction(wired):
     clothing = [
         _clothing(3, "top", styles=["street"]) if c.clothing_id == 3 else c for c in _closet()
